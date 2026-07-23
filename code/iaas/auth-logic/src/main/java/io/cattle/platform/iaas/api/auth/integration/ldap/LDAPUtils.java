@@ -18,12 +18,12 @@ import javax.naming.ldap.LdapContext;
 import javax.naming.ldap.LdapName;
 
 import org.apache.commons.lang3.StringUtils;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class LDAPUtils {
 
-    private static final Log logger = LogFactory.getLog(LDAPUtils.class);
+    private static final Logger logger = LoggerFactory.getLogger(LDAPUtils.class);
 
     private static final String INVALID_OPEN_LDAP_CONFIG = "InvalidLDAPConfig";
     private static final Pattern LDAP_ERROR_CODE = Pattern.compile("data +[57][2307][01235e]");

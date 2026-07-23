@@ -12,6 +12,7 @@ import static io.cattle.platform.core.model.tables.LabelTable.*;
 import static io.cattle.platform.core.model.tables.ServiceEventTable.*;
 
 import io.cattle.platform.archaius.util.ArchaiusUtil;
+import io.cattle.platform.archaius.util.ConfigProperty;
 import io.cattle.platform.core.constants.CommonStatesConstants;
 import io.cattle.platform.core.model.tables.AccountTable;
 import io.cattle.platform.core.model.tables.AgentTable;
@@ -86,40 +87,38 @@ import java.util.Date;
 import java.util.HashSet;
 import java.util.List;
 
+import org.jooq.Condition;
 import org.jooq.Field;
 import org.jooq.ForeignKey;
-import org.jooq.Param;
 import org.jooq.Query;
 import org.jooq.Record1;
 import org.jooq.Result;
 import org.jooq.ResultQuery;
+import org.jooq.SQLDialect;
 import org.jooq.Table;
-import org.jooq.exception.DataAccessException;
 import org.jooq.impl.DSL;
+import org.jooq.impl.SQLDataType;
+import org.jooq.exception.DataAccessException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.netflix.config.DynamicIntProperty;
-import com.netflix.config.DynamicLongProperty;
 
 /**
  * Programmatically delete purged database rows after they reach a configurable age.
  */
 public class TableCleanup extends AbstractJooqDao implements Task {
 
-    private static final String ID_GREATER_THAN_PARAM = "idGreaterThan";
-
     public static final Long SECOND_MILLIS = 1000L;
 
     private static final Logger log = LoggerFactory.getLogger(TableCleanup.class);
 
-    public static final DynamicIntProperty QUERY_LIMIT_ROWS = ArchaiusUtil.getInt("cleanup.query_limit.rows");
-    public static final DynamicLongProperty MAIN_TABLES_AGE_LIMIT_SECONDS = ArchaiusUtil.getLong("main_tables.purge.after.seconds");
-    public static final DynamicLongProperty PROCESS_INSTANCE_AGE_LIMIT_SECONDS = ArchaiusUtil.getLong("process_instance.purge.after.seconds");
-    public static final DynamicLongProperty EVENT_AGE_LIMIT_SECONDS = ArchaiusUtil.getLong("events.purge.after.seconds");
-    public static final DynamicLongProperty AUDIT_LOG_AGE_LIMIT_SECONDS = ArchaiusUtil.getLong("audit_log.purge.after.seconds");
-    public static final DynamicLongProperty SERVICE_LOG_AGE_LIMIT_SECONDS = ArchaiusUtil.getLong("service_log.purge.after.seconds");
-    public static final DynamicLongProperty MOUNT_DELETE_AGE_LIMIT_SECONDS = ArchaiusUtil.getLong("mount_delete.purge.after.seconds");
+    public static final ConfigProperty<Integer> QUERY_LIMIT_ROWS = ArchaiusUtil.getIntProperty("cleanup.query_limit.rows");
+    public static final ConfigProperty<Long> MAIN_TABLES_AGE_LIMIT_SECONDS = ArchaiusUtil.getLongProperty("main_tables.purge.after.seconds");
+    public static final ConfigProperty<Long> PROCESS_INSTANCE_AGE_LIMIT_SECONDS = ArchaiusUtil.getLongProperty("process_instance.purge.after.seconds");
+    public static final ConfigProperty<Long> EVENT_AGE_LIMIT_SECONDS = ArchaiusUtil.getLongProperty("events.purge.after.seconds");
+    public static final ConfigProperty<Long> AUDIT_LOG_AGE_LIMIT_SECONDS = ArchaiusUtil.getLongProperty("audit_log.purge.after.seconds");
+    public static final ConfigProperty<Long> SERVICE_LOG_AGE_LIMIT_SECONDS = ArchaiusUtil.getLongProperty("service_log.purge.after.seconds");
+    public static final ConfigProperty<Long> MOUNT_DELETE_AGE_LIMIT_SECONDS = ArchaiusUtil.getLongProperty("mount_delete.purge.after.seconds");
     public static final String MOUNT_DELETE_QUERY = "delete m " +
         " from mount as m " +
         " join ( " +
@@ -132,6 +131,19 @@ public class TableCleanup extends AbstractJooqDao implements Task {
         "    and (v.data like '%%\"isHostPath\":true%%' or v.data like '%%\"driver\":\"local\"%%')" +
         "    limit ? " +
         " ) mx on m.id = mx.id";
+    public static final String H2_MOUNT_DELETE_QUERY = "delete from mount " +
+        " where id in ( " +
+        "    select id from ( " +
+        "        select mm.id " +
+        "        from mount as mm " +
+        "        join instance as i on mm.instance_id = i.id " +
+        "        join volume as v on mm.volume_id = v.id " +
+        "        where i.state = 'purged' " +
+        "        and i.removed < ? " +
+        "        and (v.data like '%%\"isHostPath\":true%%' or v.data like '%%\"driver\":\"local\"%%')" +
+        "        limit ? " +
+        "    ) mx " +
+        " )";
     public static final String SECRET_CLEANUP_VSPM_QUERY = "delete s " + 
         " from volume_storage_pool_map as s " + 
         " join ( " +
@@ -145,6 +157,20 @@ public class TableCleanup extends AbstractJooqDao implements Task {
         "       select volume_id from mount as m where m.state != \"removed\" or m.state != \"purged\"" + 
         "       )" + 
         "   )vx on vx.id = s.volume_id";
+    public static final String H2_SECRET_CLEANUP_VSPM_QUERY = "delete from volume_storage_pool_map " +
+        " where volume_id in ( " +
+        "   select id from ( " +
+        "       select vv.id " +
+        "       from volume as vv " +
+        "       where vv.data like '%%\\\"driver\\\":\\\"rancher-secrets\\\"%%' " +
+        "       and created < dateadd('SECOND', -%s, current_timestamp()) " +
+        "       and vv.state = 'inactive' " +
+        "       and vv.instance_id is NULL " +
+        "       and id not in(" +
+        "           select volume_id from mount as m where m.state != 'removed' or m.state != 'purged'" +
+        "           )" +
+        "       ) vx " +
+        "   )";
     
     public static final String SECRET_CLEAUP_VOLUME_QUERY = "delete v " + 
         " from volume as v " + 
@@ -158,6 +184,19 @@ public class TableCleanup extends AbstractJooqDao implements Task {
         "       select volume_id from mount as m where m.state != \"removed\" or m.state != \"purged\"" + 
         "       )" + 
         " ) vx on vx.id = v.id";
+    public static final String H2_SECRET_CLEAUP_VOLUME_QUERY = "delete from volume " +
+        " where id in ( " +
+        "   select id from ( " +
+        "       select vv.id from volume as vv " +
+        "       where vv.data like '%%\\\"driver\\\":\\\"rancher-secrets\\\"%%' " +
+        "       and created < dateadd('SECOND', -%s, current_timestamp()) and " +
+        "       vv.state = 'inactive' and " +
+        "       vv.instance_id is NULL and " +
+        "       id not in(" +
+        "           select volume_id from mount as m where m.state != 'removed' or m.state != 'purged'" +
+        "           )" +
+        "       ) vx " +
+        " )";
 
     private List<CleanableTable> processInstanceTables;
     private List<CleanableTable> eventTables;
@@ -177,10 +216,10 @@ public class TableCleanup extends AbstractJooqDao implements Task {
     public void run() {
         long current = new Date().getTime();
 
-        Date otherCutoff = new Date(current - MAIN_TABLES_AGE_LIMIT_SECONDS.getValue() * SECOND_MILLIS);
+        Date otherCutoff = new Date(current - MAIN_TABLES_AGE_LIMIT_SECONDS.get() * SECOND_MILLIS);
         cleanupLabelTables(otherCutoff);
         cleanupExternalHandlerExternalHandlerProcessMapTables(otherCutoff);
-        cleanupTableByQuery(MOUNT_DELETE_QUERY, "mount", otherCutoff);
+        cleanupTableByQuery(mountDeleteQuery(), "mount", otherCutoff);
 
         Date processInstanceCutoff = new Date(current - PROCESS_INSTANCE_AGE_LIMIT_SECONDS.get() * SECOND_MILLIS);
         cleanup("process_instance", processInstanceTables, processInstanceCutoff);
@@ -198,8 +237,24 @@ public class TableCleanup extends AbstractJooqDao implements Task {
         cleanupConfigItemStatusTable(otherCutoff);
         cleanup("main", otherTables, otherCutoff);
         
-        cleanupTableByQuery(SECRET_CLEANUP_VSPM_QUERY, "volume_storage_pool_map", otherCutoff);
-        cleanupTableByQuery(SECRET_CLEAUP_VOLUME_QUERY, "volume", otherCutoff);
+        cleanupTableByQuery(secretCleanupVspmQuery(), "volume_storage_pool_map", otherCutoff);
+        cleanupTableByQuery(secretCleanupVolumeQuery(), "volume", otherCutoff);
+    }
+
+    private String mountDeleteQuery() {
+        return isH2() ? H2_MOUNT_DELETE_QUERY : MOUNT_DELETE_QUERY;
+    }
+
+    private String secretCleanupVspmQuery() {
+        return isH2() ? H2_SECRET_CLEANUP_VSPM_QUERY : SECRET_CLEANUP_VSPM_QUERY;
+    }
+
+    private String secretCleanupVolumeQuery() {
+        return isH2() ? H2_SECRET_CLEAUP_VOLUME_QUERY : SECRET_CLEAUP_VOLUME_QUERY;
+    }
+
+    private boolean isH2() {
+        return create().configuration().dialect().family() == SQLDialect.H2;
     }
 
     private void cleanupServiceEventTable(Date cutoff) {
@@ -208,7 +263,7 @@ public class TableCleanup extends AbstractJooqDao implements Task {
                 .from(SERVICE_EVENT)
                 .where(SERVICE_EVENT.CREATED.lt(cutoff))
                 .and(SERVICE_EVENT.STATE.eq(CommonStatesConstants.CREATED))
-                .limit(QUERY_LIMIT_ROWS.getValue());
+                .limit(QUERY_LIMIT_ROWS.get());
 
         List<Long> toDelete = null;
         int rowsDeleted = 0;
@@ -223,15 +278,32 @@ public class TableCleanup extends AbstractJooqDao implements Task {
     }
     
     private void cleanupConfigItemStatusTable(Date cutoff) {
+        int rowsDeleted = 0;
+
+        rowsDeleted += cleanupConfigItemStatusForRemovedParent(cutoff, CONFIG_ITEM_STATUS.AGENT_ID, AGENT, AGENT.ID, AGENT.REMOVED);
+        rowsDeleted += cleanupConfigItemStatusForRemovedParent(cutoff, CONFIG_ITEM_STATUS.HOST_ID, HOST, HOST.ID, HOST.REMOVED);
+        rowsDeleted += cleanupConfigItemStatusForRemovedParent(cutoff, CONFIG_ITEM_STATUS.SERVICE_ID,
+                ServiceTable.SERVICE, ServiceTable.SERVICE.ID, ServiceTable.SERVICE.REMOVED);
+        rowsDeleted += cleanupConfigItemStatusForRemovedParent(cutoff, CONFIG_ITEM_STATUS.ACCOUNT_ID,
+                AccountTable.ACCOUNT, AccountTable.ACCOUNT.ID, AccountTable.ACCOUNT.REMOVED);
+        rowsDeleted += cleanupConfigItemStatusForRemovedParent(cutoff, CONFIG_ITEM_STATUS.STACK_ID,
+                StackTable.STACK, StackTable.STACK.ID, StackTable.STACK.REMOVED);
+
+        if (rowsDeleted > 0) {
+            log.info("[Rows Deleted] config_item_status={}", rowsDeleted);
+        }
+    }
+
+    private int cleanupConfigItemStatusForRemovedParent(Date cutoff, Field<Long> statusField, Table<?> parentTable,
+            Field<Long> parentIdField, Field<Date> parentRemovedField) {
         ResultQuery<Record1<Long>> ids = create()
                 .select(CONFIG_ITEM_STATUS.ID)
                 .from(CONFIG_ITEM_STATUS)
-                .join(AGENT)
-                    .on(CONFIG_ITEM_STATUS.AGENT_ID.eq(AGENT.ID))
-                    .and(AGENT.STATE.eq(CommonStatesConstants.REMOVED))
-                .where(CONFIG_ITEM_STATUS.APPLIED_UPDATED.lt(cutoff))
-                .limit(QUERY_LIMIT_ROWS.getValue());
-        
+                .join(parentTable)
+                    .on(statusField.eq(parentIdField))
+                .where(parentRemovedField.lt(cutoff))
+                .limit(QUERY_LIMIT_ROWS.get());
+
         List<Long> toDelete = null;
         int rowsDeleted = 0;
         while ((toDelete = ids.fetch().into(Long.class)).size() > 0) {
@@ -239,9 +311,7 @@ public class TableCleanup extends AbstractJooqDao implements Task {
             .where(CONFIG_ITEM_STATUS.ID.in(toDelete)).execute();
         }
 
-        if (rowsDeleted > 0) {
-            log.info("[Rows Deleted] config_item_status={}", rowsDeleted);
-        }
+        return rowsDeleted;
     }
 
     private void cleanupExternalHandlerExternalHandlerProcessMapTables(Date cutoff) {
@@ -251,7 +321,7 @@ public class TableCleanup extends AbstractJooqDao implements Task {
                 .join(EXTERNAL_HANDLER)
                     .on(EXTERNAL_HANDLER_EXTERNAL_HANDLER_PROCESS_MAP.EXTERNAL_HANDLER_ID.eq(EXTERNAL_HANDLER.ID))
                 .where(EXTERNAL_HANDLER.REMOVED.lt(cutoff))
-                .limit(QUERY_LIMIT_ROWS.getValue());
+                .limit(QUERY_LIMIT_ROWS.get());
 
         List<Long> toDelete = null;
         int rowsDeleted = 0;
@@ -271,7 +341,7 @@ public class TableCleanup extends AbstractJooqDao implements Task {
                 .from(INSTANCE_LABEL_MAP)
                 .join(INSTANCE).on(INSTANCE_LABEL_MAP.INSTANCE_ID.eq(INSTANCE.ID))
                 .where(INSTANCE.REMOVED.lt(cutoff))
-                .limit(QUERY_LIMIT_ROWS.getValue());
+                .limit(QUERY_LIMIT_ROWS.get());
         List<Long> toDelete = null;
         int ilmRowsDeleted = 0;
         while ((toDelete = ids.fetch().into(Long.class)).size() > 0) {
@@ -284,7 +354,7 @@ public class TableCleanup extends AbstractJooqDao implements Task {
                 .from(HOST_LABEL_MAP)
                 .join(HOST).on(HOST_LABEL_MAP.HOST_ID.eq(HOST.ID))
                 .where(HOST.REMOVED.lt(cutoff))
-                .limit(QUERY_LIMIT_ROWS.getValue());
+                .limit(QUERY_LIMIT_ROWS.get());
 
         int hlmRowsDeleted = 0;
         while ((toDelete = ids.fetch().into(Long.class)).size() > 0) {
@@ -300,7 +370,7 @@ public class TableCleanup extends AbstractJooqDao implements Task {
                 .where(INSTANCE_LABEL_MAP.ID.isNull())
                 .and(HOST_LABEL_MAP.ID.isNull())
                 .and(LABEL.CREATED.lt(cutoff))
-                .limit(QUERY_LIMIT_ROWS.getValue());
+                .limit(QUERY_LIMIT_ROWS.get());
 
         int labelRowsDeleted = 0;
         while ((toDelete = ids.fetch().into(Long.class)).size() > 0) {
@@ -325,7 +395,7 @@ public class TableCleanup extends AbstractJooqDao implements Task {
 
     private void cleanupTableByQuery(String query, String tableKind, Date cutoff) {
         log.debug("Cleaning up {} table [cutoff={}]", tableKind, cutoff);
-        Query q = create().query(String.format(query, MOUNT_DELETE_AGE_LIMIT_SECONDS.getValue().toString()), cutoff, QUERY_LIMIT_ROWS.getValue());
+        Query q = cleanupQuery(query, cutoff);
         int rowsAffected = 0;
         int total = 0;
 
@@ -342,7 +412,30 @@ public class TableCleanup extends AbstractJooqDao implements Task {
         }
     }
 
-    @SuppressWarnings("unchecked")
+    private Query cleanupQuery(String query, Date cutoff) {
+        String formattedQuery = String.format(query, MOUNT_DELETE_AGE_LIMIT_SECONDS.get().toString());
+        int bindMarkers = bindMarkerCount(formattedQuery);
+        if (bindMarkers == 0) {
+            return create().query(formattedQuery);
+        }
+        if (bindMarkers != 2) {
+            throw new IllegalArgumentException("Unexpected cleanup query bind marker count: " + bindMarkers);
+        }
+        return create().query(formattedQuery,
+                DSL.val(cutoff, INSTANCE.REMOVED.getDataType()),
+                DSL.val(QUERY_LIMIT_ROWS.get(), SQLDataType.INTEGER));
+    }
+
+    static int bindMarkerCount(String query) {
+        int count = 0;
+        for (int i = 0; i < query.length(); i++) {
+            if (query.charAt(i) == '?') {
+                count++;
+            }
+        }
+        return count;
+    }
+
     private void cleanup(String name, List<CleanableTable> tables, Date cutoffTime) {
         log.info("Cleaning up {} tables [cutoff={}]", name, cutoffTime);
         for (CleanableTable table : tables) {
@@ -351,24 +444,16 @@ public class TableCleanup extends AbstractJooqDao implements Task {
                 continue;
             }
 
-            Field<Long> idField = table.idField;
-            Field<Date> removeField = table.removeField;
-            ResultQuery<Record1<Long>> idsToDeleteQuery = create()
-                    .select(idField)
-                    .from(table.table)
-                    .where(removeField.lt(cutoffTime)
-                    .and(idField.gt(DSL.param(ID_GREATER_THAN_PARAM, 0L))))
-                    .orderBy(idField)
-                    .limit(QUERY_LIMIT_ROWS.getValue());
-           Param<?> idGreaterThanParam = idsToDeleteQuery.getParam(ID_GREATER_THAN_PARAM);
+            Field<?> idField = table.idField;
+            Field<?> removeField = table.removeField;
 
             table.clearRowCounts();
-            Result<Record1<Long>> idsToDeleteResult;
+            Result<? extends Record1<?>> idsToDeleteResult;
             HashSet<Long> idsThatCantBeDeleted = new HashSet<Long>();
             HashSet<Long> idsReferencedInOtherTables = new HashSet<Long>();
-            ResultQuery<Record1<Long>> idsReferencedQuery;
+            ResultQuery<? extends Record1<?>> idsReferencedQuery;
 
-            idsToDeleteResult = idsToDeleteQuery.fetch();
+            idsToDeleteResult = fetchIdsToDelete(table, idField, removeField, cutoffTime, 0L);
             if (idsToDeleteResult.size() == 0) {
                 // No rows to remove, move on to next table
                 continue;
@@ -383,10 +468,11 @@ public class TableCleanup extends AbstractJooqDao implements Task {
             }
             for (ForeignKey<?, ?> key : keys) {
                 Table<?> referencingTable = key.getTable();
-                Field<Long> foreignKeyField = (Field<Long>) key.getFields().get(0);
+                Field<?> foreignKeyField = key.getFields().get(0);
+                CleanableTable.requireFieldType(foreignKeyField, Long.class);
                 idsReferencedQuery = create().selectDistinct(foreignKeyField).from(referencingTable);
-                for(Record1<Long> record : idsReferencedQuery.fetch()) {
-                    idsReferencedInOtherTables.add(record.value1());
+                for(Record1<?> record : idsReferencedQuery.fetch()) {
+                    idsReferencedInOtherTables.add(longValue(record));
                 }
             }
 
@@ -394,8 +480,8 @@ public class TableCleanup extends AbstractJooqDao implements Task {
                 // First organize rows into sets that can and cannot be deleted
                 HashSet<Long> idsToDelete = new HashSet<Long>();
                 Long id = null;
-                for (Record1<Long> record : idsToDeleteResult) {
-                    id = record.value1();
+                for (Record1<?> record : idsToDeleteResult) {
+                    id = longValue(record);
                     if (idsReferencedInOtherTables.contains(id)) {
                         idsThatCantBeDeleted.add(id);
                         idsReferencedInOtherTables.remove(id);
@@ -422,8 +508,7 @@ public class TableCleanup extends AbstractJooqDao implements Task {
                 }
 
                 // Get the next batch of rows to consider for deletion
-                idGreaterThanParam.setConverted(lastId);
-                idsToDeleteResult = idsToDeleteQuery.fetch();
+                idsToDeleteResult = fetchIdsToDelete(table, idField, removeField, cutoffTime, lastId);
             }
 
             if (idsThatCantBeDeleted.size() > 0) {
@@ -459,6 +544,30 @@ public class TableCleanup extends AbstractJooqDao implements Task {
         if (skippedActivity) {
             log.info(buffSkipped.toString());
         }
+    }
+
+    private Result<? extends Record1<?>> fetchIdsToDelete(CleanableTable table, Field<?> idField, Field<?> removeField,
+            Date cutoffTime, Long idGreaterThan) {
+        return create()
+                .select(idField)
+                .from(table.table)
+                .where(lessThan(removeField, cutoffTime)
+                .and(greaterThan(idField, idGreaterThan)))
+                .orderBy(idField)
+                .limit(QUERY_LIMIT_ROWS.get())
+                .fetch();
+    }
+
+    private static Long longValue(Record1<?> record) {
+        return Long.class.cast(record.value1());
+    }
+
+    private static <T> Condition greaterThan(Field<T> field, Object value) {
+        return field.gt(DSL.val(value, field));
+    }
+
+    private static <T> Condition lessThan(Field<T> field, Object value) {
+        return field.lt(DSL.val(value, field));
     }
 
     /**
@@ -608,6 +717,7 @@ public class TableCleanup extends AbstractJooqDao implements Task {
                 CleanableTable.from(ScheduledUpgradeTable.SCHEDULED_UPGRADE),
                 CleanableTable.from(SecretTable.SECRET),
                 CleanableTable.from(ZoneTable.ZONE),
+                CleanableTable.forReference(CONFIG_ITEM_STATUS),
                 CleanableTable.forReference(AuditLogTable.AUDIT_LOG),
                 CleanableTable.forReference(ServiceLogTable.SERVICE_LOG),
                 CleanableTable.forReference(ProcessInstanceTable.PROCESS_INSTANCE));

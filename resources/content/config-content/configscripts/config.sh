@@ -163,7 +163,7 @@ download()
     content_root=${DOWNLOAD}/$name/${dir}
 
     if [ -e ${DOWNLOAD_TEMP}/${dir}/uptodate ] && [ -e ${DOWNLOAD_TEMP}/${dir}/version ] && [ ! -e ${content_root}/version ]; then
-        # Migration of version file because CDN cached assets in rancher/server don't have a version file
+        # Preserve the version marker for cached compatibility assets that predate it.
         mkdir -p ${content_root}
         cp ${DOWNLOAD_TEMP}/${dir}/version ${content_root}/version
     fi

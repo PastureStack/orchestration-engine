@@ -17,12 +17,11 @@ import io.cattle.platform.servicediscovery.deployment.DeploymentUnitInstanceFact
 import io.cattle.platform.servicediscovery.deployment.impl.DeploymentManagerImpl.DeploymentServiceContext;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 
 import org.apache.commons.lang3.tuple.Pair;
 
@@ -35,20 +34,19 @@ public class DeploymentUnitInstanceFactoryImpl implements DeploymentUnitInstance
     GenericMapDao mapDao;
 
     @Override
-    @SuppressWarnings("unchecked")
     public DeploymentUnitInstance createDeploymentUnitInstance(DeploymentServiceContext context, String uuid,
             Service service, String instanceName, Object instanceObj, String launchConfigName) {
         if (ServiceConstants.SERVICE_LIKE.contains(service.getKind())) {
             Instance instance = null;
             if (instanceObj != null) {
-                instance = (Instance) instanceObj;
+                instance = Instance.class.cast(instanceObj);
             }
             return new DefaultDeploymentUnitInstance(context, uuid, service,
                     instanceName, instance, launchConfigName);
         } else if (service.getKind().equalsIgnoreCase(ServiceConstants.KIND_EXTERNAL_SERVICE)) {
             Pair<String, String> ipHostName = null;
             if (instanceObj != null) {
-                ipHostName = (Pair<String, String>) instanceObj;
+                ipHostName = DeploymentUnitTypeUtils.stringPair(instanceObj);
             }
             return new ExternalDeploymentUnitInstance(context, uuid, service, launchConfigName, ipHostName.getLeft(),
                     ipHostName.getRight());
@@ -120,13 +118,11 @@ public class DeploymentUnitInstanceFactoryImpl implements DeploymentUnitInstance
     }
 
 
-    @SuppressWarnings("unchecked")
     protected void createExternalUnitsForIps(DeploymentServiceContext context,
             Map<String, Map<String, String>> uuidToLabels, Map<String, List<DeploymentUnitInstance>> uuidToInstances,
             Service service) {
-        List<String> externalIps = DataAccessor.fields(service)
-                .withKey(ServiceConstants.FIELD_EXTERNALIPS).withDefault(Collections.EMPTY_LIST)
-                .as(List.class);
+        List<String> externalIps = DeploymentUnitTypeUtils.stringList(DataAccessor.fields(service)
+                .withKey(ServiceConstants.FIELD_EXTERNALIPS).get());
 
         if (externalIps != null) {
             for (String externalIp : externalIps) {
@@ -152,14 +148,13 @@ public class DeploymentUnitInstanceFactoryImpl implements DeploymentUnitInstance
                 unitInstance);
     }
 
-    @SuppressWarnings("unchecked")
     protected void collectDefaultServiceInstances(DeploymentServiceContext context,
             Map<String, Map<String, String>> uuidToLabels, Map<String, List<DeploymentUnitInstance>> uuidToInstances,
             Service service, Map<String, io.cattle.platform.core.model.DeploymentUnit> uuidToExistingDU) {
         List<? extends Instance> serviceContainers = expMapDao.listServiceManagedInstancesAll(service);
         for (Instance serviceContainer : serviceContainers) {
-            Map<String, String> instanceLabels = DataAccessor.fields(serviceContainer)
-                    .withKey(InstanceConstants.FIELD_LABELS).withDefault(Collections.EMPTY_MAP).as(Map.class);
+            Map<String, String> instanceLabels = DeploymentUnitTypeUtils.stringMap(DataAccessor.fields(serviceContainer)
+                    .withKey(InstanceConstants.FIELD_LABELS).get());
             String deploymentUnitUUID = instanceLabels
                     .get(ServiceConstants.LABEL_SERVICE_DEPLOYMENT_UNIT);
             String launchConfigName = instanceLabels

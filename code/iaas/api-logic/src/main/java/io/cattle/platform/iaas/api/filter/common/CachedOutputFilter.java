@@ -12,19 +12,22 @@ public abstract class CachedOutputFilter<T> implements ResourceOutputFilter {
 
     protected abstract T newObject(ApiRequest apiRequest);
 
+    protected abstract T castCached(Object cached);
+
     protected abstract Long getId(Object obj);
 
     protected T getCached(ApiRequest apiRequest) {
         if (apiRequest == null) {
             return null;
         }
-        @SuppressWarnings("unchecked")
-        T cached = (T)apiRequest.getAttribute(this);
-        if (cached == null) {
-            cached = newObject(apiRequest);
-            apiRequest.setAttribute(this, cached);
+        Object cached = apiRequest.getAttribute(this);
+        if (cached != null) {
+            return castCached(cached);
         }
-        return cached;
+
+        T created = newObject(apiRequest);
+        apiRequest.setAttribute(this, created);
+        return created;
     }
 
     protected List<Long> getIds(ApiRequest apiRequest) {

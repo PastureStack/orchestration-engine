@@ -20,7 +20,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 
-import javax.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpServletResponse;
 
 public class ApiRequest {
 
@@ -145,6 +145,7 @@ public class ApiRequest {
 
     public <T> T proxyRequestObject(Class<T> type) {
         Map<String, Object> map = RequestUtils.toMap(requestObject);
+        requestObject = map;
         return ProxyUtils.proxy(map, type);
     }
 

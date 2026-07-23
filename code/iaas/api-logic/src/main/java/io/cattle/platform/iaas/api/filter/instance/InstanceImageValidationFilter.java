@@ -1,6 +1,7 @@
 package io.cattle.platform.iaas.api.filter.instance;
 
 import io.cattle.platform.archaius.util.ArchaiusUtil;
+import io.cattle.platform.archaius.util.ConfigProperty;
 import io.cattle.platform.core.constants.InstanceConstants;
 import io.cattle.platform.core.dao.AgentDao;
 import io.cattle.platform.core.model.Image;
@@ -16,13 +17,12 @@ import io.github.ibuildthecloud.gdapi.request.resource.ResourceManagerLocator;
 import io.github.ibuildthecloud.gdapi.util.ResponseCodes;
 import io.github.ibuildthecloud.gdapi.validation.ValidationErrorCodes;
 
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 
-import com.netflix.config.DynamicBooleanProperty;
 
 public class InstanceImageValidationFilter extends AbstractDefaultResourceManagerFilter {
 
-    private static final DynamicBooleanProperty REQUIRE_INSTANCE_IMAGE = ArchaiusUtil.getBoolean("api.instance.require.image");
+    private static final ConfigProperty<Boolean> REQUIRE_INSTANCE_IMAGE = ArchaiusUtil.getBooleanProperty("api.instance.require.image");
 
     ResourceManagerLocator locator;
     ObjectManager objectManager;

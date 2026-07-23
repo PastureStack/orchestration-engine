@@ -25,10 +25,10 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
-import javax.inject.Inject;
-import javax.inject.Named;
+import jakarta.inject.Inject;
+import jakarta.inject.Named;
 
-import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.Strings;
 import org.apache.commons.lang3.tuple.Pair;
 
 @Named
@@ -76,7 +76,6 @@ public class ServiceUpgradeValidationFilter extends AbstractDefaultResourceManag
         return super.resourceAction(type, request, next);
     }
 
-    @SuppressWarnings("unchecked")
     protected void processInServiceUpgradeStrategy(ApiRequest request, Service service, ServiceUpgrade upgrade,
             ServiceUpgradeStrategy strategy) {
         if (strategy instanceof InServiceUpgradeStrategy) {
@@ -89,10 +88,11 @@ public class ServiceUpgradeValidationFilter extends AbstractDefaultResourceManag
             if (newLaunchConfig != null) {
                 ServiceDiscoveryUtil.validateScaleSwitch(newLaunchConfig, launchConfig);
             }
-            List<Object> secondaryLaunchConfigs = DataAccessor.fields(service)
+            List<?> secondaryLaunchConfigValues = DataAccessor.fields(service)
                     .withKey(ServiceConstants.FIELD_SECONDARY_LAUNCH_CONFIGS)
-                    .withDefault(Collections.EMPTY_LIST).as(
+                    .withDefault(Collections.emptyList()).as(
                             List.class);
+            List<Object> secondaryLaunchConfigs = objectListCopy(secondaryLaunchConfigValues);
             inServiceStrategy.setPreviousLaunchConfig(launchConfig);
             inServiceStrategy.setPreviousSecondaryLaunchConfigs(secondaryLaunchConfigs);
             upgrade.setInServiceStrategy(inServiceStrategy);
@@ -100,6 +100,10 @@ public class ServiceUpgradeValidationFilter extends AbstractDefaultResourceManag
             ServiceDiscoveryUtil.upgradeServiceConfigs(service, inServiceStrategy, false);
         }
         objectManager.persist(service);
+    }
+
+    static List<Object> objectListCopy(List<?> values) {
+        return new ArrayList<Object>(values);
     }
 
     protected void setVersion(InServiceUpgradeStrategy upgrade) {
@@ -114,13 +118,19 @@ public class ServiceUpgradeValidationFilter extends AbstractDefaultResourceManag
         }
     }
 
-    @SuppressWarnings("unchecked")
     protected void setLaunchConfigVersion(String version, Object launchConfigObj) {
-        Map<String, Object> launchConfig = (Map<String, Object>) launchConfigObj;
+        Map<Object, Object> launchConfig = launchConfigMap(launchConfigObj);
         launchConfig.put(ServiceConstants.FIELD_VERSION, version);
     }
 
-    @SuppressWarnings("unchecked")
+    static Map<Object, Object> launchConfigMap(Object launchConfigObj) {
+        Map.class.cast(launchConfigObj);
+        if (launchConfigObj == null) {
+            throw new NullPointerException();
+        }
+        return CollectionUtils.toMap(launchConfigObj);
+    }
+
     protected InServiceUpgradeStrategy finalizeUpgradeStrategy(Service service, InServiceUpgradeStrategy strategy) {
         if (strategy.getLaunchConfig() == null && strategy.getSecondaryLaunchConfigs() == null) {
             ValidationErrorCodes.throwValidationError(ValidationErrorCodes.INVALID_OPTION,
@@ -140,7 +150,7 @@ public class ServiceUpgradeValidationFilter extends AbstractDefaultResourceManag
                 ValidationErrorCodes.throwValidationError(ValidationErrorCodes.INVALID_OPTION,
                         "LaunchConfig is required for load balancer service");
             }
-            ServiceDiscoveryUtil.injectBalancerLabelsAndHealthcheck((Map<Object, Object>) strategy.getLaunchConfig());
+            ServiceDiscoveryUtil.injectBalancerLabelsAndHealthcheck(launchConfigMap(strategy.getLaunchConfig()));
         }
 
         Map<String, Map<Object, Object>> serviceLCs = getExistingLaunchConfigs(service);
@@ -179,7 +189,7 @@ public class ServiceUpgradeValidationFilter extends AbstractDefaultResourceManag
         Map<String, Map<Object, Object>> existingLCs = getExistingLaunchConfigs(service);
         for (String scName : existingLCs.keySet()) {
             if (!lCsToUpdateFinal.containsKey(scName)) {
-                if (StringUtils.equals(scName, service.getName())) {
+                if (Strings.CS.equals(scName, service.getName())) {
                     finalizedPrimary = existingLCs.get(scName);
                 } else {
                     finalizedSecondary.add(existingLCs.get(scName));
@@ -198,12 +208,12 @@ public class ServiceUpgradeValidationFilter extends AbstractDefaultResourceManag
             }
 
             if (service.getSelectorContainer() == null
-                    && StringUtils.equalsIgnoreCase(ServiceConstants.IMAGE_NONE, imageUuid.toString())) {
+                    && Strings.CI.equals(ServiceConstants.IMAGE_NONE, imageUuid.toString())) {
                 it.remove();
             }
             else {
                 String fullImageName = ExternalTemplateInstanceFilter.getImageUuid(imageUuid.toString(), storageService);
-                ((Map<String, Object>) lc).put(InstanceConstants.FIELD_IMAGE_UUID, fullImageName);
+                putLaunchConfigImageUuid(lc, fullImageName);
             }
         }
 
@@ -211,13 +221,21 @@ public class ServiceUpgradeValidationFilter extends AbstractDefaultResourceManag
         Object imageUuid = mapped.get(InstanceConstants.FIELD_IMAGE_UUID);
         if (imageUuid != null && !imageUuid.toString().equalsIgnoreCase(ServiceConstants.IMAGE_NONE)) {
             String fullImageName = ExternalTemplateInstanceFilter.getImageUuid(imageUuid.toString(), storageService);
-            ((Map<String, Object>) finalizedPrimary).put(InstanceConstants.FIELD_IMAGE_UUID, fullImageName);
+            putLaunchConfigImageUuid(finalizedPrimary, fullImageName);
         }
 
         strategy.setLaunchConfig(finalizedPrimary);
         strategy.setSecondaryLaunchConfigs(finalizedSecondary);
 
         return strategy;
+    }
+
+    static void putLaunchConfigImageUuid(Object launchConfigObj, String fullImageName) {
+        Map.class.cast(launchConfigObj);
+        if (launchConfigObj == null) {
+            throw new NullPointerException();
+        }
+        CollectionUtils.toMap(launchConfigObj).put(InstanceConstants.FIELD_IMAGE_UUID, fullImageName);
     }
 
     protected Map<String, Map<Object, Object>> getLaunchConfigsToUpdateFinal(
@@ -231,19 +249,18 @@ public class ServiceUpgradeValidationFilter extends AbstractDefaultResourceManag
         return lCsToUpdateFinal;
     }
 
-    @SuppressWarnings("unchecked")
     protected Map<String, Map<Object, Object>> getLaunchConfigsToUpdateInitial(Service service,
             InServiceUpgradeStrategy strategy,
             Map<String, Map<Object, Object>> serviceLCs) {
         Map<String, Map<Object, Object>> lCsToUpdateInitial = new HashMap<>();
         if (strategy.getLaunchConfig() != null) {
-            lCsToUpdateInitial.put(service.getName(), (Map<Object, Object>) strategy.getLaunchConfig());
+            lCsToUpdateInitial.put(service.getName(), launchConfigMap(strategy.getLaunchConfig()));
         }
 
         if (strategy.getSecondaryLaunchConfigs() != null) {
             for (Object secondaryLC : strategy.getSecondaryLaunchConfigs()) {
                 String lcName = CollectionUtils.toMap(secondaryLC).get("name").toString();
-                lCsToUpdateInitial.put(lcName, (Map<Object, Object>) secondaryLC);
+                lCsToUpdateInitial.put(lcName, launchConfigMap(secondaryLC));
             }
         }
         return lCsToUpdateInitial;
@@ -257,7 +274,6 @@ public class ServiceUpgradeValidationFilter extends AbstractDefaultResourceManag
         return serviceLCs;
     }
 
-    @SuppressWarnings("unchecked")
     // this method finalizes volumeFrom/networkFrom dependencies that need to be updated as well
     protected void finalizeLCNamesToUpdate(Map<String, Map<Object, Object>> serviceLCs,
             Map<String, Map<Object, Object>> lCToUpdateFinal,
@@ -271,12 +287,12 @@ public class ServiceUpgradeValidationFilter extends AbstractDefaultResourceManag
             Object networkFromLaunchConfig = serviceLC
                     .get(ServiceConstants.FIELD_NETWORK_LAUNCH_CONFIG);
             if (networkFromLaunchConfig != null) {
-                refs.add((String) networkFromLaunchConfig);
+                refs.add(String.class.cast(networkFromLaunchConfig));
             }
             Object volumesFromLaunchConfigs = serviceLC
                     .get(ServiceConstants.FIELD_DATA_VOLUMES_LAUNCH_CONFIG);
             if (volumesFromLaunchConfigs != null) {
-                refs.addAll((List<String>) volumesFromLaunchConfigs);
+                refs.addAll(stringList(volumesFromLaunchConfigs));
             }
             for (String ref : refs) {
                 if (lcToUpdate.getLeft().equalsIgnoreCase(ref)) {
@@ -285,5 +301,14 @@ public class ServiceUpgradeValidationFilter extends AbstractDefaultResourceManag
                 }
             }
         }
+    }
+
+    static List<String> stringList(Object values) {
+        List<?> items = List.class.cast(values);
+        List<String> result = new ArrayList<>();
+        for (Object item : items) {
+            result.add(String.class.cast(item));
+        }
+        return result;
     }
 }

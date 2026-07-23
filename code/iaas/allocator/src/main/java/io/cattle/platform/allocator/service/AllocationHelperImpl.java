@@ -24,11 +24,12 @@ import io.cattle.platform.object.util.DataAccessor;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 
 import org.jooq.tools.StringUtils;
 
@@ -118,7 +119,7 @@ public class AllocationHelperImpl implements AllocationHelper {
         String stackServiceNameWithLaunchConfig = systemLabels.get(LABEL_STACK_SERVICE_NAME);
         String launchConfig = systemLabels.get(LABEL_SERVICE_LAUNCH_CONFIG);
 
-        Set<String> serviceNamesInStack = getServiceNamesInStack(stackId);
+        Set<String> serviceNamesInStack = null;
 
         for (Map.Entry<String, String> entry : serviceUserLabels.entrySet()) {
             String labelValue = entry.getValue();
@@ -134,6 +135,9 @@ public class AllocationHelperImpl implements AllocationHelper {
                     String[] components = userEnteredServiceName.split("/");
                     if (components.length == 1 &&
                             stackServiceNameWithLaunchConfig != null) {
+                        if (serviceNamesInStack == null) {
+                            serviceNamesInStack = getServiceNamesInStack(stackId);
+                        }
                         if (serviceNamesInStack.contains(userEnteredServiceName.toLowerCase())) {
                             // prepend stack name
                             userEnteredServiceName = stackName + "/" + userEnteredServiceName;
@@ -191,12 +195,12 @@ public class AllocationHelperImpl implements AllocationHelper {
     }
 
     @Override
-    @SuppressWarnings({ "unchecked", "rawtypes" })
-    public List<Constraint> extractConstraintsFromEnv(Map env) {
+    public List<Constraint> extractConstraintsFromEnv(Map<?, ?> env) {
         List<Constraint> constraints = new ArrayList<Constraint>();
         if (env != null) {
-            Set<String> affinityDefinitions = env.keySet();
-            for (String affinityDef : affinityDefinitions) {
+            Set<?> affinityDefinitions = env.keySet();
+            for (Object affinityDefinition : affinityDefinitions) {
+                String affinityDef = String.class.cast(affinityDefinition);
                 if (affinityDef == null) {
                     continue;
                 }
@@ -228,18 +232,17 @@ public class AllocationHelperImpl implements AllocationHelper {
     }
 
     @Override
-    @SuppressWarnings({ "unchecked", "rawtypes" })
-    public List<Constraint> extractConstraintsFromLabels(Map labels, Instance instance) {
+    public List<Constraint> extractConstraintsFromLabels(Map<?, ?> labels, Instance instance) {
         List<Constraint> constraints = new ArrayList<Constraint>();
         if (labels == null) {
             return constraints;
         }
 
-        Iterator<Map.Entry> iter = labels.entrySet().iterator();
+        Iterator<? extends Map.Entry<?, ?>> iter = labels.entrySet().iterator();
         while (iter.hasNext()) {
-            Map.Entry affinityDef = iter.next();
-            String key = ((String)affinityDef.getKey()).toLowerCase();
-            String valueStr = (String)affinityDef.getValue();
+            Map.Entry<?, ?> affinityDef = iter.next();
+            String key = String.class.cast(affinityDef.getKey()).toLowerCase();
+            String valueStr = String.class.cast(affinityDef.getValue());
             valueStr = valueStr == null ? "" : valueStr.toLowerCase();
 
             if (instance != null) {
@@ -285,13 +288,12 @@ public class AllocationHelperImpl implements AllocationHelper {
      * @param instance
      * @return
      */
-    @SuppressWarnings("unchecked")
     private String evaluateMacros(String valueStr, Instance instance) {
         if (valueStr.indexOf(SERVICE_NAME_MACRO) != -1 ||
                 valueStr.indexOf(STACK_NAME_MACRO) != -1 ||
                 valueStr.indexOf(PROJECT_NAME_MACRO) != -1) {
 
-            Map<String, String> labels = DataAccessor.fields(instance).withKey(InstanceConstants.FIELD_LABELS).as(Map.class);
+            Map<String, String> labels = stringMap(DataAccessor.fields(instance).withKey(InstanceConstants.FIELD_LABELS).as(Map.class));
             String serviceLaunchConfigName = "";
             String stackName = "";
             if (labels != null && !labels.isEmpty()) {
@@ -369,23 +371,22 @@ public class AllocationHelperImpl implements AllocationHelper {
     }
 
     @Override
-    @SuppressWarnings({ "unchecked", "rawtypes" })
     public List<LockDefinition> extractAllocationLockDefinitions(Instance instance, List<Instance> instances) {
-        Map env = DataAccessor.fields(instance).withKey(InstanceConstants.FIELD_ENVIRONMENT).as(jsonMapper, Map.class);
+        Object env = DataAccessor.fields(instance).withKey(InstanceConstants.FIELD_ENVIRONMENT).as(jsonMapper, Map.class);
         List<LockDefinition> lockDefs = extractAllocationLockDefinitionsFromEnv(env);
 
-        Map labels = DataAccessor.fields(instance).withKey(InstanceConstants.FIELD_LABELS).as(jsonMapper, Map.class);
+        Map<String, String> labels = stringMap(DataAccessor.fields(instance).withKey(InstanceConstants.FIELD_LABELS).as(jsonMapper, Map.class));
         if (labels == null) {
             return lockDefs;
         }
         // we need to merge all the affinity labels from primary containers and sickkicks
         for (Instance inst: instances) {
-            Map lbs = DataAccessor.fields(inst).withKey(InstanceConstants.FIELD_LABELS).as(jsonMapper, Map.class);
-            Iterator<Map.Entry> it = lbs.entrySet().iterator();
+            Map<String, String> lbs = stringMap(DataAccessor.fields(inst).withKey(InstanceConstants.FIELD_LABELS).as(jsonMapper, Map.class));
+            Iterator<Map.Entry<String, String>> it = lbs.entrySet().iterator();
             while (it.hasNext()) {
-                Map.Entry affinityDef = it.next();
-                String key = ((String)affinityDef.getKey()).toLowerCase();
-                String valueStr = (String)affinityDef.getValue();
+                Map.Entry<String, String> affinityDef = it.next();
+                String key = affinityDef.getKey().toLowerCase();
+                String valueStr = affinityDef.getValue();
                 if (key.startsWith(ContainerLabelAffinityConstraint.LABEL_HEADER_AFFINITY_CONTAINER_LABEL) || 
                         key.startsWith(ContainerAffinityConstraint.LABEL_HEADER_AFFINITY_CONTAINER)) {
                         labels.put(key, valueStr);
@@ -393,11 +394,11 @@ public class AllocationHelperImpl implements AllocationHelper {
             }
         }
 
-        Iterator<Map.Entry> iter = labels.entrySet().iterator();
+        Iterator<Map.Entry<String, String>> iter = labels.entrySet().iterator();
         while (iter.hasNext()) {
-            Map.Entry affinityDef = iter.next();
-            String key = ((String)affinityDef.getKey()).toLowerCase();
-            String valueStr = (String)affinityDef.getValue();
+            Map.Entry<String, String> affinityDef = iter.next();
+            String key = affinityDef.getKey().toLowerCase();
+            String valueStr = affinityDef.getValue();
             valueStr = valueStr == null ? "" : valueStr.toLowerCase();
 
             if (instance != null) {
@@ -424,12 +425,13 @@ public class AllocationHelperImpl implements AllocationHelper {
         return lockDefs;
     }
 
-    @SuppressWarnings({ "unchecked", "rawtypes" })
-    private List<LockDefinition> extractAllocationLockDefinitionsFromEnv(Map env) {
+    private List<LockDefinition> extractAllocationLockDefinitionsFromEnv(Object envData) {
         List<LockDefinition> constraints = new ArrayList<LockDefinition>();
+        Map<?, ?> env = (Map<?, ?>) Map.class.cast(envData);
         if (env != null) {
-            Set<String> affinityDefinitions = env.keySet();
-            for (String affinityDef : affinityDefinitions) {
+            Set<?> affinityDefinitions = env.keySet();
+            for (Object affinityDefinition : affinityDefinitions) {
+                String affinityDef = String.class.cast(affinityDefinition);
                 if (affinityDef == null) {
                     continue;
                 }
@@ -451,6 +453,18 @@ public class AllocationHelperImpl implements AllocationHelper {
             }
         }
         return constraints;
+    }
+
+    private Map<String, String> stringMap(Object mapData) {
+        Map<?, ?> source = (Map<?, ?>) Map.class.cast(mapData);
+        if (source == null) {
+            return null;
+        }
+        Map<String, String> result = new LinkedHashMap<String, String>();
+        for (Map.Entry<?, ?> entry : source.entrySet()) {
+            result.put(String.class.cast(entry.getKey()), String.class.cast(entry.getValue()));
+        }
+        return result;
     }
 
 

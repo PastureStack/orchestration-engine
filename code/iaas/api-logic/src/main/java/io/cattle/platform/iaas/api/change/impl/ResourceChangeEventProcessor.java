@@ -16,9 +16,10 @@ import io.github.ibuildthecloud.gdapi.request.resource.ResourceManager;
 import io.github.ibuildthecloud.gdapi.request.resource.ResourceManagerLocator;
 
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 
 public class ResourceChangeEventProcessor implements ApiPubSubEventPostProcessor {
 
@@ -66,8 +67,7 @@ public class ResourceChangeEventProcessor implements ApiPubSubEventPostProcessor
             }
 
             Map<String, Object> data = new HashMap<String, Object>();
-            @SuppressWarnings("unchecked")
-            Map<String, Object> resourceData = jsonMapper.convertValue(resource, Map.class);;
+            Map<String, Object> resourceData = stringObjectMap(jsonMapper.convertValue(resource, Map.class));
             if (request.getOptions().get("_actionLinks") != null) {
                 data.put("actionLinks", resourceData.remove("actions"));
             }
@@ -79,6 +79,15 @@ public class ResourceChangeEventProcessor implements ApiPubSubEventPostProcessor
         }
 
         return true;
+    }
+
+    static Map<String, Object> stringObjectMap(Object value) {
+        Map<?, ?> input = Map.class.cast(value);
+        Map<String, Object> result = new LinkedHashMap<String, Object>();
+        for (Map.Entry<?, ?> entry : input.entrySet()) {
+            result.put(String.class.cast(entry.getKey()), entry.getValue());
+        }
+        return result;
     }
 
     public ResourceManagerLocator getLocator() {

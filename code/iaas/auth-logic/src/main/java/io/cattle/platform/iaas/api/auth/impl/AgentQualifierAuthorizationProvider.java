@@ -30,7 +30,7 @@ import io.github.ibuildthecloud.gdapi.validation.ValidationErrorCodes;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -63,7 +63,8 @@ public class AgentQualifierAuthorizationProvider implements AuthorizationProvide
         PolicyOptions policyOptions = optionsFactory.getOptions(account);
 
         boolean apply = false;
-        final SubscriptionStyle accountStyle = SubscriptionUtils.getSubscriptionStyle(policyOptions);
+        final boolean requiredSystemRaw = isRequiredSystemRawAccount(account);
+        final SubscriptionStyle accountStyle = requiredSystemRaw ? SubscriptionStyle.RAW : SubscriptionUtils.getSubscriptionStyle(policyOptions);
 
         /* This boolean logic could be optimized but this seems more readable. */
         if (accountStyle == SubscriptionStyle.RAW) {
@@ -78,6 +79,10 @@ public class AgentQualifierAuthorizationProvider implements AuthorizationProvide
 
         final PolicyOptionsWrapper options = new PolicyOptionsWrapper(policyOptions);
         AccountPolicy policy = new AccountPolicy(account, authenticatedAsAccount, identities, options);
+
+        if (requiredSystemRaw) {
+            applyRequiredSystemAccountOptions(options);
+        }
 
         options.addCallback(Policy.AGENT_ID, new OptionCallback() {
             @Override
@@ -114,6 +119,22 @@ public class AgentQualifierAuthorizationProvider implements AuthorizationProvide
         });
 
         return policy;
+    }
+
+    protected boolean isRequiredSystemRawAccount(Account account) {
+        if (account == null) {
+            return false;
+        }
+
+        String kind = account.getKind();
+        return AccountConstants.SERVICE_KIND.equals(kind) || AccountConstants.SUPER_ADMIN_KIND.equals(kind);
+    }
+
+    protected void applyRequiredSystemAccountOptions(PolicyOptionsWrapper options) {
+        options.setOption(Policy.AUTHORIZED_FOR_ALL_ACCOUNTS, "true");
+        options.setOption(Policy.LIST_ALL_ACCOUNTS, "true");
+        options.setOption(Policy.LIST_ALL_SETTINGS, "true");
+        options.setOption(Policy.PLAIN_ID_OPTION, "true");
     }
 
     protected Long getRawAgentId() {

@@ -2,6 +2,8 @@ package io.cattle.platform.configitem.version.impl;
 
 import io.cattle.platform.agent.AgentLocator;
 import io.cattle.platform.archaius.util.ArchaiusUtil;
+import io.cattle.platform.archaius.util.ConfigListProperty;
+import io.cattle.platform.archaius.util.ConfigProperty;
 import io.cattle.platform.async.utils.AsyncUtils;
 import io.cattle.platform.async.utils.TimeoutException;
 import io.cattle.platform.configitem.events.ConfigUpdate;
@@ -30,10 +32,10 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 
-import org.apache.commons.lang3.ObjectUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -41,13 +43,12 @@ import com.google.common.base.Function;
 import com.google.common.util.concurrent.FutureCallback;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
-import com.netflix.config.DynamicBooleanProperty;
-import com.netflix.config.DynamicStringListProperty;
+import com.google.common.util.concurrent.MoreExecutors;
 
 public class ConfigItemStatusManagerImpl implements ConfigItemStatusManager {
 
-    private static final DynamicBooleanProperty BLOCK = ArchaiusUtil.getBoolean("item.migration.block.on.failure");
-    private static final DynamicStringListProperty PRIORITY_ITEMS = ArchaiusUtil.getList("item.priority");
+    private static final ConfigProperty<Boolean> BLOCK = ArchaiusUtil.getBooleanProperty("item.migration.block.on.failure");
+    private static final ConfigListProperty<String> PRIORITY_ITEMS = ArchaiusUtil.getStringListProperty("item.priority");
 
     private static final Logger log = LoggerFactory.getLogger(ConfigItemStatusManagerImpl.class);
 
@@ -225,7 +226,7 @@ public class ConfigItemStatusManagerImpl implements ConfigItemStatusManager {
 
                 return Boolean.TRUE;
             }
-        });
+        }, MoreExecutors.directExecutor());
     }
 
     protected List<ConfigUpdateItem> getNeedsUpdating(ConfigUpdateRequest request, boolean checkVersions) {
@@ -243,7 +244,7 @@ public class ConfigItemStatusManagerImpl implements ConfigItemStatusManager {
             }
 
             if (item.isCheckInSyncOnly()) {
-                if (!checkVersions || !ObjectUtils.equals(status.getRequestedVersion(), status.getAppliedVersion())) {
+                if (!checkVersions || !Objects.equals(status.getRequestedVersion(), status.getAppliedVersion())) {
                     if (request.isMigration()) {
                         log.info("Waiting on [{}] on [{}], for migration", client, name);
                     } else {
@@ -314,7 +315,7 @@ public class ConfigItemStatusManagerImpl implements ConfigItemStatusManager {
                             log.error("Error {} item(s) {} on [{}]", migration ? "migrating" : "updating", entry.getValue(), client, t);
                         }
                     }
-                });
+                }, MoreExecutors.directExecutor());
             }
 
             first = false;

@@ -4,12 +4,10 @@
             <level>${aggregationLevel}</level>
         </filter>
         <file>${logDir}logstash.log</file>
-        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
             <fileNamePattern>${logDir}logstash${fileNamePattern}</fileNamePattern>
             <maxHistory>${maxHistory}</maxHistory>
-            <timeBasedFileNamingAndTriggeringPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedFNATP">
-                <maxFileSize>${maxFileSize}</maxFileSize>
-            </timeBasedFileNamingAndTriggeringPolicy>
+            <maxFileSize>${maxFileSize}</maxFileSize>
         </rollingPolicy>
 
         <encoder class="net.logstash.logback.encoder.LogstashEncoder" />

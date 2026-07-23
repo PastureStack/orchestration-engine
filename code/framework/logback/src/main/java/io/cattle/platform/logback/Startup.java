@@ -3,8 +3,9 @@ package io.cattle.platform.logback;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
+import java.nio.charset.Charset;
 
-import javax.annotation.PostConstruct;
+import jakarta.annotation.PostConstruct;
 
 import org.apache.commons.io.IOUtils;
 import org.slf4j.Logger;
@@ -26,7 +27,7 @@ public class Startup {
         if (shouldConfigure()) {
             try {
                 Class<?> clz = Class.forName("io.cattle.platform.logback.LogbackStartup");
-                ((Runnable) clz.newInstance()).run();
+                ((Runnable) clz.getDeclaredConstructor().newInstance()).run();
             } catch (Exception e) {
                 log.warn("Failed to configure logback : {}", e.getMessage());
                 log.info("Failed to configure logback", e);
@@ -52,7 +53,7 @@ public class Startup {
         InputStream is = null;
         try {
             is = url.openStream();
-            if (!IOUtils.toString(is).contains(DEFAULT_TOKEN)) {
+            if (!IOUtils.toString(is, Charset.defaultCharset()).contains(DEFAULT_TOKEN)) {
                 return false;
             }
         } catch (IOException e) {

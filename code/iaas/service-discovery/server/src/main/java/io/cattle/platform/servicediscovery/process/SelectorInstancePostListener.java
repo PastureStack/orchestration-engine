@@ -24,8 +24,8 @@ import io.github.ibuildthecloud.gdapi.condition.ConditionType;
 
 import java.util.List;
 
-import javax.inject.Inject;
-import javax.inject.Named;
+import jakarta.inject.Inject;
+import jakarta.inject.Named;
 
 @Named
 public class SelectorInstancePostListener extends AbstractObjectProcessLogic implements ProcessPostListener,

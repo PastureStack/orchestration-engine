@@ -22,9 +22,9 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 
-import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.Strings;
 
 public class AzureConfigManager extends AbstractNoOpResourceManager {
     
@@ -58,7 +58,7 @@ public class AzureConfigManager extends AbstractNoOpResourceManager {
 
     @Override
     protected Object createInternal(String type, ApiRequest request) {
-        if (!StringUtils.equalsIgnoreCase(AzureConstants.CONFIG, request.getType())) {
+        if (!Strings.CI.equals(AzureConstants.CONFIG, request.getType())) {
             return null;
         }
         Map<String, Object> config = CollectionUtils.toMap(request.getRequestObject());

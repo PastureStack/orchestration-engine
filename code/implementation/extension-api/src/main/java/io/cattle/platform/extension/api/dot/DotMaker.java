@@ -18,11 +18,10 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-import javax.annotation.PostConstruct;
-import javax.inject.Inject;
+import jakarta.annotation.PostConstruct;
+import jakarta.inject.Inject;
 
 import org.apache.commons.io.IOUtils;
-import org.apache.commons.lang3.ObjectUtils;
 
 public class DotMaker {
 
@@ -35,7 +34,7 @@ public class DotMaker {
         buffer.append("digraph \"").append(resourceType).append("\" {\n");
 
         for (ProcessDefinition def : processDefinitions) {
-            if (ObjectUtils.equals(resourceType, def.getResourceType())) {
+            if (java.util.Objects.equals(resourceType, def.getResourceType())) {
                 addTransitions(def, nodes, buffer);
             }
         }
@@ -177,7 +176,7 @@ public class DotMaker {
             }
 
             if (is != null) {
-                this.html = IOUtils.toString(is);
+                this.html = IOUtils.toString(is, java.nio.charset.StandardCharsets.UTF_8);
             }
         } finally {
             IOUtils.closeQuietly(is);

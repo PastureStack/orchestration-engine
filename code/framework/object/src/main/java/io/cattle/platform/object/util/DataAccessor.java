@@ -11,8 +11,9 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
-import org.apache.commons.beanutils.ConvertUtils;
+import org.apache.commons.beanutils2.ConvertUtils;
 
 public class DataAccessor {
 
@@ -64,7 +65,7 @@ public class DataAccessor {
         }
 
         for (Object item : (List<?>) list) {
-            result.add(org.apache.commons.lang3.ObjectUtils.toString(item, null));
+            result.add(Objects.toString(item, null));
         }
 
         return result;
@@ -88,7 +89,7 @@ public class DataAccessor {
         if (field == null) {
             return Collections.emptyList();
         }
-        return jsonMapper.convertCollectionValue(field, ArrayList.class, clz);
+        return jsonMapper.convertListValue(field, clz);
     }
 
     public static List<Long> fieldLongList(Object obj, String key) {
@@ -166,18 +167,33 @@ public class DataAccessor {
         return mapper.convertValue(get(), clz);
     }
 
-    @SuppressWarnings("rawtypes")
-    public <T> T asCollection(JsonMapper mapper, Class<? extends Collection> collectionClass, Class<?> elementsClass) {
+    public <E, C extends Collection<E>> C asCollection(JsonMapper mapper, Class<C> collectionClass, Class<E> elementsClass) {
         return mapper.convertCollectionValue(get(), collectionClass, elementsClass);
     }
 
     public <T> List<? extends T> asList(JsonMapper mapper, Class<T> elementsClass) {
-        return asCollection(mapper, List.class, elementsClass);
+        return mapper.convertListValue(get(), elementsClass);
     }
 
-    @SuppressWarnings("unchecked")
     public <T> T as(Class<T> clz) {
-        return (T) ConvertUtils.convert(get(), clz);
+        Object value = get();
+        if (value == null) {
+            /*
+             * Rancher 1.6 callers historically relied on BeanUtils converting a
+             * missing Boolean to false before unboxing. Keep that compatibility
+             * boundary while preserving null for other missing scalar types.
+             */
+            if (Boolean.class.equals(clz)) {
+                return clz.cast(Boolean.FALSE);
+            }
+            return null;
+        }
+
+        if (clz.isInstance(value)) {
+            return clz.cast(value);
+        }
+
+        return clz.cast(ConvertUtils.convert(value, clz));
     }
 
     public Object get() {
@@ -235,13 +251,13 @@ public class DataAccessor {
     }
 
     protected static Map<String, Object> getData(Object obj, boolean read) {
-        @SuppressWarnings("unchecked")
-        Map<String, Object> map = (Map<String, Object>) ObjectUtils.getPropertyIgnoreErrors(obj, DataUtils.DATA);
+        Object data = ObjectUtils.getPropertyIgnoreErrors(obj, DataUtils.DATA);
+        Map<String, Object> map = data == null ? null : CollectionUtils.castMap(data);
 
         if (read) {
             return map == null ? Collections.<String, Object> emptyMap() : Collections.unmodifiableMap(map);
         } else if (map instanceof UnmodifiableMap<?, ?>) {
-            map = ((UnmodifiableMap<String, Object>) map).getModifiableCopy();
+            map = CollectionUtils.castMap(((UnmodifiableMap<?, ?>) map).getModifiableCopy());
         } else if (map == null) {
             map = new HashMap<String, Object>();
         }

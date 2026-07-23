@@ -7,10 +7,9 @@ import static io.cattle.platform.core.model.tables.ExternalHandlerTable.*;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.concurrent.TimeUnit;
 
-import javax.annotation.PostConstruct;
-import javax.inject.Inject;
+import jakarta.annotation.PostConstruct;
+import jakarta.inject.Inject;
 
 import org.jooq.Field;
 
@@ -34,7 +33,7 @@ public class ExternalHandlerDaoImpl extends AbstractJooqDao implements ExternalH
     @PostConstruct
     public void init() {
         cache = CacheBuilder.newBuilder()
-            .expireAfterWrite(15, TimeUnit.MINUTES)
+            .expireAfterWrite(java.time.Duration.ofMinutes(15))
             .build(new CacheLoader<String, List<? extends ExternalHandlerData>>() {
                 @Override
                 public List<? extends ExternalHandlerData> load(String key) throws Exception {

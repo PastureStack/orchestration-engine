@@ -1,0 +1,116 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+repo_root=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
+cd "$repo_root"
+
+maven_cmd=${1:-mvn}
+hazelcast_version=5.7.0
+patched_version=5.7.0-pasturestack.2
+upstream_commit=60c31e3750cbad64f5720e2e02f0a9830973193c
+source_sha256=e44d7ebeb6400309a7b672f2190180925f81cdbedab44f2247cd266d03f4fa88
+jackson3_version=3.1.5
+jackson2_version=2.21.5
+source_date_epoch=${SOURCE_DATE_EPOCH:-}
+patch_file="$repo_root/third-party/hazelcast-5.7.0-jackson-security.patch"
+work_root="$repo_root/target/third-party/hazelcast-${hazelcast_version}-pasturestack.2"
+
+case "$source_date_epoch" in
+    ''|*[!0-9]*)
+        echo "SOURCE_DATE_EPOCH must be an integer" >&2
+        exit 1
+        ;;
+esac
+
+case "$work_root" in
+    "$repo_root"/target/third-party/*) ;;
+    *)
+        echo "Unsafe Hazelcast work directory: $work_root" >&2
+        exit 1
+        ;;
+esac
+
+rm -rf "$work_root"
+mkdir -p "$work_root/source"
+
+source_archive="$work_root/source.tar.gz"
+source_url="https://codeload.github.com/hazelcast/hazelcast/tar.gz/${upstream_commit}"
+curl -fsSL --retry 5 --retry-all-errors --retry-delay 2 --connect-timeout 10 --max-time 600 \
+    -o "$source_archive" "$source_url"
+echo "${source_sha256}  ${source_archive}" | sha256sum -c -
+
+if tar -tzf "$source_archive" | grep -E '(^/|(^|/)\.\.(/|$))' >/dev/null; then
+    echo "Unsafe Hazelcast source archive" >&2
+    exit 1
+fi
+tar -xzf "$source_archive" -C "$work_root/source" --strip-components=1
+
+GIT_CEILING_DIRECTORIES="$work_root" git -C "$work_root/source" apply --check "$patch_file"
+GIT_CEILING_DIRECTORIES="$work_root" git -C "$work_root/source" apply "$patch_file"
+grep -Fx "        <jackson.version>${jackson3_version}</jackson.version>" \
+    "$work_root/source/hazelcast-parent/pom.xml" >/dev/null
+grep -Fx "        <jackson2.version>${jackson2_version}</jackson2.version>" \
+    "$work_root/source/hazelcast-parent/pom.xml" >/dev/null
+
+"$maven_cmd" -f "$work_root/source/pom.xml" \
+    ${MAVEN_ARGS:-} \
+    -DskipTests \
+    -DskipITs \
+    -Dcheckstyle.skip=true \
+    -Dskip.public.api.check=true \
+    -pl hazelcast -am package
+
+patched_jar="$work_root/source/hazelcast/target/hazelcast-${hazelcast_version}.jar"
+test -s "$patched_jar"
+if jar -tf "$patched_jar" | grep -E '(^/|(^|/)\.\.(/|$))' >/dev/null; then
+    echo "Unsafe Hazelcast JAR member" >&2
+    exit 1
+fi
+canonical_root="$work_root/canonical"
+canonical_jar="$work_root/hazelcast-${hazelcast_version}-canonical.jar"
+canonical_date=$(date -u -d "@${source_date_epoch}" '+%Y-%m-%dT%H:%M:%SZ')
+mkdir -p "$canonical_root"
+(
+    cd "$canonical_root"
+    jar -xf "$patched_jar"
+)
+jar --create --file "$canonical_jar" --no-manifest --date="$canonical_date" \
+    -C "$canonical_root" .
+test -s "$canonical_jar"
+mv "$canonical_jar" "$patched_jar"
+rm -rf "$canonical_root"
+
+embedded_root="$work_root/embedded"
+mkdir -p "$embedded_root"
+(
+    cd "$embedded_root"
+    jar -xf "$patched_jar" META-INF/maven/com.hazelcast/hazelcast/pom.xml
+)
+embedded_pom="$embedded_root/META-INF/maven/com.hazelcast/hazelcast/pom.xml"
+test -s "$embedded_pom"
+grep -A2 -F '<artifactId>jackson-core</artifactId>' "$embedded_pom" \
+    | grep -F "<version>${jackson3_version}</version>" >/dev/null
+grep -A2 -F '<artifactId>jackson-databind</artifactId>' "$embedded_pom" \
+    | grep -F "<version>${jackson3_version}</version>" >/dev/null
+grep -A2 -F '<artifactId>jackson-core</artifactId>' "$embedded_pom" \
+    | grep -F "<version>${jackson2_version}</version>" >/dev/null
+grep -A2 -F '<artifactId>jackson-databind</artifactId>' "$embedded_pom" \
+    | grep -F "<version>${jackson2_version}</version>" >/dev/null
+if grep -Eq '<version>(3\.1\.2|2\.21\.2)</version>' "$embedded_pom"; then
+    echo "Hazelcast still contains superseded Jackson coordinates" >&2
+    exit 1
+fi
+
+"$maven_cmd" ${MAVEN_ARGS:-} org.apache.maven.plugins:maven-install-plugin:3.1.4:install-file \
+    -Dfile="$patched_jar" \
+    -DgroupId=com.hazelcast \
+    -DartifactId=hazelcast \
+    -Dversion="$patched_version" \
+    -Dpackaging=jar \
+    -DgeneratePom=true
+
+mkdir -p "$repo_root/dist/evidence"
+sha256sum "$patched_jar" >"$repo_root/dist/evidence/hazelcast-${patched_version}.jar.sha256"
+printf 'PATCHED_HAZELCAST_OK upstream=%s commit=%s version=%s jackson3=%s jackson2=%s sha256=%s\n' \
+    "$hazelcast_version" "$upstream_commit" "$patched_version" "$jackson3_version" "$jackson2_version" \
+    "$(sha256sum "$patched_jar" | awk '{print $1}')"

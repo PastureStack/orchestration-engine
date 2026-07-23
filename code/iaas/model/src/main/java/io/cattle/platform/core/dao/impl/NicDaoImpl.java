@@ -7,7 +7,7 @@ import io.cattle.platform.core.model.Instance;
 import io.cattle.platform.core.model.Nic;
 import io.cattle.platform.db.jooq.dao.impl.AbstractJooqDao;
 
-import javax.inject.Named;
+import jakarta.inject.Named;
 
 @Named
 public class NicDaoImpl extends AbstractJooqDao implements NicDao {

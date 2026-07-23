@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<configuration xmlns="http://www.jooq.org/xsd/jooq-codegen-3.2.0.xsd">
+<configuration xmlns="http://www.jooq.org/xsd/jooq-codegen-3.21.0.xsd">
     <!-- Configure the database connection here -->
     <jdbc>
-        <driver>org.drizzle.jdbc.DrizzleDriver</driver>
-        <url>jdbc:mysql:thin://localhost:3306/cattle</url>
+        <driver>org.mariadb.jdbc.Driver</driver>
+        <url>jdbc:mariadb://localhost:3306/cattle</url>
         <user>cattle</user>
         <password>cattle</password>
     </jdbc>
@@ -19,7 +19,7 @@
 
         <database>
             <!-- The database type. The format here is: org.util.[database].[database]Database -->
-            <name>org.jooq.util.mysql.MySQLDatabase</name>
+            <name>org.jooq.meta.mysql.MySQLDatabase</name>
 
             <!-- The database schema (or in the absence of schema support, 
                 in your RDBMS this can be the owner, user, database name) to be generated -->
@@ -76,6 +76,7 @@
             <pojos>false</pojos>
             <daos>false</daos>
             <jpaAnnotations>true</jpaAnnotations>
+            <jpaVersion>2.2</jpaVersion>
             <immutablePojos>false</immutablePojos>
         </generate>
     </generator>

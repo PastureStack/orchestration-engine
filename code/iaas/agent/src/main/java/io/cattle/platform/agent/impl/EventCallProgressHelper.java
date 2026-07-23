@@ -10,6 +10,7 @@ import io.cattle.platform.eventing.model.EventVO;
 import com.google.common.base.Function;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
+import com.google.common.util.concurrent.MoreExecutors;
 
 public class EventCallProgressHelper {
 
@@ -60,6 +61,6 @@ public class EventCallProgressHelper {
             public T apply(Event input) {
                 return converter.convert(input, reply);
             }
-        });
+        }, MoreExecutors.directExecutor());
     }
 }

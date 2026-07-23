@@ -15,7 +15,7 @@ import io.cattle.platform.object.util.ObjectUtils;
 import java.util.List;
 import java.util.Map;
 
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 
 public abstract class AbstractObjectProcessLogic extends AbstractProcessLogic {
 

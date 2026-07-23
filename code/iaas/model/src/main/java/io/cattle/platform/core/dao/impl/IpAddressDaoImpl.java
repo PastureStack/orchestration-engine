@@ -30,8 +30,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import javax.inject.Inject;
-import javax.inject.Named;
+import jakarta.inject.Inject;
+import jakarta.inject.Named;
 
 @Named
 public class IpAddressDaoImpl extends AbstractJooqDao implements IpAddressDao {
@@ -78,8 +78,8 @@ public class IpAddressDaoImpl extends AbstractJooqDao implements IpAddressDao {
             }
         };
 
-        NicTable nic = mapper.add(NIC);
-        IpAddressTable ipAddress = mapper.add(IP_ADDRESS);
+        NicTable nic = mapper.add(NIC, NicTable.class);
+        IpAddressTable ipAddress = mapper.add(IP_ADDRESS, IpAddressTable.class);
         create()
                 .select(mapper.fields())
                 .from(nic)

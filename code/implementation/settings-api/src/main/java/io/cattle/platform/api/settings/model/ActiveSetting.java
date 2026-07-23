@@ -52,7 +52,7 @@ public class ActiveSetting {
     @Field(update = true)
     public String getValue() {
         if (value == null && !isInDb && activeValue != null) {
-            return ArchaiusUtil.getString(name).get();
+            return ArchaiusUtil.getStringProperty(name).get();
         }
         return value;
     }

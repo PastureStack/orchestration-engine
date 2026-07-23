@@ -8,7 +8,7 @@ import io.cattle.platform.register.auth.RegistrationAuthTokenManager;
 import io.cattle.platform.register.util.RegisterConstants;
 import io.github.ibuildthecloud.gdapi.request.ApiRequest;
 
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 
 public class RegistrationTokenAccountLookup implements AccountLookup {
 

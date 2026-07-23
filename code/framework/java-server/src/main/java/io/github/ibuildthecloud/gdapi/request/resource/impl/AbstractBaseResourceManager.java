@@ -35,7 +35,7 @@ import java.util.Set;
 import java.util.TreeMap;
 import java.util.WeakHashMap;
 
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 
 import org.apache.commons.lang3.StringUtils;
 
@@ -177,7 +177,7 @@ public abstract class AbstractBaseResourceManager implements ResourceManager {
             return obj;
         } else if (obj != null) {
             try {
-                return new Long(obj.toString());
+                return Long.valueOf(obj.toString());
             } catch (NumberFormatException e) {
                 // ignore
             }

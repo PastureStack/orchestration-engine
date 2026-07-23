@@ -1,7 +1,6 @@
 package io.cattle.platform.api.handler;
 
 import io.cattle.platform.api.utils.ApiUtils;
-import io.cattle.platform.archaius.util.ArchaiusUtil;
 import io.cattle.platform.deferred.util.DeferredUtils;
 import io.cattle.platform.eventing.EventService;
 import io.cattle.platform.eventing.model.EventVO;
@@ -18,17 +17,29 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
-import javax.annotation.PostConstruct;
-import javax.inject.Inject;
-import javax.servlet.ServletException;
+import jakarta.annotation.PostConstruct;
+import jakarta.inject.Inject;
+import jakarta.servlet.ServletException;
 
-import com.netflix.config.DynamicStringListProperty;
 
 public class EventNotificationHandler implements ApiRequestHandler {
 
-    private static final DynamicStringListProperty EXCLUDE = ArchaiusUtil.getList("api.event.change.exclude.types");
+    private static final EventNotificationSettings DEFAULT_SETTINGS = ArchaiusEventNotificationSettings.create();
+
+    private final EventNotificationSettings settings;
     EventService eventService;
     Set<String> excludeTypes = new HashSet<String>();
+
+    public EventNotificationHandler() {
+        this(DEFAULT_SETTINGS);
+    }
+
+    EventNotificationHandler(EventNotificationSettings settings) {
+        if (settings == null) {
+            throw new IllegalArgumentException("Event notification settings are required");
+        }
+        this.settings = settings;
+    }
 
     @Override
     public void handle(ApiRequest request) throws IOException {
@@ -77,7 +88,7 @@ public class EventNotificationHandler implements ApiRequestHandler {
     @PostConstruct
     public void init() {
         load();
-        EXCLUDE.addCallback(new Runnable() {
+        settings.addExcludeTypesCallback(new Runnable() {
             @Override
             public void run() {
                 load();
@@ -87,7 +98,11 @@ public class EventNotificationHandler implements ApiRequestHandler {
 
     public void load() {
         excludeTypes = new HashSet<String>();
-        excludeTypes.addAll(EXCLUDE.get());
+        excludeTypes.addAll(settings.excludeTypes());
+    }
+
+    boolean isExcludedType(String type) {
+        return excludeTypes.contains(type);
     }
 
     public EventService getEventService() {

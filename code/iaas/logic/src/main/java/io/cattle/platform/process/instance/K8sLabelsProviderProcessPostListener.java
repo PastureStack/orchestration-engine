@@ -21,7 +21,7 @@ import io.cattle.platform.util.type.CollectionUtils;
 import java.util.List;
 import java.util.Map;
 
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 
 public class K8sLabelsProviderProcessPostListener extends AgentBasedProcessLogic implements ProcessPostListener {
 

@@ -1,0 +1,109 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+cd "$(dirname "$0")/.."
+
+workdir=$(mktemp -d "${TMPDIR:-/tmp}/cattle-metrics-spring-lifecycle.XXXXXX")
+trap 'rm -rf "$workdir"' EXIT
+
+write_common_dirs() {
+    local root="$1"
+    mkdir -p "$root/code/framework/metrics/src/main/java/io/cattle/platform/metrics/util"
+    mkdir -p "$root/code/packaging/app-config/src/main/java/io/cattle/platform/app"
+}
+
+positive_root="$workdir/positive"
+write_common_dirs "$positive_root"
+cat >"$positive_root/code/framework/metrics/src/main/java/io/cattle/platform/metrics/util/MetricsStartup.java" <<'JAVA'
+package io.cattle.platform.metrics.util;
+
+public class MetricsStartup {
+    public synchronized void start() {
+        JmxReporter.forRegistry(registry).build();
+    }
+    public synchronized void stop() {
+    }
+    public synchronized boolean isRunning() {
+        return false;
+    }
+}
+JAVA
+cat >"$positive_root/code/packaging/app-config/src/main/java/io/cattle/platform/app/MetricsConfig.java" <<'JAVA'
+package io.cattle.platform.app;
+
+import org.springframework.context.SmartLifecycle;
+
+public class MetricsConfig {
+    SmartLifecycle MetricsStartup() {
+        return new SmartLifecycle() {
+            public void start() {
+            }
+            public void stop() {
+            }
+            public void stop(Runnable callback) {
+                callback.run();
+            }
+            public boolean isRunning() {
+                return false;
+            }
+            public boolean isAutoStartup() {
+                return true;
+            }
+            public int getPhase() {
+                return 0;
+            }
+        };
+    }
+}
+JAVA
+positive_output="$workdir/positive.out"
+RC16_CATTLE_SOURCE_ROOT="$positive_root" scripts/check-cattle-metrics-spring-lifecycle >"$positive_output"
+grep -Fq 'CATTLE_METRICS_SPRING_LIFECYCLE_OK' "$positive_output"
+
+negative_root="$workdir/negative"
+write_common_dirs "$negative_root"
+cat >"$negative_root/code/framework/metrics/src/main/java/io/cattle/platform/metrics/util/MetricsStartup.java" <<'JAVA'
+package io.cattle.platform.metrics.util;
+
+import jakarta.annotation.PostConstruct;
+import jakarta.annotation.PreDestroy;
+
+public class MetricsStartup {
+    @PostConstruct
+    public void init() {
+        JmxReporter.forRegistry(registry).build();
+    }
+    @PreDestroy
+    public void destroy() {
+    }
+}
+JAVA
+cat >"$negative_root/code/packaging/app-config/src/main/java/io/cattle/platform/app/MetricsConfig.java" <<'JAVA'
+package io.cattle.platform.app;
+
+public class MetricsConfig {
+    @Bean
+    MetricsStartup MetricsStartup() {
+        return new MetricsStartup();
+    }
+}
+JAVA
+negative_output="$workdir/negative.out"
+if RC16_CATTLE_SOURCE_ROOT="$negative_root" scripts/check-cattle-metrics-spring-lifecycle >"$negative_output" 2>&1; then
+    echo "expected metrics Spring lifecycle negative fixture to fail" >&2
+    cat "$negative_output" >&2
+    exit 1
+fi
+
+for expected in \
+    'CATTLE_METRICS_SPRING_EAGER_STARTUP' \
+    'CATTLE_METRICS_SPRING_DIRECT_STARTUP_BEAN' \
+    'CATTLE_METRICS_SPRING_LIFECYCLE_FAIL'; do
+    if ! grep -Fq "$expected" "$negative_output"; then
+        echo "missing expected negative fixture marker: $expected" >&2
+        cat "$negative_output" >&2
+        exit 1
+    fi
+done
+
+echo "CATTLE_METRICS_SPRING_LIFECYCLE_FIXTURES_OK"

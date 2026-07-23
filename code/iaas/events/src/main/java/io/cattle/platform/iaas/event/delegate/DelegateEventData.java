@@ -8,16 +8,15 @@ import java.util.Map;
 public class DelegateEventData {
 
     Map<String, Object> instanceData;
-    EventVO<Object> event;
+    EventVO<?> event;
 
     public DelegateEventData() {
     }
 
-    @SuppressWarnings("unchecked")
     public DelegateEventData(Map<String, Object> instanceData, Event event) {
         this.instanceData = instanceData;
         if (event instanceof EventVO<?>) {
-            this.event = (EventVO<Object>) event;
+            this.event = (EventVO<?>) event;
         } else {
             this.event = new EventVO<Object>(event);
         }
@@ -31,11 +30,11 @@ public class DelegateEventData {
         this.instanceData = instanceData;
     }
 
-    public EventVO<Object> getEvent() {
+    public EventVO<?> getEvent() {
         return event;
     }
 
-    public void setEvent(EventVO<Object> event) {
+    public void setEvent(EventVO<?> event) {
         this.event = event;
     }
 

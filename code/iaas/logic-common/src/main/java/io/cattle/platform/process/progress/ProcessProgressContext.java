@@ -13,7 +13,7 @@ import io.cattle.platform.object.util.DataAccessor;
 import io.cattle.platform.object.util.ObjectUtils;
 import io.cattle.platform.util.type.CollectionUtils;
 
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 
 public class ProcessProgressContext implements ProcessProgressInstance {
 

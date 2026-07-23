@@ -10,7 +10,7 @@ import io.github.ibuildthecloud.gdapi.request.handler.AbstractApiRequestHandler;
 import java.io.IOException;
 import java.util.Map;
 
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 
 import org.apache.commons.lang3.StringUtils;
 

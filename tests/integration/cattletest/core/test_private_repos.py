@@ -1,8 +1,8 @@
 from common_fixtures import *  # NOQA
 from gdapi import ApiError
 
-TEST_IMAGE = 'ibuildthecloud/helloworld'
-TEST_IMAGE_LATEST = TEST_IMAGE + ':latest'
+TEST_IMAGE = 'busybox:1'
+TEST_IMAGE_LATEST = 'busybox:latest'
 TEST_IMAGE_UUID = 'docker:' + TEST_IMAGE
 
 if_docker = pytest.mark.skipif("os.environ.get('DOCKER_TEST') == 'false'",
@@ -120,7 +120,7 @@ def test_deleting_registry_deletes_credentials(client):
         cred = client.reload(reg_cred)
         if (cred.state == 'removed'):
             return cred
-        print cred.state
+        print(cred.state)
         return False
 
     reg_cred = wait_for(is_state)

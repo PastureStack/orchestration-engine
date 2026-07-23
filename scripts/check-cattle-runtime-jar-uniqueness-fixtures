@@ -1,0 +1,86 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+repo_root=$(cd "$(dirname "$0")/.." && pwd)
+cd "$repo_root"
+
+workdir=$(mktemp -d "${TMPDIR:-/tmp}/cattle-runtime-jars.XXXXXX")
+trap 'rm -rf "$workdir"' EXIT
+
+touch_jar() {
+    local root=$1
+    local name=$2
+    mkdir -p "$root/app/WEB-INF/lib"
+    : >"$root/app/WEB-INF/lib/$name"
+}
+
+positive_root="$workdir/positive"
+for jar in \
+    jakarta.annotation-api-3.0.0.jar \
+    jakarta.inject-api-2.0.1.jar \
+    jakarta.xml.bind-api-4.0.5.jar \
+    slf4j-api-2.0.18.jar \
+    log4j-over-slf4j-2.0.18.jar \
+    jcl-over-slf4j-2.0.18.jar \
+    logback-classic-1.5.34.jar \
+    logback-core-1.5.34.jar \
+    metrics-core-4.2.39.jar \
+    metrics-jakarta-servlets-4.2.39.jar; do
+    touch_jar "$positive_root" "$jar"
+done
+
+positive_output="$workdir/positive.log"
+RC16_CATTLE_PACKAGED_ROOT="$positive_root" scripts/check-cattle-runtime-jar-uniqueness >"$positive_output"
+for expected in \
+    'CATTLE_RUNTIME_JAR_UNIQUENESS_OK' \
+    'duplicate_artifact_count=0' \
+    'legacy_modern_family_count=0' \
+    'legacy_metrics_servlet_count=0' \
+    'max_logging_binding_count=1' \
+    'failure_count=0'; do
+    if ! grep -F "$expected" "$positive_output" >/dev/null; then
+        echo "CATTLE_RUNTIME_JAR_UNIQUENESS_POSITIVE_MISSING=$expected" >&2
+        cat "$positive_output" >&2
+        exit 1
+    fi
+done
+
+negative_root="$workdir/negative"
+for jar in \
+    jakarta.annotation-api-3.0.0.jar \
+    javax.annotation-api-1.3.2.jar \
+    slf4j-api-2.0.18.jar \
+    slf4j-api-2.0.19.jar \
+    logback-classic-1.5.34.jar \
+    slf4j-simple-2.0.18.jar \
+    metrics-jakarta-servlets-4.2.39.jar \
+    metrics-servlets-4.2.39.jar; do
+    touch_jar "$negative_root" "$jar"
+done
+
+negative_output="$workdir/negative.log"
+set +e
+RC16_CATTLE_PACKAGED_ROOT="$negative_root" scripts/check-cattle-runtime-jar-uniqueness >"$negative_output" 2>&1
+negative_rc=$?
+set -e
+if [ "$negative_rc" -eq 0 ]; then
+    echo "CATTLE_RUNTIME_JAR_UNIQUENESS_NEGATIVE_DID_NOT_FAIL" >&2
+    cat "$negative_output" >&2
+    exit 1
+fi
+
+for expected in \
+    'CATTLE_RUNTIME_JAR_DUPLICATE_ARTIFACT' \
+    'CATTLE_RUNTIME_JAR_LEGACY_MODERN_FAMILY' \
+    'CATTLE_RUNTIME_JAR_LEGACY_METRICS_SERVLET' \
+    'CATTLE_RUNTIME_JAR_DUPLICATE_METRICS_SERVLET_LINE' \
+    'CATTLE_RUNTIME_JAR_MULTIPLE_SLF4J_BINDINGS' \
+    'failure_count=5'; do
+    if ! grep -F "$expected" "$negative_output" >/dev/null; then
+        echo "CATTLE_RUNTIME_JAR_UNIQUENESS_NEGATIVE_MISSING=$expected" >&2
+        cat "$negative_output" >&2
+        exit 1
+    fi
+done
+
+echo "CATTLE_RUNTIME_JAR_UNIQUENESS_FIXTURES_OK"

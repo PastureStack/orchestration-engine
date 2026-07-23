@@ -3,6 +3,7 @@ package io.cattle.platform.engine.manager.impl;
 import static io.cattle.platform.engine.process.ExitReason.*;
 
 import io.cattle.platform.archaius.util.ArchaiusUtil;
+import io.cattle.platform.archaius.util.ConfigProperty;
 import io.cattle.platform.engine.context.EngineContext;
 import io.cattle.platform.engine.manager.ProcessManager;
 import io.cattle.platform.engine.manager.ProcessNotFoundException;
@@ -30,15 +31,14 @@ import java.util.concurrent.DelayQueue;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 
 import org.apache.cloudstack.managed.context.NoExceptionRunnable;
 
-import com.netflix.config.DynamicLongProperty;
 
 public class DefaultProcessManager implements ProcessManager, InitializationTask {
 
-    private static final DynamicLongProperty EXECUTION_DELAY = ArchaiusUtil.getLong("process.log.save.interval.ms");
+    private static final ConfigProperty<Long> EXECUTION_DELAY = ArchaiusUtil.getLongProperty("process.log.save.interval.ms");
 
     @Inject
     ProcessRecordDao processRecordDao;

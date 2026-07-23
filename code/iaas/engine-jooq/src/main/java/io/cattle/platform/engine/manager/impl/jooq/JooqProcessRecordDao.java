@@ -4,6 +4,7 @@ import static io.cattle.platform.core.model.tables.ProcessExecutionTable.*;
 import static io.cattle.platform.core.model.tables.ProcessInstanceTable.*;
 
 import io.cattle.platform.archaius.util.ArchaiusUtil;
+import io.cattle.platform.archaius.util.ConfigProperty;
 import io.cattle.platform.core.model.ProcessInstance;
 import io.cattle.platform.core.model.tables.records.ProcessInstanceRecord;
 import io.cattle.platform.db.jooq.dao.impl.AbstractJooqDao;
@@ -26,25 +27,22 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 
 import org.apache.commons.lang3.EnumUtils;
-import org.apache.commons.lang3.ObjectUtils;
 import org.jooq.Condition;
 import org.jooq.Record6;
-import org.jooq.RecordHandler;
 import org.jooq.impl.DSL;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.netflix.config.DynamicIntProperty;
-
 public class JooqProcessRecordDao extends AbstractJooqDao implements ProcessRecordDao {
 
     private static final Logger log = LoggerFactory.getLogger(JooqProcessRecordDao.class);
-    private static final DynamicIntProperty BATCH = ArchaiusUtil.getInt("process.replay.batch.size");
+    private static final ConfigProperty<Integer> BATCH = ArchaiusUtil.getIntProperty("process.replay.batch.size");
 
     @Inject
     JsonMapper jsonMapper;
@@ -65,7 +63,7 @@ public class JooqProcessRecordDao extends AbstractJooqDao implements ProcessReco
     protected List<ProcessInstanceReference> pendingTasks(String resourceType, String resourceId) {
         final List<ProcessInstanceReference> result = new ArrayList<ProcessInstanceReference>();
         final Set<String> seen = new HashSet<String>();
-        create()
+        for (Record6<Long, String, String, String, Long, Integer> record : create()
             .select(PROCESS_INSTANCE.ID,
                     PROCESS_INSTANCE.PROCESS_NAME,
                     PROCESS_INSTANCE.RESOURCE_TYPE,
@@ -75,29 +73,25 @@ public class JooqProcessRecordDao extends AbstractJooqDao implements ProcessReco
             .from(PROCESS_INSTANCE)
                 .where(processCondition(resourceType, resourceId))
                     .and(runAfterCondition(resourceType))
-                .limit(resourceType == null ? BATCH.get() : 1)
-                .fetchInto(new RecordHandler<Record6<Long, String, String, String, Long, Integer>>() {
-            @Override
-            public void next(Record6<Long, String, String, String, Long, Integer> record) {
-                String resource = String.format("%s:%s", record.getValue(PROCESS_INSTANCE.RESOURCE_TYPE),
-                        record.getValue(PROCESS_INSTANCE.RESOURCE_ID));
-                if (seen.contains(resource)) {
-                    return;
-                }
-
-                ProcessInstanceReference ref = new ProcessInstanceReference();
-                ref.setProcessId(record.getValue(PROCESS_INSTANCE.ID));
-                ref.setName(record.getValue(PROCESS_INSTANCE.PROCESS_NAME));
-
-                Integer priority = record.getValue(PROCESS_INSTANCE.PRIORITY);
-                if (priority != null) {
-                    ref.setPriority(priority);
-                }
-
-                seen.add(resource);
-                result.add(ref);
+                .limit(resourceType == null ? BATCH.get() : 1)) {
+            String resource = String.format("%s:%s", record.getValue(PROCESS_INSTANCE.RESOURCE_TYPE),
+                    record.getValue(PROCESS_INSTANCE.RESOURCE_ID));
+            if (seen.contains(resource)) {
+                continue;
             }
-        });
+
+            ProcessInstanceReference ref = new ProcessInstanceReference();
+            ref.setProcessId(record.getValue(PROCESS_INSTANCE.ID));
+            ref.setName(record.getValue(PROCESS_INSTANCE.PROCESS_NAME));
+
+            Integer priority = record.getValue(PROCESS_INSTANCE.PRIORITY);
+            if (priority != null) {
+                ref.setPriority(priority);
+            }
+
+            seen.add(resource);
+            result.add(ref);
+        }
 
         return result;
     }
@@ -208,9 +202,9 @@ public class JooqProcessRecordDao extends AbstractJooqDao implements ProcessReco
     protected void merge(ProcessInstanceRecord pi, ProcessRecord record) {
         pi.setStartTime(toTimestamp(record.getStartTime()));
         pi.setEndTime(toTimestamp(record.getEndTime()));
-        pi.setResult(ObjectUtils.toString(record.getResult(), null));
-        pi.setExitReason(ObjectUtils.toString(record.getExitReason(), null));
-        pi.setPhase(ObjectUtils.toString(record.getPhase(), null));
+        pi.setResult(Objects.toString(record.getResult(), null));
+        pi.setExitReason(Objects.toString(record.getExitReason(), null));
+        pi.setPhase(Objects.toString(record.getPhase(), null));
         pi.setStartProcessServerId(record.getStartProcessServerId());
         pi.setRunningProcessServerId(record.getRunningProcessServerId());
         pi.setExecutionCount(record.getExecutionCount());
@@ -239,7 +233,6 @@ public class JooqProcessRecordDao extends AbstractJooqDao implements ProcessReco
         return jsonMapper.convertValue(obj, type);
     }
 
-    @SuppressWarnings("unchecked")
     protected Map<String, Object> convertToMap(ProcessRecord record, ProcessLog obj) {
         if (obj == null)
             return null;
@@ -254,7 +247,7 @@ public class JooqProcessRecordDao extends AbstractJooqDao implements ProcessReco
             throw new IllegalStateException(e);
         }
 
-        return jsonMapper.convertValue(obj, Map.class);
+        return jsonMapper.writeValueAsMap(obj);
     }
 
     @Override

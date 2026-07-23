@@ -13,8 +13,8 @@ import io.cattle.platform.iaas.api.filter.apikey.ApiKeyFilter;
 import io.cattle.platform.process.common.handler.AbstractObjectProcessLogic;
 import io.github.ibuildthecloud.gdapi.util.TransformationService;
 
-import javax.inject.Inject;
-import javax.inject.Named;
+import jakarta.inject.Inject;
+import jakarta.inject.Named;
 
 @Named
 public class ApiKeyCreate extends AbstractObjectProcessLogic implements ProcessPreListener {

@@ -16,9 +16,10 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import javax.annotation.PostConstruct;
-import javax.inject.Inject;
+import jakarta.annotation.PostConstruct;
+import jakarta.inject.Inject;
 
+import org.apache.commons.lang3.Strings;
 import org.apache.commons.lang3.StringUtils;
 
 public class TokenAuthLookup implements AccountLookup, Priority {
@@ -44,7 +45,7 @@ public class TokenAuthLookup implements AccountLookup, Priority {
 
     @Override
     public Account getAccount(ApiRequest request) {
-        if (!StringUtils.equals(AbstractTokenUtil.TOKEN, request.getType()) && isConfigured()) {
+        if (!Strings.CS.equals(AbstractTokenUtil.TOKEN, request.getType()) && isConfigured()) {
             tokenUtils().findAndSetJWT();
             return getAccountAccessInternal();
         }
@@ -56,7 +57,7 @@ public class TokenAuthLookup implements AccountLookup, Priority {
     }
 
     public Account getAccountAccess(String token, ApiRequest request) {
-        if (!StringUtils.equals(AbstractTokenUtil.TOKEN, request.getType()) && isConfigured()) {
+        if (!Strings.CS.equals(AbstractTokenUtil.TOKEN, request.getType()) && isConfigured()) {
             request.setAttribute(tokenUtils().tokenType(), token);
             return getAccountAccessInternal();
         }

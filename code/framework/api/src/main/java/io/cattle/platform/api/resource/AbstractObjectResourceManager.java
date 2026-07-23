@@ -4,7 +4,6 @@ import io.cattle.platform.api.action.ActionHandler;
 import io.cattle.platform.api.auth.Policy;
 import io.cattle.platform.api.link.LinkHandler;
 import io.cattle.platform.api.utils.ApiUtils;
-import io.cattle.platform.archaius.util.ArchaiusUtil;
 import io.cattle.platform.engine.manager.ProcessNotFoundException;
 import io.cattle.platform.engine.process.ExitReason;
 import io.cattle.platform.engine.process.ProcessInstanceException;
@@ -48,14 +47,12 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 
-import org.apache.commons.lang3.ObjectUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.netflix.config.DynamicIntProperty;
 
 public abstract class AbstractObjectResourceManager extends AbstractBaseResourceManager implements InitializationTask {
 
@@ -63,9 +60,10 @@ public abstract class AbstractObjectResourceManager extends AbstractBaseResource
 
     public static final String SCHEDULE_UPDATE = "scheduleUpdate";
 
-    private static final DynamicIntProperty REMOVE_DELAY = ArchaiusUtil.getInt("api.show.removed.for.seconds");
+    private static final ObjectResourceManagerSettings DEFAULT_SETTINGS = ArchaiusObjectResourceManagerSettings.create();
     private static final IdFormatter IDENTITY_FORMATTER = new IdentityFormatter();
 
+    private final ObjectResourceManagerSettings settings;
     ObjectManager objectManager;
     ObjectProcessManager objectProcessManager;
     ObjectMetaDataManager metaDataManager;
@@ -74,9 +72,20 @@ public abstract class AbstractObjectResourceManager extends AbstractBaseResource
     Map<String, List<LinkHandler>> linkHandlersMap;
     List<LinkHandler> linkHandlers;
 
+    protected AbstractObjectResourceManager() {
+        this(DEFAULT_SETTINGS);
+    }
+
+    protected AbstractObjectResourceManager(ObjectResourceManagerSettings settings) {
+        if (settings == null) {
+            throw new IllegalArgumentException("Object resource manager settings are required");
+        }
+        this.settings = settings;
+    }
+
     @Override
     protected Object authorize(Object object) {
-        return ApiUtils.authorize(object);
+        return ApiUtils.authorizeObjectOrList(object);
     }
 
     @Override
@@ -89,7 +98,7 @@ public abstract class AbstractObjectResourceManager extends AbstractBaseResource
         return doCreate(type, clz, CollectionUtils.toMap(request.getRequestObject()));
     }
 
-    protected <T> T doCreate(String type, Class<T> clz, Map<Object, Object> data) {
+    protected Object doCreate(String type, Class<?> clz, Map<Object, Object> data) {
         Map<String, Object> properties = getObjectManager().convertToPropertiesFor(clz, data);
         if (!properties.containsKey(ObjectMetaDataManager.KIND_FIELD)) {
             properties.put(ObjectMetaDataManager.KIND_FIELD, type);
@@ -98,8 +107,7 @@ public abstract class AbstractObjectResourceManager extends AbstractBaseResource
         return createAndScheduleObject(clz, properties);
     }
 
-    @SuppressWarnings("unchecked")
-    protected <T> T createAndScheduleObject(Class<T> clz, Map<String, Object> properties) {
+    protected Object createAndScheduleObject(Class<?> clz, Map<String, Object> properties) {
         Object result = objectManager.create(clz, properties);
         try {
             scheduleProcess(StandardProcess.CREATE, result, properties);
@@ -107,7 +115,7 @@ public abstract class AbstractObjectResourceManager extends AbstractBaseResource
         } catch (ProcessNotFoundException e) {
         }
 
-        return (T) result;
+        return result;
     }
 
     protected Class<?> getClassForType(SchemaFactory schemaFactory, String type) {
@@ -149,7 +157,7 @@ public abstract class AbstractObjectResourceManager extends AbstractBaseResource
         for (Map.Entry<String, Object> entry : updates.entrySet()) {
             String key = entry.getKey();
             Object existingValue = existing.get(key);
-            if (!ObjectUtils.equals(existingValue, entry.getValue())) {
+            if (!java.util.Objects.equals(existingValue, entry.getValue())) {
                 filteredUpdates.put(key, entry.getValue());
                 existingValues.put(key, existingValue);
                 Field field = fields.get(key);
@@ -323,7 +331,7 @@ public abstract class AbstractObjectResourceManager extends AbstractBaseResource
     }
 
     protected Date removedTime() {
-        return new Date(System.currentTimeMillis() - REMOVE_DELAY.get() * 1000);
+        return new Date(System.currentTimeMillis() - settings.removedDelaySeconds() * 1000);
     }
 
     protected void addAccountAuthorization(boolean byId, boolean byLink, String type, Map<Object, Object> criteria, Policy policy) {
@@ -462,7 +470,6 @@ public abstract class AbstractObjectResourceManager extends AbstractBaseResource
         }
     }
 
-    @SuppressWarnings("unchecked")
     protected boolean isValidAction(Object obj, Action action) {
         Map<String, Object> attributes = action.getAttributes();
 
@@ -470,8 +477,8 @@ public abstract class AbstractObjectResourceManager extends AbstractBaseResource
             return true;
         }
 
-        String capability = ObjectUtils.toString(attributes.get("capability"), null);
-        String state = ObjectUtils.toString(attributes.get(ObjectMetaDataManager.STATE_FIELD), null);
+        String capability = java.util.Objects.toString(attributes.get("capability"), (String)null);
+        String state = java.util.Objects.toString(attributes.get(ObjectMetaDataManager.STATE_FIELD), (String)null);
         String currentState = io.cattle.platform.object.util.ObjectUtils.getState(obj);
 
         if (!StringUtils.isBlank(capability) && !(ApiContext.getContext().getCapabilities(obj) != null ?
@@ -483,12 +490,17 @@ public abstract class AbstractObjectResourceManager extends AbstractBaseResource
         if (!StringUtils.isBlank(state) && !state.equals(currentState)) {
             return false;
         }
-        List<String> states = ((List<String>) attributes.get(ObjectMetaDataManager.STATES_FIELD));
+        List<?> states = actionStates(attributes);
         if (states != null && !states.contains(currentState)){
             return false;
         }
 
         return true;
+    }
+
+    private List<?> actionStates(Map<String, Object> attributes) {
+        Object states = attributes.get(ObjectMetaDataManager.STATES_FIELD);
+        return states == null ? null : List.class.cast(states);
     }
 
     @Override
@@ -498,7 +510,7 @@ public abstract class AbstractObjectResourceManager extends AbstractBaseResource
 
         for (LinkHandler handler : linkHandlers) {
             for (String type : handler.getTypes()) {
-                CollectionUtils.addToMap(linkHandlersMap, type, handler, ArrayList.class);
+                CollectionUtils.addToMap(linkHandlersMap, type, handler, ArrayList::new);
             }
         }
     }

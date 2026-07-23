@@ -4,7 +4,7 @@ import io.github.ibuildthecloud.gdapi.model.Transformer;
 import io.github.ibuildthecloud.gdapi.util.TransformationService;
 import io.cattle.platform.framework.encryption.handler.impl.TransformationServiceImpl;
 import org.apache.commons.codec.binary.Hex;
-import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.Strings;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -50,7 +50,7 @@ public class TransformerTest {
                 rn.nextBytes(bytes);
                 toTest = String.valueOf(Hex.encodeHex(bytes));
                 String encrypted = transformer.transform(toTest);
-                Assert.assertFalse(StringUtils.equals(encrypted, toTest));
+                Assert.assertFalse(Strings.CS.equals(encrypted, toTest));
                 Assert.assertTrue(transformer.compare(toTest, encrypted));
                 Assert.assertFalse(transformer.compare("Garbage", encrypted));
             }
@@ -60,7 +60,7 @@ public class TransformerTest {
             for (int i = 0; i < 100; i++) {
                 String password = randomPass(rn);
                 String encrypted = transformer.transform(password);
-                Assert.assertFalse(StringUtils.equals(encrypted, password));
+                Assert.assertFalse(Strings.CS.equals(encrypted, password));
                 Assert.assertTrue(transformer.compare(password, encrypted));
                 Assert.assertFalse(transformer.compare("Garbage", encrypted));
             }

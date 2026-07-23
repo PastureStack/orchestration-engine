@@ -13,16 +13,16 @@ import java.util.Set;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class JsonUnmodifiableMap<K, V> implements UnmodifiableMap<K, V> {
+public class JsonUnmodifiableMap implements UnmodifiableMap<String, Object> {
 
     private static final Logger log = LoggerFactory.getLogger(JsonUnmodifiableMap.class);
 
-    Map<K, V> map;
+    Map<String, Object> map;
     JsonMapper jsonMapper;
     String text;
     boolean writeable;
 
-    protected JsonUnmodifiableMap(JsonUnmodifiableMap<K, V> map) {
+    protected JsonUnmodifiableMap(JsonUnmodifiableMap map) {
         this.jsonMapper = map.jsonMapper;
         this.text = map.text;
         if (map.writeable) {
@@ -57,22 +57,22 @@ public class JsonUnmodifiableMap<K, V> implements UnmodifiableMap<K, V> {
     }
 
     @Override
-    public V get(Object key) {
+    public Object get(Object key) {
         return getMap().get(key);
     }
 
     @Override
-    public V put(K key, V value) {
+    public Object put(String key, Object value) {
         return getMap().put(key, value);
     }
 
     @Override
-    public V remove(Object key) {
+    public Object remove(Object key) {
         return getMap().remove(key);
     }
 
     @Override
-    public void putAll(Map<? extends K, ? extends V> m) {
+    public void putAll(Map<? extends String, ? extends Object> m) {
         getMap().putAll(m);
     }
 
@@ -82,17 +82,17 @@ public class JsonUnmodifiableMap<K, V> implements UnmodifiableMap<K, V> {
     }
 
     @Override
-    public Set<K> keySet() {
+    public Set<String> keySet() {
         return getMap().keySet();
     }
 
     @Override
-    public Collection<V> values() {
+    public Collection<Object> values() {
         return getMap().values();
     }
 
     @Override
-    public Set<java.util.Map.Entry<K, V>> entrySet() {
+    public Set<java.util.Map.Entry<String, Object>> entrySet() {
         return getMap().entrySet();
     }
 
@@ -108,6 +108,9 @@ public class JsonUnmodifiableMap<K, V> implements UnmodifiableMap<K, V> {
 
     @Override
     public String toString() {
+        if (this.map == null && isTemplatePlaceholder(this.text)) {
+            return this.text;
+        }
         return getMap().toString();
     }
 
@@ -117,24 +120,31 @@ public class JsonUnmodifiableMap<K, V> implements UnmodifiableMap<K, V> {
         this.writeable = false;
     }
 
-    @SuppressWarnings("unchecked")
-    protected  Map<K, V> getMap() {
+    protected Map<String, Object> getMap() {
         if (this.map == null) {
+            if (isTemplatePlaceholder(this.text)) {
+                this.map = Collections.unmodifiableMap(new HashMap<String, Object>());
+                return this.map;
+            }
             try {
-                this.map = (Map<K, V>) jsonMapper.readValue(text);
+                this.map = jsonMapper.readValue(text);
                 if (!writeable) {
-                    this.map = (Map<K, V>) Collections.unmodifiableMap(this.map);
+                    this.map = Collections.unmodifiableMap(this.map);
                 }
             } catch (IOException e) {
                 log.error("Failed to unmarshall {}", text, e);
-                this.map = (Map<K, V>)Collections.unmodifiableMap(new HashMap<>());
+                this.map = Collections.unmodifiableMap(new HashMap<String, Object>());
             }
         }
         return this.map;
     }
 
+    protected boolean isTemplatePlaceholder(String text) {
+        return text != null && text.length() > 1 && text.charAt(0) == '%' && text.charAt(text.length() - 1) == '%';
+    }
+
     @Override
-    public Map<K, V> getModifiableCopy() {
-        return new JsonUnmodifiableMap<K, V>(this);
+    public Map<String, Object> getModifiableCopy() {
+        return new JsonUnmodifiableMap(this);
     }
 }

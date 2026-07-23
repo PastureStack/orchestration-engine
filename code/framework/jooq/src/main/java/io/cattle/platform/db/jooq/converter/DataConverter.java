@@ -21,7 +21,7 @@ public class DataConverter implements Converter<String, Map<String, Object>> {
             return null;
         }
 
-        return new JsonUnmodifiableMap<String, Object>(mapper, databaseObject);
+        return new JsonUnmodifiableMap(mapper, databaseObject);
     }
 
     @Override
@@ -31,8 +31,8 @@ public class DataConverter implements Converter<String, Map<String, Object>> {
         }
         try {
             String result = mapper.writeValueAsString(userObject);
-            if (userObject instanceof JsonUnmodifiableMap<?, ?>) {
-                ((JsonUnmodifiableMap<?, ?>) userObject).setText(result);
+            if (userObject instanceof JsonUnmodifiableMap) {
+                JsonUnmodifiableMap.class.cast(userObject).setText(result);
             }
             return result;
         } catch (IOException e) {
@@ -45,9 +45,13 @@ public class DataConverter implements Converter<String, Map<String, Object>> {
         return String.class;
     }
 
-    @SuppressWarnings("unchecked")
     @Override
     public Class<Map<String, Object>> toType() {
+        return mapType();
+    }
+
+    @SuppressWarnings("unchecked")
+    private static Class<Map<String, Object>> mapType() {
         return (Class<Map<String, Object>>) (Class<?>) Map.class;
     }
 

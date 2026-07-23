@@ -33,8 +33,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import javax.inject.Inject;
-import javax.inject.Named;
+import jakarta.inject.Inject;
+import jakarta.inject.Named;
 
 import org.apache.commons.lang3.StringUtils;
 
@@ -49,23 +49,22 @@ public class LoadBalancerInfoDaoImpl implements LoadBalancerInfoDao {
     @Inject
     ServiceDao svcDao;
 
-    @SuppressWarnings("unchecked")
     protected List<LoadBalancerListenerInfo> getListeners(Service lbService) {
         Map<Integer, LoadBalancerListenerInfo> listeners = new HashMap<>();
-        Map<String, Object> launchConfig = DataAccessor.fields(lbService)
-                .withKey(ServiceConstants.FIELD_LAUNCH_CONFIG).withDefault(Collections.EMPTY_MAP)
-                .as(Map.class);
+        Map<String, Object> launchConfig = CollectionUtils.castMap(DataAccessor.fields(lbService)
+                .withKey(ServiceConstants.FIELD_LAUNCH_CONFIG).withDefault(Collections.emptyMap())
+                .as(Map.class));
         // 1. create listeners
         Map<String, Boolean> portDefs = new HashMap<>();
 
         if (launchConfig.get(InstanceConstants.FIELD_PORTS) != null) {
-            for (String port : (List<String>) launchConfig.get(InstanceConstants.FIELD_PORTS)) {
+            for (String port : stringList(launchConfig.get(InstanceConstants.FIELD_PORTS))) {
                 portDefs.put(port, true);
             }
         }
 
         if (launchConfig.get(InstanceConstants.FIELD_EXPOSE) != null) {
-            for (String port : (List<String>) launchConfig.get(InstanceConstants.FIELD_EXPOSE)) {
+            for (String port : stringList(launchConfig.get(InstanceConstants.FIELD_EXPOSE))) {
                 portDefs.put(port, false);
             }
         }
@@ -122,10 +121,13 @@ public class LoadBalancerInfoDaoImpl implements LoadBalancerInfoDao {
         return listenersToReturn;
     }
 
-    @SuppressWarnings("unchecked")
     protected List<String> getLabeledPorts(Map<String, Object> launchConfigData, String labelName) {
         List<String> sslPorts = new ArrayList<>();
-        Map<String, String> labels = (Map<String, String>) launchConfigData.get(InstanceConstants.FIELD_LABELS);
+        Map<?, ?> labels = null;
+        Object labelsObj = launchConfigData.get(InstanceConstants.FIELD_LABELS);
+        if (labelsObj != null) {
+            labels = Map.class.cast(labelsObj);
+        }
         if (labels != null) {
             Object sslPortsObj = labels.get(labelName);
             if (sslPortsObj != null) {
@@ -136,6 +138,15 @@ public class LoadBalancerInfoDaoImpl implements LoadBalancerInfoDao {
         }
 
         return sslPorts;
+    }
+
+    protected List<String> stringList(Object value) {
+        List<?> values = List.class.cast(value);
+        List<String> result = new ArrayList<>(values.size());
+        for (Object item : values) {
+            result.add(String.class.cast(item));
+        }
+        return result;
     }
 
     protected List<LoadBalancerTargetInput> getLoadBalancerTargetsV2(Service lbService) {

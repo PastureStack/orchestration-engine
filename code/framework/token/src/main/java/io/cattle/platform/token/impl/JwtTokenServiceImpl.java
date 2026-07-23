@@ -1,6 +1,7 @@
 package io.cattle.platform.token.impl;
 
 import io.cattle.platform.archaius.util.ArchaiusUtil;
+import io.cattle.platform.archaius.util.ConfigProperty;
 import io.cattle.platform.token.TokenDecryptionException;
 import io.cattle.platform.token.TokenException;
 import io.cattle.platform.token.TokenService;
@@ -10,13 +11,10 @@ import java.text.ParseException;
 import java.util.Date;
 import java.util.Map;
 
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 
-import org.apache.commons.lang.StringUtils;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 
-import com.netflix.config.DynamicLongProperty;
-import com.netflix.config.DynamicStringProperty;
 import com.nimbusds.jose.EncryptionMethod;
 import com.nimbusds.jose.JOSEException;
 import com.nimbusds.jose.JOSEObject;
@@ -39,10 +37,12 @@ import com.nimbusds.jwt.SignedJWT;
 public class JwtTokenServiceImpl implements TokenService {
 
     private static final String KEY_ID = "kid";
+    private static final String DEFAULT_JWE_ALGORITHM = "RSA-OAEP";
 
-    private static final DynamicStringProperty SUBJECT = ArchaiusUtil.getString("jwt.default.subject");
-    private static final DynamicStringProperty ISSUER = ArchaiusUtil.getString("jwt.default.issuer");
-    private static final DynamicLongProperty EXPIRATION = ArchaiusUtil.getLong("jwt.default.expiration.seconds");
+    private static final ConfigProperty<String> SUBJECT = ArchaiusUtil.getStringProperty("jwt.default.subject");
+    private static final ConfigProperty<String> ISSUER = ArchaiusUtil.getStringProperty("jwt.default.issuer");
+    private static final ConfigProperty<Long> EXPIRATION = ArchaiusUtil.getLongProperty("jwt.default.expiration.seconds");
+    private static final ConfigProperty<String> JWE_ALGORITHM = ArchaiusUtil.getStringProperty("jwt.jwe.algorithm");
 
     RSAKeyProvider keyProvider;
 
@@ -94,7 +94,7 @@ public class JwtTokenServiceImpl implements TokenService {
         builder.issuer(ISSUER.get());
 
         if (encrypted) {
-            JWEHeader header = new JWEHeader(JWEAlgorithm.RSA_OAEP, EncryptionMethod.A128GCM);
+            JWEHeader header = new JWEHeader(getJweAlgorithm(), EncryptionMethod.A128GCM);
             EncryptedJWT jwt = new EncryptedJWT(header, builder.build());
             RSAEncrypter encrypter = new RSAEncrypter((RSAPublicKey) keyProvider.getDefaultPublicKey());
             try {
@@ -123,13 +123,21 @@ public class JwtTokenServiceImpl implements TokenService {
         }
     }
 
+    static JWEAlgorithm getJweAlgorithm() {
+        String algorithm = JWE_ALGORITHM.get();
+        if (algorithm == null || algorithm.trim().isEmpty()) {
+            algorithm = DEFAULT_JWE_ALGORITHM;
+        }
+        return JWEAlgorithm.parse(algorithm.trim());
+    }
+
     public RSAKeyProvider getKeyProvider() {
         return keyProvider;
     }
 
     @Override
     public Map<String, Object> getJsonPayload(String token, boolean encrypted) throws TokenException {
-        if (StringUtils.isEmpty(token)) {
+        if (token == null || token.isEmpty()) {
             throw new TokenException("null or empty token");
         }
         if (encrypted) {

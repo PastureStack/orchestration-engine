@@ -12,8 +12,8 @@ import io.cattle.platform.util.exception.ExceptionUtils;
 
 import java.util.concurrent.Callable;
 
-import javax.inject.Inject;
-import javax.inject.Named;
+import jakarta.inject.Inject;
+import jakarta.inject.Named;
 
 @Named
 public class DataDaoImpl extends AbstractJooqDao implements DataDao {

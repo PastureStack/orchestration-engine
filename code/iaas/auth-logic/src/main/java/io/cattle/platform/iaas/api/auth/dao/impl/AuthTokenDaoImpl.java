@@ -16,7 +16,7 @@ import io.github.ibuildthecloud.gdapi.util.ResponseCodes;
 
 import java.util.Date;
 
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 
 import org.apache.commons.lang3.StringUtils;
 

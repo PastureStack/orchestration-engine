@@ -858,7 +858,7 @@ def test_in_service_upgrade_port_mapping(context, client, super_client):
     u_svc = client.wait_success(u_svc.finishupgrade(),
                                 DEFAULT_TIMEOUT)
 
-    svc.launchConfig.ports.append(unicode('8083:83/udp'))
+    svc.launchConfig.ports.append(str('8083:83/udp'))
     assert u_svc.launchConfig.ports == svc.launchConfig.ports
 
     assert u_svc.secondaryLaunchConfigs[0].ports \

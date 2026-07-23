@@ -1,6 +1,7 @@
 package io.cattle.platform.hazelcast.membership;
 
 import io.cattle.platform.archaius.util.ArchaiusUtil;
+import io.cattle.platform.archaius.util.ConfigProperty;
 import io.cattle.platform.core.model.ClusterMembership;
 import io.cattle.platform.hazelcast.membership.dao.ClusterMembershipDAO;
 import io.cattle.platform.json.JsonMapper;
@@ -12,6 +13,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.Socket;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
@@ -22,8 +24,8 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 
-import javax.annotation.PostConstruct;
-import javax.inject.Inject;
+import jakarta.annotation.PostConstruct;
+import jakarta.inject.Inject;
 
 import org.apache.cloudstack.managed.context.NoExceptionRunnable;
 import org.apache.commons.io.IOUtils;
@@ -31,27 +33,25 @@ import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.hazelcast.nio.Address;
+import com.hazelcast.cluster.Address;
+import com.hazelcast.cluster.Member;
 import com.hazelcast.spi.discovery.DiscoveryNode;
 import com.hazelcast.spi.discovery.DiscoveryStrategy;
 import com.hazelcast.spi.discovery.SimpleDiscoveryNode;
 import com.hazelcast.spi.partitiongroup.PartitionGroupStrategy;
-import com.netflix.config.DynamicBooleanProperty;
-import com.netflix.config.DynamicIntProperty;
-import com.netflix.config.DynamicStringProperty;
 
 public class DBDiscovery extends NoExceptionRunnable implements DiscoveryStrategy, ClusterService {
 
-    public static final DynamicStringProperty ADVERTISE_ADDRESS = ArchaiusUtil.getString("cluster.advertise.address");
-    public static final DynamicStringProperty HTTP_PORT = ArchaiusUtil.getString("cluster.advertise.http.port");
+    public static final ConfigProperty<String> ADVERTISE_ADDRESS = ArchaiusUtil.getStringProperty("cluster.advertise.address");
+    public static final ConfigProperty<String> HTTP_PORT = ArchaiusUtil.getStringProperty("cluster.advertise.http.port");
 
-    public static final DynamicStringProperty DEFAULT_HTTP_PORT = ArchaiusUtil.getString("cluster.default.http.port");
-    public static final DynamicIntProperty DEFAULT_PORT = ArchaiusUtil.getInt("cluster.default.port");
-    public static final DynamicIntProperty INTERVAL = ArchaiusUtil.getInt("cluster.checkin.seconds");
-    public static final DynamicIntProperty MISSED_COUNT = ArchaiusUtil.getInt("cluster.checkin.misses");
-    public static final DynamicStringProperty ID_FILE = ArchaiusUtil.getString("cluster.id.file");
+    public static final ConfigProperty<String> DEFAULT_HTTP_PORT = ArchaiusUtil.getStringProperty("cluster.default.http.port");
+    public static final ConfigProperty<Integer> DEFAULT_PORT = ArchaiusUtil.getIntProperty("cluster.default.port");
+    public static final ConfigProperty<Integer> INTERVAL = ArchaiusUtil.getIntProperty("cluster.checkin.seconds");
+    public static final ConfigProperty<Integer> MISSED_COUNT = ArchaiusUtil.getIntProperty("cluster.checkin.misses");
+    public static final ConfigProperty<String> ID_FILE = ArchaiusUtil.getStringProperty("cluster.id.file");
 
-    private static final DynamicBooleanProperty CLUSTERED = ArchaiusUtil.getBoolean("module.profile.hazelcast.eventing");
+    private static final ConfigProperty<Boolean> CLUSTERED = ArchaiusUtil.getBooleanProperty("module.profile.hazelcast.eventing");
 
     private static final Logger log = LoggerFactory.getLogger("ConsoleStatus");
 
@@ -102,7 +102,7 @@ public class DBDiscovery extends NoExceptionRunnable implements DiscoveryStrateg
         File f = new File(file);
         if (f.exists()) {
             try (FileInputStream fis = new FileInputStream(f)) {
-                uuid = IOUtils.toString(fis).trim();
+                uuid = IOUtils.toString(fis, java.nio.charset.StandardCharsets.UTF_8).trim();
             }
         } else {
             try (FileOutputStream fos = new FileOutputStream(f)) {
@@ -126,7 +126,7 @@ public class DBDiscovery extends NoExceptionRunnable implements DiscoveryStrateg
     }
 
     @Override
-    public Map<String, Object> discoverLocalMetadata() {
+    public Map<String, String> discoverLocalMetadata() {
         return new HashMap<>();
     }
 
@@ -248,7 +248,7 @@ public class DBDiscovery extends NoExceptionRunnable implements DiscoveryStrateg
     }
 
     @Override
-    public PartitionGroupStrategy getPartitionGroupStrategy() {
+    public PartitionGroupStrategy getPartitionGroupStrategy(Collection<? extends Member> members) {
         return null;
     }
 

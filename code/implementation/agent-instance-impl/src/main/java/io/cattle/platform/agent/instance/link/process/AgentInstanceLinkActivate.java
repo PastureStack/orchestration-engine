@@ -1,6 +1,7 @@
 package io.cattle.platform.agent.instance.link.process;
 
 import io.cattle.platform.archaius.util.ArchaiusUtil;
+import io.cattle.platform.archaius.util.ConfigProperty;
 import io.cattle.platform.async.utils.TimeoutException;
 import io.cattle.platform.core.constants.InstanceLinkConstants;
 import io.cattle.platform.core.model.Instance;
@@ -18,13 +19,12 @@ import io.cattle.platform.process.common.handler.AbstractObjectProcessHandler;
 import java.util.ArrayList;
 import java.util.List;
 
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 
-import com.netflix.config.DynamicLongProperty;
 
 public class AgentInstanceLinkActivate extends AbstractObjectProcessHandler {
 
-    private static final DynamicLongProperty WAIT_TIME = ArchaiusUtil.getLong("instance.link.target.wait.time.millis");
+    private static final ConfigProperty<Long> WAIT_TIME = ArchaiusUtil.getLongProperty("instance.link.target.wait.time.millis");
 
     @Inject
     ResourceMonitor resourceMonitor;

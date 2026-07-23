@@ -11,7 +11,7 @@ import io.cattle.platform.json.JsonMapper;
 import java.io.IOException;
 import java.util.List;
 
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 
 public class ClusterMembershipDAOImpl extends AbstractJooqDao implements ClusterMembershipDAO {
 

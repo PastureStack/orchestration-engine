@@ -1,7 +1,6 @@
 package io.cattle.platform.docker.api;
 
 import io.cattle.platform.api.action.ActionHandler;
-import io.cattle.platform.archaius.util.ArchaiusUtil;
 import io.cattle.platform.core.model.Host;
 import io.cattle.platform.core.model.Instance;
 import io.cattle.platform.docker.api.model.ContainerExec;
@@ -16,16 +15,25 @@ import io.github.ibuildthecloud.gdapi.request.ApiRequest;
 
 import java.util.Map;
 
-import javax.inject.Inject;
-
-import com.netflix.config.DynamicStringProperty;
+import jakarta.inject.Inject;
 
 public class ExecActionHandler implements ActionHandler {
 
-    private static final DynamicStringProperty EXEC_AGENT_PATH = ArchaiusUtil.getString("exec.agent.path");
+    private final DockerActionSettings settings;
 
     HostApiService apiService;
     ObjectManager objectManager;
+
+    public ExecActionHandler() {
+        this(ArchaiusDockerActionSettings.create());
+    }
+
+    ExecActionHandler(DockerActionSettings settings) {
+        if (settings == null) {
+            throw new IllegalArgumentException("settings is required");
+        }
+        this.settings = settings;
+    }
 
     @Override
     public String getName() {
@@ -54,7 +62,7 @@ public class ExecActionHandler implements ActionHandler {
                 DockerInstanceConstants.DOCKER_ATTACH_STDOUT, exec.getAttachStdout(), DockerInstanceConstants.DOCKER_TTY, exec.getTty(),
                 DockerInstanceConstants.DOCKER_CMD, exec.getCommand(), DockerInstanceConstants.DOCKER_CONTAINER, dockerId);
 
-        HostApiAccess apiAccess = apiService.getAccess(request, host.getId(), CollectionUtils.asMap("exec", data), EXEC_AGENT_PATH.get());
+        HostApiAccess apiAccess = apiService.getAccess(request, host.getId(), CollectionUtils.asMap("exec", data), settings.execAgentPath());
 
         if (apiAccess == null) {
             return null;

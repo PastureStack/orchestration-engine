@@ -24,7 +24,7 @@ import io.github.ibuildthecloud.gdapi.validation.ValidationErrorCodes;
 import java.util.HashSet;
 import java.util.Map;
 
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 
 import org.apache.commons.lang3.StringUtils;
 

@@ -92,6 +92,8 @@
 
     <jmxConfigurator/>
 
+    <turboFilter class="io.cattle.platform.logback.MariaDbOptimisticConflictTurboFilter" />
+
     <if condition='property("logstashConsole").equals("true")' >
         <then>
             <include resource="logback/logback-logstash-console.xml" />

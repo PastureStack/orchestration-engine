@@ -7,9 +7,11 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 
-import javax.annotation.PostConstruct;
+import jakarta.annotation.PostConstruct;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.core.JsonGenerator;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.AnnotationIntrospector;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.Module;
@@ -18,13 +20,16 @@ import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.databind.introspect.AnnotationIntrospectorPair;
 import com.fasterxml.jackson.databind.introspect.JacksonAnnotationIntrospector;
 import com.fasterxml.jackson.databind.type.CollectionType;
-import com.fasterxml.jackson.module.jaxb.JaxbAnnotationIntrospector;
+import com.fasterxml.jackson.module.jakarta.xmlbind.JakartaXmlBindAnnotationIntrospector;
 
 /**
  * Default implementation of JsonMapper that uses Jackson for marshaling and
  * supports JAXB annotations.
  */
 public class JacksonJsonMapper implements JsonMapper {
+
+    private static final TypeReference<Map<String, Object>> STRING_OBJECT_MAP = new TypeReference<Map<String, Object>>() {
+    };
 
     ObjectMapper mapper;
     List<Module> modules;
@@ -35,10 +40,12 @@ public class JacksonJsonMapper implements JsonMapper {
         mapper.configure(JsonGenerator.Feature.AUTO_CLOSE_TARGET, false);
 
         AnnotationIntrospector primary = new JacksonAnnotationIntrospector();
-        AnnotationIntrospector secondary = new JaxbAnnotationIntrospector(mapper.getTypeFactory());
+        AnnotationIntrospector secondary = new JakartaXmlBindAnnotationIntrospector(mapper.getTypeFactory());
 
         AnnotationIntrospector pair = AnnotationIntrospectorPair.create(primary, secondary);
         mapper.setAnnotationIntrospector(pair);
+        addOptionalMixIn("org.jooq.StoreQuery", JooqStoreQueryMixin.class);
+        addOptionalMixIn("org.jooq.QualifiedRecord", JooqQualifiedRecordMixin.class);
     }
 
     @PostConstruct
@@ -84,37 +91,48 @@ public class JacksonJsonMapper implements JsonMapper {
         mapper.writeValue(baos, object);
     }
 
-    @SuppressWarnings("unchecked")
     @Override
     public Map<String, Object> writeValueAsMap(Object data) {
-        return convertValue(data, Map.class);
+        if (data == null) {
+            return null;
+        }
+        return mapper.convertValue(data, STRING_OBJECT_MAP);
     }
 
-    @SuppressWarnings({ "rawtypes", "unchecked" })
     @Override
-    public <T> T readCollectionValue(String content, Class<? extends Collection> collectionClass, Class<?> elementsClass) throws IOException {
+    public <E, C extends Collection<E>> C readCollectionValue(String content, Class<C> collectionClass, Class<E> elementsClass) throws IOException {
         CollectionType type = mapper.getTypeFactory().constructCollectionType(collectionClass, elementsClass);
-        return (T) mapper.readValue(content, type);
+        return mapper.readValue(content, type);
     }
 
-    @SuppressWarnings("unchecked")
+    @Override
+    public <E> List<E> readListValue(String content, Class<E> elementsClass) throws IOException {
+        CollectionType type = mapper.getTypeFactory().constructCollectionType(List.class, elementsClass);
+        return mapper.readValue(content, type);
+    }
+
     @Override
     public <T> T convertValue(Object fromValue, Class<T> toValueType) {
         if (fromValue == null)
             return null;
 
-        if (toValueType.isAssignableFrom(fromValue.getClass()))
-            return (T) fromValue;
+        if (toValueType.isInstance(fromValue))
+            return toValueType.cast(fromValue);
 
         return mapper.convertValue(fromValue, toValueType);
 
     }
 
-    @SuppressWarnings({ "unchecked", "rawtypes" })
     @Override
-    public <T> T convertCollectionValue(Object fromValue, Class<? extends Collection> collectionClass, Class<?> elementsClass) {
+    public <E, C extends Collection<E>> C convertCollectionValue(Object fromValue, Class<C> collectionClass, Class<E> elementsClass) {
         CollectionType type = mapper.getTypeFactory().constructCollectionType(collectionClass, elementsClass);
-        return (T) mapper.convertValue(fromValue, type);
+        return mapper.convertValue(fromValue, type);
+    }
+
+    @Override
+    public <E> List<E> convertListValue(Object fromValue, Class<E> elementsClass) {
+        CollectionType type = mapper.getTypeFactory().constructCollectionType(List.class, elementsClass);
+        return mapper.convertValue(fromValue, type);
     }
 
     public void setPrettyPrinting() {
@@ -129,29 +147,31 @@ public class JacksonJsonMapper implements JsonMapper {
         this.mapper = objectMapper;
     }
 
-    @SuppressWarnings("unchecked")
     @Override
     public Map<String, Object> readValue(InputStream is) throws IOException {
-        return readValue(is, Map.class);
+        return mapper.readValue(is, STRING_OBJECT_MAP);
     }
 
-    @SuppressWarnings("unchecked")
     @Override
     public Map<String, Object> readValue(byte[] bytes) throws IOException {
-        return readValue(bytes, Map.class);
+        return mapper.readValue(bytes, STRING_OBJECT_MAP);
     }
 
-    @SuppressWarnings("unchecked")
     @Override
     public Map<String, Object> readValue(String text) throws IOException {
-        return readValue(text, Map.class);
+        return mapper.readValue(text, STRING_OBJECT_MAP);
     }
 
-    @SuppressWarnings({ "unchecked", "rawtypes" })
     @Override
-    public <T> T readCollectionValue(InputStream is, Class<? extends Collection> collectionClass, Class<?> elementsClass) throws IOException {
+    public <E, C extends Collection<E>> C readCollectionValue(InputStream is, Class<C> collectionClass, Class<E> elementsClass) throws IOException {
         CollectionType type = mapper.getTypeFactory().constructCollectionType(collectionClass, elementsClass);
-        return (T) mapper.readValue(is, type);
+        return mapper.readValue(is, type);
+    }
+
+    @Override
+    public <E> List<E> readListValue(InputStream is, Class<E> elementsClass) throws IOException {
+        CollectionType type = mapper.getTypeFactory().constructCollectionType(List.class, elementsClass);
+        return mapper.readValue(is, type);
     }
 
     public List<Module> getModules() {
@@ -160,5 +180,22 @@ public class JacksonJsonMapper implements JsonMapper {
 
     public void setModules(List<Module> modules) {
         this.modules = modules;
+    }
+
+    protected void addOptionalMixIn(String targetClassName, Class<?> mixinClass) {
+        try {
+            Class<?> targetClass = Class.forName(targetClassName);
+            mapper.addMixIn(targetClass, mixinClass);
+        } catch (ClassNotFoundException e) {
+            // framework-json is used before framework-jooq in the Maven reactor.
+        }
+    }
+
+    @JsonIgnoreProperties(value = { "returning" }, ignoreUnknown = true)
+    static interface JooqStoreQueryMixin {
+    }
+
+    @JsonIgnoreProperties(value = { "qualifier" }, ignoreUnknown = true)
+    static interface JooqQualifiedRecordMixin {
     }
 }

@@ -1,12 +1,10 @@
 package io.cattle.platform.iaas.api.auth.integration.external;
 
 import io.cattle.platform.archaius.util.ArchaiusUtil;
-
-import com.netflix.config.DynamicBooleanProperty;
-import com.netflix.config.DynamicStringProperty;
+import io.cattle.platform.archaius.util.ConfigProperty;
 
 public class ServiceAuthConstants {
-    public static DynamicStringProperty AUTH_SERVICE_URL = ArchaiusUtil.getString("system.stack.auth.url");
+    public static ConfigProperty<String> AUTH_SERVICE_URL = ArchaiusUtil.getStringProperty("system.stack.auth.url");
     public static final String ACCEPT = "Accept";
     public static final String ACCESS_TOKEN = "access_token";
     public static final String AUTH_ERROR = "AuthError";
@@ -22,11 +20,11 @@ public class ServiceAuthConstants {
     public static final String JWT_CREATION_FAILED = "FailedToMakeJWT";
     public static final String NO_IDENTITY_LOOKUP_SETTING = "api.auth.external.provider.no.identity.lookup";
 
-    public static final DynamicStringProperty ACCESS_MODE = ArchaiusUtil.getString(ACCESSMODE_SETTING);
-    public static final DynamicStringProperty ALLOWED_IDENTITIES = ArchaiusUtil.getString(ALLOWED_IDENTITIES_SETTING);
-    public static final DynamicStringProperty USER_TYPE = ArchaiusUtil.getString(USERTYPE_SETTING);
-    public static final DynamicStringProperty IDENTITY_SEPARATOR = ArchaiusUtil.getString(IDENTITY_SEPARATOR_SETTING);
-    public static final DynamicBooleanProperty IS_EXTERNAL_AUTH_PROVIDER = ArchaiusUtil.getBoolean(EXTERNAL_AUTH_PROVIDER_SETTING);
-    public static final DynamicBooleanProperty NO_IDENTITY_LOOKUP_SUPPORTED = ArchaiusUtil.getBoolean(NO_IDENTITY_LOOKUP_SETTING);
+    public static final ConfigProperty<String> ACCESS_MODE = ArchaiusUtil.getStringProperty(ACCESSMODE_SETTING);
+    public static final ConfigProperty<String> ALLOWED_IDENTITIES = ArchaiusUtil.getStringProperty(ALLOWED_IDENTITIES_SETTING);
+    public static final ConfigProperty<String> USER_TYPE = ArchaiusUtil.getStringProperty(USERTYPE_SETTING);
+    public static final ConfigProperty<String> IDENTITY_SEPARATOR = ArchaiusUtil.getStringProperty(IDENTITY_SEPARATOR_SETTING);
+    public static final ConfigProperty<Boolean> IS_EXTERNAL_AUTH_PROVIDER = ArchaiusUtil.getBooleanProperty(EXTERNAL_AUTH_PROVIDER_SETTING);
+    public static final ConfigProperty<Boolean> NO_IDENTITY_LOOKUP_SUPPORTED = ArchaiusUtil.getBooleanProperty(NO_IDENTITY_LOOKUP_SETTING);
 
 }

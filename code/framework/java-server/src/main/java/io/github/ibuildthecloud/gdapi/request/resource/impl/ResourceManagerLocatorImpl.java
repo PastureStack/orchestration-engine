@@ -9,11 +9,12 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 
-import javax.annotation.PostConstruct;
-import javax.inject.Inject;
+import jakarta.annotation.PostConstruct;
+import jakarta.inject.Inject;
 
 public class ResourceManagerLocatorImpl extends AbstractResourceManagerLocatorImpl implements ResourceManagerLocator {
 
@@ -28,6 +29,7 @@ public class ResourceManagerLocatorImpl extends AbstractResourceManagerLocatorIm
 
     @PostConstruct
     public void init() {
+        cached.clear();
         resourceManagersByType.clear();
         resourceManagerFiltersByType.clear();
 
@@ -52,7 +54,7 @@ public class ResourceManagerLocatorImpl extends AbstractResourceManagerLocatorIm
                 add(resourceManagerFiltersByType, type, filter);
             }
             for (Class<?> clz : filter.getTypeClasses()) {
-                String type = schemaFactory.getSchemaName(clz);
+                String type = getTypeName(clz);
                 if (type != null) {
                     if (once.contains(type)) {
                         continue;
@@ -64,8 +66,31 @@ public class ResourceManagerLocatorImpl extends AbstractResourceManagerLocatorIm
         }
     }
 
+    protected String getTypeName(Class<?> clz) {
+        String type = schemaFactory.getSchemaName(clz);
+        if (type != null) {
+            return type;
+        }
+
+        String name = clz.getSimpleName();
+        if (name.length() == 0) {
+            return null;
+        }
+
+        return Character.toLowerCase(name.charAt(0)) + name.substring(1);
+    }
+
     @Override
     protected void add(Map<String, List<ResourceManagerFilter>> filters, String key, ResourceManagerFilter filter) {
+        addExact(filters, key, filter);
+
+        String lowerKey = key.toLowerCase(Locale.ENGLISH);
+        if (!lowerKey.equals(key)) {
+            addExact(filters, lowerKey, filter);
+        }
+    }
+
+    protected void addExact(Map<String, List<ResourceManagerFilter>> filters, String key, ResourceManagerFilter filter) {
         List<ResourceManagerFilter> list = filters.get(key);
         if (list == null) {
             list = new ArrayList<ResourceManagerFilter>();

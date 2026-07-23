@@ -4,9 +4,10 @@ import io.cattle.platform.eventing.exception.EventExecutionException;
 
 import java.util.Arrays;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.Map;
 
-import javax.xml.bind.annotation.XmlTransient;
+import jakarta.xml.bind.annotation.XmlTransient;
 
 import org.slf4j.MDC;
 
@@ -21,18 +22,17 @@ public class EventVO<T> implements Event {
     Integer transitioningProgress;
     Map<String, Object> context;
 
-    @SuppressWarnings("unchecked")
     public EventVO() {
         id = io.cattle.platform.util.resource.UUID.randomUUID().toString();
         time = new Date();
-        context = MDC.getMDCAdapter().getCopyOfContextMap();
+        Map<String, String> mdcContext = MDC.getMDCAdapter().getCopyOfContextMap();
+        context = mdcContext == null ? null : new HashMap<String, Object>(mdcContext);
     }
 
     public EventVO(Event event) {
         this(event, event.getReplyTo());
     }
 
-    @SuppressWarnings("unchecked")
     public EventVO(Event event, String replyTo) {
         this.replyTo = replyTo;
 
@@ -40,7 +40,7 @@ public class EventVO<T> implements Event {
         this.name = event.getName();
         this.previousIds = event.getPreviousIds();
         this.previousNames = event.getPreviousNames();
-        this.data = (T) event.getData();
+        this.data = eventData(event);
         this.time = event.getTime();
         this.publisher = event.getPublisher();
         this.resourceId = event.getResourceId();
@@ -51,6 +51,11 @@ public class EventVO<T> implements Event {
         this.transitioningProgress = event.getTransitioningProgress();
         this.context = event.getContext();
         this.timeoutMillis = event.getTimeoutMillis();
+    }
+
+    @SuppressWarnings("unchecked")
+    private static <T> T eventData(Event event) {
+        return (T) event.getData();
     }
 
     public static EventVO<Object> replyWithException(Event request, Class<? extends EventExecutionException> clz,

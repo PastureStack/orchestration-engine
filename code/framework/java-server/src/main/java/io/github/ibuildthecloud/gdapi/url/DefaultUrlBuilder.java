@@ -1,5 +1,6 @@
 package io.github.ibuildthecloud.gdapi.url;
 
+import io.cattle.platform.util.net.UrlUtils;
 import io.github.ibuildthecloud.gdapi.context.ApiContext;
 import io.github.ibuildthecloud.gdapi.factory.SchemaFactory;
 import io.github.ibuildthecloud.gdapi.id.IdFormatter;
@@ -167,7 +168,7 @@ public final class DefaultUrlBuilder implements UrlBuilder {
 
     protected URL toURL(String url) {
         try {
-            return new URL(url);
+            return UrlUtils.toURL(url);
         } catch (MalformedURLException e) {
             throw new IllegalArgumentException("Failed to create URL for [" + url + "]", e);
         }

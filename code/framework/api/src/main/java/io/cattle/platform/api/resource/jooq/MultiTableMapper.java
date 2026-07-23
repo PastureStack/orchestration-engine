@@ -14,15 +14,14 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.ListIterator;
 import java.util.Map;
+import java.util.function.Consumer;
 
-import org.apache.commons.beanutils.PropertyUtils;
-import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.beanutils2.PropertyUtils;
 import org.jooq.Field;
 import org.jooq.Record;
-import org.jooq.RecordHandler;
 import org.jooq.Table;
 
-public class MultiTableMapper extends AbstractSequentialList<Object> implements RecordHandler<Record> {
+public class MultiTableMapper extends AbstractSequentialList<Object> implements Consumer<Record> {
 
     ObjectMetaDataManager metaDataManager;
     List<Table<?>> tables = new ArrayList<Table<?>>();
@@ -84,7 +83,7 @@ public class MultiTableMapper extends AbstractSequentialList<Object> implements 
     }
 
     @Override
-    public void next(Record record) {
+    public void accept(Record record) {
         resultSize++;
 
         if (limit != null && resultSize > limit) {
@@ -105,7 +104,7 @@ public class MultiTableMapper extends AbstractSequentialList<Object> implements 
                 objects.put(mapping.keyName, obj);
             }
 
-            String fieldName = StringUtils.removeStart(field.getName(), mapping.prefix);
+            String fieldName = removeStart(field.getName(), mapping.prefix);
             String propertyName = metaDataManager.lookupPropertyNameFromFieldName(mapping.originalTable.getRecordType(), fieldName);
             if (propertyName != null) {
                 setProperty(obj, propertyName, record, field);
@@ -145,12 +144,17 @@ public class MultiTableMapper extends AbstractSequentialList<Object> implements 
     protected Object newObject(TableMapping mapping) {
         Class<?> clz = mapping.originalTable.getRecordType();
         try {
-            return clz.newInstance();
-        } catch (InstantiationException e) {
-            throw new IllegalStateException("Failed to construct [" + clz + "]", e);
-        } catch (IllegalAccessException e) {
+            return clz.getDeclaredConstructor().newInstance();
+        } catch (ReflectiveOperationException e) {
             throw new IllegalStateException("Failed to construct [" + clz + "]", e);
         }
+    }
+
+    private static String removeStart(String value, String prefix) {
+        if (value == null || prefix == null || prefix.length() == 0) {
+            return value;
+        }
+        return value.startsWith(prefix) ? value.substring(prefix.length()) : value;
     }
 
     private static class TableMapping {

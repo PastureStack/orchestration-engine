@@ -2,7 +2,7 @@
 set -e -x
 
 DEV_HOST=${DEV_HOST:-10.0.2.2:8080}
-AGENT_IMAGE=${AGENT_IMAGE:-rancher/agent}
+AGENT_IMAGE=${AGENT_IMAGE:-ghcr.io/pasturestack/node-agent:v1.2.30@sha256:5310b748fc52bcd87fdeaa2285f424a07ec13c9b41639692eef96bda53ac8277}
 
 if [ -x "$(which boot2docker)" ]; then
     DOCKER_ARGS=${DOCKER_ARGS:--e CATTLE_AGENT_IP=$(boot2docker ip)}

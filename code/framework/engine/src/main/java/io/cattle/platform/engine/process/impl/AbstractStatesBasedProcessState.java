@@ -98,17 +98,16 @@ public abstract class AbstractStatesBasedProcessState implements ProcessState {
         return statesDefinition;
     }
 
-    @SuppressWarnings("unchecked")
     @Override
     public Map<String, Object> convertData(Object data) {
         if (data instanceof Map) {
-            return convertMap((Map<Object, Object>) data);
+            return convertMap(Map.class.cast(data));
         } else {
-            return jsonMapper.convertValue(data, Map.class);
+            return jsonMapper.writeValueAsMap(data);
         }
     }
 
-    protected abstract Map<String, Object> convertMap(Map<Object, Object> data);
+    protected abstract Map<String, Object> convertMap(Map<?, ?> data);
 
     public JsonMapper getJsonMapper() {
         return jsonMapper;

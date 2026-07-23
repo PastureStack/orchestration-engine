@@ -1,0 +1,91 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+cd "$(dirname "$0")/.."
+
+resolve_python_cmd() {
+    for candidate in "${PYTHON:-}" python3 python; do
+        [ -n "$candidate" ] || continue
+        if "$candidate" -c 'import sys; sys.exit(0)' >/dev/null 2>&1; then
+            printf '%s\n' "$candidate"
+            return 0
+        fi
+    done
+    return 1
+}
+
+python_cmd="$(resolve_python_cmd)" || {
+    echo "python3 or python is required for the cattle metrics Spring lifecycle audit" >&2
+    exit 1
+}
+
+"$python_cmd" - <<'PY'
+import re
+import sys
+from pathlib import Path
+
+root = Path(__import__("os").environ.get("RC16_CATTLE_SOURCE_ROOT", "."))
+startup_path = root / "code/framework/metrics/src/main/java/io/cattle/platform/metrics/util/MetricsStartup.java"
+config_path = root / "code/packaging/app-config/src/main/java/io/cattle/platform/app/MetricsConfig.java"
+
+failures = []
+
+if not startup_path.exists():
+    failures.append(f"missing {startup_path}")
+    startup = ""
+else:
+    startup = startup_path.read_text(encoding="utf-8")
+
+if not config_path.exists():
+    failures.append(f"missing {config_path}")
+    config = ""
+else:
+    config = config_path.read_text(encoding="utf-8")
+
+blocked_startup_markers = {
+    "jakarta.annotation.PostConstruct": "MetricsStartup must not use eager @PostConstruct startup",
+    "jakarta.annotation.PreDestroy": "MetricsStartup must not use annotation destroy callbacks",
+    "@PostConstruct": "MetricsStartup must not start JMX during bean construction",
+    "@PreDestroy": "MetricsStartup must be stopped through SmartLifecycle",
+    "void init()": "MetricsStartup legacy init method is blocked",
+    "void destroy()": "MetricsStartup legacy destroy method is blocked",
+}
+for marker, reason in blocked_startup_markers.items():
+    if marker in startup:
+        failures.append(f"CATTLE_METRICS_SPRING_EAGER_STARTUP marker={marker!r} reason={reason}")
+
+required_startup_markers = [
+    "public synchronized void start()",
+    "public synchronized void stop()",
+    "public synchronized boolean isRunning()",
+    "JmxReporter.forRegistry(registry).build()",
+]
+for marker in required_startup_markers:
+    if marker not in startup:
+        failures.append(f"CATTLE_METRICS_SPRING_LIFECYCLE_STARTUP_MISSING marker={marker!r}")
+
+if "org.springframework.context.SmartLifecycle" not in config:
+    failures.append("CATTLE_METRICS_SPRING_LIFECYCLE_CONFIG_MISSING import=org.springframework.context.SmartLifecycle")
+if "new SmartLifecycle()" not in config:
+    failures.append("CATTLE_METRICS_SPRING_LIFECYCLE_CONFIG_MISSING marker='new SmartLifecycle()'")
+if "void stop(Runnable callback)" not in config:
+    failures.append("CATTLE_METRICS_SPRING_LIFECYCLE_CONFIG_MISSING marker='void stop(Runnable callback)'")
+if "boolean isAutoStartup()" not in config:
+    failures.append("CATTLE_METRICS_SPRING_LIFECYCLE_CONFIG_MISSING marker='boolean isAutoStartup()'")
+
+direct_metrics_startup_bean = re.search(
+    r"@Bean\s+(?:public\s+|protected\s+|private\s+)?MetricsStartup\s+\w+\s*\(",
+    config,
+    re.MULTILINE,
+)
+if direct_metrics_startup_bean:
+    failures.append("CATTLE_METRICS_SPRING_DIRECT_STARTUP_BEAN MetricsStartup must be exposed through SmartLifecycle")
+
+if failures:
+    print("\n".join(failures))
+    print(f"CATTLE_METRICS_SPRING_LIFECYCLE_FAIL failure_count={len(failures)}")
+    sys.exit(1)
+
+print("CATTLE_METRICS_SPRING_LIFECYCLE_OK lifecycle=SmartLifecycle eager_annotations=0 failure_count=0")
+print("Metrics JMX reporter startup is deferred to Spring SmartLifecycle so bean construction does not perform eager JMX startup.")
+PY

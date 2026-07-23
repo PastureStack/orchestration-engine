@@ -16,6 +16,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 
+import org.apache.commons.lang3.Strings;
 import org.apache.commons.lang3.StringUtils;
 
 public class MachinePreCreate extends AbstractObjectProcessLogic implements ProcessPreListener, Priority {
@@ -29,7 +30,7 @@ public class MachinePreCreate extends AbstractObjectProcessLogic implements Proc
     public HandlerResult handle(ProcessState state, ProcessInstance process) {
         PhysicalHost physHost = (PhysicalHost) state.getResource();
 
-        if (!StringUtils.equalsIgnoreCase(physHost.getKind(), KIND_MACHINE)) {
+        if (!Strings.CI.equals(physHost.getKind(), KIND_MACHINE)) {
             return null;
         }
 

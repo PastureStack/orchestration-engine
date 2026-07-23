@@ -1,6 +1,9 @@
 package io.cattle.platform.iaas.api.auth.integration.local;
 
 import io.cattle.platform.archaius.util.ArchaiusUtil;
+import io.cattle.platform.archaius.util.ConfigProperty;
+import io.cattle.platform.iaas.api.auth.integration.util.AuthHttpClient;
+import io.cattle.platform.iaas.api.auth.integration.util.AuthHttpClient.Response;
 import io.cattle.platform.json.JsonMapper;
 import io.github.ibuildthecloud.gdapi.exception.ClientVisibleException;
 import io.github.ibuildthecloud.gdapi.util.ResponseCodes;
@@ -10,19 +13,13 @@ import java.util.HashMap;
 import java.util.Map;
 
 import org.apache.commons.lang3.StringUtils;
-import org.apache.http.HttpResponse;
-import org.apache.http.client.fluent.Request;
-import org.apache.http.entity.ContentType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.netflix.config.DynamicIntProperty;
-import com.netflix.config.DynamicStringProperty;
-
 public class LocalAuthPasswordValidator {
 
-    public static final DynamicStringProperty AUTH_VALIDATE_URL = ArchaiusUtil.getString("api.auth.local.validate.url");
-    public static final DynamicIntProperty AUTH_VALIDATE_TIMEOUT = ArchaiusUtil.getInt("api.auth.local.validate.timeout.milliseconds");
+    public static final ConfigProperty<String> AUTH_VALIDATE_URL = ArchaiusUtil.getStringProperty("api.auth.local.validate.url");
+    public static final ConfigProperty<Integer> AUTH_VALIDATE_TIMEOUT = ArchaiusUtil.getIntProperty("api.auth.local.validate.timeout.milliseconds");
 
     final static Logger log = LoggerFactory.getLogger(LocalAuthPasswordValidator.class);
 
@@ -36,7 +33,7 @@ public class LocalAuthPasswordValidator {
         data.put("secret", password);
         String jsonString = "";
         Integer code;
-        HttpResponse response = null;
+        Response response = null;
 
         try {
             jsonString = jsonMapper.writeValueAsString(data);
@@ -46,18 +43,17 @@ public class LocalAuthPasswordValidator {
 
         try {
             int timeout = AUTH_VALIDATE_TIMEOUT.get();
-            Request request = Request.Post(authValidateUrl).bodyString(jsonString, ContentType.APPLICATION_JSON);
-            response =  request.connectTimeout(timeout).socketTimeout(timeout).execute().returnResponse();
+            response = AuthHttpClient.postJson(authValidateUrl, jsonString, timeout);
         } catch (IOException e) {
             log.error("Error sending POST request", e);
             throw new ClientVisibleException(ResponseCodes.INTERNAL_SERVER_ERROR, "Error sending POST request");
         }
 
-        code = response.getStatusLine().getStatusCode();
+        code = response.getStatusCode();
         if (code >=400 && code <= 499) {
             Map<String, Object> jsonData = new HashMap<String, Object>();
             try {
-                jsonData = jsonMapper.readValue(response.getEntity().getContent());
+                jsonData = jsonMapper.readValue(response.getBody());
             } catch (IOException e) {
                 log.error("No JSON response from validator", e);
             }

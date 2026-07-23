@@ -7,7 +7,7 @@ import io.github.ibuildthecloud.gdapi.id.IdFormatter;
 
 import java.util.List;
 
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 
 public class AccountConstraintsProvider implements AllocationConstraintsProvider {
 

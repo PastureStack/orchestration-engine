@@ -2,6 +2,7 @@ package io.cattle.platform.iaas.api.filter.instance;
 
 import io.cattle.platform.api.utils.ApiUtils;
 import io.cattle.platform.archaius.util.ArchaiusUtil;
+import io.cattle.platform.archaius.util.ConfigProperty;
 import io.cattle.platform.core.addon.HealthcheckState;
 import io.cattle.platform.core.addon.MountEntry;
 import io.cattle.platform.core.constants.InstanceConstants;
@@ -30,13 +31,12 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 
-import com.netflix.config.DynamicBooleanProperty;
 
 public class InstanceOutputFilter extends CachedOutputFilter<Map<Long, Map<String, Object>>> {
 
-    private static final DynamicBooleanProperty ALLOW_RESTRICTED_USER_EXEC = ArchaiusUtil.getBoolean("allow.restricted.user.exec");
+    private static final ConfigProperty<Boolean> ALLOW_RESTRICTED_USER_EXEC = ArchaiusUtil.getBooleanProperty("allow.restricted.user.exec");
 
     @Inject
     ServiceDao serviceDao;
@@ -149,6 +149,11 @@ public class InstanceOutputFilter extends CachedOutputFilter<Map<Long, Map<Strin
         }
 
         return result;
+    }
+
+    @Override
+    protected Map<Long, Map<String, Object>> castCached(Object cached) {
+        return CollectionUtils.castMap(cached);
     }
 
     @Override

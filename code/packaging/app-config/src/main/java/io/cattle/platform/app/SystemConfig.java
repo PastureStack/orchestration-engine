@@ -12,6 +12,7 @@ import io.cattle.platform.spring.resource.SpringResourceLoader;
 import io.cattle.platform.util.concurrent.NamedExecutorService;
 
 import java.util.Arrays;
+import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.ThreadPoolExecutor;
 
@@ -21,7 +22,6 @@ import javax.sql.DataSource;
 import org.jooq.conf.Settings;
 import org.jooq.impl.DataSourceConnectionProvider;
 import org.jooq.tools.StopWatchListener;
-import org.springframework.beans.factory.annotation.Autowire;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -31,6 +31,7 @@ import org.springframework.jdbc.datasource.DataSourceTransactionManager;
 import org.springframework.jdbc.datasource.TransactionAwareDataSourceProxy;
 import org.springframework.scheduling.concurrent.ScheduledExecutorFactoryBean;
 
+import com.fasterxml.jackson.databind.Module;
 import com.fasterxml.jackson.databind.module.SimpleModule;
 import com.google.common.util.concurrent.ListeningExecutorService;
 import com.google.common.util.concurrent.MoreExecutors;
@@ -73,7 +74,7 @@ public class SystemConfig {
 
         io.cattle.platform.db.jooq.config.Configuration config = new io.cattle.platform.db.jooq.config.Configuration();
         config.setName("cattle");
-        config.setConnectionProvider(dscp);
+        config.setManagedConnectionProvider(dscp);
         config.setListeners(Arrays.asList(
                 logger,
                 new StopWatchListener()));
@@ -91,11 +92,11 @@ public class SystemConfig {
 
         io.cattle.platform.db.jooq.config.Configuration config = new io.cattle.platform.db.jooq.config.Configuration();
         config.setName("cattle");
-        config.setConnectionProvider(dscp);
+        config.setManagedConnectionProvider(dscp);
         config.setListeners(Arrays.asList(
                 logger,
                 new StopWatchListener()));
-        config.setSettings(settings);
+        config.setManagedSettings(settings);
 
         return config;
     }
@@ -112,9 +113,11 @@ public class SystemConfig {
         return new SpringResourceLoader();
     }
 
-    @Bean(autowire = Autowire.BY_TYPE)
-    JacksonJsonMapper CoreJsonMapper() {
-        return new JacksonJsonMapper();
+    @Bean
+    JacksonJsonMapper CoreJsonMapper(List<Module> modules) {
+        JacksonJsonMapper mapper = new JacksonJsonMapper();
+        mapper.setModules(modules);
+        return mapper;
     }
 
     @Bean

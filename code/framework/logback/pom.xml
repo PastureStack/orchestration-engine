@@ -4,13 +4,17 @@
     <parent>
         <groupId>io.cattle</groupId>
         <artifactId>cattle-meta-parent</artifactId>
-        <version>0.5.0-SNAPSHOT</version>
+        <version>0.183.269</version>
         <relativePath>../../meta-parent/pom.xml</relativePath>
     </parent>
     <dependencies>
         <dependency>
             <groupId>ch.qos.logback</groupId>
             <artifactId>logback-classic</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>commons-io</groupId>
+            <artifactId>commons-io</artifactId>
         </dependency>
         <dependency>
             <groupId>io.cattle</groupId>
@@ -29,10 +33,6 @@
         <dependency>
             <groupId>org.codehaus.janino</groupId>
             <artifactId>janino</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>me.moocar</groupId>
-            <artifactId>logback-gelf</artifactId>
         </dependency>
     </dependencies>
 </project>

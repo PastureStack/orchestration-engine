@@ -6,7 +6,6 @@ import io.github.ibuildthecloud.gdapi.validation.ValidationErrorCodes;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.TimeUnit;
 
 import org.apache.commons.lang3.StringUtils;
 
@@ -15,7 +14,7 @@ import com.google.common.cache.CacheBuilder;
 
 public class SelectorUtils {
     private static Cache<String, List<SelectorConstraint<?>>> cache = CacheBuilder.newBuilder()
-            .expireAfterWrite(3600, TimeUnit.SECONDS).build();
+            .expireAfterWrite(java.time.Duration.ofSeconds(3600)).build();
 
     public static boolean isSelectorMatch(String selector, Map<String, String> labels) {
         if (StringUtils.isEmpty(selector)) {

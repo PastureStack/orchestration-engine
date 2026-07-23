@@ -23,9 +23,9 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Function;
 
 import org.apache.cloudstack.managed.threadlocal.ManagedThreadLocal;
-import org.apache.commons.collections.Transformer;
 
 public class ApiUtils {
 
@@ -68,12 +68,19 @@ public class ApiUtils {
         return getPolicy().authorizeList(list);
     }
 
-    @SuppressWarnings("unchecked")
     public static <T> T authorize(T obj) {
-        if (obj instanceof List) {
-            return (T) authorize((List<T>) obj);
-        }
         return getPolicy().authorizeObject(obj);
+    }
+
+    public static Object authorizeObjectOrList(Object obj) {
+        if (obj instanceof List<?>) {
+            return authorizeUnknownList((List<?>) obj);
+        }
+        return authorize(obj);
+    }
+
+    private static List<?> authorizeUnknownList(List<?> list) {
+        return getPolicy().authorizeList(list);
     }
 
     public static String getAttachementKey(Object obj) {
@@ -94,34 +101,28 @@ public class ApiUtils {
 
     public static void addAttachement(Object key, String name, Object obj) {
         ApiRequest request = ApiContext.getContext().getApiRequest();
-        @SuppressWarnings("unchecked")
-        Map<String, Map<Object, Object>> attachments = (Map<String, Map<Object, Object>>) request.getAttribute(key);
 
         Object id = ObjectUtils.getId(obj);
         if (id == null) {
             return;
         }
 
-        if (attachments == null) {
-            attachments = new HashMap<String, Map<Object, Object>>();
-            request.setAttribute(key, attachments);
-        }
+        Map<String, Map<Object, Object>> attachments = attachments(request, key, true);
 
         Map<Object, Object> attachment = attachments.get(name);
         if (attachment == null) {
-            attachment = new LinkedHashMap<Object, Object>();
+            attachment = new AttachmentValues();
             attachments.put(name, attachment);
         }
 
         attachment.put(id, obj);
     }
 
-    public static Map<String, Object> getAttachements(Object obj, Transformer transformer) {
+    public static Map<String, Object> getAttachements(Object obj, Function<Object, Object> transformer) {
         Map<String, Object> result = new LinkedHashMap<String, Object>();
         Object key = getAttachementKey(obj);
         ApiRequest request = ApiContext.getContext().getApiRequest();
-        @SuppressWarnings("unchecked")
-        Map<String, Map<Object, Object>> attachments = (Map<String, Map<Object, Object>>) request.getAttribute(key);
+        Map<String, Map<Object, Object>> attachments = attachments(request, key, false);
 
         if (attachments == null) {
             return result;
@@ -131,7 +132,7 @@ public class ApiUtils {
             String keyName = entry.getKey();
             List<Object> objects = new ArrayList<Object>();
             for (Object attachment : entry.getValue().values()) {
-                attachment = transformer.transform(attachment);
+                attachment = transformer.apply(attachment);
                 if (attachment != null) {
                     objects.add(attachment);
                 }
@@ -148,6 +149,53 @@ public class ApiUtils {
         return result;
     }
 
+    private static Map<String, Map<Object, Object>> attachments(ApiRequest request, Object key, boolean create) {
+        Object value = request.getAttribute(key);
+        if (value == null) {
+            if (!create) {
+                return null;
+            }
+            Attachments attachments = new Attachments();
+            request.setAttribute(key, attachments);
+            return attachments;
+        }
+
+        Attachments attachments = Attachments.class.isInstance(value) ?
+                Attachments.class.cast(value) : attachments(value);
+        request.setAttribute(key, attachments);
+        return attachments;
+    }
+
+    private static Attachments attachments(Object value) {
+        Map<?, ?> source = Map.class.cast(value);
+        Attachments result = new Attachments();
+        for (Map.Entry<?, ?> entry : source.entrySet()) {
+            result.put(String.class.cast(entry.getKey()), attachmentValues(entry.getValue()));
+        }
+        return result;
+    }
+
+    private static Map<Object, Object> attachmentValues(Object value) {
+        if (AttachmentValues.class.isInstance(value)) {
+            return AttachmentValues.class.cast(value);
+        }
+
+        Map<?, ?> source = Map.class.cast(value);
+        AttachmentValues result = new AttachmentValues();
+        for (Map.Entry<?, ?> entry : source.entrySet()) {
+            result.put(entry.getKey(), entry.getValue());
+        }
+        return result;
+    }
+
+    private static class Attachments extends HashMap<String, Map<Object, Object>> {
+        private static final long serialVersionUID = -5641773895513369092L;
+    }
+
+    private static class AttachmentValues extends LinkedHashMap<Object, Object> {
+        private static final long serialVersionUID = 6794019549256397623L;
+    }
+
     public static Resource createResourceWithAttachments(final ResourceManager resourceManager, final ApiRequest request, final IdFormatter idFormatter,
             final SchemaFactory schemaFactory, final Schema schema, Object obj, Map<String, Object> inputAdditionalFields) {
         Integer depth = DEPTH.get();
@@ -162,10 +210,10 @@ public class ApiUtils {
             }
 
             if (depth == 0) {
-                Map<String, Object> attachments = ApiUtils.getAttachements(obj, new Transformer() {
+                Map<String, Object> attachments = ApiUtils.getAttachements(obj, new Function<Object, Object>() {
                     @Override
-                    public Object transform(Object input) {
-                        input = ApiUtils.authorize(input);
+                    public Object apply(Object input) {
+                        input = ApiUtils.authorizeObjectOrList(input);
                         if (input == null)
                             return null;
 

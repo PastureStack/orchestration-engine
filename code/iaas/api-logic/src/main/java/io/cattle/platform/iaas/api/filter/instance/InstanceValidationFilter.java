@@ -13,7 +13,7 @@ import io.github.ibuildthecloud.gdapi.request.resource.ResourceManager;
 import io.github.ibuildthecloud.gdapi.util.ResponseCodes;
 import io.github.ibuildthecloud.gdapi.validation.ValidationErrorCodes;
 
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 
 public class InstanceValidationFilter extends AbstractDefaultResourceManagerFilter {
 
@@ -53,7 +53,7 @@ public class InstanceValidationFilter extends AbstractDefaultResourceManagerFilt
 
         if (InstanceConstants.isRancherAgent((Instance)instance)) {
             throw new ClientVisibleException(ResponseCodes.UNPROCESSABLE_ENTITY, ValidationErrorCodes.ACTION_NOT_AVAILABLE,
-                    "Cannot delete rancher-agent", null);
+                    "Cannot delete the system node agent", null);
         }
 
         validateInfraAccess(instance, "delete");

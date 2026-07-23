@@ -20,8 +20,8 @@ import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.RejectedExecutionException;
 
-import javax.inject.Inject;
-import javax.inject.Named;
+import jakarta.inject.Inject;
+import jakarta.inject.Named;
 
 import org.apache.cloudstack.managed.context.ManagedContextRunnable;
 import org.apache.cloudstack.managed.context.NoExceptionRunnable;
@@ -133,7 +133,7 @@ public abstract class AbstractThreadPoolingEventService extends AbstractEventSer
             @Override
             protected void doRun() throws Exception {
                 try {
-                    Map<String, Object> context = event.getContext();
+                    Map<String, String> context = toMdcContextMap(event.getContext());
                     if (context != null) {
                         MDC.setContextMap(context);
                     }
@@ -144,6 +144,22 @@ public abstract class AbstractThreadPoolingEventService extends AbstractEventSer
                 }
             }
         };
+    }
+
+    protected Map<String, String> toMdcContextMap(Map<String, Object> context) {
+        if (context == null) {
+            return null;
+        }
+
+        Map<String, String> result = new HashMap<String, String>();
+        for (Map.Entry<String, Object> entry : context.entrySet()) {
+            Object value = entry.getValue();
+            if (value != null) {
+                result.put(entry.getKey(), value.toString());
+            }
+        }
+
+        return result;
     }
 
     protected Executor getExecutor(Event event, EventListener listener) {

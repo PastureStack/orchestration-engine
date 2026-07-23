@@ -1,6 +1,7 @@
 package io.cattle.platform.configitem.context.data.metadata.common;
 
 import io.cattle.platform.archaius.util.ArchaiusUtil;
+import io.cattle.platform.archaius.util.ConfigProperty;
 import io.cattle.platform.core.addon.InstanceHealthCheck;
 import io.cattle.platform.core.constants.InstanceConstants;
 import io.cattle.platform.core.constants.ServiceConstants;
@@ -16,8 +17,6 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-
-import com.netflix.config.DynamicBooleanProperty;
 
 public class ServiceMetaData {
 
@@ -113,7 +112,7 @@ public class ServiceMetaData {
     String token;
     // helper field needed by metadata service to process object
     String metadata_kind;
-    private static final DynamicBooleanProperty ENABLE_HEALTHCHECK = ArchaiusUtil.getBoolean("ipsec.service.enable.healthcheck");
+    private static final ConfigProperty<Boolean> ENABLE_HEALTHCHECK = ArchaiusUtil.getBooleanProperty("ipsec.service.enable.healthcheck");
     
     public ServiceMetaData(Service service, String serviceName, String stackName, String stackUUID,
             List<String> sidekicks,
@@ -168,18 +167,13 @@ public class ServiceMetaData {
         return null;
     }
 
-    @SuppressWarnings("unchecked")
     void populatePortsInfo(Service service, String serviceName) {
         Object portsObj = ServiceDiscoveryUtil.getLaunchConfigObject(service, serviceName,
                 InstanceConstants.FIELD_PORTS);
-        if (portsObj != null) {
-            this.ports.addAll((List<String>) portsObj);
-        }
+        this.ports.addAll(MetadataTypeUtils.stringList(portsObj));
         Object exposeObj = ServiceDiscoveryUtil.getLaunchConfigObject(service, serviceName,
                 InstanceConstants.FIELD_EXPOSE);
-        if (exposeObj != null) {
-            this.expose.addAll((List<String>) exposeObj);
-        }
+        this.expose.addAll(MetadataTypeUtils.stringList(exposeObj));
     }
     
     void setServiceMetadata(Service service, String serviceName) {
@@ -192,14 +186,12 @@ public class ServiceMetaData {
         }
     }
 
-    @SuppressWarnings("unchecked")
     void populateExternalServiceInfo(Service service) {
         if (kind.equalsIgnoreCase(ServiceConstants.KIND_EXTERNAL_SERVICE)) {
             this.hostname = DataAccessor.fields(service)
                     .withKey(ServiceConstants.FIELD_HOSTNAME).as(String.class);
-            external_ips.addAll(DataAccessor.fields(service)
-                    .withKey(ServiceConstants.FIELD_EXTERNALIPS).withDefault(Collections.EMPTY_LIST)
-                    .as(List.class));
+            external_ips.addAll(MetadataTypeUtils.stringList(DataAccessor.fields(service)
+                    .withKey(ServiceConstants.FIELD_EXTERNALIPS).withDefault(Collections.emptyList()).get()));
         }
     }
 

@@ -15,7 +15,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.Map;
 
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 
 import org.apache.commons.io.IOUtils;
 
@@ -27,7 +27,6 @@ public class TransformInspect implements ScriptsHandler {
     @Inject
     JsonMapper jsonMapper;
 
-    @SuppressWarnings("unchecked")
     @Override
     public boolean handle(ApiRequest request) throws IOException {
         if (!"transform".equals(request.getId())) {
@@ -36,18 +35,18 @@ public class TransformInspect implements ScriptsHandler {
 
         request.setResponseContentType("application/json");
 
-        Object reqObj = getObject(request);
+        Map<String, Object> reqObj = getObject(request);
         if (reqObj == null) {
             return true;
         }
 
         Instance instance = new InstanceRecord();
-        transformer.transform((Map<String, Object>)reqObj, instance);
+        transformer.transform(reqObj, instance);
         request.setResponseObject(instance);
         return true;
     }
 
-    protected Object getObject(ApiRequest request) throws IOException {
+    protected Map<String, Object> getObject(ApiRequest request) throws IOException {
         if (!RequestUtils.mayHaveBody(request.getMethod())) {
             return null;
         }

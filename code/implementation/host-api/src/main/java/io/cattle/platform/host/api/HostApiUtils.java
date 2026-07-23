@@ -1,11 +1,35 @@
 package io.cattle.platform.host.api;
 
-import io.cattle.platform.archaius.util.ArchaiusUtil;
+import io.cattle.platform.archaius.util.ConfigProperty;
 
-import com.netflix.config.DynamicStringProperty;
 
 public class HostApiUtils {
 
-    public static final DynamicStringProperty HOST_API_PROXY_HOST = ArchaiusUtil.getString("host.api.proxy.host");
-    public static final DynamicStringProperty HOST_API_PROXY_BACKEND = ArchaiusUtil.getString("host.api.proxy.backend.path");
+    private static final HostApiSettings SETTINGS = ArchaiusHostApiSettings.create();
+
+    /*
+     * Legacy public fields kept for source compatibility with old Rancher 1.6
+     * integrations. New code should call the accessor methods below.
+     */
+    public static final ConfigProperty<String> HOST_API_PROXY_HOST = new ConfigProperty<String>() {
+        @Override
+        public String get() {
+            return SETTINGS.proxyHost();
+        }
+    };
+
+    public static final ConfigProperty<String> HOST_API_PROXY_BACKEND = new ConfigProperty<String>() {
+        @Override
+        public String get() {
+            return SETTINGS.proxyBackendPath();
+        }
+    };
+
+    public static String getHostApiProxyHost() {
+        return SETTINGS.proxyHost();
+    }
+
+    public static String getHostApiProxyBackendPath() {
+        return SETTINGS.proxyBackendPath();
+    }
 }

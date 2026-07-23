@@ -21,10 +21,10 @@ import io.cattle.platform.object.util.DataAccessor;
 import io.cattle.platform.process.base.AbstractDefaultProcessHandler;
 import io.cattle.platform.util.type.CollectionUtils;
 
-import javax.inject.Inject;
-import javax.inject.Named;
+import jakarta.inject.Inject;
+import jakarta.inject.Named;
 
-import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.Strings;
 
 @Named
 public class HostRemove extends AbstractDefaultProcessHandler {
@@ -57,7 +57,7 @@ public class HostRemove extends AbstractDefaultProcessHandler {
             StorageDriver driver = objectManager.loadResource(StorageDriver.class, pool.getStorageDriverId());
             if (driver != null) {
                 String scope = DataAccessor.fieldString(driver, StorageDriverConstants.FIELD_SCOPE);
-                if (StringUtils.equals(scope, StorageDriverConstants.SCOPE_LOCAL)) {
+                if (Strings.CS.equals(scope, StorageDriverConstants.SCOPE_LOCAL)) {
                     deactivateThenRemove(pool, null);
                 }
             }

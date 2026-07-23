@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.Collection;
+import java.util.List;
 import java.util.Map;
 
 public interface JsonMapper {
@@ -28,14 +29,17 @@ public interface JsonMapper {
 
     void writeValue(OutputStream baos, Object object) throws IOException;
 
-    @SuppressWarnings("rawtypes")
-    <T> T readCollectionValue(InputStream is, Class<? extends Collection> collectionClass, Class<?> elementsClass) throws IOException;
+    <E, C extends Collection<E>> C readCollectionValue(InputStream is, Class<C> collectionClass, Class<E> elementsClass) throws IOException;
 
-    @SuppressWarnings("rawtypes")
-    <T> T readCollectionValue(String content, Class<? extends Collection> collectionClass, Class<?> elementsClass) throws IOException;
+    <E, C extends Collection<E>> C readCollectionValue(String content, Class<C> collectionClass, Class<E> elementsClass) throws IOException;
+
+    <E> List<E> readListValue(InputStream is, Class<E> elementsClass) throws IOException;
+
+    <E> List<E> readListValue(String content, Class<E> elementsClass) throws IOException;
 
     <T> T convertValue(Object fromValue, Class<T> toValueType);
 
-    @SuppressWarnings("rawtypes")
-    <T> T convertCollectionValue(Object fromValue, Class<? extends Collection> collectionClass, Class<?> elementsClass);
+    <E, C extends Collection<E>> C convertCollectionValue(Object fromValue, Class<C> collectionClass, Class<E> elementsClass);
+
+    <E> List<E> convertListValue(Object fromValue, Class<E> elementsClass);
 }

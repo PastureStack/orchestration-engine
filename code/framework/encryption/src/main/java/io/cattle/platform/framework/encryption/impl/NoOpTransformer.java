@@ -22,7 +22,9 @@ public class NoOpTransformer implements Transformer {
         if (StringUtils.isBlank(value)){
             return "";
         }
-        return StringUtils.reverse(StringUtils.removeEnd(StringUtils.removeStart(value, METADATA), StringUtils.reverse(METADATA)));
+        String stripped = removeStart(value, METADATA);
+        stripped = removeEnd(stripped, StringUtils.reverse(METADATA));
+        return StringUtils.reverse(stripped);
     }
 
     @Override
@@ -37,5 +39,25 @@ public class NoOpTransformer implements Transformer {
 
     @Override
     public void init() {
+    }
+
+    private static String removeStart(String value, String prefix) {
+        if (value == null || prefix == null || prefix.isEmpty()) {
+            return value;
+        }
+        if (value.startsWith(prefix)) {
+            return value.substring(prefix.length());
+        }
+        return value;
+    }
+
+    private static String removeEnd(String value, String suffix) {
+        if (value == null || suffix == null || suffix.isEmpty()) {
+            return value;
+        }
+        if (value.endsWith(suffix)) {
+            return value.substring(0, value.length() - suffix.length());
+        }
+        return value;
     }
 }

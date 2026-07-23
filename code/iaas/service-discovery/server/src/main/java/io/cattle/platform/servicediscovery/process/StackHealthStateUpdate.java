@@ -23,8 +23,8 @@ import io.cattle.platform.servicediscovery.service.ServiceDiscoveryService;
 import java.io.IOException;
 import java.util.concurrent.Callable;
 
-import javax.inject.Inject;
-import javax.inject.Named;
+import jakarta.inject.Inject;
+import jakarta.inject.Named;
 
 @Named
 public class StackHealthStateUpdate implements AnnotatedEventListener {
@@ -62,7 +62,7 @@ public class StackHealthStateUpdate implements AnnotatedEventListener {
             return;
         }
 
-        final Client client = new Client(Stack.class, new Long(update.getResourceId()));
+        final Client client = new Client(Stack.class, Long.valueOf(update.getResourceId()));
         reconcileForClient(update, client, new Callable<Boolean>() {
             @Override
             public Boolean call() throws IOException {

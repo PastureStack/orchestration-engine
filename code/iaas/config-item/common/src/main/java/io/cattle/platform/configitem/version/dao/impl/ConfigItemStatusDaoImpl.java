@@ -10,6 +10,7 @@ import static io.cattle.platform.core.model.tables.ServiceTable.*;
 import static io.cattle.platform.core.model.tables.StackTable.*;
 
 import io.cattle.platform.archaius.util.ArchaiusUtil;
+import io.cattle.platform.archaius.util.ConfigProperty;
 import io.cattle.platform.configitem.events.ConfigUpdated;
 import io.cattle.platform.configitem.model.Client;
 import io.cattle.platform.configitem.model.DefaultItemVersion;
@@ -44,7 +45,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 
 import org.jooq.Condition;
 import org.jooq.Record2;
@@ -55,13 +56,12 @@ import org.slf4j.LoggerFactory;
 
 import com.codahale.metrics.Timer;
 import com.codahale.metrics.Timer.Context;
-import com.netflix.config.DynamicIntProperty;
 
 public class ConfigItemStatusDaoImpl extends AbstractJooqDao implements ConfigItemStatusDao {
 
 
     private static final Logger log = LoggerFactory.getLogger(ConfigItemStatusDaoImpl.class);
-    private static final DynamicIntProperty BATCH_SIZE = ArchaiusUtil.getInt("item.sync.batch.size");
+    private static final ConfigProperty<Integer> BATCH_SIZE = ArchaiusUtil.getIntProperty("item.sync.batch.size");
 
     @Inject
     EventService eventService;
@@ -122,9 +122,9 @@ public class ConfigItemStatusDaoImpl extends AbstractJooqDao implements ConfigIt
                         CONFIG_ITEM_STATUS.REQUESTED_UPDATED)
                 .values(
                         itemName,
-                        new Long(client.getResourceId()),
+                        Long.valueOf(client.getResourceId()),
                         getResourceNameField(client),
-                        new Long(client.getResourceId()),
+                        Long.valueOf(client.getResourceId()),
                         1L,
                         new Timestamp(System.currentTimeMillis()))
                 .execute();
@@ -177,14 +177,22 @@ public class ConfigItemStatusDaoImpl extends AbstractJooqDao implements ConfigIt
     public boolean setApplied(Client client, String itemName, ItemVersion version) {
         Context t = appliedTimer.time();
         try {
-            int updated = update(CONFIG_ITEM_STATUS)
-                .set(CONFIG_ITEM_STATUS.APPLIED_VERSION, version.getRevision())
-                .set(CONFIG_ITEM_STATUS.SOURCE_VERSION, version.getSourceRevision())
-                .set(CONFIG_ITEM_STATUS.APPLIED_UPDATED, new Timestamp(System.currentTimeMillis()))
-                .where(
-                        CONFIG_ITEM_STATUS.NAME.eq(itemName)
-                        .and(targetObjectCondition(client)))
-                .execute();
+            int updated;
+            try {
+                updated = update(CONFIG_ITEM_STATUS)
+                    .set(CONFIG_ITEM_STATUS.APPLIED_VERSION, version.getRevision())
+                    .set(CONFIG_ITEM_STATUS.SOURCE_VERSION, version.getSourceRevision())
+                    .set(CONFIG_ITEM_STATUS.APPLIED_UPDATED, new Timestamp(System.currentTimeMillis()))
+                    .where(
+                            CONFIG_ITEM_STATUS.NAME.eq(itemName)
+                            .and(targetObjectCondition(client)))
+                    .execute();
+            } catch (DataAccessException e) {
+                if (isRecordChangedException(e)) {
+                    return false;
+                }
+                throw e;
+            }
 
             if ( updated > 1 ) {
                 log.error("Updated too many rows [{}] for client [{}] itemName [{}] itemVersion [{}]",
@@ -201,6 +209,36 @@ public class ConfigItemStatusDaoImpl extends AbstractJooqDao implements ConfigIt
         } finally {
             t.stop();
         }
+    }
+
+    protected boolean isAlreadyApplied(Client client, String itemName, ItemVersion version, DataAccessException e) {
+        if (!isRecordChangedException(e)) {
+            return false;
+        }
+
+        Condition sourceCondition = version.getSourceRevision() == null ?
+                CONFIG_ITEM_STATUS.SOURCE_VERSION.isNull() :
+                CONFIG_ITEM_STATUS.SOURCE_VERSION.eq(version.getSourceRevision());
+
+        return create()
+                .selectCount()
+                .from(CONFIG_ITEM_STATUS)
+                .where(CONFIG_ITEM_STATUS.NAME.eq(itemName)
+                        .and(targetObjectCondition(client))
+                        .and(CONFIG_ITEM_STATUS.APPLIED_VERSION.eq(version.getRevision()))
+                        .and(sourceCondition))
+                .fetchOne(0, int.class) > 0;
+    }
+
+    protected boolean isRecordChangedException(Throwable t) {
+        while (t != null) {
+            String message = t.getMessage();
+            if (message != null && message.contains("Record has changed since last read")) {
+                return true;
+            }
+            t = t.getCause();
+        }
+        return false;
     }
 
 
@@ -295,27 +333,27 @@ public class ConfigItemStatusDaoImpl extends AbstractJooqDao implements ConfigIt
 
         for ( ConfigItemStatus status : (migration ? serviceMigrationItems() : serviceOutOfSyncItems()) ) {
             Client client = new Client(status);
-            CollectionUtils.addToMap(result, client, status.getName(), ArrayList.class);
+            CollectionUtils.addToMap(result, client, status.getName(), ArrayList::new);
         }
 
         for (ConfigItemStatus status : (migration ? stackMigrationItems() : stackOutOfSyncItems())) {
             Client client = new Client(status);
-            CollectionUtils.addToMap(result, client, status.getName(), ArrayList.class);
+            CollectionUtils.addToMap(result, client, status.getName(), ArrayList::new);
         }
 
         for ( ConfigItemStatus status : (migration ? agentMigrationItems() : agentOutOfSyncItems()) ) {
             Client client = new Client(status);
-            CollectionUtils.addToMap(result, client, status.getName(), ArrayList.class);
+            CollectionUtils.addToMap(result, client, status.getName(), ArrayList::new);
         }
 
         for ( ConfigItemStatus status : (migration ? accountMigrationItems() : accountOutOfSyncItems()) ) {
             Client client = new Client(status);
-            CollectionUtils.addToMap(result, client, status.getName(), ArrayList.class);
+            CollectionUtils.addToMap(result, client, status.getName(), ArrayList::new);
         }
 
         for (ConfigItemStatus status : (migration ? hostMigrationItems() : hostOutOfSyncItems())) {
             Client client = new Client(status);
-            CollectionUtils.addToMap(result, client, status.getName(), ArrayList.class);
+            CollectionUtils.addToMap(result, client, status.getName(), ArrayList::new);
         }
 
         return result;

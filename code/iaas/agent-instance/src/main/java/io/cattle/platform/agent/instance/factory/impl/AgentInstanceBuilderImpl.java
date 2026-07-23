@@ -2,6 +2,7 @@ package io.cattle.platform.agent.instance.factory.impl;
 
 import io.cattle.platform.agent.instance.factory.AgentInstanceBuilder;
 import io.cattle.platform.archaius.util.ArchaiusUtil;
+import io.cattle.platform.archaius.util.ConfigProperty;
 import io.cattle.platform.core.constants.InstanceConstants;
 import io.cattle.platform.core.model.Instance;
 import io.cattle.platform.core.util.SystemLabels;
@@ -11,12 +12,10 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 
-import com.netflix.config.DynamicStringProperty;
-
 public class AgentInstanceBuilderImpl implements AgentInstanceBuilder {
 
-    private static final DynamicStringProperty DEFAULT_IMAGE_UUID = ArchaiusUtil.getString("agent.instance.image.uuid");
-    private static final DynamicStringProperty DEFAULT_NAME = ArchaiusUtil.getString("agent.instance.name");
+    private static final ConfigProperty<String> DEFAULT_IMAGE_UUID = ArchaiusUtil.getStringProperty("agent.instance.image.uuid");
+    private static final ConfigProperty<String> DEFAULT_NAME = ArchaiusUtil.getStringProperty("agent.instance.name");
 
     String instanceKind = InstanceConstants.KIND_CONTAINER;
     Long vnetId;

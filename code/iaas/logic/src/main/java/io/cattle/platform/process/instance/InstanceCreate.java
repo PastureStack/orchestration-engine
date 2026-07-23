@@ -26,13 +26,14 @@ import io.cattle.platform.process.base.AbstractDefaultProcessHandler;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
 
-import javax.inject.Inject;
-import javax.inject.Named;
+import jakarta.inject.Inject;
+import jakarta.inject.Named;
 
 @Named
 public class InstanceCreate extends AbstractDefaultProcessHandler {
@@ -103,8 +104,7 @@ public class InstanceCreate extends AbstractDefaultProcessHandler {
     }
 
     private void createLabels(Instance instance) {
-        @SuppressWarnings("unchecked")
-        Map<String, String> labels = DataAccessor.fields(instance).withKey(InstanceConstants.FIELD_LABELS).as(Map.class);
+        Map<String, String> labels = instanceLabels(DataAccessor.fields(instance).withKey(InstanceConstants.FIELD_LABELS).get());
         if (labels == null) {
             return;
         }
@@ -115,6 +115,19 @@ public class InstanceCreate extends AbstractDefaultProcessHandler {
 
             labelsService.createContainerLabel(instance.getAccountId(), instance.getId(), labelKey, labelValue);
         }
+    }
+
+    static Map<String, String> instanceLabels(Object value) {
+        if (value == null) {
+            return null;
+        }
+
+        Map<String, String> result = new LinkedHashMap<String, String>();
+        Map<?, ?> labels = Map.class.cast(value);
+        for (Map.Entry<?, ?> label : labels.entrySet()) {
+            result.put(String.class.cast(label.getKey()), String.class.cast(label.getValue()));
+        }
+        return result;
     }
 
     protected Set<Long> createVolumes(Instance instance, List<Volume> volumes, Map<String, Object> data) {

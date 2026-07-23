@@ -38,13 +38,13 @@ def is_running(pi):
 
 
 def print_pi(pi, detail=False):
-    print print_time(pi), \
+    print(print_time(pi), \
         pi.id, \
         pi.processName, \
         '{}:{}'.format(pi.resourceType, pi.resourceId), \
         pi.phase, \
         pi.exitReason, \
-        pi.result
+        pi.result)
 
     if detail or is_running(pi):
         for pe in pi.processExecutions():
@@ -53,14 +53,14 @@ def print_pi(pi, detail=False):
 
 
 def print_pe(pe, prefix=''):
-    print prefix, print_time(pe), 'PROCESS:', pe.name, \
-        '{}:{}'.format(pe.resourceType, pe.resourceId), pe.exitReason
+    print(prefix, print_time(pe), 'PROCESS:', pe.name, \
+        '{}:{}'.format(pe.resourceType, pe.resourceId), pe.exitReason)
     for phe in pe.processHandlerExecutions:
         print_phe(phe, prefix=prefix + '  ')
 
 
 def print_phe(phe, prefix=''):
-    print prefix, print_time(phe), 'HANDLER:', phe.name
+    print(prefix, print_time(phe), 'HANDLER:', phe.name)
     for child in phe.children:
         for pe in child.executions:
             print_pe(pe, prefix=prefix + '  ')

@@ -11,7 +11,7 @@ import io.cattle.platform.servicediscovery.api.dao.ServiceDao;
 
 import java.util.List;
 
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 
 public class AgentHealthcheckInstancesLookup extends AbstractJooqDao implements HealthcheckInstancesLookup {
 

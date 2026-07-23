@@ -13,11 +13,11 @@ import io.cattle.platform.object.resource.ResourceMonitor;
 import io.cattle.platform.object.resource.ResourcePredicate;
 import io.cattle.platform.object.util.ObjectUtils;
 
+import java.time.Duration;
 import java.util.LinkedHashMap;
 import java.util.Map;
-import java.util.concurrent.TimeUnit;
 
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -44,7 +44,7 @@ public class AgentLocatorImpl implements AgentLocator {
     @Inject
     ResourceMonitor resourceMonitor;
 
-    LoadingCache<Long, RemoteAgent> cache = CacheBuilder.newBuilder().expireAfterWrite(15L, TimeUnit.MINUTES).build(new CacheLoader<Long, RemoteAgent>() {
+    LoadingCache<Long, RemoteAgent> cache = CacheBuilder.newBuilder().expireAfterWrite(Duration.ofMinutes(15)).build(new CacheLoader<Long, RemoteAgent>() {
         @Override
         public RemoteAgent load(Long agentId) throws Exception {
             EventService wrappedEventService = getWrappedEventService(agentId);
@@ -151,11 +151,23 @@ public class AgentLocatorImpl implements AgentLocator {
         }
 
         if (outInstanceData != null) {
-            @SuppressWarnings("unchecked")
-            Map<String, Object> instanceData = jsonMapper.convertValue(instance, Map.class);
-            outInstanceData.putAll(instanceData);
+            outInstanceData.putAll(instanceData(jsonMapper, instance));
         }
         return objectManager.loadResource(Agent.class, host.getAgentId());
+    }
+
+    static Map<String, Object> instanceData(JsonMapper jsonMapper, Instance instance) {
+        Object converted = jsonMapper.convertValue(instance, Map.class);
+        return stringObjectMap(converted);
+    }
+
+    static Map<String, Object> stringObjectMap(Object value) {
+        Map<String, Object> result = new LinkedHashMap<String, Object>();
+        Map<?, ?> source = Map.class.cast(value);
+        for (Map.Entry<?, ?> entry : source.entrySet()) {
+            result.put(String.class.cast(entry.getKey()), entry.getValue());
+        }
+        return result;
     }
 
     public static Long getAgentId(Object resource) {

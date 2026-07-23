@@ -1,0 +1,114 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+repo_root=$(cd "$(dirname "$0")/.." && pwd)
+cd "$repo_root"
+
+python_cmd=${PYTHON:-}
+if [ -z "$python_cmd" ]; then
+    for candidate in python3 python; do
+        if command -v "$candidate" >/dev/null 2>&1 && "$candidate" -c 'import sys' >/dev/null 2>&1; then
+            python_cmd=$candidate
+            break
+        fi
+    done
+fi
+
+if [ -z "$python_cmd" ]; then
+    echo "python3 or python is required for the cattle Jakarta boundary audit" >&2
+    exit 2
+fi
+
+"$python_cmd" - <<'PY'
+import re
+import sys
+import xml.etree.ElementTree as ET
+from pathlib import Path
+
+NS = {"m": "http://maven.apache.org/POM/4.0.0"}
+
+blocked_dependency_groups = {
+    "javax.annotation",
+    "javax.inject",
+    "javax.servlet",
+    "javax.ws.rs",
+    "javax.xml.bind",
+}
+
+blocked_dependency_artifacts = {
+    "geronimo-servlet_3.0_spec",
+    "javax.annotation-api",
+    "javax.inject",
+    "javax.servlet-api",
+    "javax.ws.rs-api",
+    "jaxb-api",
+    "servlet-api",
+}
+
+blocked_source_imports = (
+    "javax.annotation.",
+    "javax.inject.",
+    "javax.servlet.",
+    "javax.ws.rs.",
+    "javax.xml.bind.",
+)
+
+blocked_packaged_jar_patterns = (
+    re.compile(r"^javax[.-].*\.jar$"),
+    re.compile(r"^geronimo-servlet_.*\.jar$"),
+    re.compile(r"^javax\.servlet-api-.*\.jar$"),
+    re.compile(r"^javax\.ws\.rs-api-.*\.jar$"),
+    re.compile(r"^jaxb-api-.*\.jar$"),
+    re.compile(r"^servlet-api-.*\.jar$"),
+)
+
+failures = []
+
+for pom in sorted(Path(".").rglob("pom.xml")):
+    if "target" in pom.parts or ".git" in pom.parts:
+        continue
+    try:
+        root = ET.parse(pom).getroot()
+    except ET.ParseError as exc:
+        failures.append(f"CATTLE_JAKARTA_POM_PARSE_FAIL file={pom} error={exc}")
+        continue
+
+    for dep in root.findall(".//m:dependencies/m:dependency", NS):
+        # Exclusions are allowed; they are how docker-java's old javax transitive APIs stay out.
+        parent = dep
+        group = (parent.findtext("m:groupId", default="", namespaces=NS) or "").strip()
+        artifact = (parent.findtext("m:artifactId", default="", namespaces=NS) or "").strip()
+        if group in blocked_dependency_groups or artifact in blocked_dependency_artifacts:
+            failures.append(
+                f"CATTLE_JAKARTA_LEGACY_DEPENDENCY file={pom} groupId={group} artifactId={artifact}"
+            )
+
+for src in sorted(Path("code").rglob("*.java")):
+    if "target" in src.parts or ".git" in src.parts:
+        continue
+    text = src.read_text(encoding="utf-8", errors="ignore")
+    for line_no, line in enumerate(text.splitlines(), 1):
+        stripped = line.strip()
+        if not stripped.startswith("import "):
+            continue
+        imported = stripped.removeprefix("import ").removesuffix(";").strip()
+        if imported.startswith(blocked_source_imports):
+            failures.append(f"CATTLE_JAKARTA_LEGACY_IMPORT file={src}:{line_no} import={imported}")
+
+for jar in sorted(Path("code/packaging/app/target").glob("*/WEB-INF/lib/*.jar")):
+    name = jar.name
+    if any(pattern.match(name) for pattern in blocked_packaged_jar_patterns):
+        failures.append(f"CATTLE_JAKARTA_LEGACY_PACKAGED_JAR file={jar}")
+
+for failure in failures[:100]:
+    print(failure)
+if len(failures) > 100:
+    print(f"CATTLE_JAKARTA_FAIL_MORE count={len(failures) - 100}")
+
+print("CATTLE_JAKARTA_BOUNDARY_OK checked_poms=true checked_sources=true checked_packaged_libs=true")
+print("Allowed Java SE javax packages such as javax.crypto, javax.net.ssl, javax.naming, javax.management, and javax.sql are intentionally not blocked.")
+print("Maven exclusions for old docker-java javax transitives are allowed; actual dependencies, source imports, and packaged jars are not.")
+print(f"failure_count={len(failures)}")
+if failures:
+    sys.exit(1)
+PY

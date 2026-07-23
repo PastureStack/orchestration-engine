@@ -38,11 +38,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Callable;
 
-import javax.inject.Inject;
-import javax.inject.Named;
+import jakarta.inject.Inject;
+import jakarta.inject.Named;
 
 import org.jooq.Record2;
-import org.jooq.RecordHandler;
+import org.jooq.impl.DSL;
 
 
 @Named
@@ -66,7 +66,7 @@ public class HostDaoImpl extends AbstractJooqDao implements HostDao {
     @Override
     public boolean hasActiveHosts(Long accountId) {
         return create()
-            .select(HOST.ID.count())
+            .select(DSL.count(HOST.ID))
             .from(HOST)
             .join(AGENT)
                 .on(AGENT.ID.eq(HOST.AGENT_ID))
@@ -113,26 +113,22 @@ public class HostDaoImpl extends AbstractJooqDao implements HostDao {
     @Override
     public Map<Long, List<Object>> getInstancesPerHost(List<Long> hosts, final IdFormatter idFormatter) {
         final Map<Long, List<Object>> result = new HashMap<>();
-        create().select(INSTANCE_HOST_MAP.INSTANCE_ID, INSTANCE_HOST_MAP.HOST_ID)
+        for (Record2<Long, Long> record : create().select(INSTANCE_HOST_MAP.INSTANCE_ID, INSTANCE_HOST_MAP.HOST_ID)
             .from(INSTANCE_HOST_MAP)
             .join(INSTANCE)
                 .on(INSTANCE.ID.eq(INSTANCE_HOST_MAP.INSTANCE_ID))
             .where(INSTANCE_HOST_MAP.REMOVED.isNull()
                     .and(INSTANCE.REMOVED.isNull())
-                    .and(INSTANCE_HOST_MAP.HOST_ID.in(hosts)))
-            .fetchInto(new RecordHandler<Record2<Long, Long>>() {
-                @Override
-                public void next(Record2<Long, Long> record) {
-                    Long hostId = record.getValue(INSTANCE_HOST_MAP.HOST_ID);
-                    Long instanceId = record.getValue(INSTANCE_HOST_MAP.INSTANCE_ID);
-                    List<Object> list = result.get(hostId);
-                    if (list == null) {
-                        list = new ArrayList<>();
-                        result.put(hostId, list);
-                    }
-                    list.add(idFormatter.formatId(InstanceConstants.TYPE, instanceId));
-                }
-            });
+                    .and(INSTANCE_HOST_MAP.HOST_ID.in(hosts)))) {
+            Long hostId = record.getValue(INSTANCE_HOST_MAP.HOST_ID);
+            Long instanceId = record.getValue(INSTANCE_HOST_MAP.INSTANCE_ID);
+            List<Object> list = result.get(hostId);
+            if (list == null) {
+                list = new ArrayList<>();
+                result.put(hostId, list);
+            }
+            list.add(idFormatter.formatId(InstanceConstants.TYPE, instanceId));
+        }
 
         return result;
     }

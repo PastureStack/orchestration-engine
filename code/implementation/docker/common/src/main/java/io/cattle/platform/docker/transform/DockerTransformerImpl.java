@@ -28,11 +28,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 
 import org.apache.commons.lang3.StringUtils;
 
 import com.github.dockerjava.api.command.InspectContainerResponse;
+import com.github.dockerjava.api.model.Bind;
 import com.github.dockerjava.api.model.Capability;
 import com.github.dockerjava.api.model.ContainerConfig;
 import com.github.dockerjava.api.model.Device;
@@ -70,7 +71,6 @@ public class DockerTransformerImpl implements DockerTransformer {
     JsonMapper jsonMapper;
 
     @Override
-    @SuppressWarnings("unchecked")
     public List<DockerInspectTransformVolume> transformVolumes(Map<String, Object> fromInspect, List<Object> mounts) {
         List<DockerInspectTransformVolume> volumes = transformMounts(mounts);
         if (volumes != null) {
@@ -88,7 +88,7 @@ public class DockerTransformerImpl implements DockerTransformer {
             volumeBinds = new VolumeBind[0];
         }
         Set<String> binds = bindSet(hostConfig.getBinds());
-        Map<String, String> rw = rwMap((Map<String, Boolean>) fromInspect.get("VolumesRW"));
+        Map<String, String> rw = rwMap(fromInspect.get("VolumesRW"));
         for (VolumeBind vb : volumeBinds) {
             String am = rw.containsKey(vb.getContainerPath()) ? rw.get(vb.getContainerPath()) : READ_WRITE;
             boolean isBindMound = binds.contains(vb.getContainerPath());
@@ -98,21 +98,23 @@ public class DockerTransformerImpl implements DockerTransformer {
         return volumes;
     }
 
-    @SuppressWarnings("unchecked")
     protected List<DockerInspectTransformVolume> transformMounts(List<Object> mounts) {
         if (mounts == null) {
             return null;
         }
         List<DockerInspectTransformVolume> volumes = new ArrayList<DockerInspectTransformVolume>();
         for (Object mount : mounts) {
-            Map<String, Object> mountObj = (Map<String, Object>)mount;
+            if (!(mount instanceof Map<?, ?>)) {
+                throw new ClassCastException("Docker mount entry is not a map: " + mount);
+            }
+            Map<?, ?> mountObj = (Map<?, ?>)mount;
             String am = ((boolean)mountObj.get(ACCESS_MODE)) ? DockerVolumeConstants.READ_WRITE : DockerVolumeConstants.READ_ONLY;
             String dr = (String)mountObj.get(DRIVER);
             String containerPath = (String)mountObj.get(DEST);
             String hostPath = (String)mountObj.get(SRC);
             String name = (String)mountObj.get(NAME);
             String externalId = null;
-            if (StringUtils.startsWith(hostPath, RANCHER_VOLUME_PREFIX)) {
+            if (hostPath != null && hostPath.startsWith(RANCHER_VOLUME_PREFIX)) {
                 name = Paths.get(hostPath).getFileName().toString();
                 dr = Paths.get(hostPath).getParent().getFileName().toString();
             }
@@ -129,14 +131,14 @@ public class DockerTransformerImpl implements DockerTransformer {
             boolean isBindMount = (dr == null);
             // TODO When we implement proper volume deletion in py-agent, we can change this so that if the driver is explicitly, local, we don't
             // use 'file://'
-            String uriPrefix = StringUtils.isEmpty(dr) || StringUtils.equals(dr, VolumeConstants.LOCAL_DRIVER) ? VolumeConstants.FILE_PREFIX : dr;
+            String uriPrefix = StringUtils.isEmpty(dr) || VolumeConstants.LOCAL_DRIVER.equals(dr) ? VolumeConstants.FILE_PREFIX : dr;
             String uri = String.format(VolumeConstants.URI_FORMAT, uriPrefix, hostPath);
             volumes.add(new DockerInspectTransformVolume(containerPath, uri, am, isBindMount, dr, name, externalId));
         }
         return volumes;
     }
 
-    Map<String, String> rwMap(Map<String, Boolean> volumeRws) {
+    Map<String, String> rwMap(Object volumeRws) {
         // TODO When this bug is fixed, switch to using java-docker's volumesRW
         // https://github.com/docker-java/docker-java/issues/205
         Map<String, String> rwMap = new HashMap<String, String>();
@@ -145,10 +147,11 @@ public class DockerTransformerImpl implements DockerTransformer {
             return rwMap;
         }
 
-        for (Map.Entry<String, Boolean> volume : volumeRws.entrySet()) {
-            Boolean readWrite = volume.getValue();
+        Map<?, ?> volumeRwMap = (Map<?, ?>)volumeRws;
+        for (Map.Entry<?, ?> volume : volumeRwMap.entrySet()) {
+            Boolean readWrite = Boolean.class.cast(volume.getValue());
             String perms = readWrite ? READ_WRITE : READ_ONLY;
-            rwMap.put(volume.getKey(), perms);
+            rwMap.put(String.class.cast(volume.getKey()), perms);
         }
 
         return rwMap;
@@ -166,6 +169,19 @@ public class DockerTransformerImpl implements DockerTransformer {
         return hostBindMounts;
     }
 
+    Set<String> bindSet(Bind[] binds) {
+        Set<String> hostBindMounts = new HashSet<String>();
+        if (binds == null)
+            return hostBindMounts;
+
+        for (Bind bindMount : binds) {
+            if (bindMount != null && StringUtils.isNotBlank(bindMount.getPath())) {
+                hostBindMounts.add(bindMount.getPath());
+            }
+        }
+        return hostBindMounts;
+    }
+
     @Override
     public void transform(Map<String, Object> fromInspect, Instance instance) {
         InspectContainerResponse inspect = transformInspect(fromInspect);
@@ -178,14 +194,14 @@ public class DockerTransformerImpl implements DockerTransformer {
 
         if (containerConfig != null) {
             instance.setHostname((String) fixEmptyValue(containerConfig.getHostName()));
-            setField(instance, FIELD_MEMORY, containerConfig.getMemoryLimit());
-            setField(instance, FIELD_CPU_SET, containerConfig.getCpuset());
-            setField(instance, FIELD_CPU_SHARES, containerConfig.getCpuShares());
-            setField(instance, FIELD_MEMORY_SWAP, containerConfig.getMemorySwap());
+            setField(instance, FIELD_MEMORY, fromInspect, CONFIG, "Memory");
+            setField(instance, FIELD_CPU_SET, fromInspect, CONFIG, "Cpuset");
+            setField(instance, FIELD_CPU_SHARES, fromInspect, CONFIG, "CpuShares");
+            setField(instance, FIELD_MEMORY_SWAP, fromInspect, CONFIG, "MemorySwap");
             setField(instance, FIELD_DOMAIN_NAME, containerConfig.getDomainName());
             setField(instance, FIELD_USER, containerConfig.getUser());
-            setField(instance, FIELD_TTY, containerConfig.isTty());
-            setField(instance, FIELD_STDIN_OPEN, containerConfig.isStdinOpen());
+            setField(instance, FIELD_TTY, containerConfig.getTty());
+            setField(instance, FIELD_STDIN_OPEN, containerConfig.getStdinOpen());
             setImage(instance, containerConfig.getImage());
             setField(instance, FIELD_WORKING_DIR, containerConfig.getWorkingDir());
             setEnvironment(instance, containerConfig.getEnv());
@@ -203,8 +219,8 @@ public class DockerTransformerImpl implements DockerTransformer {
         }
 
         if (hostConfig != null) {
-            setField(instance, FIELD_PRIVILEGED, hostConfig.isPrivileged());
-            setField(instance, FIELD_PUBLISH_ALL_PORTS, hostConfig.isPublishAllPorts());
+            setField(instance, FIELD_PRIVILEGED, hostConfig.getPrivileged());
+            setField(instance, FIELD_PUBLISH_ALL_PORTS, hostConfig.getPublishAllPorts());
             setLxcConf(instance, hostConfig.getLxcConf());
             setListField(instance, FIELD_DNS, hostConfig.getDns());
             setListField(instance, FIELD_DNS_SEARCH, hostConfig.getDnsSearch());
@@ -279,7 +295,6 @@ public class DockerTransformerImpl implements DockerTransformer {
         }
     }
 
-    @SuppressWarnings({ "rawtypes", "unchecked" })
     void setBlkioDeviceOptionss(Instance instance, Map<String, Object> fromInspect) {
         /*
          * We're coverting from docker's structure of:
@@ -291,9 +306,9 @@ public class DockerTransformerImpl implements DockerTransformer {
         Map<String, BlkioDeviceOption> target = new HashMap<>();
 
         for (String field : fields) {
-            List<Map> deviceOptions = null;
+            List<?> deviceOptions = null;
             try {
-                deviceOptions = (List<Map>)CollectionUtils.toList(CollectionUtils.getNestedValue(fromInspect, HOST_CONFIG, field));
+                deviceOptions = CollectionUtils.toList(CollectionUtils.getNestedValue(fromInspect, HOST_CONFIG, field));
             } catch (Exception e) {
                 continue;
             }
@@ -302,12 +317,13 @@ public class DockerTransformerImpl implements DockerTransformer {
                 continue;
             }
 
-            for (Map deviceOption : deviceOptions) {
+            for (Object deviceOptionValue : deviceOptions) {
+                Map<?, ?> deviceOption = (Map<?, ?>)deviceOptionValue;
                 String path = null;
                 Integer value = null;
                 try {
-                    path = (String)deviceOption.get("Path");
-                    value = (Integer)(field == WEIGHT ? deviceOption.get("Weight") : deviceOption.get("Rate"));
+                    path = String.class.cast(deviceOption.get("Path"));
+                    value = Integer.class.cast(field == WEIGHT ? deviceOption.get("Weight") : deviceOption.get("Rate"));
                 } catch (Exception e) {
                     // just skip it
                 }
@@ -349,7 +365,7 @@ public class DockerTransformerImpl implements DockerTransformer {
             return;
 
         String netMode = null;
-        if (containerConfig != null && containerConfig.isNetworkDisabled()) {
+        if (containerConfig != null && Boolean.TRUE.equals(containerConfig.getNetworkDisabled())) {
             netMode = NetworkConstants.NETWORK_MODE_NONE;
         } else if (hostConfig != null) {
             String inspectNetMode = hostConfig.getNetworkMode();
@@ -359,7 +375,7 @@ public class DockerTransformerImpl implements DockerTransformer {
                 netMode = inspectNetMode;
             } else if (NetworkConstants.NETWORK_MODE_DEFAULT.equals(inspectNetMode) || StringUtils.isBlank(inspectNetMode)) {
                 netMode = NetworkConstants.NETWORK_MODE_BRIDGE;
-            } else if (StringUtils.startsWith(inspectNetMode, NetworkConstants.NETWORK_MODE_CONTAINER)) {
+            } else if (inspectNetMode != null && inspectNetMode.startsWith(NetworkConstants.NETWORK_MODE_CONTAINER)) {
                 throw new ClientVisibleException(ResponseCodes.UNPROCESSABLE_ENTITY, ValidationErrorCodes.INVALID_OPTION,
                         "Transformer API does not support container network mode.", null);
             } else {
@@ -383,7 +399,6 @@ public class DockerTransformerImpl implements DockerTransformer {
         }
     }
 
-    @SuppressWarnings("unchecked")
     void setLogConfig(Instance instance, Map<String, Object> fromInspect) {
         Object type = CollectionUtils.getNestedValue(fromInspect, HOST_CONFIG, "LogConfig", "Type");
         Object config = CollectionUtils.getNestedValue(fromInspect, HOST_CONFIG, "LogConfig", "Config");
@@ -396,14 +411,13 @@ public class DockerTransformerImpl implements DockerTransformer {
         if (type != null) {
             logConfig.setDriver(type.toString());
         }
-        if (config instanceof Map) {
-            logConfig.setConfig((Map<String, String>)config);
+        if (config instanceof Map<?, ?>) {
+            logConfig.setConfig(stringMap((Map<?, ?>)config));
         }
 
         setField(instance, FIELD_LOG_CONFIG, logConfig);
     }
     
-    @SuppressWarnings("unchecked")
     void setUlimit(Instance instance, Map<String, Object> fromInspect) {
         Object ulimits = CollectionUtils.getNestedValue(fromInspect, HOST_CONFIG, "Ulimits");
 
@@ -412,11 +426,11 @@ public class DockerTransformerImpl implements DockerTransformer {
         }
 
         List<Ulimit> ret = new ArrayList<>();
-        if (ulimits instanceof List) {
-            for (Object ulimit : (List<Object>) ulimits) {
-                if (ulimit instanceof Map) {
+        if (ulimits instanceof List<?>) {
+            for (Object ulimit : (List<?>) ulimits) {
+                if (ulimit instanceof Map<?, ?>) {
                     Ulimit l = new Ulimit();
-                    Map<String, Object> temp = (Map<String, Object>) ulimit;
+                    Map<?, ?> temp = (Map<?, ?>) ulimit;
                     if (temp.get("Name") instanceof String) {
                         l.setName(temp.get("Name").toString());
                     }
@@ -437,14 +451,22 @@ public class DockerTransformerImpl implements DockerTransformer {
         }
     }
 
+    private static Map<String, String> stringMap(Map<?, ?> source) {
+        Map<String, String> result = new HashMap<String, String>(source.size());
+        for (Map.Entry<?, ?> entry : source.entrySet()) {
+            result.put(String.class.cast(entry.getKey()),
+                    entry.getValue() == null ? null : String.class.cast(entry.getValue()));
+        }
+        return result;
+    }
+
     @Override
-    @SuppressWarnings({ "rawtypes" })
     public void setLabels(Instance instance, Map<String, Object> fromInspect) {
         // Labels not yet implemented in docker-java. Need to use the raw map
         Object l = CollectionUtils.getNestedValue(fromInspect, "Config", "Labels");
         Map<String, Object> cleanedLabels = new HashMap<String, Object>();
-        if (l instanceof Map) {
-            Map labels = (Map)l;
+        if (l instanceof Map<?, ?>) {
+            Map<?, ?> labels = (Map<?, ?>)l;
             for (Object key : labels.keySet()) {
                 if (key == null)
                     continue;
@@ -563,8 +585,9 @@ public class DockerTransformerImpl implements DockerTransformer {
             if (bindings != null && bindings.length > 0) {
                 for (Binding b : bindings) {
                     // HostPort should really be a string, not an int.  Somehow empty string becomes 0
-                    if (b.getHostPort() != null && b.getHostPort() != 0) {
-                        String fullPort = b.getHostPort() + ":" + port;
+                    String hostPort = b.getHostPortSpec();
+                    if (StringUtils.isNotBlank(hostPort) && !"0".equals(hostPort)) {
+                        String fullPort = hostPort + ":" + port;
                         ports.add(fullPort);
                     } else {
                         ports.add(port);
@@ -584,6 +607,23 @@ public class DockerTransformerImpl implements DockerTransformer {
 
         if (binds != null) {
             dataVolumes.addAll(Arrays.asList(binds));
+        }
+
+        setField(instance, InstanceConstants.FIELD_DATA_VOLUMES, dataVolumes);
+    }
+
+    void setVolumes(Instance instance, Map<String, ?> volumes, Bind[] binds) {
+        List<String> dataVolumes = new ArrayList<String>();
+        if (volumes != null) {
+            dataVolumes.addAll(volumes.keySet());
+        }
+
+        if (binds != null) {
+            for (Bind bind : binds) {
+                if (bind != null) {
+                    dataVolumes.add(bind.toString());
+                }
+            }
         }
 
         setField(instance, InstanceConstants.FIELD_DATA_VOLUMES, dataVolumes);
@@ -632,16 +672,11 @@ public class DockerTransformerImpl implements DockerTransformer {
         DataAccessor.fields(instance).withKey(field).set(fieldValue);
     }
 
-    @SuppressWarnings({ "rawtypes", "unused" })
     private Object fixEmptyValue(Object fieldValue) {
         if (fieldValue instanceof String && StringUtils.isEmpty((String)fieldValue)) {
             return null;
         } else if (fieldValue instanceof Number && ((Number)fieldValue).longValue() == 0L) {
             return null;
-        } else if (fieldValue instanceof List && fieldValue == null) {
-            return new ArrayList();
-        } else if (fieldValue instanceof Map && fieldValue == null) {
-            return new HashMap();
         }
         return fieldValue;
     }

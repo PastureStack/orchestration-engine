@@ -13,8 +13,8 @@ import io.cattle.platform.process.base.AbstractDefaultProcessHandler;
 
 import java.util.List;
 
-import javax.inject.Inject;
-import javax.inject.Named;
+import jakarta.inject.Inject;
+import jakarta.inject.Named;
 
 @Named
 public class NetworkdriverRemove extends AbstractDefaultProcessHandler {

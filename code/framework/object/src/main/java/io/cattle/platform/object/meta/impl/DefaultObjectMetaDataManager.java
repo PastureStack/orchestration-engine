@@ -3,6 +3,7 @@ package io.cattle.platform.object.meta.impl;
 import static io.cattle.platform.object.meta.Relationship.RelationshipType.*;
 
 import io.cattle.platform.archaius.util.ArchaiusUtil;
+import io.cattle.platform.archaius.util.ConfigProperty;
 import io.cattle.platform.engine.process.ProcessDefinition;
 import io.cattle.platform.engine.process.StateTransition;
 import io.cattle.platform.object.jooq.utils.JooqUtils;
@@ -41,17 +42,18 @@ import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.TreeSet;
 import java.util.WeakHashMap;
 
-import javax.annotation.PostConstruct;
-import javax.inject.Inject;
-import javax.inject.Named;
-import javax.persistence.Column;
+import jakarta.annotation.PostConstruct;
+import jakarta.inject.Inject;
+import jakarta.inject.Named;
+import jakarta.persistence.Column;
 
-import org.apache.commons.beanutils.PropertyUtils;
+import org.apache.commons.beanutils2.PropertyUtils;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
 import org.jooq.ForeignKey;
@@ -61,6 +63,9 @@ import org.jooq.TableField;
 import com.google.common.collect.Lists;
 
 public class DefaultObjectMetaDataManager implements ObjectMetaDataManager, InitializationTask, Priority {
+
+    private static final Map<String, ConfigProperty<String>> STRING_SETTINGS = new ConcurrentHashMap<String, ConfigProperty<String>>();
+    private static final Map<String, ConfigProperty<Boolean>> BOOLEAN_SETTINGS = new ConcurrentHashMap<String, ConfigProperty<Boolean>>();
 
     SchemaFactory schemaFactory;
     List<TypeSet> typeSets;
@@ -222,7 +227,7 @@ public class DefaultObjectMetaDataManager implements ObjectMetaDataManager, Init
                         Schema schema = schemaFactory.getSchema(rel.getObjectType());
                         if (schema != null && schema.getId().endsWith(ObjectMetaDataManager.MAP_SUFFIX)) {
                             CollectionUtils.addToMap(foundRelationship, rel.getObjectType(),
-                                    (Pair<Class<?>, Relationship>) new ImmutablePair<Class<?>, Relationship>(entry.getKey(), rel), ArrayList.class);
+                                    (Pair<Class<?>, Relationship>) new ImmutablePair<Class<?>, Relationship>(entry.getKey(), rel), ArrayList::new);
                         }
                     }
                 }
@@ -279,13 +284,36 @@ public class DefaultObjectMetaDataManager implements ObjectMetaDataManager, Init
     }
 
     private String getLinkNameOverride(String objectName, String property, String defaultName) {
-        String mapNameOverride = ArchaiusUtil.getString(String.format("object.link.name.%s.%s.override", objectName, property).toLowerCase()).get();
+        String mapNameOverride = getStringSetting(String.format("object.link.name.%s.%s.override", objectName, property).toLowerCase());
         return mapNameOverride == null ? defaultName : mapNameOverride;
     }
 
     private boolean excludeRelationShip(String objectName, String fieldToIgnore) {
-        return ArchaiusUtil.getBoolean(
-                String.format("object.link.ignore.%s.%s", objectName, fieldToIgnore).toLowerCase()).get();
+        return getBooleanSetting(String.format("object.link.ignore.%s.%s", objectName, fieldToIgnore).toLowerCase());
+    }
+
+    protected String getStringSetting(String key) {
+        ConfigProperty<String> property = STRING_SETTINGS.get(key);
+        if (property == null) {
+            property = ArchaiusUtil.getStringProperty(key);
+            ConfigProperty<String> existing = STRING_SETTINGS.putIfAbsent(key, property);
+            if (existing != null) {
+                property = existing;
+            }
+        }
+        return property.get();
+    }
+
+    protected Boolean getBooleanSetting(String key) {
+        ConfigProperty<Boolean> property = BOOLEAN_SETTINGS.get(key);
+        if (property == null) {
+            property = ArchaiusUtil.getBooleanProperty(key);
+            ConfigProperty<Boolean> existing = BOOLEAN_SETTINGS.putIfAbsent(key, property);
+            if (existing != null) {
+                property = existing;
+            }
+        }
+        return property.get();
     }
 
     protected void register(String mappingName, Class<?> mappingType, Pair<Class<?>, Relationship> left, Pair<Class<?>, Relationship> right) {
@@ -375,8 +403,7 @@ public class DefaultObjectMetaDataManager implements ObjectMetaDataManager, Init
         Schema localSchema = schemaFactory.getSchema(localType);
         String childName = localSchema.getPluralName();
 
-        String childNameOverride = ArchaiusUtil.getString(
-                String.format("object.link.name.%s.%s.override", localType.getSimpleName(), propertyName).toLowerCase()).get();
+        String childNameOverride = getStringSetting(String.format("object.link.name.%s.%s.override", localType.getSimpleName(), propertyName).toLowerCase());
 
         if (childNameOverride != null) {
             childName = childNameOverride;

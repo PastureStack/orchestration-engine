@@ -57,12 +57,12 @@ cleanup()
 
 ca_cert()
 {
-    mkdir -p /usr/share/ca-certificates/rancher
-    cat > /usr/share/ca-certificates/rancher/agent-ca.crt << EOF
+    mkdir -p /usr/share/ca-certificates/pasturestack
+    cat > /usr/share/ca-certificates/pasturestack/agent-ca.crt << EOF
 %CERT%
 EOF
-    if ! grep -q rancher/agent-ca.crt /etc/ca-certificates.conf; then
-        echo rancher/agent-ca.crt >> /etc/ca-certificates.conf
+    if ! grep -q pasturestack/agent-ca.crt /etc/ca-certificates.conf; then
+        echo pasturestack/agent-ca.crt >> /etc/ca-certificates.conf
     fi
 
     update-ca-certificates
@@ -109,12 +109,14 @@ upgrade()
 
         info Upgrading to image ${REQUIRED_IMAGE}
 
-        while docker inspect rancher-agent-upgrade >/dev/null 2>&1; do
-            docker rm -f rancher-agent-upgrade
-            sleep 1
+        for upgrade_container in pasturestack-node-agent-upgrade rancher-agent-upgrade; do
+            while docker inspect "${upgrade_container}" >/dev/null 2>&1; do
+                docker rm -f "${upgrade_container}"
+                sleep 1
+            done
         done
 
-        timeout 300 docker run --privileged --name rancher-agent-upgrade -v /var/run/docker.sock:/var/run/docker.sock ${REQUIRED_IMAGE} upgrade
+        timeout 300 docker run --privileged --name pasturestack-node-agent-upgrade -v /var/run/docker.sock:/var/run/docker.sock ${REQUIRED_IMAGE} upgrade
         exit 0
     elif [ -n "${REQUIRED_IMAGE}" ]; then
         info Using image ${REQUIRED_IMAGE}
@@ -123,7 +125,13 @@ upgrade()
 
 get_running_image()
 {
-    echo $(docker inspect -f '{{.Config.Image}}' rancher-agent)
+    for agent_container in pasturestack-node-agent rancher-agent; do
+        if docker inspect "${agent_container}" >/dev/null 2>&1; then
+            docker inspect -f '{{.Config.Image}}' "${agent_container}"
+            return
+        fi
+    done
+    return 1
 }
 
 cd $(dirname $0)

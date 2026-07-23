@@ -50,11 +50,11 @@ public class PortSpec {
                 throw new ClientVisibleException(ResponseCodes.UNPROCESSABLE_ENTITY, WRONG_FORMAT, "the specified port spec format is wrong", null);
             }
             ipAddr = parts[0].replace("[", "");
-            spec = StringUtils.removeStart(parts[1], ":");
+            spec = removeLeadingColon(parts[1]);
         } else if (StringUtils.countMatches(spec, ":") == 2) {
             parts = spec.split("\\:", 2);
             ipAddr = parts[0];
-            spec = StringUtils.removeStart(parts[1], ":");
+            spec = removeLeadingColon(parts[1]);
         }
 
         Matcher m = PATTERN.matcher(spec);
@@ -129,6 +129,10 @@ public class PortSpec {
             bindIP = this.ipAddress + ":";
         }
         return bindIP + publicPort + privatePortProto;
+    }
+
+    private static String removeLeadingColon(String value) {
+        return value != null && value.startsWith(":") ? value.substring(1) : value;
     }
 
     @Override

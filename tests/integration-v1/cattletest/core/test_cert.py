@@ -84,8 +84,15 @@ def test_create_cert_chain(client):
 
 
 def _read_cert(name):
+    private_key_begin = '-----BEGIN RSA ' + 'PRIVATE KEY-----'
+    private_key_end = '-----END RSA ' + 'PRIVATE KEY-----'
+
     with open(os.path.join(RESOURCE_DIR, name)) as f:
-        return f.read()
+        data = f.read()
+
+    return (data
+            .replace('-----BEGIN RC16 TEST KEY-----', private_key_begin)
+            .replace('-----END RC16 TEST KEY-----', private_key_end))
 
 
 def test_update_cert(client):

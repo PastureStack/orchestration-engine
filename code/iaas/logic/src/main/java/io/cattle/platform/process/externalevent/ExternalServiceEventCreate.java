@@ -35,9 +35,10 @@ import java.util.Map;
 import java.util.List;
 import java.util.concurrent.Callable;
 
-import javax.inject.Inject;
-import javax.inject.Named;
+import jakarta.inject.Inject;
+import jakarta.inject.Named;
 
+import org.apache.commons.lang3.Strings;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -83,13 +84,13 @@ public class ExternalServiceEventCreate extends AbstractDefaultProcessHandler {
                     return;
                 }
 
-                if (StringUtils.equals(event.getEventType(), TYPE_SERVICE_CREATE)) {
+                if (Strings.CS.equals(event.getEventType(), TYPE_SERVICE_CREATE)) {
                     createService(event, serviceData);
-                } else if (StringUtils.equals(event.getEventType(), TYPE_SERVICE_UPDATE)) {
+                } else if (Strings.CS.equals(event.getEventType(), TYPE_SERVICE_UPDATE)) {
                     updateService(event, serviceData);
-                } else if (StringUtils.equals(event.getEventType(), TYPE_SERVICE_DELETE)) {
+                } else if (Strings.CS.equals(event.getEventType(), TYPE_SERVICE_DELETE)) {
                     deleteService(event, serviceData);
-                } else if (StringUtils.equals(event.getEventType(), TYPE_STACK_DELETE)) {
+                } else if (Strings.CS.equals(event.getEventType(), TYPE_STACK_DELETE)) {
                     deleteStack(event, serviceData);
                 }
             }

@@ -94,13 +94,11 @@ public class ValidationHandlerTest {
         handler.validateOperationField(factory.getSchema(ParentType.class), request, true, context);
 
         Map<String, Object> result = RequestUtils.toMap(request.getRequestObject());
-        @SuppressWarnings("unchecked")
-        Map<String, Object> childData = (Map<String, Object>)result.get("subType");
+        Map<?, ?> childData = (Map<?, ?>)result.get("subType");
 
         assertTrue(childData != null);
     }
 
-    @SuppressWarnings("unchecked")
     @Test
     public void testCreateArraySubtype() {
         SchemaFactoryImpl factory = new SchemaFactoryImpl();
@@ -130,11 +128,41 @@ public class ValidationHandlerTest {
         handler.validateOperationField(factory.getSchema(ParentType.class), request, true, context);
 
         Map<String, Object> result = RequestUtils.toMap(request.getRequestObject());
-        List<Object> childData = (List<Object>)result.get("subTypes");
+        List<?> childData = (List<?>)result.get("subTypes");
 
         assertTrue(childData != null);
-        assertEquals("abc", ((Map<String, Object>)childData.get(0)).get("testField"));
-        assertEquals("abc2", ((Map<String, Object>)childData.get(1)).get("testField"));
+        assertEquals("abc", ((Map<?, ?>)childData.get(0)).get("testField"));
+        assertEquals("abc2", ((Map<?, ?>)childData.get(1)).get("testField"));
+    }
+
+    @Test
+    public void testCreateMapSubtypeConvertsValuesAndPreservesKeys() {
+        SchemaImpl schema = new SchemaImpl();
+        FieldImpl field = new FieldImpl();
+        field.setType("map[int]");
+        field.setCreate(true);
+
+        schema.getResourceFields().put("settings", field);
+
+        ApiRequest request = new ApiRequest(null, null);
+        ValidationContext context = new ValidationContext();
+        ValidationHandler handler = new ValidationHandler();
+
+        Map<String, Object> settings = new HashMap<String, Object>();
+        settings.put("first", "1");
+        settings.put("second", 2);
+
+        Map<String, Object> input = new HashMap<String, Object>();
+        input.put("settings", settings);
+        request.setRequestObject(input);
+
+        handler.validateOperationField(schema, request, true, context);
+
+        Map<String, Object> result = RequestUtils.toMap(request.getRequestObject());
+        Map<?, ?> sanitizedSettings = (Map<?, ?>)result.get("settings");
+
+        assertEquals(Long.valueOf(1), sanitizedSettings.get("first"));
+        assertEquals(Long.valueOf(2), sanitizedSettings.get("second"));
     }
 
 }

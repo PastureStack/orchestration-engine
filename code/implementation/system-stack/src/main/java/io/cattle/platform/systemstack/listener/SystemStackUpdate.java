@@ -4,6 +4,7 @@ import static io.cattle.platform.core.model.tables.ServiceTable.*;
 import static io.cattle.platform.core.model.tables.StackTable.*;
 
 import io.cattle.platform.archaius.util.ArchaiusUtil;
+import io.cattle.platform.archaius.util.ConfigProperty;
 import io.cattle.platform.async.utils.TimeoutException;
 import io.cattle.platform.configitem.events.ConfigUpdate;
 import io.cattle.platform.configitem.model.Client;
@@ -45,18 +46,19 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 
-import org.apache.commons.lang3.ObjectUtils;
-import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.Strings;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.netflix.config.DynamicBooleanProperty;
-
 public class SystemStackUpdate extends AbstractJooqDao implements AnnotatedEventListener {
 
-    private static final DynamicBooleanProperty LAUNCH_COMPOSE_EXECUTOR = ArchaiusUtil.getBoolean("compose.executor.execute");
+    private static final ConfigProperty<Boolean> LAUNCH_COMPOSE_EXECUTOR = ArchaiusUtil.getBooleanProperty("compose.executor.execute");
+    private static final String[] COMPOSE_EXECUTOR_HANDLER_NAMES = new String[] {
+            "compose-executor",
+            "rancher-compose-executor"
+    };
 
     private static final Logger log = LoggerFactory.getLogger(SystemStackUpdate.class);
 
@@ -92,7 +94,7 @@ public class SystemStackUpdate extends AbstractJooqDao implements AnnotatedEvent
             return;
         }
 
-        final Client client = new Client(Account.class, new Long(update.getResourceId()));
+        final Client client = new Client(Account.class, Long.valueOf(update.getResourceId()));
         itemManager.runUpdateForEvent(SystemStackTrigger.STACKS, update, client, new Runnable() {
             @Override
             public void run() {
@@ -195,7 +197,7 @@ public class SystemStackUpdate extends AbstractJooqDao implements AnnotatedEvent
 
         boolean oldVm = DataAccessor.fieldBool(account, AccountConstants.FIELD_VIRTUAL_MACHINE);
         String oldOrch = DataAccessor.fieldString(account, AccountConstants.FIELD_ORCHESTRATION);
-        if (oldVm != virtualMachine || !ObjectUtils.equals(oldOrch, orchestration)) {
+        if (oldVm != virtualMachine || !java.util.Objects.equals(oldOrch, orchestration)) {
             objectManager.setFields(account,
                     AccountConstants.FIELD_ORCHESTRATION, orchestration,
                     AccountConstants.FIELD_VIRTUAL_MACHINE, virtualMachine);
@@ -205,12 +207,12 @@ public class SystemStackUpdate extends AbstractJooqDao implements AnnotatedEvent
     }
 
     public static String getStackTypeFromExternalId(String externalId) {
-        externalId = StringUtils.removeStart(externalId, "catalog://");
+        externalId = Strings.CS.removeStart(externalId, "catalog://");
         String[] parts = externalId.split(":");
         if (parts.length < 2) {
             return null;
         }
-        return StringUtils.removeStart(parts[1], "infra*");
+        return Strings.CS.removeStart(parts[1], "infra*");
     }
 
     public List<Long> createStacks(Account account) throws IOException {
@@ -260,13 +262,15 @@ public class SystemStackUpdate extends AbstractJooqDao implements AnnotatedEvent
         }
 
         for (int i = 0; i < 120; i++) {
-            ExternalHandler handler = objectManager.findAny(ExternalHandler.class,
-                    ObjectMetaDataManager.NAME_FIELD, "rancher-compose-executor",
-                    ObjectMetaDataManager.STATE_FIELD, CommonStatesConstants.ACTIVE);
-            if (handler != null) {
-                return true;
+            for (String handlerName : COMPOSE_EXECUTOR_HANDLER_NAMES) {
+                ExternalHandler handler = objectManager.findAny(ExternalHandler.class,
+                        ObjectMetaDataManager.NAME_FIELD, handlerName,
+                        ObjectMetaDataManager.STATE_FIELD, CommonStatesConstants.ACTIVE);
+                if (handler != null) {
+                    return true;
+                }
             }
-            log.info("Waiting for rancher-compose-executor");
+            log.info("Waiting for compose-executor");
 
             try {
                 Thread.sleep(2000);
@@ -275,7 +279,7 @@ public class SystemStackUpdate extends AbstractJooqDao implements AnnotatedEvent
             }
         }
 
-        throw new TimeoutException("Failed to find rancher-compose-executor");
+        throw new TimeoutException("Failed to find compose-executor");
     }
 
 }

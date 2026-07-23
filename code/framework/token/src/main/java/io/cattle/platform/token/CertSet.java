@@ -45,7 +45,6 @@ public class CertSet {
     protected void write(ZipOutputStream zos, String name, Object obj) throws IOException {
         ZipEntry ze = new ZipEntry(name);
         zos.putNextEntry(ze);
-        @SuppressWarnings("resource")
         JcaPEMWriter writer = new JcaPEMWriter(new OutputStreamWriter(zos));
         writer.writeObject(obj);
         writer.flush();

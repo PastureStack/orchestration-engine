@@ -30,17 +30,17 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 
 import org.apache.cloudstack.managed.context.ManagedContext;
 import org.apache.cloudstack.managed.context.impl.DefaultManagedContext;
-import org.apache.commons.lang3.StringUtils;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
+import org.apache.commons.lang3.Strings;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class IdentityManager extends AbstractNoOpResourceManager {
 
-    private static final Log logger = LogFactory.getLog(IdentityManager.class);
+    private static final Logger logger = LoggerFactory.getLogger(IdentityManager.class);
 
     private Map<String, IdentityProvider> identityProviders;
 
@@ -48,7 +48,7 @@ public class IdentityManager extends AbstractNoOpResourceManager {
 
     @Inject
     ExternalServiceAuthProvider externalAuthProvider;
-    
+
     @Inject
     ExternalServiceTokenUtil tokenUtil;
 
@@ -57,7 +57,6 @@ public class IdentityManager extends AbstractNoOpResourceManager {
         return new Class<?>[]{Identity.class};
     }
 
-    @SuppressWarnings("unchecked")
     @Override
     public Object listInternal(SchemaFactory schemaFactory, String type, Map<Object, Object> criteria, ListOptions options) {
 
@@ -65,11 +64,11 @@ public class IdentityManager extends AbstractNoOpResourceManager {
             return Collections.singletonList(projectMemberToIdentity((String) criteria.get("id")));
         }
         if (criteria.containsKey("name")) {
-            Condition search = ((List<Condition>) criteria.get("name")).get(0);
+            Condition search = firstCondition(criteria.get("name"));
             return searchIdentites((String)search.getValue(), true);
         }
         if (criteria.containsKey("all")) {
-            Condition search = ((List<Condition>) criteria.get("all")).get(0);
+            Condition search = firstCondition(criteria.get("all"));
             return searchIdentites((String)search.getValue(), false);
         }
         // Only for SAML
@@ -77,7 +76,7 @@ public class IdentityManager extends AbstractNoOpResourceManager {
             if (tokenUtil.findAndSetJWT()) {
                 Set<Identity> identitiesInToken = tokenUtil.getIdentities();
                 for (Identity identity : identitiesInToken) {
-                    if (StringUtils.equals(identity.getExternalIdType(), ServiceAuthConstants.USER_TYPE.get())) {
+                    if (Strings.CS.equals(identity.getExternalIdType(), ServiceAuthConstants.USER_TYPE.get())) {
                        identity.setUser(true);
                        break;
                     }
@@ -88,6 +87,11 @@ public class IdentityManager extends AbstractNoOpResourceManager {
         }
         Policy policy = (Policy) ApiContext.getContext().getPolicy();
         return refreshIdentities(policy.getIdentities());
+    }
+
+    static Condition firstCondition(Object value) {
+        List<?> conditions = List.class.cast(value);
+        return Condition.class.cast(conditions.get(0));
     }
 
     /**

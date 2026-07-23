@@ -41,7 +41,7 @@ def test_edit_host_label(super_client, context):
 def _assert_labels(labels_list, checking_for_labels):
     labels_map = _get_labels_map(labels_list)
 
-    for k, v in checking_for_labels.items():
+    for k, v in list(checking_for_labels.items()):
         assert labels_map.get(k) is not None and labels_map.get(k) == v
 
 

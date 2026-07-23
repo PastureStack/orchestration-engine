@@ -1,0 +1,85 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+cd "$(dirname "$0")/.."
+
+workdir=$(mktemp -d "${TMPDIR:-/tmp}/cattle-runtime-framework.XXXXXX")
+trap 'rm -rf "$workdir"' EXIT
+
+write_pom() {
+    local path="$1"
+    local spring_version="$2"
+    local jetty_version="${3:-12.1.10}"
+    mkdir -p "$(dirname "$path")"
+    cat >"$path" <<XML
+<project xmlns="http://maven.apache.org/POM/4.0.0">
+  <modelVersion>4.0.0</modelVersion>
+  <groupId>fixture</groupId>
+  <artifactId>fixture</artifactId>
+  <version>1</version>
+  <properties>
+    <spring.version>${spring_version}</spring.version>
+    <jetty.version>${jetty_version}</jetty.version>
+  </properties>
+  <dependencies>
+    <dependency>
+      <groupId>org.springframework</groupId>
+      <artifactId>spring-core</artifactId>
+      <version>\${spring.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.eclipse.jetty</groupId>
+      <artifactId>jetty-server</artifactId>
+      <version>\${jetty.version}</version>
+    </dependency>
+  </dependencies>
+</project>
+XML
+}
+
+positive_spring6="$workdir/positive-spring6"
+write_pom "$positive_spring6/pom.xml" "6.2.18"
+mkdir -p "$positive_spring6/code/packaging/app/target/app/WEB-INF/lib"
+: >"$positive_spring6/code/packaging/app/target/app/WEB-INF/lib/spring-core-6.2.18.jar"
+: >"$positive_spring6/code/packaging/app/target/app/WEB-INF/lib/jetty-server-12.1.10.jar"
+RC16_CATTLE_SOURCE_ROOT="$positive_spring6" scripts/check-cattle-runtime-framework-boundary >"$workdir/positive-spring6.out"
+grep -Fq 'CATTLE_RUNTIME_FRAMEWORK_BOUNDARY_OK spring7_evaluation=0' "$workdir/positive-spring6.out"
+
+spring7_default="$workdir/spring7-default"
+write_pom "$spring7_default/pom.xml" "7.0.7"
+mkdir -p "$spring7_default/code/packaging/app/target/app/WEB-INF/lib"
+: >"$spring7_default/code/packaging/app/target/app/WEB-INF/lib/spring-core-7.0.7.jar"
+if RC16_CATTLE_SOURCE_ROOT="$spring7_default" scripts/check-cattle-runtime-framework-boundary >"$workdir/spring7-default.out" 2>&1; then
+    echo "expected Spring 7 default fixture to fail without opt-in" >&2
+    cat "$workdir/spring7-default.out" >&2
+    exit 1
+fi
+grep -Fq 'set RC16_ALLOW_SPRING7_EVALUATION=1' "$workdir/spring7-default.out"
+grep -Fq 'CATTLE_RUNTIME_FRAMEWORK_BOUNDARY_FAIL spring7_evaluation=0' "$workdir/spring7-default.out"
+
+spring7_optin="$workdir/spring7-optin"
+write_pom "$spring7_optin/pom.xml" "7.0.7"
+mkdir -p "$spring7_optin/code/packaging/app/target/app/WEB-INF/lib"
+: >"$spring7_optin/code/packaging/app/target/app/WEB-INF/lib/spring-core-7.0.7.jar"
+RC16_ALLOW_SPRING7_EVALUATION=1 RC16_CATTLE_SOURCE_ROOT="$spring7_optin" scripts/check-cattle-runtime-framework-boundary >"$workdir/spring7-optin.out"
+grep -Fq 'CATTLE_RUNTIME_FRAMEWORK_BOUNDARY_OK spring7_evaluation=1' "$workdir/spring7-optin.out"
+
+spring71_optin="$workdir/spring71-optin"
+write_pom "$spring71_optin/pom.xml" "7.1.0"
+if RC16_ALLOW_SPRING7_EVALUATION=1 RC16_CATTLE_SOURCE_ROOT="$spring71_optin" scripts/check-cattle-runtime-framework-boundary >"$workdir/spring71-optin.out" 2>&1; then
+    echo "expected Spring 7.1 opt-in fixture to fail outside reviewed 7.0.x line" >&2
+    cat "$workdir/spring71-optin.out" >&2
+    exit 1
+fi
+grep -Fq 'outside the reviewed Spring 7.0.x evaluation line' "$workdir/spring71-optin.out"
+
+spring7_milestone="$workdir/spring7-milestone"
+write_pom "$spring7_milestone/pom.xml" "7.0.8-M1"
+if RC16_ALLOW_SPRING7_EVALUATION=1 RC16_CATTLE_SOURCE_ROOT="$spring7_milestone" scripts/check-cattle-runtime-framework-boundary >"$workdir/spring7-milestone.out" 2>&1; then
+    echo "expected Spring 7 milestone fixture to fail" >&2
+    cat "$workdir/spring7-milestone.out" >&2
+    exit 1
+fi
+grep -Fq 'uses an unreviewed qualifier' "$workdir/spring7-milestone.out"
+
+echo "CATTLE_RUNTIME_FRAMEWORK_BOUNDARY_FIXTURES_OK"

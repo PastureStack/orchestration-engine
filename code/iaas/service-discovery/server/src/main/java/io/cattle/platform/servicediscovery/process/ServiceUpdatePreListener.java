@@ -20,8 +20,8 @@ import io.cattle.platform.util.type.Priority;
 import java.util.List;
 import java.util.Map;
 
-import javax.inject.Inject;
-import javax.inject.Named;
+import jakarta.inject.Inject;
+import jakarta.inject.Named;
 
 /*
  * This code takes care of updating retainIp address field

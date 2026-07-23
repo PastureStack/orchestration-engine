@@ -135,7 +135,7 @@ public class ParseCollectionAttributes extends AbstractApiRequestHandler {
 
         try {
             if (limit != null) {
-                Integer limitInt = new Integer(limit);
+                Integer limitInt = Integer.valueOf(limit);
                 if (maxLimit != null && limitInt.intValue() > maxLimit.intValue()) {
                     limitInt = maxLimit;
                 }

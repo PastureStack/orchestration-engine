@@ -1,6 +1,7 @@
 package io.cattle.platform.configitem.server.model.impl;
 
 import io.cattle.platform.archaius.util.ArchaiusUtil;
+import io.cattle.platform.archaius.util.ConfigProperty;
 import io.cattle.platform.configitem.context.ConfigItemContextFactory;
 import io.cattle.platform.configitem.server.model.ConfigItem;
 import io.cattle.platform.configitem.server.model.ConfigItemFactory;
@@ -23,18 +24,16 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Callable;
 
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import com.netflix.config.DynamicBooleanProperty;
 
 public class GenericConfigItemFactory implements ConfigItemFactory, Named {
 
     private static final Logger log = LoggerFactory.getLogger(GenericConfigItemFactory.class);
 
-    private static final DynamicBooleanProperty IGNORE_FS = ArchaiusUtil.getBoolean("config.item.ignore.filesystem");
+    private static final ConfigProperty<Boolean> IGNORE_FS = ArchaiusUtil.getBooleanProperty("config.item.ignore.filesystem");
 
     ConfigItemStatusManager versionManager;
     List<ConfigItem> items = new ArrayList<ConfigItem>();

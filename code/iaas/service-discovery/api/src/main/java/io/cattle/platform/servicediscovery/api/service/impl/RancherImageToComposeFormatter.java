@@ -3,7 +3,7 @@ package io.cattle.platform.servicediscovery.api.service.impl;
 import io.cattle.platform.servicediscovery.api.resource.ServiceDiscoveryConfigItem;
 import io.cattle.platform.servicediscovery.api.service.RancherConfigToComposeFormatter;
 
-import javax.inject.Named;
+import jakarta.inject.Named;
 
 @Named
 public class RancherImageToComposeFormatter implements RancherConfigToComposeFormatter {

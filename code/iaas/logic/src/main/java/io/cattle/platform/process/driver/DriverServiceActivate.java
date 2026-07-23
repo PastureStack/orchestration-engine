@@ -23,10 +23,11 @@ import io.cattle.platform.process.lock.DriverLock;
 import io.cattle.platform.util.type.CollectionUtils;
 
 import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
-import javax.inject.Inject;
-import javax.inject.Named;
+import jakarta.inject.Inject;
+import jakarta.inject.Named;
 
 @Named
 public class DriverServiceActivate extends AbstractProcessLogic implements ProcessPreListener {
@@ -54,9 +55,7 @@ public class DriverServiceActivate extends AbstractProcessLogic implements Proce
         final Service service = (Service)state.getResource();
 
         for (final String driverKey : DRIVERS) {
-            @SuppressWarnings("unchecked")
-            final Map<String, Object> driverMap = DataAccessor.fields(service).withKey(driverKey)
-                    .withDefault(Collections.EMPTY_MAP).as(Map.class);
+            final Map<String, Object> driverMap = driverFields(DataAccessor.fields(service).withKey(driverKey).get());
             if (driverMap.size() == 0) {
                 continue;
             }
@@ -75,6 +74,19 @@ public class DriverServiceActivate extends AbstractProcessLogic implements Proce
         }
 
         return null;
+    }
+
+    static Map<String, Object> driverFields(Object value) {
+        if (value == null) {
+            return Collections.emptyMap();
+        }
+
+        Map<String, Object> result = new LinkedHashMap<String, Object>();
+        Map<?, ?> fields = Map.class.cast(value);
+        for (Map.Entry<?, ?> field : fields.entrySet()) {
+            result.put(String.class.cast(field.getKey()), field.getValue());
+        }
+        return result;
     }
 
     protected Object findDriver(String driverKey, Service service, Map<String, Object> fields) {

@@ -18,7 +18,7 @@ import io.cattle.platform.util.type.Priority;
 import java.util.HashMap;
 import java.util.Map;
 
-import javax.inject.Named;
+import jakarta.inject.Named;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

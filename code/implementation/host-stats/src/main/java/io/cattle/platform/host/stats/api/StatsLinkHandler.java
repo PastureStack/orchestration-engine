@@ -2,6 +2,7 @@ package io.cattle.platform.host.stats.api;
 
 import io.cattle.platform.api.link.LinkHandler;
 import io.cattle.platform.archaius.util.ArchaiusUtil;
+import io.cattle.platform.archaius.util.ConfigProperty;
 import io.cattle.platform.core.constants.HostConstants;
 import io.cattle.platform.core.constants.InstanceConstants;
 import io.cattle.platform.core.model.Host;
@@ -18,14 +19,15 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 
-import com.netflix.config.DynamicStringProperty;
-
-@Deprecated
+/**
+ * Legacy `stats` link kept for backward compatibility with older Rancher 1.6
+ * clients while newer callers use the host/container stats links.
+ */
 public class StatsLinkHandler implements LinkHandler {
 
-    private static final DynamicStringProperty HOST_STATS_PATH = ArchaiusUtil.getString("host.stats.path");
+    private static final ConfigProperty<String> HOST_STATS_PATH = ArchaiusUtil.getStringProperty("host.stats.path");
 
     HostApiService hostApiService;
     ObjectManager objectManager;

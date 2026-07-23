@@ -14,7 +14,7 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 
 import org.apache.commons.codec.binary.Base64;
 import org.slf4j.Logger;
@@ -40,7 +40,7 @@ public class HostTemplateManager extends AbstractJooqResourceManager {
     }
 
     @Override
-    protected <T> T createAndScheduleObject(Class<T> clz, Map<String, Object> properties) {
+    protected Object createAndScheduleObject(Class<?> clz, Map<String, Object> properties) {
         Object value = DataAccessor.fromMap(properties).withKey("secretValues").get();
         if (value != null) {
             try {
@@ -54,7 +54,7 @@ public class HostTemplateManager extends AbstractJooqResourceManager {
                 throw new ClientVisibleException(ResponseCodes.SERVICE_UNAVAILABLE);
             }
         }
-        T result = super.createAndScheduleObject(clz, properties);
+        Object result = super.createAndScheduleObject(clz, properties);
         DataAccessor.setField(result, "secretValues", value);
         return result;
     }

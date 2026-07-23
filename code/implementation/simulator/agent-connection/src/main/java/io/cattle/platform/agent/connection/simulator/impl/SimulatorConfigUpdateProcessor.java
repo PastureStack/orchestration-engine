@@ -11,21 +11,22 @@ import io.cattle.platform.eventing.model.EventVO;
 import io.cattle.platform.iaas.event.IaasEvents;
 import io.cattle.platform.json.JsonMapper;
 import io.cattle.platform.object.ObjectManager;
+import io.cattle.platform.util.net.UrlUtils;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.HttpURLConnection;
-import java.net.URL;
 import java.net.URLConnection;
+import java.nio.charset.Charset;
 import java.util.Map;
+import java.util.Objects;
 import java.util.zip.GZIPInputStream;
 
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 
 import org.apache.commons.compress.archivers.tar.TarArchiveEntry;
 import org.apache.commons.compress.archivers.tar.TarArchiveInputStream;
 import org.apache.commons.io.IOUtils;
-import org.apache.commons.lang3.ObjectUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -51,7 +52,7 @@ public class SimulatorConfigUpdateProcessor implements AgentSimulatorEventProces
             return null;
         }
 
-        String auth = ObjectUtils.toString(authMap.get("CATTLE_AGENT_INSTANCE_AUTH"), null);
+        String auth = Objects.toString(authMap.get("CATTLE_AGENT_INSTANCE_AUTH"), null);
         if (auth == null) {
             throw new IllegalStateException("Failed to get auth for agent [" + agent.getId() + "]");
         }
@@ -64,7 +65,7 @@ public class SimulatorConfigUpdateProcessor implements AgentSimulatorEventProces
     }
 
     protected URLConnection getConnection(String url, String auth) throws IOException {
-        URLConnection urlConnection = new URL(url).openConnection();
+        URLConnection urlConnection = UrlUtils.toURL(url).openConnection();
         urlConnection.addRequestProperty("Authorization", auth);
 
         return urlConnection;
@@ -87,11 +88,11 @@ public class SimulatorConfigUpdateProcessor implements AgentSimulatorEventProces
             TarArchiveEntry entry = null;
             String version = null;
 
-            while ((entry = tar.getNextTarEntry()) != null) {
+            while ((entry = tar.getNextEntry()) != null) {
                 log.info("Simulator in [{}] file [{}]", item.getName(), entry.getName());
 
                 if (entry.getName().endsWith("/version")) {
-                    version = IOUtils.toString(tar).trim();
+                    version = IOUtils.toString(tar, Charset.defaultCharset()).trim();
                     log.info("Simulator found version [{}] for [{}]", version, item.getName());
                 }
             }
@@ -106,7 +107,7 @@ public class SimulatorConfigUpdateProcessor implements AgentSimulatorEventProces
             IOUtils.closeQuietly(is);
             is = conn.getInputStream();
             /* Fully read response */
-            IOUtils.toString(is);
+            IOUtils.toString(is, Charset.defaultCharset());
         } finally {
             IOUtils.closeQuietly(tar);
             IOUtils.closeQuietly(is);

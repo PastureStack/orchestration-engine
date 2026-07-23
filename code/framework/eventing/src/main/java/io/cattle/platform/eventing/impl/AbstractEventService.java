@@ -1,6 +1,7 @@
 package io.cattle.platform.eventing.impl;
 
 import io.cattle.platform.archaius.util.ArchaiusUtil;
+import io.cattle.platform.archaius.util.ConfigProperty;
 import io.cattle.platform.async.retry.Retry;
 import io.cattle.platform.async.retry.RetryTimeoutService;
 import io.cattle.platform.async.utils.AsyncUtils;
@@ -29,8 +30,8 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
 
-import javax.annotation.PostConstruct;
-import javax.inject.Inject;
+import jakarta.annotation.PostConstruct;
+import jakarta.inject.Inject;
 
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.pool2.ObjectPool;
@@ -43,8 +44,6 @@ import com.codahale.metrics.Counter;
 import com.codahale.metrics.Timer;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.SettableFuture;
-import com.netflix.config.DynamicIntProperty;
-import com.netflix.config.DynamicLongProperty;
 
 public abstract class AbstractEventService implements EventService {
 
@@ -52,8 +51,8 @@ public abstract class AbstractEventService implements EventService {
     private static final Logger EVENT_LOG_IN = LoggerFactory.getLogger("EventLogIn");
     private static final Logger EVENT_LOG_OUT = LoggerFactory.getLogger("EventLogOut");
 
-    public static final DynamicIntProperty DEFAULT_RETRIES = ArchaiusUtil.getInt("eventing.retry");
-    public static final DynamicLongProperty DEFAULT_TIMEOUT = ArchaiusUtil.getLong("eventing.timeout.millis");
+    public static final ConfigProperty<Integer> DEFAULT_RETRIES = ArchaiusUtil.getIntProperty("eventing.retry");
+    public static final ConfigProperty<Long> DEFAULT_TIMEOUT = ArchaiusUtil.getLongProperty("eventing.timeout.millis");
 
     private static final Object SUBSCRIPTION_LOCK = new Object();
 
@@ -346,7 +345,7 @@ public abstract class AbstractEventService implements EventService {
     @PostConstruct
     public void init() {
         if (listenerPool == null) {
-            GenericObjectPoolConfig config = new GenericObjectPoolConfig();
+            GenericObjectPoolConfig<FutureEventListener> config = new GenericObjectPoolConfig<FutureEventListener>();
             PoolConfig.setConfig(config, "eventing.reply.pool", "eventing.reply.pool.", "global.pool.");
             listenerPool = new GenericObjectPool<FutureEventListener>(new ListenerPoolObjectFactory(this), config);
         }

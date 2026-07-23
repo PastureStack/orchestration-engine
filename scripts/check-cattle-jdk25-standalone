@@ -1,0 +1,262 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+repo_root=$(cd "$(dirname "$0")/.." && pwd)
+cd "$repo_root"
+
+java_cmd=${JAVA_CMD:-}
+runner_image=${RC16_CATTLE_STANDALONE_JDK_IMAGE:-maven:3.9.14-eclipse-temurin-25}
+jar_path=${RC16_CATTLE_STANDALONE_JAR:-}
+
+find_standalone_jar()
+{
+    if [ -n "$jar_path" ]; then
+        printf '%s\n' "$jar_path"
+        return
+    fi
+
+    if [ -f dist/artifacts/cattle.jar ]; then
+        printf '%s\n' dist/artifacts/cattle.jar
+        return
+    fi
+
+    local candidate=
+    for candidate in code/packaging/bundle/target/cattle-bundle-*.jar; do
+        if [ -f "$candidate" ]; then
+            printf '%s\n' "$candidate"
+            return
+        fi
+    done
+
+    echo "No standalone cattle.jar or cattle-bundle jar found. Run scripts/build --release first." >&2
+    exit 2
+}
+
+windows_home_to_wsl_path()
+{
+    local input=$1
+    case "$input" in
+        [A-Za-z]:/*|[A-Za-z]:\\*)
+            local drive rest
+            drive=$(printf '%s' "${input:0:1}" | tr '[:upper:]' '[:lower:]')
+            rest=${input:2}
+            rest=${rest//\\//}
+            printf '/mnt/%s%s\n' "$drive" "$rest"
+            return
+            ;;
+    esac
+
+    printf '%s\n' "$input"
+}
+
+windows_cmd()
+{
+    local candidate
+    for candidate in "${COMSPEC:-}" /mnt/c/Windows/System32/cmd.exe /c/Windows/System32/cmd.exe cmd.exe; do
+        if [ -n "$candidate" ] && command -v "$candidate" >/dev/null 2>&1; then
+            printf '%s\n' "$candidate"
+            return
+        fi
+    done
+}
+
+find_java_cmd()
+{
+    local candidate
+
+    if [ -n "$java_cmd" ]; then
+        printf '%s\n' "$java_cmd"
+        return
+    fi
+
+    if command -v java >/dev/null 2>&1; then
+        command -v java
+        return
+    fi
+
+    if [ -n "${JAVA_HOME:-}" ]; then
+        for candidate in \
+            "${JAVA_HOME}/bin/java" \
+            "${JAVA_HOME}/bin/java.exe" \
+            "$(windows_home_to_wsl_path "$JAVA_HOME")/bin/java" \
+            "$(windows_home_to_wsl_path "$JAVA_HOME")/bin/java.exe"; do
+            if [ -x "$candidate" ]; then
+                printf '%s\n' "$candidate"
+                return
+            fi
+        done
+    fi
+
+    local cmd_exe windows_java_home
+    cmd_exe=$(windows_cmd || true)
+    if [ -n "$cmd_exe" ]; then
+        windows_java_home=$("$cmd_exe" /d /s /c "echo %JAVA_HOME%" 2>/dev/null | tr -d '\r' | tail -n 1)
+        if [ -n "$windows_java_home" ] && [ "$windows_java_home" != "%JAVA_HOME%" ]; then
+            for candidate in \
+                "$(windows_home_to_wsl_path "$windows_java_home")/bin/java" \
+                "$(windows_home_to_wsl_path "$windows_java_home")/bin/java.exe"; do
+                if [ -x "$candidate" ]; then
+                    printf '%s\n' "$candidate"
+                    return
+                fi
+            done
+        fi
+    fi
+}
+
+uses_windows_java()
+{
+    case "$java_cmd" in
+        *.exe|*.exe\ *) return 0 ;;
+    esac
+
+    return 1
+}
+
+java_path()
+{
+    if uses_windows_java && command -v wslpath >/dev/null 2>&1; then
+        wslpath -m "$1"
+        return
+    fi
+
+    if command -v cygpath >/dev/null 2>&1; then
+        cygpath -m "$1"
+        return
+    fi
+
+    printf '%s\n' "$1"
+}
+
+ensure_jdk25()
+{
+    local version
+    version=$("$java_cmd" -version 2>&1 || true)
+    if printf '%s\n' "$version" | grep -Eq 'version "25\.|version 25\.'; then
+        return
+    fi
+
+    if [ "${RC16_ALLOW_NON_JDK25_STANDALONE:-false}" = "true" ]; then
+        echo "Local Java is not JDK25, continuing because RC16_ALLOW_NON_JDK25_STANDALONE=true" >&2
+        return
+    fi
+
+    if command -v docker >/dev/null 2>&1; then
+        docker run --rm \
+            -v "$repo_root:/work" \
+            -w /work \
+            -e RC16_CATTLE_STANDALONE_JAR="$standalone_jar" \
+            -e RC16_KEEP_STANDALONE_TMP="${RC16_KEEP_STANDALONE_TMP:-false}" \
+            "$runner_image" \
+            bash scripts/check-cattle-jdk25-standalone
+        exit $?
+    fi
+
+    echo "JDK25 is required for the standalone cattle.jar gate." >&2
+    echo "$version" >&2
+    exit 2
+}
+
+make_temp_root()
+{
+    if [ -n "${RC16_CATTLE_STANDALONE_TMP:-}" ]; then
+        mkdir -p "$RC16_CATTLE_STANDALONE_TMP"
+        printf '%s\n' "$RC16_CATTLE_STANDALONE_TMP"
+        return
+    fi
+
+    if uses_windows_java && command -v wslpath >/dev/null 2>&1; then
+        mkdir -p "$repo_root/target"
+        mktemp -d "$repo_root/target/cattle-standalone.XXXXXX"
+        return
+    fi
+
+    mktemp -d 2>/dev/null || mktemp -d -t cattle-standalone
+}
+
+standalone_jar=$(find_standalone_jar)
+if [ ! -f "$standalone_jar" ]; then
+    echo "Standalone jar not found: $standalone_jar" >&2
+    exit 2
+fi
+
+java_cmd=$(find_java_cmd || true)
+if [ -z "$java_cmd" ]; then
+    java_cmd=java
+fi
+
+ensure_jdk25
+
+jar_abs=$(cd "$(dirname "$standalone_jar")" && pwd)/$(basename "$standalone_jar")
+jar_java=$(java_path "$jar_abs")
+tmp_root=$(make_temp_root)
+if [ "${RC16_KEEP_STANDALONE_TMP:-false}" != "true" ]; then
+    trap 'rm -rf "$tmp_root"' EXIT
+else
+    echo "Keeping standalone temp dir: $tmp_root" >&2
+fi
+
+version_output=$("$java_cmd" -jar "$jar_java" version | tr -d '\r')
+if [ -z "$version_output" ]; then
+    echo "Standalone version command produced no output." >&2
+    exit 1
+fi
+
+war_cwd="$tmp_root/war-cwd"
+war_home="$tmp_root/war-home"
+mkdir -p "$war_cwd" "$war_home"
+if ! (
+    cd "$war_cwd"
+    CATTLE_HOME=$(java_path "$war_home") \
+        "$java_cmd" -Dcattle.home="$(java_path "$war_home")" -jar "$jar_java" war > "$tmp_root/war.log" 2>&1
+); then
+    echo "Standalone war command failed." >&2
+    tail -n 120 "$tmp_root/war.log" >&2 || true
+    exit 1
+fi
+war_count=$(find "$war_cwd" -maxdepth 1 -name 'cattle-*.war' -type f | wc -l | tr -d ' ')
+if [ "$war_count" = "0" ]; then
+    echo "Standalone war mode did not create cattle-*.war." >&2
+    tail -n 120 "$tmp_root/war.log" >&2 || true
+    exit 1
+fi
+
+run_cwd="$tmp_root/run-cwd"
+run_home="$tmp_root/run-home"
+mkdir -p "$run_cwd" "$run_home"
+run_home_java=$(java_path "$run_home")
+h2_url="jdbc:h2:${run_home_java}/database/db-cattle;MODE=MySQL;DATABASE_TO_LOWER=TRUE;CASE_INSENSITIVE_IDENTIFIERS=TRUE;NON_KEYWORDS=KEY,VALUE"
+if ! (
+    cd "$run_cwd"
+    CATTLE_HOME="$run_home_java" \
+    CATTLE_HTTP_PORT=0 \
+    CATTLE_DB_CATTLE_DATABASE=h2 \
+    CATTLE_DB_CATTLE_H2_URL="$h2_url" \
+    CATTLE_DB_CATTLE_H2_RENDER_NAME_STYLE=upper \
+    CATTLE_DB_CONFIG_ALIAS=cattle \
+    CATTLE_DB_LIQUIBASE_ALIAS=cattle \
+        "$java_cmd" \
+            -Dcattle.home="$run_home_java" \
+            -Dcattle.http.port=0 \
+            -Dcattle.http.proxied.port=0 \
+            -Dcattle.https.port=0 \
+            -Ddb.cattle.database=h2 \
+            -Ddb.cattle.h2.url="$h2_url" \
+            -Ddb.cattle.h2.render.name.style=upper \
+            -Ddb.config.alias=cattle \
+            -Ddb.liquibase.alias=cattle \
+            -jar "$jar_java" --exit > "$tmp_root/start.log" 2>&1
+); then
+    echo "Standalone start --exit command failed." >&2
+    tail -n 160 "$tmp_root/start.log" >&2 || true
+    exit 1
+fi
+
+if ! grep -q 'Startup Succeeded' "$tmp_root/start.log"; then
+    echo "Standalone start --exit did not reach Startup Succeeded." >&2
+    tail -n 160 "$tmp_root/start.log" >&2 || true
+    exit 1
+fi
+
+printf 'CATTLE_JDK25_STANDALONE_OK version=%q war_count=%s\n' "$version_output" "$war_count"
+echo "failure_count=0"

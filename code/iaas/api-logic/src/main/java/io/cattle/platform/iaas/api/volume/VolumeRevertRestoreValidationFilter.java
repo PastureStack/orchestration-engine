@@ -18,7 +18,7 @@ import io.github.ibuildthecloud.gdapi.validation.ValidationErrorCodes;
 
 import java.util.Map;
 
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 
 public class VolumeRevertRestoreValidationFilter extends AbstractDefaultResourceManagerFilter {
 

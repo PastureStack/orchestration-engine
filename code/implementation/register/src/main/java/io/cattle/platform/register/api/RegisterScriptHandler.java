@@ -1,6 +1,7 @@
 package io.cattle.platform.register.api;
 
 import io.cattle.platform.archaius.util.ArchaiusUtil;
+import io.cattle.platform.archaius.util.ConfigProperty;
 import io.cattle.platform.core.model.Account;
 import io.cattle.platform.iaas.api.request.handler.ScriptsHandler;
 import io.cattle.platform.register.auth.RegistrationAuthTokenManager;
@@ -14,23 +15,22 @@ import java.io.InputStream;
 import java.util.HashMap;
 import java.util.Map;
 
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 
 import org.apache.commons.io.IOUtils;
-import org.apache.commons.lang.text.StrSubstitutor;
+import org.apache.commons.text.StringSubstitutor;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.netflix.config.DynamicStringProperty;
 
 public class RegisterScriptHandler implements ScriptsHandler {
 
     private static final Logger log = LoggerFactory.getLogger(RegisterScriptHandler.class);
 
-    private static final DynamicStringProperty IMAGE = ArchaiusUtil.getString("agent.image");
-    private static final DynamicStringProperty SCRIPT = ArchaiusUtil.getString("agent.instance.register.script");
-    private static final DynamicStringProperty URL = ArchaiusUtil.getString("agent.instance.register.url");
+    private static final ConfigProperty<String> IMAGE = ArchaiusUtil.getStringProperty("agent.image");
+    private static final ConfigProperty<String> SCRIPT = ArchaiusUtil.getStringProperty("agent.instance.register.script");
+    private static final ConfigProperty<String> URL = ArchaiusUtil.getStringProperty("agent.instance.register.url");
 
     RegistrationAuthTokenManager tokenManager;
 
@@ -61,10 +61,14 @@ public class RegisterScriptHandler implements ScriptsHandler {
             return false;
         }
 
-        script = new StrSubstitutor(tokens).replace(script);
+        script = replaceTokens(script, tokens);
         request.getServletContext().getResponse().getOutputStream().write(script.getBytes("UTF-8"));
 
         return true;
+    }
+
+    protected String replaceTokens(String script, Map<String, String> tokens) {
+        return new StringSubstitutor(tokens).replace(script);
     }
 
     protected String getUrl(ApiRequest request) {

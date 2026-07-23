@@ -3,6 +3,7 @@ package io.cattle.platform.systemstack.service;
 import static io.cattle.platform.core.model.tables.ScheduledUpgradeTable.*;
 
 import io.cattle.platform.archaius.util.ArchaiusUtil;
+import io.cattle.platform.archaius.util.ConfigProperty;
 import io.cattle.platform.core.dao.GenericResourceDao;
 import io.cattle.platform.core.dao.StackDao;
 import io.cattle.platform.core.model.ScheduledUpgrade;
@@ -21,22 +22,18 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.netflix.config.DynamicBooleanProperty;
-import com.netflix.config.DynamicIntProperty;
-import com.netflix.config.DynamicStringProperty;
-
 public class UpgradeManager {
 
-    private static final DynamicIntProperty MAX_UPGRADE = ArchaiusUtil.getInt("concurrent.scheduled.upgrades");
-    public static final DynamicStringProperty UPGRADE_MANAGER = ArchaiusUtil.getString("upgrade.manager");
+    private static final ConfigProperty<Integer> MAX_UPGRADE = ArchaiusUtil.getIntProperty("concurrent.scheduled.upgrades");
+    public static final ConfigProperty<String> UPGRADE_MANAGER = ArchaiusUtil.getStringProperty("upgrade.manager");
     public static final String METADATA = "library:infra*network-services";
-    private static final DynamicBooleanProperty LAUNCH_CATALOG = ArchaiusUtil.getBoolean("catalog.execute");
+    private static final ConfigProperty<Boolean> LAUNCH_CATALOG = ArchaiusUtil.getBooleanProperty("catalog.execute");
     private static final Logger log = LoggerFactory.getLogger(UpgradeManager.class);
     private static final Set<String> OLD_METADATAS = new HashSet<>(Arrays.asList(
             "catalog://library:infra*network-services:0",

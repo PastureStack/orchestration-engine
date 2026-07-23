@@ -1,22 +1,21 @@
 package io.cattle.platform.core.util;
 
 import io.cattle.platform.archaius.util.ArchaiusUtil;
+import io.cattle.platform.archaius.util.ConfigProperty;
 import io.cattle.platform.core.constants.NetworkConstants;
 import io.cattle.platform.core.model.Instance;
 import io.cattle.platform.core.model.Network;
 import io.cattle.platform.object.util.DataAccessor;
 
-import com.netflix.config.DynamicStringProperty;
-
 public class HostnameGenerator {
 
-    private static final DynamicStringProperty DEFAULT_DOMAIN = ArchaiusUtil.getString("default.network.domain");
-    private static final DynamicStringProperty DEFAULT_PREFIX = ArchaiusUtil.getString("default.hostname.prefix");
+    private static final ConfigProperty<String> DEFAULT_DOMAIN = ArchaiusUtil.getStringProperty("default.network.domain");
+    private static final ConfigProperty<String> DEFAULT_PREFIX = ArchaiusUtil.getStringProperty("default.hostname.prefix");
 
-    private static final DynamicStringProperty DEFAULT_LOCAL_DOMAIN = ArchaiusUtil.getString("default.local.network.domain");
-    private static final DynamicStringProperty DEFAULT_LOCAL_PREFIX = ArchaiusUtil.getString("default.local.hostname.prefix");
+    private static final ConfigProperty<String> DEFAULT_LOCAL_DOMAIN = ArchaiusUtil.getStringProperty("default.local.network.domain");
+    private static final ConfigProperty<String> DEFAULT_LOCAL_PREFIX = ArchaiusUtil.getStringProperty("default.local.hostname.prefix");
 
-    private static final DynamicStringProperty DEFAULT_SERVICES_DOMAIN = ArchaiusUtil.getString("default.services.domain");
+    private static final ConfigProperty<String> DEFAULT_SERVICES_DOMAIN = ArchaiusUtil.getStringProperty("default.services.domain");
 
     public static String getDefaultDomain(boolean local) {
         return local ? DEFAULT_LOCAL_DOMAIN.get() : DEFAULT_DOMAIN.get();

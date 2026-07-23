@@ -3,6 +3,7 @@ package io.cattle.platform.docker.machine.launch;
 import static io.cattle.platform.core.model.tables.MachineDriverTable.*;
 
 import io.cattle.platform.archaius.util.ArchaiusUtil;
+import io.cattle.platform.archaius.util.ConfigProperty;
 import io.cattle.platform.core.model.MachineDriver;
 import io.cattle.platform.core.model.tables.records.MachineDriverRecord;
 import io.cattle.platform.json.JsonMapper;
@@ -11,6 +12,7 @@ import io.cattle.platform.lock.LockManager;
 import io.cattle.platform.object.ObjectManager;
 import io.cattle.platform.object.process.ObjectProcessManager;
 import io.cattle.platform.object.process.StandardProcess;
+import io.cattle.platform.util.net.UrlUtils;
 import io.cattle.platform.util.type.InitializationTask;
 
 import java.io.FileNotFoundException;
@@ -20,18 +22,17 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 
 import org.apache.commons.io.IOUtils;
+import org.apache.commons.lang3.Strings;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.netflix.config.DynamicStringProperty;
-
 public class MachineDriverLoader implements InitializationTask {
 
-    public static final DynamicStringProperty CONFIG_FILE = ArchaiusUtil.getString("machine.driver.config");
+    public static final ConfigProperty<String> CONFIG_FILE = ArchaiusUtil.getStringProperty("machine.driver.config");
 
     private static final Logger log = LoggerFactory.getLogger(MachineDriverLoader.class);
 
@@ -73,7 +74,7 @@ public class MachineDriverLoader implements InitializationTask {
                 byte[] configJson = null;
                 DriverConfig dc = null;
                 try {
-                    URL configUrl = new URL(configLocation);
+                    URL configUrl = UrlUtils.toURL(configLocation);
                     in = configUrl.openStream();
                     configJson = IOUtils.toByteArray(in);
                     dc = jsonMapper.readValue(configJson, DriverConfig.class);
@@ -105,8 +106,8 @@ public class MachineDriverLoader implements InitializationTask {
 
                     if (existingDrivers.containsKey(newDriver.getName())) {
                         MachineDriver existing = existingDrivers.get(newDriver.getName());
-                        if (!StringUtils.equals(existing.getMd5checksum(), newDriver.getMd5checksum())
-                                || !StringUtils.equals(existing.getUri(), newDriver.getUri())) {
+                        if (!Strings.CS.equals(existing.getMd5checksum(), newDriver.getMd5checksum())
+                                || !Strings.CS.equals(existing.getUri(), newDriver.getUri())) {
                             processManager.executeStandardProcess(StandardProcess.REMOVE, existing, null);
                         } else {
                             continue;

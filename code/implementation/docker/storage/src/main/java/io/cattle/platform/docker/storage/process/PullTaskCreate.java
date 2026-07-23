@@ -4,6 +4,7 @@ import io.cattle.platform.agent.AgentLocator;
 import io.cattle.platform.agent.RemoteAgent;
 import io.cattle.platform.allocator.service.AllocationHelper;
 import io.cattle.platform.archaius.util.ArchaiusUtil;
+import io.cattle.platform.archaius.util.ConfigProperty;
 import io.cattle.platform.async.utils.AsyncUtils;
 import io.cattle.platform.core.constants.CredentialConstants;
 import io.cattle.platform.core.constants.GenericObjectConstants;
@@ -32,14 +33,12 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 
 import com.google.common.util.concurrent.ListenableFuture;
-import com.netflix.config.DynamicStringProperty;
-
 public class PullTaskCreate extends AbstractGenericObjectProcessLogic implements ProcessHandler, InitializationTask {
 
-    public static final DynamicStringProperty EXPR = ArchaiusUtil.getString("event.data.credential");
+    public static final ConfigProperty<String> EXPR = ArchaiusUtil.getStringProperty("event.data.credential");
 
     public static final String LABELS = "labels";
     public static final String IMAGE = "image";
@@ -70,7 +69,6 @@ public class PullTaskCreate extends AbstractGenericObjectProcessLogic implements
         return new String[] { GenericObjectConstants.PROCESS_CREATE };
     }
 
-    @SuppressWarnings("unchecked")
     @Override
     public HandlerResult handleKind(ProcessState state, ProcessInstance process) {
         GenericObject pullTask = (GenericObject)state.getResource();
@@ -78,7 +76,7 @@ public class PullTaskCreate extends AbstractGenericObjectProcessLogic implements
         String mode = DataAccessor.fieldString(pullTask, MODE);
         String image = DataAccessor.fieldString(pullTask, IMAGE);
         Credential cred = getCredential(image, pullTask.getAccountId());
-        Map<String, String> labels = DataAccessor.field(pullTask, LABELS, Map.class);
+        Map<String, String> labels = getLabels(pullTask);
         Map<String, String> status = new HashMap<>();
 
         if (tag == null) {
@@ -138,6 +136,20 @@ public class PullTaskCreate extends AbstractGenericObjectProcessLogic implements
         }
 
         return null;
+    }
+
+    protected Map<String, String> getLabels(GenericObject pullTask) {
+        Object labels = DataAccessor.fields(pullTask).withKey(LABELS).get();
+        if (labels == null) {
+            return null;
+        }
+
+        Map<?, ?> labelMap = (Map<?, ?>) labels;
+        Map<String, String> result = new HashMap<>();
+        for (Map.Entry<?, ?> entry : labelMap.entrySet()) {
+            result.put(String.class.cast(entry.getKey()), String.class.cast(entry.getValue()));
+        }
+        return result;
     }
 
     protected Credential getCredential(String uuid, long accountId) {

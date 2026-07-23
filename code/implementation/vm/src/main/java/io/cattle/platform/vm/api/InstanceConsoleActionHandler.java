@@ -1,7 +1,6 @@
 package io.cattle.platform.vm.api;
 
 import io.cattle.platform.api.action.ActionHandler;
-import io.cattle.platform.archaius.util.ArchaiusUtil;
 import io.cattle.platform.core.model.Host;
 import io.cattle.platform.core.model.Instance;
 import io.cattle.platform.docker.api.model.HostAccess;
@@ -14,18 +13,28 @@ import io.github.ibuildthecloud.gdapi.request.ApiRequest;
 
 import java.util.Map;
 
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 
-import com.netflix.config.DynamicStringProperty;
 
 public class InstanceConsoleActionHandler implements ActionHandler {
 
-    private static final DynamicStringProperty CONSOLE_AGENT_PATH = ArchaiusUtil.getString("console.agent.path");
+    private final ConsoleActionSettings settings;
 
     @Inject
     HostApiService apiService;
     @Inject
     ObjectManager objectManager;
+
+    public InstanceConsoleActionHandler() {
+        this(ArchaiusConsoleActionSettings.create());
+    }
+
+    InstanceConsoleActionHandler(ConsoleActionSettings settings) {
+        if (settings == null) {
+            throw new IllegalArgumentException("settings is required");
+        }
+        this.settings = settings;
+    }
 
     @Override
     public String getName() {
@@ -53,7 +62,7 @@ public class InstanceConsoleActionHandler implements ActionHandler {
         String dockerId = DockerUtils.getDockerIdentifier(instance);
         Map<String, Object> data = CollectionUtils.asMap("container", dockerId);
 
-        HostApiAccess apiAccess = apiService.getAccess(request, host.getId(), CollectionUtils.asMap("console", data), CONSOLE_AGENT_PATH.get());
+        HostApiAccess apiAccess = apiService.getAccess(request, host.getId(), CollectionUtils.asMap("console", data), settings.consoleAgentPath());
 
         if (apiAccess == null) {
             return null;

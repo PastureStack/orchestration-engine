@@ -13,9 +13,11 @@ import io.github.ibuildthecloud.gdapi.request.resource.AbstractResourceManagerFi
 import io.github.ibuildthecloud.gdapi.request.resource.ResourceManager;
 import io.github.ibuildthecloud.gdapi.validation.ValidationErrorCodes;
 
+import java.nio.charset.StandardCharsets;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 
 public class DynamicSchemaFilter extends AbstractResourceManagerFilter {
 
@@ -26,16 +28,15 @@ public class DynamicSchemaFilter extends AbstractResourceManagerFilter {
     @Inject
     LockManager lockManager;
 
-    @SuppressWarnings("unchecked")
     @Override
     public Object create(final String type, final ApiRequest request, final ResourceManager next) {
-        final Map<String, Object> requestObject = (Map<String, Object>) request.getRequestObject();
+        final Map<String, Object> requestObject = requestObject(request);
         final String name = String.valueOf(requestObject.get("name"));
         if (requestObject.get(ACCOUNT_FIELD) == null) {
             requestObject.put(ACCOUNT_FIELD, null);
         }
         final Long accountId = requestObject.get(ACCOUNT_FIELD) == null ? null : Long.valueOf(String.valueOf(requestObject.get(ACCOUNT_FIELD)));
-        final List<String> roles = (List<String>) requestObject.get("roles");
+        final List<?> roles = roles(requestObject.get("roles"));
         final DynamicSchemaFilter filter = this;
         return lockManager.lock(new DynamicSchemaFilterLock(name), new LockCallback<Object>() {
 
@@ -46,7 +47,7 @@ public class DynamicSchemaFilter extends AbstractResourceManagerFilter {
                 }
                 try {
                     jsonMapper.readValue(
-                            String.valueOf(requestObject.get(DEFINITION_FIELD)).getBytes("UTF-8"), SchemaImpl.class);
+                            String.valueOf(requestObject.get(DEFINITION_FIELD)).getBytes(StandardCharsets.UTF_8), SchemaImpl.class);
                 } catch (Exception e) {
                     throw new ValidationErrorException(ValidationErrorCodes.INVALID_FORMAT, DEFINITION_FIELD);
                 }
@@ -54,6 +55,20 @@ public class DynamicSchemaFilter extends AbstractResourceManagerFilter {
             }
         });
 
+    }
+
+    static Map<String, Object> requestObject(ApiRequest request) {
+        Map<?, ?> input = Map.class.cast(request.getRequestObject());
+        Map<String, Object> result = new LinkedHashMap<String, Object>();
+        for (Map.Entry<?, ?> entry : input.entrySet()) {
+            result.put(String.class.cast(entry.getKey()), entry.getValue());
+        }
+        request.setRequestObject(result);
+        return result;
+    }
+
+    static List<?> roles(Object value) {
+        return value == null ? null : List.class.cast(value);
     }
 
     private Object callSuperCreate(final String type, final ApiRequest request, final ResourceManager next) {

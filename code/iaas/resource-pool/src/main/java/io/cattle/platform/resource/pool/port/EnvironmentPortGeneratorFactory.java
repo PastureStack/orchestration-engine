@@ -10,7 +10,7 @@ import io.cattle.platform.resource.pool.PooledResourceItemGeneratorFactory;
 import io.cattle.platform.resource.pool.impl.StringRangeGenerator;
 import io.cattle.platform.resource.pool.util.ResourcePoolConstants;
 
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 
 public class EnvironmentPortGeneratorFactory implements PooledResourceItemGeneratorFactory {
 

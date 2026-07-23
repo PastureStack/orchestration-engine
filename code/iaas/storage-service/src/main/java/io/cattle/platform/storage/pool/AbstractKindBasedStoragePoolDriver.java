@@ -2,7 +2,7 @@ package io.cattle.platform.storage.pool;
 
 import io.cattle.platform.core.model.Image;
 
-import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.Strings;
 
 public abstract class AbstractKindBasedStoragePoolDriver implements StoragePoolDriver {
 
@@ -24,7 +24,7 @@ public abstract class AbstractKindBasedStoragePoolDriver implements StoragePoolD
     }
 
     protected String stripKindPrefix(String str) {
-        return StringUtils.removeStart(str, kindPrefix);
+        return Strings.CS.removeStart(str, kindPrefix);
     }
 
     protected abstract boolean populateImageInternal(String uuid, Image image);

@@ -9,12 +9,11 @@ import io.github.ibuildthecloud.gdapi.request.ApiRequest;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-import javax.servlet.http.HttpServletRequest;
-
-import org.apache.commons.lang3.ObjectUtils;
+import jakarta.servlet.http.HttpServletRequest;
 
 public class RequestUtils {
 
@@ -47,7 +46,7 @@ public class RequestUtils {
     public static String getSingularStringValue(String key, Map<String, Object> params) {
         Object obj = params.get(key);
         Object singleObj = makeSingular(obj);
-        return ObjectUtils.toString(singleObj, null);
+        return toStringOrNull(singleObj);
     }
     
     public static String getConditionValue(String key, Map<Object, Object> params) {
@@ -58,10 +57,14 @@ public class RequestUtils {
         
         value = makeSingular(value);
         if (value instanceof Condition) {
-            return ObjectUtils.toString(((Condition) value).getValue(), null);
+            return toStringOrNull(((Condition) value).getValue());
         }
 
-        return ObjectUtils.toString(value, null);
+        return toStringOrNull(value);
+    }
+
+    protected static String toStringOrNull(Object value) {
+        return value == null ? null : value.toString();
     }
 
     public static Object makeSingular(Object input) {
@@ -129,17 +132,24 @@ public class RequestUtils {
         }
     }
 
-    @SuppressWarnings("unchecked")
-    public static <K, V> Map<K, V> toMap(Object obj) {
+    public static Map<String, Object> toMap(Object obj) {
         if (obj == null) {
-            return new HashMap<K, V>();
+            return new HashMap<String, Object>();
         }
 
         if (obj instanceof Map) {
-            return (Map<K, V>)obj;
+            return toStringObjectMap((Map<?, ?>)obj);
         } else {
-            return new HashMap<K, V>();
+            return new HashMap<String, Object>();
         }
+    }
+
+    protected static Map<String, Object> toStringObjectMap(Map<?, ?> input) {
+        Map<String, Object> result = new LinkedHashMap<String, Object>();
+        for (Map.Entry<?, ?> entry : input.entrySet()) {
+            result.put(String.class.cast(entry.getKey()), entry.getValue());
+        }
+        return result;
     }
 
 }

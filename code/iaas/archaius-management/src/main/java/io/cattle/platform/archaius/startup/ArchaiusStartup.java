@@ -1,8 +1,13 @@
 package io.cattle.platform.archaius.startup;
 
+import io.cattle.platform.archaius.polling.ArchaiusConfigurationSchedulerRegistry;
+import io.cattle.platform.archaius.polling.ConfigurationSchedulerRegistry;
 import io.cattle.platform.archaius.polling.RefreshableFixedDelayPollingScheduler;
-import io.cattle.platform.archaius.sources.LazyJDBCSource;
-import io.cattle.platform.archaius.util.ArchaiusUtil;
+import io.cattle.platform.archaius.sources.ArchaiusConfigFactory;
+import io.cattle.platform.archaius.sources.ConfigurationSourceList;
+import io.cattle.platform.archaius.util.ArchaiusConfigurationBootstrap;
+import io.cattle.platform.archaius.util.ConfigurationBootstrap;
+import io.cattle.platform.archaius.util.ConfigurationStack;
 import io.cattle.platform.datasource.DataSourceFactory;
 import io.cattle.platform.extension.impl.ExtensionManagerImpl;
 
@@ -11,19 +16,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 
-import javax.annotation.PostConstruct;
-import javax.inject.Inject;
 import javax.sql.DataSource;
 
-import org.apache.commons.configuration.AbstractConfiguration;
-import org.apache.commons.configuration.MapConfiguration;
+import jakarta.annotation.PostConstruct;
+import jakarta.inject.Inject;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import com.netflix.config.ConcurrentCompositeConfiguration;
-import com.netflix.config.DynamicConfiguration;
-import com.netflix.config.DynamicPropertyFactory;
-import com.netflix.config.sources.JDBCConfigurationSource;
 
 public class ArchaiusStartup {
 
@@ -34,7 +33,7 @@ public class ArchaiusStartup {
     private static final Logger log = LoggerFactory.getLogger("ConsoleStatus");
 
     ExtensionManagerImpl extensionManager;
-    ConcurrentCompositeConfiguration baseConfig;
+    ConfigurationStack baseConfig;
     DataSource configDataSource;
     DataSourceFactory dataSourceFactory;
     String dataSourceName = "config";
@@ -42,6 +41,7 @@ public class ArchaiusStartup {
     String keyColumnName = "name";
     String valueColumnName = "value";
     List<RefreshableFixedDelayPollingScheduler> schedulers;
+    ConfigurationBootstrap configurationBootstrap = ArchaiusConfigurationBootstrap.create();
     boolean init = false;
 
     @PostConstruct
@@ -54,11 +54,11 @@ public class ArchaiusStartup {
             throw new IllegalStateException("setGlobalDefaults() must be set before init() is called");
         }
 
-        baseConfig = new ConcurrentCompositeConfiguration();
-        baseConfig.addConfiguration(new MapConfiguration(getOverride()));
-        baseConfig.addConfiguration(new MapConfiguration(GLOBAL_DEFAULT));
+        baseConfig = configurationBootstrap.newStack();
+        baseConfig.add(ArchaiusConfigFactory.map(getOverride()));
+        baseConfig.add(ArchaiusConfigFactory.properties(GLOBAL_DEFAULT));
 
-        DynamicPropertyFactory.initWithConfigurationSource(baseConfig);
+        configurationBootstrap.initialize(baseConfig);
 
         init = true;
     }
@@ -78,42 +78,49 @@ public class ArchaiusStartup {
     }
 
     protected void load(boolean refresh) {
-        List<AbstractConfiguration> configs = extensionManager.getExtensionList(CONFIG_KEY, AbstractConfiguration.class);
-
-        for (AbstractConfiguration config : configs) {
-            config.setDelimiterParsingDisabled(true);
-        }
+        ConfigurationSourceList configs = ArchaiusConfigRegistration.getConfigSources(extensionManager, CONFIG_KEY);
+        configs.disableDelimiterParsing();
 
         if (refresh) {
-            for (AbstractConfiguration config : configs) {
-                refresh(config);
-            }
+            refresh(configs);
         }
 
-        baseConfig.clear();
-        for (AbstractConfiguration config : configs) {
-            baseConfig.addConfiguration(config);
-        }
+        configs.replace(baseConfig);
 
         if (refresh) {
-            for (RefreshableFixedDelayPollingScheduler scheduler : schedulers) {
-                scheduler.refresh();
-            }
-
-            ArchaiusUtil.addSchedulers(schedulers);
+            newSchedulerRegistry().refreshAndRegister();
         }
     }
 
-    protected void refresh(AbstractConfiguration config) {
-        if (config instanceof DynamicConfiguration && ((DynamicConfiguration) config).getSource() instanceof LazyJDBCSource) {
-            LazyJDBCSource source = (LazyJDBCSource) ((DynamicConfiguration) config).getSource();
-
-            if (configDataSource == null) {
-                configDataSource = dataSourceFactory.createDataSource(dataSourceName);
-            }
-
-            source.setSource(new JDBCConfigurationSource(configDataSource, query, keyColumnName, valueColumnName));
+    protected void refresh(ConfigurationSourceList configs) {
+        if (!shouldAttachJdbcSources()) {
+            return;
         }
+
+        configs.attachJdbcSources(() -> getConfigDataSource(), query, keyColumnName, valueColumnName);
+    }
+
+    protected boolean shouldAttachJdbcSources() {
+        String database = baseConfig == null ? null : baseConfig.getString("db.cattle.database");
+        if (database == null) {
+            return true;
+        }
+
+        String normalized = database.trim().toLowerCase();
+        return "mysql".equals(normalized) || "mariadb".equals(normalized) || "postgres".equals(normalized)
+                || "postgresql".equals(normalized);
+    }
+
+    protected DataSource getConfigDataSource() {
+        if (configDataSource == null) {
+            configDataSource = dataSourceFactory.createDataSource(dataSourceName);
+        }
+
+        return configDataSource;
+    }
+
+    protected ConfigurationSchedulerRegistry newSchedulerRegistry() {
+        return ArchaiusConfigurationSchedulerRegistry.of(schedulers);
     }
 
     public ExtensionManagerImpl getExtensionManager() {

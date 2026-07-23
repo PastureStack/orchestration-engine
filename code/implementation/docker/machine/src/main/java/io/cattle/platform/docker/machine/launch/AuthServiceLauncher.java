@@ -1,14 +1,10 @@
 package io.cattle.platform.docker.machine.launch;
 
-import io.cattle.platform.archaius.util.ArchaiusUtil;
+import io.cattle.platform.archaius.util.ConfigProperty;
 import io.cattle.platform.core.model.Credential;
 import io.cattle.platform.core.dao.DataDao;
-import io.cattle.platform.iaas.api.auth.SecurityConstants;
-import io.cattle.platform.iaas.api.auth.integration.external.ServiceAuthConstants;
 import io.cattle.platform.lock.definition.LockDefinition;
 import io.cattle.platform.object.ObjectManager;
-import io.cattle.platform.server.context.ServerContext;
-import io.cattle.platform.server.context.ServerContext.BaseProtocol;
 import io.cattle.platform.service.launcher.GenericServiceLauncher;
 import io.cattle.platform.ssh.common.SshKeyGen;
 import io.cattle.platform.token.impl.RSAKeyProvider;
@@ -23,23 +19,21 @@ import java.security.SecureRandom;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.Callable;
 
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 
 import org.apache.commons.codec.DecoderException;
 import org.apache.commons.codec.binary.Hex;
 import org.apache.commons.io.IOUtils;
-import org.apache.http.client.fluent.Request;
-import org.apache.http.client.fluent.Response;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.netflix.config.DynamicBooleanProperty;
-import com.netflix.config.DynamicStringProperty;
-
 
 public class AuthServiceLauncher extends GenericServiceLauncher implements InitializationTask {
+    private static final AuthServiceLauncherSettings DEFAULT_SETTINGS = ArchaiusAuthServiceLauncherSettings.create();
+
     @Inject
     RSAKeyProvider keyProvider;
 
@@ -51,24 +45,33 @@ public class AuthServiceLauncher extends GenericServiceLauncher implements Initi
 
     private static final Logger log = LoggerFactory.getLogger(AuthServiceLauncher.class);
 
-    private static final DynamicStringProperty AUTH_SERVICE_BINARY = ArchaiusUtil.getString("auth.service.executable");
-    private static final DynamicBooleanProperty LAUNCH_AUTH_SERVICE = ArchaiusUtil.getBoolean("auth.service.execute");
+    public static final ConfigProperty<String> SECURITY_SETTING = DEFAULT_SETTINGS.securityProperty();
+    public static final ConfigProperty<String> EXTERNAL_AUTH_PROVIDER_SETTING = DEFAULT_SETTINGS.externalAuthProviderProperty();
+    public static final ConfigProperty<String> NO_IDENTITY_LOOKUP_SETTING = DEFAULT_SETTINGS.noIdentityLookupProperty();
+    public static final ConfigProperty<String> API_AUTH_SHIBBOLETH_REDIRECT_WHITELIST_SETTING = DEFAULT_SETTINGS.shibbolethRedirectWhitelistProperty();
 
-    public static final DynamicStringProperty SECURITY_SETTING = ArchaiusUtil.getString("api.security.enabled");
-    public static final DynamicStringProperty EXTERNAL_AUTH_PROVIDER_SETTING = ArchaiusUtil.getString("api.auth.external.provider.configured");
-    public static final DynamicStringProperty NO_IDENTITY_LOOKUP_SETTING = ArchaiusUtil.getString("api.auth.external.provider.no.identity.lookup");
-    private static final DynamicStringProperty AUTH_SERVICE_LOG_LEVEL = ArchaiusUtil.getString("auth.service.log.level");
-    private static final DynamicStringProperty AUTH_SERVICE_CONFIG_UPDATE_TIMESTAMP = ArchaiusUtil.getString("auth.service.config.update.timestamp");
-    public static final DynamicStringProperty API_AUTH_SHIBBOLETH_REDIRECT_WHITELIST_SETTING = ArchaiusUtil.getString("api.auth.shibboleth.redirect.whitelist");
+    private AuthServiceLauncherSettings settings;
+
+    public AuthServiceLauncher() {
+        this(DEFAULT_SETTINGS);
+    }
+
+    AuthServiceLauncher(AuthServiceLauncherSettings settings) {
+        this.settings = Objects.requireNonNull(settings, "settings");
+    }
+
+    public void setSettings(AuthServiceLauncherSettings settings) {
+        this.settings = Objects.requireNonNull(settings, "settings");
+    }
 
     @Override
     protected boolean shouldRun() {
-        return LAUNCH_AUTH_SERVICE.get();
+        return settings.launchAuthService();
     }
 
     @Override
     protected String binaryPath() {
-        return AUTH_SERVICE_BINARY.get();
+        return settings.authServiceExecutable();
     }
 
     @Override
@@ -76,7 +79,7 @@ public class AuthServiceLauncher extends GenericServiceLauncher implements Initi
         Credential cred = getCredential();
         env.put("CATTLE_ACCESS_KEY", cred.getPublicValue());
         env.put("CATTLE_SECRET_KEY", cred.getSecretValue());
-        env.put("CATTLE_URL", ServerContext.getLocalhostUrl(BaseProtocol.HTTP));
+        env.put("CATTLE_URL", LocalCattleApi.url());
         String pubKey = getPublicKey();
         if (pubKey == null) {
             throw new RuntimeException("Couldn't get public key for auth-service.");
@@ -121,7 +124,7 @@ public class AuthServiceLauncher extends GenericServiceLauncher implements Initi
 
     @Override
     protected boolean isReady() {
-        return true;
+        return LocalCattleApi.isReady();
     }
 
     public String getPublicKey() {
@@ -149,13 +152,13 @@ public class AuthServiceLauncher extends GenericServiceLauncher implements Initi
     }
 
     @Override
-    protected List<DynamicStringProperty> getReloadSettings() {
-        List<DynamicStringProperty> list = new ArrayList<DynamicStringProperty>();
-        list.add(SecurityConstants.AUTH_ENABLER_SETTING);
-        list.add(SECURITY_SETTING);
-        list.add(AUTH_SERVICE_LOG_LEVEL);
-        list.add(AUTH_SERVICE_CONFIG_UPDATE_TIMESTAMP);
-        list.add(API_AUTH_SHIBBOLETH_REDIRECT_WHITELIST_SETTING);
+    protected List<ConfigProperty<String>> getReloadSettings() {
+        List<ConfigProperty<String>> list = new ArrayList<ConfigProperty<String>>();
+        list.add(settings.authEnablerProperty());
+        list.add(settings.securityProperty());
+        list.add(settings.authServiceLogLevelProperty());
+        list.add(settings.authServiceConfigUpdateTimestampProperty());
+        list.add(settings.shibbolethRedirectWhitelistProperty());
         return list;
     }
 
@@ -166,11 +169,8 @@ public class AuthServiceLauncher extends GenericServiceLauncher implements Initi
         }
 
         try {
-            StringBuilder authUrl = new StringBuilder(ServiceAuthConstants.AUTH_SERVICE_URL.get());
-            Response r = Request.Post(authUrl+"/reload").execute();
-            if (r != null) {
-                r.discardContent();
-            }
+            StringBuilder authUrl = new StringBuilder(settings.authServiceUrl());
+            LocalReloadRequest.post(authUrl + "/reload");
         } catch (IOException e) {
             log.info("Failed to reload auth service: {}", e.getMessage());
         }

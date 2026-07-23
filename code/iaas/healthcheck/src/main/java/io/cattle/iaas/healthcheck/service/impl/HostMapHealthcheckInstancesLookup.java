@@ -10,7 +10,7 @@ import io.cattle.platform.object.ObjectManager;
 import java.util.ArrayList;
 import java.util.List;
 
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 
 public class HostMapHealthcheckInstancesLookup extends AbstractJooqDao implements HealthcheckInstancesLookup {
 

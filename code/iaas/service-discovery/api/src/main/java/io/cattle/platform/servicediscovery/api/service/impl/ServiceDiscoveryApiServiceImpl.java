@@ -49,12 +49,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Callable;
 
-import javax.inject.Inject;
-import javax.inject.Named;
+import jakarta.inject.Inject;
+import jakarta.inject.Named;
 
 import org.apache.commons.codec.binary.Base64;
-import org.apache.commons.collections.CollectionUtils;
-import org.apache.commons.collections.TransformerUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.yaml.snakeyaml.DumperOptions;
 import org.yaml.snakeyaml.DumperOptions.LineBreak;
@@ -66,6 +64,12 @@ import org.yaml.snakeyaml.representer.Representer;
 
 @Named
 public class ServiceDiscoveryApiServiceImpl implements ServiceDiscoveryApiService {
+
+    private static final String COMPOSE_DNS_SERVICE_IMAGE = "ghcr.io/pasturestack/internal-dns";
+    private static final String COMPOSE_LOAD_BALANCER_SERVICE_IMAGE =
+            "ghcr.io/pasturestack/load-balancer-service";
+    private static final String COMPOSE_EXTERNAL_SERVICE_IMAGE = "ghcr.io/pasturestack/external-service";
+
     @Inject
     ObjectManager objectManager;
 
@@ -155,7 +159,7 @@ public class ServiceDiscoveryApiServiceImpl implements ServiceDiscoveryApiServic
         DumperOptions options = new DumperOptions();
         options.setDefaultFlowStyle(DumperOptions.FlowStyle.BLOCK);
         options.setLineBreak(LineBreak.WIN);
-        Representer representer = new SkipNullRepresenter();
+        Representer representer = new SkipNullRepresenter(options);
         representer.addClassTag(LBConfigMetadataStyle.class, Tag.MAP);
         
         Yaml yaml = new Yaml(representer, options);
@@ -164,6 +168,10 @@ public class ServiceDiscoveryApiServiceImpl implements ServiceDiscoveryApiServic
     }
 
     private class SkipNullRepresenter extends Representer {
+        public SkipNullRepresenter(DumperOptions options) {
+            super(options);
+        }
+
         @Override
         protected NodeTuple representJavaBeanProperty(Object javaBean, Property property,
                 Object propertyValue, Tag customTag) {
@@ -176,11 +184,12 @@ public class ServiceDiscoveryApiServiceImpl implements ServiceDiscoveryApiServic
         }
     }
 
-    @SuppressWarnings("unchecked")
     private Map<String, Object> createComposeData(List<? extends Service> servicesToExport, boolean forDockerCompose, List<? extends VolumeTemplate> volumes) {
         Map<String, Object> servicesData = new HashMap<String, Object>();
-        Collection<Long> servicesToExportIds = CollectionUtils.collect(servicesToExport,
-                TransformerUtils.invokerTransformer("getId"));
+        List<Long> servicesToExportIds = new ArrayList<>();
+        for (Service service : servicesToExport) {
+            servicesToExportIds.add(service.getId());
+        }
         Map<String, Object> volumesData = new HashMap<String, Object>();
         Map<String, Object> secretsData = new HashMap<>();
         for (Service service : servicesToExport) {
@@ -249,12 +258,10 @@ public class ServiceDiscoveryApiServiceImpl implements ServiceDiscoveryApiServic
         return data;
     }
 
-    @SuppressWarnings("unchecked")
     private void excludeRancherHash(Map<String, Object> composeServiceData) {
         if (composeServiceData.get(InstanceConstants.FIELD_LABELS) != null) {
-            Map<String, String> labels = new HashMap<>();
-            labels.putAll((HashMap<String, String>) composeServiceData.get(InstanceConstants.FIELD_LABELS));
-            String serviceHash = labels.get(ServiceConstants.LABEL_SERVICE_HASH);
+            Map<Object, Object> labels = hashMapCopy(composeServiceData.get(InstanceConstants.FIELD_LABELS));
+            String serviceHash = String.class.cast(labels.get(ServiceConstants.LABEL_SERVICE_HASH));
             if (serviceHash != null) {
                 labels.remove(ServiceConstants.LABEL_SERVICE_HASH);
                 composeServiceData.put(InstanceConstants.FIELD_LABELS, labels);
@@ -262,9 +269,8 @@ public class ServiceDiscoveryApiServiceImpl implements ServiceDiscoveryApiServic
         }
 
         if (composeServiceData.get(InstanceConstants.FIELD_METADATA) != null) {
-            Map<String, String> metadata = new HashMap<>();
-            metadata.putAll((HashMap<String, String>) composeServiceData.get(InstanceConstants.FIELD_METADATA));
-            String serviceHash = metadata.get(ServiceConstants.LABEL_SERVICE_HASH);
+            Map<Object, Object> metadata = hashMapCopy(composeServiceData.get(InstanceConstants.FIELD_METADATA));
+            String serviceHash = String.class.cast(metadata.get(ServiceConstants.LABEL_SERVICE_HASH));
             if (serviceHash != null) {
                 metadata.remove(ServiceConstants.LABEL_SERVICE_HASH);
                 composeServiceData.put(InstanceConstants.FIELD_METADATA, metadata);
@@ -273,11 +279,19 @@ public class ServiceDiscoveryApiServiceImpl implements ServiceDiscoveryApiServic
 
     }
 
-    @SuppressWarnings("unchecked")
+    static Map<Object, Object> hashMapCopy(Object value) {
+        HashMap.class.cast(value);
+        Map<?, ?> source = Map.class.cast(value);
+        Map<Object, Object> result = new HashMap<>();
+        result.putAll(source);
+        return result;
+    }
+
     protected void formatScale(Service service, Map<String, Object> composeServiceData) {
         if (composeServiceData.get(InstanceConstants.FIELD_LABELS) != null) {
-            Map<String, String> labels = ((HashMap<String, String>) composeServiceData.get(InstanceConstants.FIELD_LABELS));
-            String globalService = labels.get(ServiceConstants.LABEL_SERVICE_GLOBAL);
+            HashMap.class.cast(composeServiceData.get(InstanceConstants.FIELD_LABELS));
+            Map<?, ?> labels = Map.class.cast(composeServiceData.get(InstanceConstants.FIELD_LABELS));
+            String globalService = String.class.cast(labels.get(ServiceConstants.LABEL_SERVICE_GLOBAL));
             if (Boolean.valueOf(globalService) == true) {
                 composeServiceData.remove(ServiceConstants.FIELD_SCALE);
             }
@@ -314,7 +328,6 @@ public class ServiceDiscoveryApiServiceImpl implements ServiceDiscoveryApiServic
         }
     }
 
-    @SuppressWarnings("unchecked")
     protected void excludeZeroDrainTimeout(Map<String, Object> composeServiceData) {
         Integer drainTimeout = (Integer) composeServiceData.get(ServiceConstants.FIELD_DRAIN_TIMEOUT);
         if (drainTimeout == null || (drainTimeout == 0)) {
@@ -332,7 +345,6 @@ public class ServiceDiscoveryApiServiceImpl implements ServiceDiscoveryApiServic
         }
     }
 
-    @SuppressWarnings("unchecked")
     private void translateV1VolumesToV2(Map<String, Object> cattleServiceData,
             Map<String, Object> composeServiceData, Map<String, Object> volumesData) {
         // volume driver presence defines the v1 format for the volumes
@@ -348,7 +360,8 @@ public class ServiceDiscoveryApiServiceImpl implements ServiceDiscoveryApiServic
             return;
         }
 
-        for (String dataVolume : (List<String>) dataVolumes) {
+        for (Object dataVolumeObject : List.class.cast(dataVolumes)) {
+            String dataVolume = String.class.cast(dataVolumeObject);
             String[] splitted = dataVolume.split(":");
             if (splitted.length < 2) {
                 // only process named volumes
@@ -378,22 +391,22 @@ public class ServiceDiscoveryApiServiceImpl implements ServiceDiscoveryApiServic
         }
     }
     
-    @SuppressWarnings("unchecked")
     private void populateLogConfig(Map<String, Object> cattleServiceData, Map<String, Object> composeServiceData) {
         Object value = cattleServiceData.get(ServiceConstants.FIELD_LOG_CONFIG);
         if (value instanceof Map) {
             if (!((Map<?, ?>) value).isEmpty()) {
                 Map<String, Object> logConfig = new HashMap<>();
-                Map<String, Object> map = (Map<String, Object>) value;
-                Iterator<String> it = map.keySet().iterator();
+                Map<?, ?> map = Map.class.cast(value);
+                Iterator<?> it = map.keySet().iterator();
                 while (it.hasNext()) {
-                    String key = it.next();
-                    if (key.equalsIgnoreCase("config") && map.get(key) != null) {
-                        if (map.get(key) instanceof java.util.Map && !((Map<?, ?>) map.get(key)).isEmpty()) {
-                            logConfig.put("options", map.get(key));
+                    String key = String.class.cast(it.next());
+                    Object option = map.get(key);
+                    if (key.equalsIgnoreCase("config") && option != null) {
+                        if (option instanceof java.util.Map && !((Map<?, ?>) option).isEmpty()) {
+                            logConfig.put("options", option);
                         }
-                    } else if (key.equalsIgnoreCase("driver") && map.get(key) != null && map.get(key) != "") {
-                        logConfig.put("driver", map.get(key));
+                    } else if (key.equalsIgnoreCase("driver") && option != null && option != "") {
+                        logConfig.put("driver", option);
                     }
                 }
                 if (!logConfig.isEmpty() && logConfig.get("driver") != null) {
@@ -403,18 +416,17 @@ public class ServiceDiscoveryApiServiceImpl implements ServiceDiscoveryApiServic
         }
     }
     
-    @SuppressWarnings("unchecked")
     private void populateSecrets(Map<String, Object> cattleServiceData, Map<String, Object> composeServiceData, Map<String, Object> secretsData) {
         Object secrets = cattleServiceData.get(ServiceConstants.FIELD_SECRETS);
         if (secrets instanceof List<?>) {
             // we need to support two cases here. Long syntax and short syntax. If everything is default and filename matches secret name, then we 
             // only export short syntax.
             if (!((List<?>) secrets).isEmpty()) {
-                List<Object> list = (List<Object>) secrets;
+                List<?> list = List.class.cast(secrets);
                 List<Object> secretEntries = new ArrayList<>();
                 for (Object secret : list) {
                     if (secret instanceof Map) {
-                        Map<String, Object> secretOpts = (Map<String, Object>) secret;
+                        Map<?, ?> secretOpts = Map.class.cast(secret);
                         String secretId = ObjectUtils.toString(secretOpts.get(SECRET_ID));
                         Secret secretObj = objectManager.loadResource(Secret.class, secretId);
                         if (secretObj == null) {
@@ -461,23 +473,22 @@ public class ServiceDiscoveryApiServiceImpl implements ServiceDiscoveryApiServic
         }
     }
     
-    private boolean isShortSyntax(Map<String, Object> secretOpts) {
+    private boolean isShortSyntax(Map<?, ?> secretOpts) {
         if (secretOpts.get(UID) == null && secretOpts.get(GID) == null && secretOpts.get(MODE) == null) {
             return true;
         }
         return false;
     }
 
-    @SuppressWarnings("unchecked")
     private void populateTmpfs(Map<String, Object> cattleServiceData, Map<String, Object> composeServiceData) {
         Object value = cattleServiceData.get(ServiceConstants.FIELD_TMPFS);
         if (value instanceof Map) {
             if (!((Map<?, ?>) value).isEmpty()) {
-                Map<String, Object> map = (Map<String, Object>)value;
-                Iterator<String> it = map.keySet().iterator();
+                Map<?, ?> map = Map.class.cast(value);
+                Iterator<?> it = map.keySet().iterator();
                 ArrayList<String> list = new ArrayList<>();
                 while (it.hasNext()) {
-                    String key = it.next();
+                    String key = String.class.cast(it.next());
                     String option = "";
                     if (map.get(key) != null) {
                         option = map.get(key).toString();
@@ -493,17 +504,16 @@ public class ServiceDiscoveryApiServiceImpl implements ServiceDiscoveryApiServic
         }
     }
     
-    @SuppressWarnings("unchecked")
     private void populateUlimit(Map<String, Object> cattleServiceData, Map<String, Object> composeServiceData) {
         Object value = cattleServiceData.get(ServiceConstants.FIELD_ULIMITS);
         if (value instanceof List<?>) {
             if (!((List<?>) value).isEmpty()) {
-                List<Object> list = (List<Object>) value;
+                List<?> list = List.class.cast(value);
                 Map<String, Object> ulimits = new HashMap<>();
                 for (Object ulimit: list) {
                     // if there is one limit set(must be soft), parse it as map[string]string. If not, parse it as nested map
                     if (ulimit instanceof Map) {
-                        Map<String, Object> ulimitMap = (Map<String, Object>) ulimit;
+                        Map<?, ?> ulimitMap = Map.class.cast(ulimit);
                         // name can not be null
                         if (ulimitMap.get("name").toString() != null) {
                             if (ulimitMap.get("soft") != null && ulimitMap.get("hard") == null) {
@@ -524,21 +534,21 @@ public class ServiceDiscoveryApiServiceImpl implements ServiceDiscoveryApiServic
         }
     }
     
-    @SuppressWarnings("unchecked")
     private void populateBlkioOptions(Map<String, Object> cattleServiceData, Map<String, Object> composeServiceData) {
         Object value = cattleServiceData.get(ServiceConstants.FIELD_BLKIOOPTIONS);
         if (value instanceof Map) {
             if (!((Map<?, ?>) value).isEmpty()) {
-                Map<String, Object> options = (Map<String, Object>) value;
+                Map<?, ?> options = Map.class.cast(value);
                 Map<String, Object> deviceWeight = new HashMap<>();
                 Map<String, Object> deviceReadBps = new HashMap<>();
                 Map<String, Object> deviceReadIops = new HashMap<>();
                 Map<String, Object> deviceWriteBps = new HashMap<>();
                 Map<String, Object> deviceWriteIops = new HashMap<>();
-                for (String key: options.keySet()) {
+                for (Object keyObject: options.keySet()) {
+                    String key = String.class.cast(keyObject);
                     Object option = options.get(key);
                     if (option instanceof Map) {
-                        Map<String, Object> optionMap = (Map<String, Object>) option;
+                        Map<?, ?> optionMap = Map.class.cast(option);
                         if (optionMap.get("readIops") != null) {
                             deviceReadIops.put(key, optionMap.get("readIops"));
                         }
@@ -575,7 +585,6 @@ public class ServiceDiscoveryApiServiceImpl implements ServiceDiscoveryApiServic
         }
     }
 
-    @SuppressWarnings("unchecked")
     protected void populateLoadBalancerServiceLabels(Service service,
             String launchConfigName, Map<String, Object> composeServiceData) {
         // to support lb V1 export format
@@ -583,9 +592,9 @@ public class ServiceDiscoveryApiServiceImpl implements ServiceDiscoveryApiServic
             return;
         }
 
-        Map<String, String> labels = new HashMap<>();
+        Map<Object, Object> labels = new HashMap<>();
         if (composeServiceData.get(InstanceConstants.FIELD_LABELS) != null) {
-            labels.putAll((HashMap<String, String>) composeServiceData.get(InstanceConstants.FIELD_LABELS));
+            labels.putAll(hashMapCopy(composeServiceData.get(InstanceConstants.FIELD_LABELS)));
         }
         // get all consumed services maps
         List<? extends ServiceConsumeMap> consumedServiceMaps = consumeMapDao.findConsumedServices(service.getId());
@@ -614,7 +623,6 @@ public class ServiceDiscoveryApiServiceImpl implements ServiceDiscoveryApiServic
         }
     }
 
-    @SuppressWarnings("unchecked")
     protected void populateSelectorServiceLabels(Service service,
             String launchConfigName, Map<String, Object> composeServiceData) {
         String selectorContainer = service.getSelectorContainer();
@@ -623,9 +631,9 @@ public class ServiceDiscoveryApiServiceImpl implements ServiceDiscoveryApiServic
             return;
         }
 
-        Map<String, String> labels = new HashMap<>();
+        Map<Object, Object> labels = new HashMap<>();
         if (composeServiceData.get(InstanceConstants.FIELD_LABELS) != null) {
-            labels.putAll((HashMap<String, String>) composeServiceData.get(InstanceConstants.FIELD_LABELS));
+            labels.putAll(hashMapCopy(composeServiceData.get(InstanceConstants.FIELD_LABELS)));
         }
         if (selectorLink != null) {
             labels.put(ServiceConstants.LABEL_SELECTOR_LINK, selectorLink);
@@ -639,7 +647,6 @@ public class ServiceDiscoveryApiServiceImpl implements ServiceDiscoveryApiServic
         }
     }
 
-    @SuppressWarnings("unchecked")
     protected void populateSidekickLabels(Service service, Map<String, Object> composeServiceData, boolean isPrimary) {
         List<? extends String> configs = ServiceDiscoveryUtil
                 .getServiceLaunchConfigNames(service);
@@ -648,9 +655,9 @@ public class ServiceDiscoveryApiServiceImpl implements ServiceDiscoveryApiServic
         for (String config : configs) {
             sidekicks.append(config).append(",");
         }
-        Map<String, String> labels = new HashMap<>();
+        Map<Object, Object> labels = new HashMap<>();
         if (composeServiceData.get(InstanceConstants.FIELD_LABELS) != null) {
-            labels.putAll((HashMap<String, String>) composeServiceData.get(InstanceConstants.FIELD_LABELS));
+            labels.putAll(hashMapCopy(composeServiceData.get(InstanceConstants.FIELD_LABELS)));
             labels.remove(ServiceConstants.LABEL_SIDEKICK);
         }
         if (!sidekicks.toString().isEmpty() && isPrimary) {
@@ -707,12 +714,12 @@ public class ServiceDiscoveryApiServiceImpl implements ServiceDiscoveryApiServic
     private void addExtraComposeParameters(Service service,
             String launchConfigName, Map<String, Object> composeServiceData) {
         if (service.getKind().equalsIgnoreCase(ServiceConstants.KIND_DNS_SERVICE)) {
-            composeServiceData.put(ServiceDiscoveryConfigItem.IMAGE.getDockerName(), "rancher/dns-service");
+            composeServiceData.put(ServiceDiscoveryConfigItem.IMAGE.getDockerName(), COMPOSE_DNS_SERVICE_IMAGE);
         } else if (isV1LB(service)) {
                 composeServiceData.put(ServiceDiscoveryConfigItem.IMAGE.getDockerName(),
-                        "rancher/load-balancer-service");
+                        COMPOSE_LOAD_BALANCER_SERVICE_IMAGE);
         } else if (service.getKind().equalsIgnoreCase(ServiceConstants.KIND_EXTERNAL_SERVICE)) {
-            composeServiceData.put(ServiceDiscoveryConfigItem.IMAGE.getDockerName(), "rancher/external-service");
+            composeServiceData.put(ServiceDiscoveryConfigItem.IMAGE.getDockerName(), COMPOSE_EXTERNAL_SERVICE_IMAGE);
         }
     }
 
@@ -788,28 +795,31 @@ public class ServiceDiscoveryApiServiceImpl implements ServiceDiscoveryApiServic
         }
     }
 
-    @SuppressWarnings("unchecked")
     private void populateVolumesForService(Service service, String launchConfigName,
             Map<String, Object> composeServiceData) {
-        List<String> namesCombined = new ArrayList<>();
-        List<String> launchConfigNames = new ArrayList<>();
+        List<Object> namesCombined = new ArrayList<>();
+        List<?> launchConfigNames = Collections.emptyList();
         Map<String, Object> launchConfigData = ServiceDiscoveryUtil.getLaunchConfigDataAsMap(service, launchConfigName);
         Object dataVolumesLaunchConfigs = launchConfigData.get(
                 ServiceConstants.FIELD_DATA_VOLUMES_LAUNCH_CONFIG);
 
         if (dataVolumesLaunchConfigs != null) {
-            launchConfigNames.addAll((List<String>) dataVolumesLaunchConfigs);
+            launchConfigNames = List.class.cast(dataVolumesLaunchConfigs);
         }
 
         // 1. add launch config names
         namesCombined.addAll(launchConfigNames);
 
         // 2. add instance names if specified
-        List<? extends Integer> instanceIds = (List<? extends Integer>) launchConfigData
-                .get(DockerInstanceConstants.FIELD_VOLUMES_FROM);
+        List<?> instanceIds = null;
+        Object volumesFrom = launchConfigData.get(DockerInstanceConstants.FIELD_VOLUMES_FROM);
+        if (volumesFrom != null) {
+            instanceIds = List.class.cast(volumesFrom);
+        }
 
         if (instanceIds != null) {
-            for (Integer instanceId : instanceIds) {
+            for (Object instanceIdValue : instanceIds) {
+                Integer instanceId = Integer.class.cast(instanceIdValue);
                 Instance instance = objectManager.findOne(Instance.class, INSTANCE.ID, instanceId, INSTANCE.REMOVED,
                         null);
                 String instanceName = ServiceDiscoveryUtil.getInstanceName(instance);
@@ -846,9 +856,8 @@ public class ServiceDiscoveryApiServiceImpl implements ServiceDiscoveryApiServic
     }
 
     protected String generateService(Service service, Stack stack) throws Exception {
-        @SuppressWarnings("unchecked")
-        Map<String, Object> metadata = DataAccessor.fields(service).withKey(ServiceConstants.FIELD_METADATA)
-                .withDefault(Collections.EMPTY_MAP).as(Map.class);
+        Object metadata = DataAccessor.fields(service).withKey(ServiceConstants.FIELD_METADATA)
+                .withDefault(Collections.emptyMap()).get();
 
         String serviceName = service.getName();
         List<? extends String> configuredSans = DataAccessor.fromMap(metadata).withKey("sans")

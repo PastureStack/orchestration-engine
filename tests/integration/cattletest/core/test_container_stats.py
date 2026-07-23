@@ -20,7 +20,7 @@ def test_stats_container(docker_client, cattle_url):
     assert stats_access.token.index('.') > 0
     assert '/v1/containerstats/' in stats_access.url
     try:
-        payload = jwt.decode(stats_access.token, verify=False)
+        payload = jwt.decode(stats_access.token, options={"verify_signature": False})
         assert 'containerIds' in payload
         containerIds = payload['containerIds']
         assert len(containerIds) == 1
@@ -45,7 +45,7 @@ def test_stats_service(docker_client, context, cattle_url):
     stats_access = service.containerStats()
 
     try:
-        payload = jwt.decode(stats_access.token, verify=False)
+        payload = jwt.decode(stats_access.token, options={"verify_signature": False})
 
         assert 'service' in payload
     except jwt.InvalidTokenError:

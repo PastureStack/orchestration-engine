@@ -3,7 +3,7 @@ package io.cattle.platform.engine.server.impl;
 import io.cattle.platform.engine.server.ProcessServer;
 import io.cattle.platform.task.Task;
 
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 
 public class ProcessReplayTask implements Task {
 

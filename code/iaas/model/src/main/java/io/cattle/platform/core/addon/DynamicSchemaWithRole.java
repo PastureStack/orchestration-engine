@@ -12,7 +12,7 @@ public interface DynamicSchemaWithRole extends DynamicSchema{
     /**
      * Getter for <code>cattle.dynamic_schema_role.role</code>.
      */
-    @javax.persistence.Column(name = "role", nullable = false, length = 255)
+    @jakarta.persistence.Column(name = "role", nullable = false, length = 255)
     public java.lang.String getRole();
 
 }

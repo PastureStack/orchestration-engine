@@ -16,8 +16,8 @@ import io.cattle.platform.servicediscovery.api.dao.ServiceConsumeMapDao;
 
 import java.util.List;
 
-import javax.inject.Inject;
-import javax.inject.Named;
+import jakarta.inject.Inject;
+import jakarta.inject.Named;
 
 import org.jooq.tools.StringUtils;
 

@@ -15,8 +15,8 @@ import io.github.ibuildthecloud.gdapi.factory.SchemaFactory;
 
 import java.util.List;
 
-import javax.inject.Inject;
-import javax.inject.Named;
+import jakarta.inject.Inject;
+import jakarta.inject.Named;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

@@ -1,6 +1,69 @@
-FROM rancher/build-cattle:1.10.3-rancher1
-COPY ./scripts/bootstrap /scripts/bootstrap
-RUN /scripts/bootstrap
-WORKDIR /source
-COPY ./scripts/build-cache /scripts/build-cache
-RUN /scripts/build-cache
+FROM ubuntu:26.04
+
+ENV DEBIAN_FRONTEND=noninteractive
+ARG TEMURIN_JDK25_URL="https://github.com/adoptium/temurin25-binaries/releases/download/jdk-25.0.3%2B9/OpenJDK25U-jdk_x64_linux_hotspot_25.0.3_9.tar.gz"
+ARG TEMURIN_JDK25_SHA256=69264a7a211bf5029830d07bc3370f879769d62ebc5b5488e90c9343a2da0e1f
+ARG MAVEN_VERSION=3.9.14
+ARG MAVEN_SHA512=d50af8ab5e6005b46a07f0ce9d3719e67cfdf898da988a84871304cd59fb1af0fef2f99dea709e6e66f21f732f905979b5c2dce6b6860406f60a70e84d9cf0b8
+ARG DOCKER_VERSION=29.4.2
+ARG DOCKER_SHA256_AMD64=e985c6dc5008b8d62d6bdf9b5894427d075b335a1391cacf24ee01a7a29a3728
+ARG PLEXUS_UTILS_VERSION=3.6.1
+ARG PLEXUS_UTILS_SHA256=05a63effd67e2d6b9d610cc82e2bd7473289d34802e57a529b28110f28af5679
+ENV JAVA_HOME=/opt/java/openjdk
+ENV MAVEN_HOME=/opt/apache-maven
+ENV PATH=${JAVA_HOME}/bin:${MAVEN_HOME}/bin:${PATH}
+
+LABEL org.opencontainers.image.source="https://github.com/PastureStack/orchestration-engine" \
+      org.opencontainers.image.description="PastureStack Orchestration Engine build environment." \
+      org.opencontainers.image.licenses="Apache-2.0"
+
+RUN printf 'Acquire::Retries "5";\nAcquire::http::Timeout "30";\nAcquire::https::Timeout "30";\nAcquire::http::Pipeline-Depth "0";\n' > /etc/apt/apt.conf.d/80pasturestack-retries && \
+    apt-get update && \
+    apt-get install -y --no-install-recommends \
+        bash \
+        ca-certificates \
+        curl \
+        git \
+        gzip \
+        iproute2 \
+        iptables \
+        make \
+        mariadb-client \
+        postgresql-client \
+        procps \
+        python3 \
+        python3-pip \
+        python3-venv \
+        tar \
+        unzip \
+        xz-utils && \
+    rm -rf /var/lib/apt/lists/* && \
+    rm -f /usr/bin/pebble
+
+RUN mkdir -p ${JAVA_HOME} /usr/lib/jvm && \
+    curl -fsSL --retry 5 --retry-all-errors --retry-delay 2 --connect-timeout 10 --max-time 600 -o /tmp/temurin-jdk25.tar.gz "${TEMURIN_JDK25_URL}" && \
+    echo "${TEMURIN_JDK25_SHA256}  /tmp/temurin-jdk25.tar.gz" | sha256sum -c - && \
+    tar -xzf /tmp/temurin-jdk25.tar.gz -C ${JAVA_HOME} --strip-components=1 && \
+    rm -f /tmp/temurin-jdk25.tar.gz && \
+    ln -sfn ${JAVA_HOME} /usr/lib/jvm/temurin-25-amd64 && \
+    curl -fsSL --retry 5 --retry-all-errors --retry-delay 2 --connect-timeout 10 --max-time 300 -o /tmp/apache-maven.tar.gz "https://archive.apache.org/dist/maven/maven-3/${MAVEN_VERSION}/binaries/apache-maven-${MAVEN_VERSION}-bin.tar.gz" && \
+    echo "${MAVEN_SHA512}  /tmp/apache-maven.tar.gz" | sha512sum -c - && \
+    mkdir -p ${MAVEN_HOME} && \
+    tar -xzf /tmp/apache-maven.tar.gz -C ${MAVEN_HOME} --strip-components=1 && \
+    rm -f /tmp/apache-maven.tar.gz && \
+    curl -fsSL --retry 5 --retry-all-errors --retry-delay 2 --connect-timeout 10 --max-time 300 -o ${MAVEN_HOME}/lib/plexus-utils-${PLEXUS_UTILS_VERSION}.jar "https://repo1.maven.org/maven2/org/codehaus/plexus/plexus-utils/${PLEXUS_UTILS_VERSION}/plexus-utils-${PLEXUS_UTILS_VERSION}.jar" && \
+    echo "${PLEXUS_UTILS_SHA256}  ${MAVEN_HOME}/lib/plexus-utils-${PLEXUS_UTILS_VERSION}.jar" | sha256sum -c - && \
+    rm -f ${MAVEN_HOME}/lib/plexus-utils-3.6.0.jar && \
+    curl -fsSL --retry 5 --retry-all-errors --retry-delay 2 --connect-timeout 10 --max-time 600 -o /tmp/docker.tgz "https://download.docker.com/linux/static/stable/x86_64/docker-${DOCKER_VERSION}.tgz" && \
+    echo "${DOCKER_SHA256_AMD64}  /tmp/docker.tgz" | sha256sum -c - && \
+    tar xzf /tmp/docker.tgz -C /usr/bin --strip-components=1 docker/docker && \
+    rm -f /tmp/docker.tgz && \
+    chmod +x /usr/bin/docker && \
+    java -version && \
+    mvn -version && \
+    python3 --version && \
+    docker --version
+
+WORKDIR /workspace
+
+CMD ["mvn", "-B", "-DskipTests", "package"]

@@ -1,6 +1,7 @@
 package io.cattle.platform.host.service;
 
 import io.cattle.platform.archaius.util.ArchaiusUtil;
+import io.cattle.platform.archaius.util.ConfigProperty;
 import io.cattle.platform.core.dao.DataDao;
 import io.cattle.platform.ssh.common.SshKeyGen;
 import io.cattle.platform.token.CertSet;
@@ -21,15 +22,14 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.Callable;
 
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 
 import org.bouncycastle.openssl.jcajce.JcaPEMWriter;
 
-import com.netflix.config.DynamicBooleanProperty;
 
 public class HostApiRSAKeyProvider implements RSAKeyProvider, InitializationTask {
 
-    private static final DynamicBooleanProperty GEN_ON_STARTUP = ArchaiusUtil.getBoolean("host.api.keygen.on.startup");
+    private static final ConfigProperty<Boolean> GEN_ON_STARTUP = ArchaiusUtil.getBooleanProperty("host.api.keygen.on.startup");
 
     private static final String KEY = "host.api.key";
     private static final String CERT = "host.api.key.cert";

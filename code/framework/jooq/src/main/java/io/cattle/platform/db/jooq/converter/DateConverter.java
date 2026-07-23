@@ -1,33 +1,34 @@
 package io.cattle.platform.db.jooq.converter;
 
-import java.sql.Timestamp;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.Date;
 
 import org.jooq.Converter;
 
-public class DateConverter implements Converter<Timestamp, Date> {
+public class DateConverter implements Converter<LocalDateTime, Date> {
 
     private static final long serialVersionUID = -3093938632174221235L;
 
     @Override
-    public Date from(Timestamp databaseObject) {
+    public Date from(LocalDateTime databaseObject) {
         if (databaseObject == null) {
             return null;
         }
-        return new Date(databaseObject.getTime());
+        return Date.from(databaseObject.atZone(ZoneId.systemDefault()).toInstant());
     }
 
     @Override
-    public Timestamp to(Date userObject) {
+    public LocalDateTime to(Date userObject) {
         if (userObject == null) {
             return null;
         }
-        return new Timestamp(userObject.getTime());
+        return LocalDateTime.ofInstant(userObject.toInstant(), ZoneId.systemDefault());
     }
 
     @Override
-    public Class<Timestamp> fromType() {
-        return Timestamp.class;
+    public Class<LocalDateTime> fromType() {
+        return LocalDateTime.class;
     }
 
     @Override

@@ -4,7 +4,6 @@ import java.util.HashMap;
 import java.util.Map;
 
 import org.apache.commons.configuration.MapConfiguration;
-import org.apache.commons.lang.StringUtils;
 
 public abstract class AbstractTransformedEnvironmentProperties extends MapConfiguration implements NamedConfigurationSource {
 
@@ -17,7 +16,7 @@ public abstract class AbstractTransformedEnvironmentProperties extends MapConfig
 
         for (Map.Entry<String, String> entry : System.getenv().entrySet()) {
             String key = entry.getKey();
-            if (StringUtils.isNotBlank(contains) && !key.contains(contains)) {
+            if (!isBlank(contains) && !key.contains(contains)) {
                 continue;
             }
 
@@ -27,12 +26,16 @@ public abstract class AbstractTransformedEnvironmentProperties extends MapConfig
 
             key = key.replace('_', '.').toLowerCase();
 
-            if (!StringUtils.isBlank(entry.getValue())) {
+            if (!isBlank(entry.getValue())) {
                 values.put(key, entry.getValue());
             }
         }
 
         return values;
+    }
+
+    private static boolean isBlank(String value) {
+        return value == null || value.trim().isEmpty();
     }
 
 }

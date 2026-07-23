@@ -4,7 +4,7 @@ import io.cattle.platform.process.common.generic.GenericResourceProcessDefinitio
 
 import java.util.List;
 
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 
 public class GenericResourceProcessDefinitionCollector {
 

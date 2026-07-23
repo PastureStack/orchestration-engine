@@ -1,6 +1,8 @@
 package io.cattle.platform.storage.api.filter;
 
 import io.cattle.platform.archaius.util.ArchaiusUtil;
+import io.cattle.platform.archaius.util.ConfigListProperty;
+import io.cattle.platform.archaius.util.ConfigProperty;
 import io.cattle.platform.core.constants.InstanceConstants;
 import io.cattle.platform.core.model.Instance;
 import io.cattle.platform.docker.client.DockerImage;
@@ -18,12 +20,10 @@ import io.github.ibuildthecloud.gdapi.validation.ValidationErrorCodes;
 import java.util.List;
 import java.util.Map;
 
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 
+import org.apache.commons.lang3.Strings;
 import org.apache.commons.lang3.StringUtils;
-
-import com.netflix.config.DynamicStringListProperty;
-import com.netflix.config.DynamicStringProperty;
 
 public class ExternalTemplateInstanceFilter extends AbstractResourceManagerFilter {
 
@@ -31,8 +31,8 @@ public class ExternalTemplateInstanceFilter extends AbstractResourceManagerFilte
     @Inject
     StorageService storageService;
 
-    public static final DynamicStringProperty DEFAULT_REGISTRY = ArchaiusUtil.getString("registry.default");
-    public static final DynamicStringListProperty WHITELIST_REGISTRIES = ArchaiusUtil.getList("registry.whitelist");
+    public static final ConfigProperty<String> DEFAULT_REGISTRY = ArchaiusUtil.getStringProperty("registry.default");
+    public static final ConfigListProperty<String> WHITELIST_REGISTRIES = ArchaiusUtil.getStringListProperty("registry.whitelist");
     @Override
     public Object create(String type, ApiRequest request, ResourceManager next) {
         Map<String, Object> data = CollectionUtils.toMap(request.getRequestObject());
@@ -41,7 +41,7 @@ public class ExternalTemplateInstanceFilter extends AbstractResourceManagerFilte
         if (imageUuid != null) {
             String image = imageUuid.toString();
             String fullImageName = getImageUuid(image, storageService);
-            if (!StringUtils.equals(image, fullImageName)) {
+            if (!Strings.CS.equals(image, fullImageName)) {
                 data.put(InstanceConstants.FIELD_IMAGE_UUID, fullImageName);
                 request.setRequestObject(data);
             }

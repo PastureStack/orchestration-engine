@@ -11,7 +11,7 @@ import io.cattle.platform.util.type.Priority;
 
 import java.util.Date;
 
-import javax.inject.Named;
+import jakarta.inject.Named;
 
 @Named
 public class InstanceStartFirstRunning extends AbstractObjectProcessLogic implements ProcessPostListener, Priority {

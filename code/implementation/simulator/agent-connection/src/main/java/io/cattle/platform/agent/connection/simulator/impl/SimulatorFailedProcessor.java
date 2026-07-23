@@ -7,7 +7,7 @@ import io.cattle.platform.eventing.model.EventVO;
 import io.cattle.platform.json.JsonMapper;
 import io.cattle.platform.util.type.Priority;
 
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 
 public class SimulatorFailedProcessor implements AgentSimulatorEventProcessor, Priority {
 

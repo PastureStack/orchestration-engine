@@ -31,11 +31,9 @@ import io.github.ibuildthecloud.gdapi.condition.ConditionType;
 import java.util.ArrayList;
 import java.util.List;
 
-import javax.inject.Inject;
-import javax.inject.Named;
+import jakarta.inject.Inject;
+import jakarta.inject.Named;
 
-import org.apache.commons.collections.CollectionUtils;
-import org.apache.commons.collections.TransformerUtils;
 
 @Named
 public class AccountLinkRemove extends AbstractObjectProcessLogic implements ProcessPostListener {
@@ -65,15 +63,16 @@ public class AccountLinkRemove extends AbstractObjectProcessLogic implements Pro
         return null;
     }
 
-    @SuppressWarnings("unchecked")
     private void updateServices(AccountLink accountLink) {
         List<? extends ServiceConsumeMap> consumeMaps = objectManager.find(ServiceConsumeMap.class,
                 SERVICE_CONSUME_MAP.ACCOUNT_ID,
                 accountLink.getAccountId(), SERVICE_CONSUME_MAP.REMOVED, null);
         List<? extends Service> services = objectManager.find(Service.class, SERVICE.ACCOUNT_ID,
                 accountLink.getLinkedAccountId(), SERVICE.REMOVED, null);
-        List<Long> serviceIds = (List<Long>) CollectionUtils.collect(services,
-                TransformerUtils.invokerTransformer("getId"));
+        List<Long> serviceIds = new ArrayList<>();
+        for (Service service : services) {
+            serviceIds.add(service.getId());
+        }
         for (ServiceConsumeMap consumeMap : consumeMaps) {
             if (serviceIds.contains(consumeMap.getConsumedServiceId())) {
                 objectProcessManager.scheduleStandardProcessAsync(StandardProcess.REMOVE, consumeMap, null);

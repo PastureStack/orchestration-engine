@@ -1,7 +1,6 @@
 package io.cattle.platform.docker.api;
 
 import io.cattle.platform.api.action.ActionHandler;
-import io.cattle.platform.archaius.util.ArchaiusUtil;
 import io.cattle.platform.core.model.Host;
 import io.cattle.platform.docker.api.model.HostAccess;
 import io.cattle.platform.host.model.HostApiAccess;
@@ -11,16 +10,25 @@ import io.github.ibuildthecloud.gdapi.request.ApiRequest;
 
 import java.util.HashMap;
 
-import javax.inject.Inject;
-
-import com.netflix.config.DynamicStringProperty;
+import jakarta.inject.Inject;
 
 public class DockerSocketProxyActionHandler implements ActionHandler {
 
-    private static final DynamicStringProperty SOCKET_PROXY_PATH = ArchaiusUtil.getString("host.socketproxy.path");
+    private final DockerActionSettings settings;
 
     HostApiService apiService;
     ObjectManager objectManager;
+
+    public DockerSocketProxyActionHandler() {
+        this(ArchaiusDockerActionSettings.create());
+    }
+
+    DockerSocketProxyActionHandler(DockerActionSettings settings) {
+        if (settings == null) {
+            throw new IllegalArgumentException("settings is required");
+        }
+        this.settings = settings;
+    }
 
     @Override
     public String getName() {
@@ -35,7 +43,7 @@ public class DockerSocketProxyActionHandler implements ActionHandler {
 
         Host host = (Host)obj;
 
-        HostApiAccess apiAccess = apiService.getAccess(request, host.getId(), new HashMap<String, Object>(), SOCKET_PROXY_PATH.get());
+        HostApiAccess apiAccess = apiService.getAccess(request, host.getId(), new HashMap<String, Object>(), settings.hostSocketProxyPath());
 
         if (apiAccess == null) {
             return null;

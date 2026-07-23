@@ -17,7 +17,7 @@ import io.github.ibuildthecloud.gdapi.factory.SchemaFactory;
 import java.util.HashMap;
 import java.util.Map;
 
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 
 public class DefaultObjectProcessManager implements ObjectProcessManager {
 

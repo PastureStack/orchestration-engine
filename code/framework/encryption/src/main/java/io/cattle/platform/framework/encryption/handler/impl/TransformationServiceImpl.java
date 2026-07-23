@@ -6,6 +6,7 @@ import io.github.ibuildthecloud.gdapi.model.Transformer;
 import io.github.ibuildthecloud.gdapi.util.TransformationService;
 
 import java.util.Map;
+import java.util.Objects;
 
 import org.apache.commons.lang3.StringUtils;
 
@@ -66,7 +67,7 @@ public class TransformationServiceImpl implements TransformationService {
     public boolean compare(String plainText, String encrypted) {
         String[] valueSplit = encrypted.split("\\" + EncryptionConstants.ENCRYPTER_NAME_DELM, 2);
         if (valueSplit.length != 2){
-            return StringUtils.equals(plainText, encrypted);
+            return Objects.equals(plainText, encrypted);
         }
         return compareInternal(plainText, valueSplit[1], valueSplit[0]);
     }

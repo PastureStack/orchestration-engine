@@ -1,52 +1,104 @@
-#!/bin/bash
-set -e
+#!/usr/bin/env bash
+set -euo pipefail
 
-cd $(dirname $0)/..
+cd "$(dirname "$0")/.."
+
+case "${MAVEN_CONFIG:-}" in
+    /*) unset MAVEN_CONFIG ;;
+esac
+
+SOURCE_REVISION=${SOURCE_REVISION:-$(git rev-parse HEAD)}
+SOURCE_DATE_EPOCH=${SOURCE_DATE_EPOCH:-$(git show -s --format=%ct HEAD)}
+ENGINE_VERSION=${ENGINE_VERSION:-0.183.269}
+
+case "$SOURCE_REVISION" in
+    ''|*[!0-9a-f]*)
+        echo "SOURCE_REVISION must be a lowercase hexadecimal Git revision" >&2
+        exit 1
+        ;;
+esac
+if [ "${#SOURCE_REVISION}" -ne 40 ]; then
+    echo "SOURCE_REVISION must be a complete 40-character Git revision" >&2
+    exit 1
+fi
+case "$SOURCE_DATE_EPOCH" in
+    ''|*[!0-9]*)
+        echo "SOURCE_DATE_EPOCH must be an integer" >&2
+        exit 1
+        ;;
+esac
+case "$ENGINE_VERSION" in
+    ''|*[!0-9.]*)
+        echo "ENGINE_VERSION must contain only digits and dots" >&2
+        exit 1
+        ;;
+esac
+
+MAVEN_ARGS="${MAVEN_ARGS:-} -Dproject.build.outputTimestamp=${SOURCE_DATE_EPOCH} -DsourceDateEpoch=${SOURCE_DATE_EPOCH} -Duuid=${SOURCE_REVISION}"
 
 selectjar()
 {
-    local files=(code/packaging/app/target/*.war
-             code/packaging/bundle/target/cattle-bundle*.jar
-             target/checkout/.m2/io/cattle/cattle-bundle/*/cattle-bundle-[0-9].[0-9].[0-9].jar)
-
-    local src=
-
-    for i in ${files[@]}; do
-        if [ -e "$i" ]; then
-            if [ "$src" = "" ] || [ $i -nt $src ]; then
-                src=$i
-            fi
+    local files=(
+        code/packaging/app/target/*.war
+        code/packaging/bundle/target/cattle.war
+        code/packaging/bundle/target/cattle-bundle*.jar
+        target/checkout/.m2/io/cattle/cattle-bundle/*/cattle-bundle-[0-9].[0-9].[0-9].jar
+    )
+    local candidate
+    for candidate in "${files[@]}"; do
+        if [ -f "$candidate" ]; then
+            printf '%s\n' "$candidate"
+            return 0
         fi
     done
+    return 1
+}
 
-    if [ -e "${src}" ]; then
-        echo ${src}
+ensure_git_safe_directory()
+{
+    if ! command -v git >/dev/null 2>&1; then
+        return
+    fi
+    local repo_dir
+    repo_dir=$(pwd)
+    if ! git config --global --get-all safe.directory 2>/dev/null | grep -Fxq "$repo_dir"; then
+        git config --global --add safe.directory "$repo_dir" >/dev/null 2>&1 || true
     fi
 }
 
 build()
 {
-    ./mvnw ${MAVEN_ARGS} ${RELEASE_ARGS} ${MAVEN_TARGET:-install}
+    local maven_cmd=${MAVEN_CMD:-mvn}
+    ensure_git_safe_directory
+    scripts/check-pasturestack-source
+    if ! command -v "$maven_cmd" >/dev/null 2>&1; then
+        maven_cmd=./mvnw
+    fi
+
+    MAVEN_ARGS="$MAVEN_ARGS" SOURCE_DATE_EPOCH="$SOURCE_DATE_EPOCH" \
+        scripts/install-patched-hazelcast "$maven_cmd"
+    "$maven_cmd" ${MAVEN_ARGS} ${RELEASE_ARGS:-} ${MAVEN_TARGET:-install}
     mkdir -p dist/artifacts
 
-    local target=dist/artifacts/cattle.jar
-    local src=$(selectjar)
-
-    if [ -e "$src" ] && [ ! -e $target ] || [ "$src" -nt "$target" ]; then
-        echo "Copying $src => $target"
-        cp $src $target
-        if [[ $src =~ .*jar$ ]]; then
-            java -jar $target version > dist/version
-        fi
+    local source_archive
+    if ! source_archive=$(selectjar); then
+        echo "No complete release archive was produced" >&2
+        exit 1
     fi
+
+    local target=dist/artifacts/cattle.jar
+    echo "Copying $source_archive => $target"
+    cp "$source_archive" "$target"
+    EXPECTED_ENGINE_VERSION="$ENGINE_VERSION" scripts/check-release-artifact "$target"
+    printf '%s\n' "$ENGINE_VERSION" >dist/version
 }
 
-if [ "$1" = "--release" ]; then
+if [ "${1:-}" = "--release" ]; then
     RELEASE_ARGS="-Drelease"
 fi
 
 build
 
-if [ "$CI" = "true" ]; then
+if [ "${CI:-false}" = "true" ] && [ "${SKIP_CHECKSTYLE:-false}" != "true" ]; then
     scripts/checkstyle
 fi

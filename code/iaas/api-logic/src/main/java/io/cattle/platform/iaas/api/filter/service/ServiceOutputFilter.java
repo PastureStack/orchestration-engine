@@ -10,6 +10,7 @@ import io.cattle.platform.iaas.api.infrastructure.InfrastructureAccessManager;
 import io.cattle.platform.object.ObjectManager;
 import io.cattle.platform.object.meta.ObjectMetaDataManager;
 import io.cattle.platform.object.util.DataAccessor;
+import io.cattle.platform.util.type.CollectionUtils;
 import io.github.ibuildthecloud.gdapi.context.ApiContext;
 import io.github.ibuildthecloud.gdapi.id.IdFormatter;
 import io.github.ibuildthecloud.gdapi.model.Resource;
@@ -19,7 +20,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 
 import com.google.common.base.Strings;
 
@@ -118,6 +119,11 @@ public class ServiceOutputFilter extends CachedOutputFilter<Map<Long, ServiceOut
         }
 
         return result;
+    }
+
+    @Override
+    protected Map<Long, ServiceInfo> castCached(Object cached) {
+        return CollectionUtils.castMap(cached);
     }
 
     public static class ServiceInfo {

@@ -33,9 +33,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import javax.annotation.PostConstruct;
+import jakarta.annotation.PostConstruct;
 
-import org.apache.commons.beanutils.ConvertUtils;
+import org.apache.commons.beanutils2.ConvertUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -215,8 +215,7 @@ public class ValidationHandler extends AbstractResponseGenerator {
 
         switch (type) {
         case MAP:
-            @SuppressWarnings("unchecked")
-            Map<String, Object> map = (Map<String, Object>)checkType(fieldName, value, Map.class);
+            Map<?, ?> map = (Map<?, ?>)checkType(fieldName, value, Map.class);
             return convertMap(fieldName, subTypes, subTypeNames, map, context);
         case ARRAY:
             if (subTypes.size() == 0) {
@@ -274,7 +273,7 @@ public class ValidationHandler extends AbstractResponseGenerator {
 
         try {
             /* Attempt to convert to long */
-            return new Long(id);
+            return Long.valueOf(id);
         } catch (NumberFormatException nfe) {
             return id;
         }
@@ -304,21 +303,23 @@ public class ValidationHandler extends AbstractResponseGenerator {
         return error(INVALID_FORMAT, fieldName);
     }
 
-    protected Map<String, Object> convertMap(String fieldName, List<FieldType> subTypes, List<String> subTypesNames, Map<String, Object> value,
+    protected Map<String, Object> convertMap(String fieldName, List<FieldType> subTypes, List<String> subTypesNames, Map<?, ?> value,
             ValidationContext context) {
         Map<String, Object> result = new LinkedHashMap<String, Object>();
 
         if (subTypes == null) {
-            result.putAll(value);
+            for (Map.Entry<?, ?> entry : value.entrySet()) {
+                result.put(String.class.cast(entry.getKey()), entry.getValue());
+            }
             return result;
         }
 
         FieldType type = subTypes.get(0);
-        for (Map.Entry<String, Object> entry : value.entrySet()) {
+        for (Map.Entry<?, ?> entry : value.entrySet()) {
             Object item =
                     convert(fieldName, null, type, subTypes.subList(1, subTypes.size()), subTypesNames.subList(1, subTypesNames.size()), entry.getValue(),
                             subTypesNames.get(0), context);
-            result.put(entry.getKey(), item);
+            result.put(String.class.cast(entry.getKey()), item);
         }
 
         return result;

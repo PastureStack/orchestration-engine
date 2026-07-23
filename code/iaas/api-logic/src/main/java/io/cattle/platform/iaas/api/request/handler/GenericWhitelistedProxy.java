@@ -2,7 +2,6 @@ package io.cattle.platform.iaas.api.request.handler;
 
 import io.cattle.platform.api.auth.Policy;
 import io.cattle.platform.api.utils.ApiUtils;
-import io.cattle.platform.archaius.util.ArchaiusUtil;
 import io.cattle.platform.core.constants.AccountConstants;
 import io.cattle.platform.core.constants.CommonStatesConstants;
 import io.cattle.platform.core.constants.ProjectConstants;
@@ -11,6 +10,7 @@ import io.cattle.platform.iaas.api.servlet.filter.ProxyPreFilter;
 import io.cattle.platform.object.ObjectManager;
 import io.cattle.platform.object.meta.ObjectMetaDataManager;
 import io.cattle.platform.object.util.DataAccessor;
+import io.cattle.platform.util.net.UrlUtils;
 import io.cattle.platform.util.type.Named;
 import io.github.ibuildthecloud.gdapi.condition.Condition;
 import io.github.ibuildthecloud.gdapi.condition.ConditionType;
@@ -21,59 +21,30 @@ import io.github.ibuildthecloud.gdapi.request.handler.AbstractResponseGenerator;
 import io.github.ibuildthecloud.gdapi.util.ResponseCodes;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.MalformedURLException;
-import java.net.ProxySelector;
+import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
 import java.net.URLDecoder;
-import java.security.KeyManagementException;
-import java.security.NoSuchAlgorithmException;
-import java.util.ArrayList;
+import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Locale;
 import java.util.Set;
-import java.util.concurrent.TimeUnit;
 
-import javax.inject.Inject;
-import javax.net.ssl.SSLContext;
-import javax.servlet.http.HttpServletRequest;
+import jakarta.inject.Inject;
+import jakarta.servlet.http.HttpServletRequest;
 
+import org.apache.commons.lang3.Strings;
 import org.apache.commons.lang3.StringUtils;
-import org.apache.http.Header;
-import org.apache.http.HttpEntity;
-import org.apache.http.HttpResponse;
-import org.apache.http.NameValuePair;
-import org.apache.http.client.ClientProtocolException;
-import org.apache.http.client.HttpClient;
-import org.apache.http.client.ResponseHandler;
-import org.apache.http.client.config.RequestConfig;
-import org.apache.http.client.fluent.Executor;
-import org.apache.http.client.fluent.Request;
-import org.apache.http.client.fluent.Response;
-import org.apache.http.client.utils.URIBuilder;
-import org.apache.http.config.Registry;
-import org.apache.http.config.RegistryBuilder;
-import org.apache.http.conn.socket.ConnectionSocketFactory;
-import org.apache.http.conn.socket.LayeredConnectionSocketFactory;
-import org.apache.http.conn.socket.PlainConnectionSocketFactory;
-import org.apache.http.conn.ssl.SSLConnectionSocketFactory;
-import org.apache.http.conn.ssl.SSLInitializationException;
-import org.apache.http.entity.ContentType;
-import org.apache.http.entity.InputStreamEntity;
-import org.apache.http.impl.client.HttpClientBuilder;
-import org.apache.http.impl.conn.PoolingHttpClientConnectionManager;
-import org.apache.http.impl.conn.SystemDefaultRoutePlanner;
-import org.apache.http.message.BasicNameValuePair;
-import org.apache.http.protocol.HTTP;
 
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
-import com.netflix.config.DynamicBooleanProperty;
-import com.netflix.config.DynamicStringListProperty;
 
 
 public class GenericWhitelistedProxy extends AbstractResponseGenerator implements Named {
@@ -85,63 +56,23 @@ public class GenericWhitelistedProxy extends AbstractResponseGenerator implement
     public static final String REQUIRE_ROLE = GenericWhitelistedProxy.class.getName() + "roles";
     public static final String METHOD_ROLE = GenericWhitelistedProxy.class.getName() + "methodRoles";
 
-    private static final DynamicBooleanProperty ALLOW_PROXY = ArchaiusUtil.getBoolean("api.proxy.allow");
-    private static final DynamicStringListProperty PROXY_WHITELIST = ArchaiusUtil.getList("api.proxy.whitelist");
+    private static final ProxySettings DEFAULT_SETTINGS = ArchaiusProxySettings.create();
 
     private static final String FORWARD_PROTO = "X-Forwarded-Proto";
     private static final String API_AUTH = "X-API-AUTH-HEADER";
-    private static final Set<String> BAD_HEADERS = new HashSet<>(Arrays.asList(HTTP.TARGET_HOST.toLowerCase(), "authorization",
-            HTTP.TRANSFER_ENCODING.toLowerCase(), HTTP.CONTENT_LEN.toLowerCase(), API_AUTH.toLowerCase()));
+    private static final String CONTENT_TYPE = "Content-Type";
+    private static final Set<String> MANAGED_HEADERS = new HashSet<>(Arrays.asList("host", "connection", "content-length",
+            "expect", "keep-alive", "proxy-authenticate", "proxy-authorization", "te", "trailer",
+            "transfer-encoding", "upgrade", API_AUTH.toLowerCase()));
     private static final String AUTH_ACCESS_TOKEN = "access_token";
-
-    private static final Executor EXECUTOR;
-    private static final Executor NO_REDIRECT_EXECUTOR;
 
     private List<String> allowedPaths;
     private boolean noAuthProxy = false;
     private String name;
-
-    static {
-        LayeredConnectionSocketFactory ssl = null;
-        try {
-            ssl = SSLConnectionSocketFactory.getSystemSocketFactory();
-        } catch (final SSLInitializationException ex) {
-            final SSLContext sslcontext;
-            try {
-                sslcontext = SSLContext.getInstance(SSLConnectionSocketFactory.TLS);
-                sslcontext.init(null, null, null);
-                ssl = new SSLConnectionSocketFactory(sslcontext);
-            } catch (final SecurityException ignore) {
-            } catch (final KeyManagementException ignore) {
-            } catch (final NoSuchAlgorithmException ignore) {
-            }
-        }
-
-        final Registry<ConnectionSocketFactory> sfr = RegistryBuilder.<ConnectionSocketFactory>create()
-            .register("http", PlainConnectionSocketFactory.getSocketFactory())
-            .register("https", ssl != null ? ssl : SSLConnectionSocketFactory.getSocketFactory())
-            .build();
-
-        PoolingHttpClientConnectionManager cm = new PoolingHttpClientConnectionManager(sfr);
-        cm.setDefaultMaxPerRoute(100);
-        cm.setMaxTotal(200);
-        HttpClient httpClient = HttpClientBuilder.create()
-                .setConnectionManager(cm)
-                .setRoutePlanner(new SystemDefaultRoutePlanner(ProxySelector.getDefault()))
-                .build();
-
-        HttpClient noRdhttpClient = HttpClientBuilder.create()
-                .setConnectionManager(cm)
-                .setDefaultRequestConfig(RequestConfig.copy(RequestConfig.DEFAULT).setRedirectsEnabled(false).build())
-                .setRoutePlanner(new SystemDefaultRoutePlanner(ProxySelector.getDefault()))
-                .build();
-
-        EXECUTOR = Executor.newInstance(httpClient);
-        NO_REDIRECT_EXECUTOR = Executor.newInstance(noRdhttpClient);
-    }
+    private final ProxySettings settings;
 
     Cache<String, Boolean> allowCache = CacheBuilder.newBuilder()
-            .expireAfterAccess(24, TimeUnit.HOURS)
+            .expireAfterAccess(java.time.Duration.ofHours(24))
             .maximumSize(100)
             .build();
 
@@ -149,8 +80,16 @@ public class GenericWhitelistedProxy extends AbstractResponseGenerator implement
     ObjectManager objectManager;
 
     public GenericWhitelistedProxy(String name) {
+        this(name, DEFAULT_SETTINGS);
+    }
+
+    GenericWhitelistedProxy(String name, ProxySettings settings) {
         super();
+        if (settings == null) {
+            throw new IllegalArgumentException("Proxy settings are required");
+        }
         this.name = name;
+        this.settings = settings;
     }
 
     protected boolean isAllowed(HttpServletRequest servletRequest, String host) {
@@ -171,7 +110,7 @@ public class GenericWhitelistedProxy extends AbstractResponseGenerator implement
                 String url = DataAccessor.fieldString(driver, "uiUrl");
                 if (url != null) {
                     try {
-                        URL parsed = new URL(url);
+                        URL parsed = UrlUtils.toURL(url);
                         allowCache.put(parsed.getHost(), true);
                     } catch (MalformedURLException e) {
                     }
@@ -182,10 +121,9 @@ public class GenericWhitelistedProxy extends AbstractResponseGenerator implement
         return value == null ? false : value;
     }
 
-    @SuppressWarnings("unchecked")
     @Override
     protected void generate(final ApiRequest request) throws IOException {
-        if (!ALLOW_PROXY.get())
+        if (!settings.allowProxy())
             return;
 
         if (!"proxy".equals(request.getType())) {
@@ -194,10 +132,10 @@ public class GenericWhitelistedProxy extends AbstractResponseGenerator implement
 
         HttpServletRequest servletRequest = request.getServletContext().getRequest();
         boolean setCurrentHost = Boolean.TRUE.equals(servletRequest.getAttribute(SET_HOST_CURRENT_HOST));
-        boolean redirects = !Boolean.FALSE.equals(servletRequest.getAttribute(REDIRECTS));
+        boolean redirects = shouldFollowRedirects(servletRequest.getAttribute(REDIRECTS));
         boolean parseForm = Boolean.TRUE.equals(servletRequest.getAttribute(PARSE_FORM));
-        Set<String> requiredRoles = (Set<String>) servletRequest.getAttribute(REQUIRE_ROLE);
-        Set<String> methodRoles = (Set<String>) servletRequest.getAttribute(METHOD_ROLE);
+        Set<?> requiredRoles = setAttribute(servletRequest, REQUIRE_ROLE);
+        Set<?> methodRoles = setAttribute(servletRequest, METHOD_ROLE);
 
         String redirect = servletRequest.getRequestURI();
         redirect = StringUtils.substringAfter(redirect, "/proxy/");
@@ -207,24 +145,30 @@ public class GenericWhitelistedProxy extends AbstractResponseGenerator implement
             redirect = redirect.replaceFirst("^https:/([^/])", "https://$1");
         }
 
-        if (!StringUtils.startsWith(redirect, "http")) {
+        if (!Strings.CS.startsWith(redirect, "http")) {
             redirect = "https://" + redirect;
         }
 
-        URIBuilder uri;
+        URI uri;
         try {
-            uri = new URIBuilder(redirect);
+            uri = new URI(redirect);
         } catch (URISyntaxException e) {
             throw new ClientVisibleException(ResponseCodes.BAD_REQUEST, "InvalidRedirect", "The redirect is invalid/empty", null);
         }
         String queryInfo = servletRequest.getQueryString();
         if (queryInfo != null) {
-            uri.setCustomQuery(URLDecoder.decode(queryInfo, "UTF-8"));
+            try {
+                uri = new URI(uri.getScheme(), uri.getAuthority(), uri.getPath(),
+                        URLDecoder.decode(queryInfo, StandardCharsets.UTF_8), uri.getFragment());
+            } catch (URISyntaxException e) {
+                throw new ClientVisibleException(ResponseCodes.BAD_REQUEST, "InvalidRedirect", "The redirect query is invalid", null);
+            }
         }
-        try {
-            redirect = uri.build().toString();
-        } catch (URISyntaxException e) {
-            throw new ClientVisibleException(ResponseCodes.BAD_REQUEST, "InvalidRedirect", "The redirect is invalid", null);
+        redirect = uri.toString();
+
+        if (!isProxyableScheme(uri.getScheme()) || StringUtils.isBlank(uri.getHost())) {
+            throw new ClientVisibleException(ResponseCodes.BAD_REQUEST, "InvalidRedirect",
+                    "The redirect is invalid/empty", null);
         }
 
         String host = uri.getPort() > 0 ? String.format("%s:%s", uri.getHost(), uri.getPort()) : uri.getHost();
@@ -249,7 +193,7 @@ public class GenericWhitelistedProxy extends AbstractResponseGenerator implement
             }
         }
 
-        Request temp;
+        JdkProxyRequest temp;
         String method = servletRequest.getMethod();
         if (servletRequest instanceof ProxyPreFilter.Request) {
             method = ((ProxyPreFilter.Request)servletRequest).getRealMethod();
@@ -257,23 +201,17 @@ public class GenericWhitelistedProxy extends AbstractResponseGenerator implement
 
         switch (method) {
         case "POST":
-            temp = Request.Post(redirect);
-            break;
         case "GET":
-            temp = Request.Get(redirect);
-            break;
         case "PUT":
-            temp = Request.Put(redirect);
-            break;
         case "DELETE":
-            temp = Request.Delete(redirect);
-            break;
         case "HEAD":
-            temp = Request.Head(redirect);
+            temp = new JdkProxyRequest(method, redirect);
             break;
         default:
             throw new ClientVisibleException(ResponseCodes.BAD_REQUEST, "Invalid method", "The method " + method + " is not supported", null);
         }
+        temp.setConnectTimeoutMillis(settings.connectTimeoutMillis());
+        temp.setRequestTimeoutMillis(settings.requestTimeoutMillis());
 
         // This isn't always available. As is the case for proxy protocol
         String xForwardedProto = servletRequest.getHeader(FORWARD_PROTO);
@@ -281,18 +219,16 @@ public class GenericWhitelistedProxy extends AbstractResponseGenerator implement
             temp.addHeader(FORWARD_PROTO, "https");
         }
 
-        boolean isFormContent = false;
-        for (String headerName : (List<String>)Collections.list(servletRequest.getHeaderNames())) {
-            if (BAD_HEADERS.contains(headerName.toLowerCase())) {
+        boolean parseFormContent = false;
+        for (String headerName : Collections.list(servletRequest.getHeaderNames())) {
+            if (MANAGED_HEADERS.contains(headerName.toLowerCase(Locale.ROOT))) {
                 continue;
             }
-            for (String headerVal : (List<String>)Collections.list(servletRequest.getHeaders(headerName))) {
-                if(parseForm && HTTP.CONTENT_TYPE.equalsIgnoreCase(headerName.toLowerCase())){
-                    if(ContentType.APPLICATION_FORM_URLENCODED.getMimeType().equalsIgnoreCase(headerVal.toLowerCase())) {
-                        isFormContent = true;
-                    }
+            for (String headerVal : Collections.list(servletRequest.getHeaders(headerName))) {
+                if (CONTENT_TYPE.equalsIgnoreCase(headerName)) {
+                    parseFormContent = parseFormContent || shouldParseFormContent(parseForm, headerVal);
                 }
-                temp.addHeader(headerName, StringUtils.removeStart(headerVal, "rancher:"));
+                temp.addHeader(headerName, Strings.CS.removeStart(headerVal, "rancher:"));
             }
         }
 
@@ -333,47 +269,54 @@ public class GenericWhitelistedProxy extends AbstractResponseGenerator implement
         authorize(method, requiredRoles, roles, methodRoles);
 
         if ("POST".equals(method) || "PUT".equals(method)) {
-            if(isFormContent) {
-                Map<String, String[]> map = servletRequest.getParameterMap();
-                List<NameValuePair> nameValuePairs = new ArrayList<NameValuePair>();
-                for (String name : map.keySet()) {
-                  String[] array = map.get(name);
-                  for (int i = 0; i < array.length; i++) {
-                    nameValuePairs.add(new BasicNameValuePair(name, array[i]));
-                  }
-                }
-                temp.bodyForm(nameValuePairs);
+            if (parseFormContent) {
+                temp.bodyForm(servletRequest.getParameterMap());
             } else {
-                int length = servletRequest.getContentLength();
-                InputStreamEntity entity = new InputStreamEntity(request.getInputStream(), length);
-                temp.body(entity);
+                temp.body(request.getInputStream(), servletRequest.getContentLengthLong());
             }
         }
 
-        Response res = redirects ? EXECUTOR.execute(temp) : NO_REDIRECT_EXECUTOR.execute(temp);
-
-        res.handleResponse(new ResponseHandler<Object>() {
-            @Override
-            public Object handleResponse(HttpResponse response) throws ClientProtocolException, IOException {
-                int statusCode = response.getStatusLine().getStatusCode();
-                request.setResponseObject(new Object());
-                request.setResponseCode(statusCode);
-                request.commit();
-                OutputStream writer = request.getServletContext().getResponse().getOutputStream();
-                Header[] headers = response.getAllHeaders();
-                for (int i = 0; i < headers.length; i++) {
-                    request.getServletContext().getResponse().setHeader(headers[i].getName(), headers[i].getValue());
-                }
-                HttpEntity entity = response.getEntity();
-                if (entity != null) {
-                    entity.writeTo(writer);
-                }
-                return null;
+        JdkProxyRequest.ProxyResponse response = temp.execute(redirects);
+        int statusCode = response.getStatusCode();
+        request.setResponseObject(new Object());
+        request.setResponseCode(statusCode);
+        for (Map.Entry<String, List<String>> header : response.getHeaders().entrySet()) {
+            for (String value : header.getValue()) {
+                request.getServletContext().getResponse().addHeader(header.getKey(), value);
             }
-        });
+        }
+        request.commit();
+        OutputStream writer = request.getServletContext().getResponse().getOutputStream();
+        try (InputStream body = response.getBody()) {
+            if (body != null) {
+                body.transferTo(writer);
+            }
+        }
     }
 
-    private static void authorize(String method, Set<String> requiredRoles, Set<String> roles, Set<String> methods) {
+    static Set<?> setAttribute(HttpServletRequest servletRequest, String attribute) {
+        Object value = servletRequest.getAttribute(attribute);
+        return value == null ? null : Set.class.cast(value);
+    }
+
+    static boolean shouldParseFormContent(boolean parseForm, String contentType) {
+        if (!parseForm || StringUtils.isBlank(contentType)) {
+            return false;
+        }
+
+        String mimeType = StringUtils.substringBefore(contentType, ";").trim();
+        return JdkProxyRequest.APPLICATION_FORM_URLENCODED.equalsIgnoreCase(mimeType);
+    }
+
+    static boolean shouldFollowRedirects(Object redirectsAttribute) {
+        return Boolean.TRUE.equals(redirectsAttribute);
+    }
+
+    static boolean isProxyableScheme(String scheme) {
+        return "http".equalsIgnoreCase(scheme) || "https".equalsIgnoreCase(scheme);
+    }
+
+    static void authorize(String method, Set<?> requiredRoles, Set<String> roles, Set<?> methods) {
         if (methods != null && methods.size() > 0) {
             if (!methods.contains(method)) {
                 return;
@@ -399,8 +342,8 @@ public class GenericWhitelistedProxy extends AbstractResponseGenerator implement
         }
     }
 
-    private boolean isWhitelisted(String host) {
-        for (String valid : PROXY_WHITELIST.get()) {
+    boolean isWhitelisted(String host) {
+        for (String valid : settings.whitelist()) {
             if (valid.equals(host)) {
                 return true;
             }

@@ -17,8 +17,6 @@ import java.util.jar.JarEntry;
 import java.util.jar.JarInputStream;
 import java.util.jar.JarOutputStream;
 import java.util.jar.Manifest;
-import java.util.jar.Pack200;
-import java.util.jar.Pack200.Unpacker;
 import java.util.zip.ZipEntry;
 
 public class Bootstrap implements Closeable {
@@ -177,8 +175,6 @@ public class Bootstrap implements Closeable {
     }
 
     protected void extractFiles(JarInputStream is, boolean first) throws IOException {
-        Unpacker unpacker = Pack200.newUnpacker();
-
         int total = first ? count(getInput()) : 0;
         int done = 0;
         int lastPrinted = -1;
@@ -192,13 +188,7 @@ public class Bootstrap implements Closeable {
                 extractFiles(new JarInputStream(new NoCloseInputStream(is)), false);
             } else if (name.endsWith(".pack")) {
                 name = name.substring(0, name.length() - 5);
-                JarOutputStream os = new JarOutputStream(getOutputStream(name, false));
-                os.setLevel(0);
-                try {
-                    unpacker.unpack(new NoCloseInputStream(is), os);
-                } finally {
-                    closeQuietly(os);
-                }
+                unpackPack200(is, name);
                 done++;
             } else if (!entry.isDirectory()) {
                 OutputStream os = getOutputStream(name, first ? !name.endsWith(".jar") : first);
@@ -228,6 +218,11 @@ public class Bootstrap implements Closeable {
                 }
             }
         }
+    }
+
+    protected void unpackPack200(JarInputStream is, String name) throws IOException {
+        throw new IOException("Pack200 entries are not supported on the JDK 25 maintenance runtime. "
+                + "Rebuild cattle.jar without .pack entries: " + name);
     }
 
     protected OutputStream getOutputStream(String name, boolean rootResource) throws IOException {

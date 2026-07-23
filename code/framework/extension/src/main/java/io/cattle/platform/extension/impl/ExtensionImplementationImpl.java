@@ -7,7 +7,7 @@ import java.beans.PropertyDescriptor;
 import java.util.HashMap;
 import java.util.Map;
 
-import org.apache.commons.beanutils.PropertyUtils;
+import org.apache.commons.beanutils2.PropertyUtils;
 
 public class ExtensionImplementationImpl implements ExtensionImplementation {
 

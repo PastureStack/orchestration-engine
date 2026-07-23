@@ -14,7 +14,6 @@ import io.github.ibuildthecloud.gdapi.factory.SchemaFactory;
 import io.github.ibuildthecloud.gdapi.model.ListOptions;
 import io.github.ibuildthecloud.gdapi.request.ApiRequest;
 import io.github.ibuildthecloud.gdapi.request.resource.impl.AbstractNoOpResourceManager;
-import io.github.ibuildthecloud.gdapi.util.ProxyUtils;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -23,7 +22,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
 
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 
 import org.apache.commons.lang3.StringUtils;
 
@@ -93,16 +92,19 @@ public class SubscribeManager extends AbstractNoOpResourceManager {
 
         eventNames = new ArrayList<String>();
         Map<String, List<Condition>> conditions = request.getConditions();
+        return eventNamesFromConditions(conditions);
+    }
+
+    protected List<String> eventNamesFromConditions(Map<String, List<Condition>> conditions) {
+        List<String> eventNames = new ArrayList<String>();
         if (conditions == null) {
             return eventNames;
         }
-
-        @SuppressWarnings({ "unchecked", "rawtypes" })
-        List<?> list = ProxyUtils.proxy((Map) conditions, Subscribe.class).getEventNames();
+        List<Condition> list = conditions.get("eventNames");
         if (list != null) {
-            for (Object condition : list) {
-                if (condition instanceof Condition) {
-                    Object value = ((Condition) condition).getValue();
+            for (Condition condition : list) {
+                if (condition != null) {
+                    Object value = condition.getValue();
                     if (value != null) {
                         eventNames.add(value.toString());
                     }

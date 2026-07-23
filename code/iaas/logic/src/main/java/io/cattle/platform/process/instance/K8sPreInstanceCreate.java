@@ -15,9 +15,9 @@ import io.cattle.platform.util.type.Priority;
 
 import java.util.Map;
 
-import javax.inject.Named;
+import jakarta.inject.Named;
 
-import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.Strings;
 
 @Named
 public class K8sPreInstanceCreate extends AbstractObjectProcessLogic implements ProcessPreListener, Priority {
@@ -63,7 +63,7 @@ public class K8sPreInstanceCreate extends AbstractObjectProcessLogic implements 
 
 
     private boolean isHostNetwork(Instance instance) {
-        return StringUtils.equalsIgnoreCase("host", DataAccessor.fieldString(instance,
+        return Strings.CI.equals("host", DataAccessor.fieldString(instance,
                 DockerInstanceConstants.FIELD_NETWORK_MODE));
     }
 

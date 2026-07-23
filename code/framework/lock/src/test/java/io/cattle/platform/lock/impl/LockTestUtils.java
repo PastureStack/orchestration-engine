@@ -4,30 +4,54 @@ import io.cattle.platform.lock.Lock;
 import io.cattle.platform.lock.definition.LockDefinition;
 import io.cattle.platform.lock.exception.FailedToAcquireLockException;
 
-import org.mockito.Mockito;
-
 public class LockTestUtils {
 
-    public static Lock goodLock(LockDefinition def) {
+    public static TestLock goodLock(LockDefinition def) {
         return getLock(true, def);
     }
 
-    public static Lock badLock(LockDefinition def) {
+    public static TestLock badLock(LockDefinition def) {
         return getLock(false, def);
     }
 
-    public static Lock getLock(boolean good, LockDefinition def) {
-        Lock lock = Mockito.mock(Lock.class);
+    public static TestLock getLock(boolean good, LockDefinition def) {
+        return new TestLock(good, def);
+    }
 
-        if (def != null) {
-            Mockito.when(lock.getLockDefinition()).thenReturn(def);
+    public static class TestLock implements Lock {
+        private final boolean good;
+        private final LockDefinition definition;
+        int tryLockCount;
+        int lockCount;
+        int unlockCount;
+
+        TestLock(boolean good, LockDefinition definition) {
+            this.good = good;
+            this.definition = definition;
         }
 
-        Mockito.when(lock.tryLock()).thenReturn(good);
-        if (!good) {
-            Mockito.doThrow(new FailedToAcquireLockException(def)).when(lock).lock();
+        @Override
+        public boolean tryLock() {
+            tryLockCount++;
+            return good;
         }
 
-        return lock;
+        @Override
+        public void lock() throws FailedToAcquireLockException {
+            lockCount++;
+            if (!good) {
+                throw new FailedToAcquireLockException(definition);
+            }
+        }
+
+        @Override
+        public void unlock() {
+            unlockCount++;
+        }
+
+        @Override
+        public LockDefinition getLockDefinition() {
+            return definition;
+        }
     }
 }

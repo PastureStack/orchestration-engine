@@ -56,7 +56,6 @@ public class AllocationCandidate {
         }
     }
 
-    @SuppressWarnings("unchecked")
     public <T> T loadResource(Class<T> clz, Long id) {
         if (id == null) {
             return null;
@@ -70,7 +69,7 @@ public class AllocationCandidate {
             resources.put(key, resource);
         }
 
-        return (T) resource;
+        return clz.cast(resource);
     }
 
     public String getId() {

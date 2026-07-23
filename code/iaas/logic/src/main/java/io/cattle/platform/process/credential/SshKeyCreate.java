@@ -10,7 +10,7 @@ import io.cattle.platform.engine.process.ProcessState;
 import io.cattle.platform.process.common.handler.AbstractObjectProcessLogic;
 import io.cattle.platform.ssh.common.SshKeyGen;
 
-import javax.inject.Named;
+import jakarta.inject.Named;
 
 @Named
 public class SshKeyCreate extends AbstractObjectProcessLogic implements ProcessPreListener {

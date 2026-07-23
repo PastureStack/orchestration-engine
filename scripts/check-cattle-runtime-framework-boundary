@@ -1,0 +1,231 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+cd "$(dirname "$0")/.."
+
+resolve_python_cmd() {
+    for candidate in "${PYTHON:-}" python3 python; do
+        [ -n "$candidate" ] || continue
+        if "$candidate" -c 'import sys; sys.exit(0)' >/dev/null 2>&1; then
+            printf '%s\n' "$candidate"
+            return 0
+        fi
+    done
+    return 1
+}
+
+python_cmd="$(resolve_python_cmd)" || {
+    echo "python3 or python is required for the cattle runtime framework boundary audit" >&2
+    exit 1
+}
+
+"$python_cmd" - <<'PY'
+import os
+import re
+import sys
+import xml.etree.ElementTree as ET
+from pathlib import Path
+
+ROOT = Path(os.environ.get("RC16_CATTLE_SOURCE_ROOT", "."))
+NS = {"m": "http://maven.apache.org/POM/4.0.0"}
+SPRING_FLOOR = (6, 2, 18)
+SPRING_LINE = (6, 2)
+SPRING7_EVALUATION_FLOOR = (7, 0, 7)
+SPRING7_EVALUATION_LINE = (7, 0)
+JETTY_FLOOR = (12, 1, 10)
+JETTY_LINE = (12, 1)
+UNREVIEWED_QUALIFIER = re.compile(r"(?:^|[.-])(alpha|beta|snapshot|rc|b\d+|m\d+|mr)(?:[.-]|\d|$)", re.IGNORECASE)
+ALLOW_SPRING7_EVALUATION = os.environ.get("RC16_ALLOW_SPRING7_EVALUATION") == "1"
+
+def local_name(tag):
+    return tag.rsplit("}", 1)[-1]
+
+def parse_version(version):
+    normalized = version.strip()
+    if not normalized or normalized.startswith("${"):
+        return None
+    match = re.match(r"^(\d+)\.(\d+)(?:[.-](\d+))?(?:[.-]|$)", normalized)
+    if not match:
+        return None
+    major, minor, patch = match.groups()
+    return (int(major), int(minor), int(patch or "0"))
+
+def resolve_property(version, properties):
+    match = re.match(r"^\$\{([^}]+)\}$", version.strip())
+    if not match:
+        return version
+    return properties.get(match.group(1), "")
+
+def spring_failure(label, version):
+    parsed = parse_version(version)
+    if parsed is None:
+        return None
+    if parsed[0] < 6:
+        return f"{label}={version} is below Spring 6"
+    if ALLOW_SPRING7_EVALUATION and parsed[:len(SPRING7_EVALUATION_LINE)] == SPRING7_EVALUATION_LINE:
+        if parsed < SPRING7_EVALUATION_FLOOR:
+            return f"{label}={version} < Spring 7 evaluation floor 7.0.7"
+        if UNREVIEWED_QUALIFIER.search(version):
+            return f"{label}={version} uses an unreviewed qualifier"
+        return None
+    if parsed[0] == 7:
+        if not ALLOW_SPRING7_EVALUATION:
+            return f"{label}={version} is Spring 7; set RC16_ALLOW_SPRING7_EVALUATION=1 for the reviewed 7.0.x evaluation line"
+        return f"{label}={version} is outside the reviewed Spring 7.0.x evaluation line"
+    if parsed[:len(SPRING_LINE)] != SPRING_LINE:
+        return f"{label}={version} is outside the reviewed Spring 6.2.x compatibility line"
+    if parsed < SPRING_FLOOR:
+        return f"{label}={version} < 6.2.18"
+    if UNREVIEWED_QUALIFIER.search(version):
+        return f"{label}={version} uses an unreviewed qualifier"
+    return None
+
+def jetty_failure(label, version):
+    parsed = parse_version(version)
+    if parsed is None:
+        return None
+    if parsed[0] < 12:
+        return f"{label}={version} is below Jetty 12"
+    if parsed[:len(JETTY_LINE)] != JETTY_LINE:
+        return f"{label}={version} is outside the reviewed Jetty 12.1.x compatibility line"
+    if parsed < JETTY_FLOOR:
+        return f"{label}={version} < 12.1.10"
+    if UNREVIEWED_QUALIFIER.search(version):
+        return f"{label}={version} uses an unreviewed qualifier"
+    return None
+
+def parse_spring_jar(name):
+    match = re.match(r"^spring-[^-]+(?:-[^-]+)*?-(\d+)\.(\d+)(?:[.-](\d+))?([^/]*)\.jar$", name)
+    if not match:
+        return None
+    major, minor, patch, qualifier = match.groups()
+    return (int(major), int(minor), int(patch or "0")), qualifier
+
+def parse_jetty_jar(name):
+    match = re.match(r"^jetty-[^-]+(?:-[^-]+)*?-(\d+)\.(\d+)(?:[.-](\d+))?([^/]*)\.jar$", name)
+    if not match:
+        return None
+    major, minor, patch, qualifier = match.groups()
+    return (int(major), int(minor), int(patch or "0")), qualifier
+
+def spring_jar_failure(path, version, qualifier):
+    if version[0] < 6:
+        return f"{path}: Spring jar is below Spring 6"
+    if ALLOW_SPRING7_EVALUATION and version[:len(SPRING7_EVALUATION_LINE)] == SPRING7_EVALUATION_LINE:
+        if version < SPRING7_EVALUATION_FLOOR:
+            return f"{path}: Spring jar < 7.0.7 evaluation floor"
+        if UNREVIEWED_QUALIFIER.search(qualifier):
+            return f"{path}: Spring jar uses an unreviewed qualifier"
+        return None
+    if version[0] == 7:
+        if not ALLOW_SPRING7_EVALUATION:
+            return f"{path}: Spring jar is Spring 7; set RC16_ALLOW_SPRING7_EVALUATION=1 for the reviewed 7.0.x evaluation line"
+        return f"{path}: Spring jar is outside the reviewed 7.0.x evaluation line"
+    if version[:len(SPRING_LINE)] != SPRING_LINE:
+        return f"{path}: Spring jar is outside the reviewed 6.2.x compatibility line"
+    if version < SPRING_FLOOR:
+        return f"{path}: Spring jar < 6.2.18"
+    if UNREVIEWED_QUALIFIER.search(qualifier):
+        return f"{path}: Spring jar uses an unreviewed qualifier"
+    return None
+
+failures = []
+pom_count = 0
+spring_dependency_count = 0
+jetty_dependency_count = 0
+spring_jar_count = 0
+jetty_jar_count = 0
+
+for pom in sorted(ROOT.rglob("pom.xml")):
+    if "target" in pom.parts or ".git" in pom.parts:
+        continue
+    pom_count += 1
+    try:
+        root = ET.parse(pom).getroot()
+    except ET.ParseError as exc:
+        failures.append(f"{pom}: parse failed: {exc}")
+        continue
+
+    properties = {}
+    properties_root = root.find("m:properties", NS)
+    if properties_root is not None:
+        for child in list(properties_root):
+            name = local_name(child.tag)
+            value = (child.text or "").strip()
+            properties[name] = value
+            if name == "spring.version":
+                failure = spring_failure("spring.version", value)
+                if failure:
+                    failures.append(f"{pom}: {failure}")
+            if name == "jetty.version":
+                failure = jetty_failure("jetty.version", value)
+                if failure:
+                    failures.append(f"{pom}: {failure}")
+
+    for dep in root.findall(".//m:dependencies/m:dependency", NS):
+        group = (dep.findtext("m:groupId", default="", namespaces=NS) or "").strip()
+        artifact = (dep.findtext("m:artifactId", default="", namespaces=NS) or "").strip()
+        version = (dep.findtext("m:version", default="", namespaces=NS) or "").strip()
+        if group.startswith("org.springframework"):
+            spring_dependency_count += 1
+            resolved = resolve_property(version, properties)
+            failure = spring_failure(f"{group}:{artifact}", resolved)
+            if failure:
+                display_version = version if version == resolved else f"{version}={resolved}"
+                failures.append(f"{pom}: {group}:{artifact}:{display_version}: {failure}")
+        if group.startswith("org.eclipse.jetty"):
+            jetty_dependency_count += 1
+            resolved = resolve_property(version, properties)
+            failure = jetty_failure(f"{group}:{artifact}", resolved)
+            if failure:
+                display_version = version if version == resolved else f"{version}={resolved}"
+                failures.append(f"{pom}: {group}:{artifact}:{display_version}: {failure}")
+
+packaged_root = ROOT / "code/packaging/app/target"
+if packaged_root.exists():
+    for jar in sorted(packaged_root.rglob("*.jar")):
+        path = jar.as_posix()
+        if "/WEB-INF/lib/" not in path and "/WEB-INF/jetty/" not in path:
+            continue
+        spring_result = parse_spring_jar(jar.name)
+        if spring_result is not None:
+            spring_jar_count += 1
+            version, qualifier = spring_result
+            failure = spring_jar_failure(path, version, qualifier)
+            if failure:
+                failures.append(failure)
+            continue
+        if re.match(r"^spring-[^-]+(?:-[^-]+)*-[1-5]\.", jar.name):
+            failures.append(f"{path}: Spring jar is below Spring 6")
+            continue
+        if not jar.name.startswith("jetty-"):
+            continue
+        jetty_result = parse_jetty_jar(jar.name)
+        if jetty_result is None:
+            continue
+        jetty_jar_count += 1
+        version, qualifier = jetty_result
+        failure = jetty_failure(path, ".".join(str(part) for part in version) + qualifier)
+        if failure:
+            failures.append(failure)
+
+if failures:
+    print("\n".join(failures))
+    print(
+        "CATTLE_RUNTIME_FRAMEWORK_BOUNDARY_FAIL "
+        f"spring7_evaluation={1 if ALLOW_SPRING7_EVALUATION else 0} "
+        f"pom_count={pom_count} spring_dependency_count={spring_dependency_count} "
+        f"jetty_dependency_count={jetty_dependency_count} spring_jar_count={spring_jar_count} "
+        f"jetty_jar_count={jetty_jar_count} failure_count={len(failures)}"
+    )
+    sys.exit(1)
+
+print(
+    "CATTLE_RUNTIME_FRAMEWORK_BOUNDARY_OK "
+    f"spring7_evaluation={1 if ALLOW_SPRING7_EVALUATION else 0} "
+    f"spring_default_line=6.2 spring7_evaluation_line=7.0 spring7_floor=7.0.7 "
+    f"jetty_line=12.1 pom_count={pom_count} spring_dependency_count={spring_dependency_count} "
+    f"jetty_dependency_count={jetty_dependency_count} spring_jar_count={spring_jar_count} "
+    f"jetty_jar_count={jetty_jar_count} failure_count=0"
+)
+PY

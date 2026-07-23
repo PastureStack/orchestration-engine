@@ -6,7 +6,7 @@ import io.cattle.platform.core.model.Agent;
 import io.cattle.platform.core.model.ConfigItemStatus;
 import io.cattle.platform.core.model.Instance;
 
-import javax.inject.Named;
+import jakarta.inject.Named;
 
 @Named
 public class ServicesInfoFactory extends AbstractAgentBaseContextFactory {

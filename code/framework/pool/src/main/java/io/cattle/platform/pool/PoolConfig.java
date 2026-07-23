@@ -7,7 +7,7 @@ import java.lang.reflect.InvocationTargetException;
 import java.util.HashMap;
 import java.util.Map;
 
-import org.apache.commons.beanutils.BeanUtils;
+import org.apache.commons.beanutils2.BeanUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -16,6 +16,7 @@ public class PoolConfig {
     private static final Logger log = LoggerFactory.getLogger(PoolConfig.class);
 
     private static final String JMX_NAME = "jmxNamePrefix";
+    private static final String JAVA_TIME_DURATION = "java.time.Duration";
     private static final Map<String, String[]> TRY_ALSO = new HashMap<String, String[]>();
 
     static {
@@ -26,7 +27,7 @@ public class PoolConfig {
 
     protected static String getValue(String name, String... prefixes) {
         for (String prefix : prefixes) {
-            String newValue = getProperty(prefix + name.toLowerCase());
+            String newValue = normalizeValue(getProperty(prefix + name.toLowerCase()));
             if (newValue != null)
                 return newValue;
         }
@@ -34,10 +35,20 @@ public class PoolConfig {
         return null;
     }
 
+    protected static String normalizeValue(String value) {
+        if (value == null || value.trim().isEmpty()) {
+            return null;
+        }
+
+        return value;
+    }
+
     public static Object setConfig(Object poolOrConfig, String poolName, String... prefixes) {
 
-        for (PropertyDescriptor desc : org.apache.commons.beanutils.PropertyUtils.getPropertyDescriptors(poolOrConfig)) {
+        for (PropertyDescriptor desc : org.apache.commons.beanutils2.PropertyUtils.getPropertyDescriptors(poolOrConfig)) {
             if (desc.getWriteMethod() == null)
+                continue;
+            if (isModernDurationProperty(desc))
                 continue;
 
             String newValue = getValue(desc.getName(), prefixes);
@@ -54,6 +65,8 @@ public class PoolConfig {
             if (newValue == null && desc.getName().equals(JMX_NAME)) {
                 newValue = poolName;
             }
+
+            newValue = normalizeValue(newValue);
 
             if (newValue != null) {
                 try {
@@ -74,8 +87,12 @@ public class PoolConfig {
         return poolOrConfig;
     }
 
+    protected static boolean isModernDurationProperty(PropertyDescriptor desc) {
+        return desc.getPropertyType() != null && JAVA_TIME_DURATION.equals(desc.getPropertyType().getName());
+    }
+
     public static String getProperty(String key) {
-        return ArchaiusUtil.getString(key).get();
+        return ArchaiusUtil.getStringProperty(key).get();
     }
 
 }

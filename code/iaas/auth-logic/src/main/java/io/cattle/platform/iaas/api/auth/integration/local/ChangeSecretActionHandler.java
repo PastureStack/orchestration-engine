@@ -8,7 +8,7 @@ import io.cattle.platform.json.JsonMapper;
 import io.github.ibuildthecloud.gdapi.context.ApiContext;
 import io.github.ibuildthecloud.gdapi.request.ApiRequest;
 
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 
 public class ChangeSecretActionHandler implements ActionHandler {
 

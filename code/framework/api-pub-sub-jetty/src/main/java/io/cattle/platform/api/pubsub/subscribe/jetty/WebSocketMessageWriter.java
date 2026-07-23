@@ -1,45 +1,55 @@
 package io.cattle.platform.api.pubsub.subscribe.jetty;
 
 import io.cattle.platform.api.pubsub.subscribe.MessageWriter;
-import io.cattle.platform.archaius.util.ArchaiusUtil;
 
 import java.io.EOFException;
 import java.io.IOException;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.eclipse.jetty.websocket.api.Session;
-import org.eclipse.jetty.websocket.api.WebSocketAdapter;
-import org.eclipse.jetty.websocket.api.WebSocketException;
+import org.eclipse.jetty.websocket.api.annotations.OnWebSocketClose;
+import org.eclipse.jetty.websocket.api.annotations.OnWebSocketError;
+import org.eclipse.jetty.websocket.api.annotations.OnWebSocketOpen;
+import org.eclipse.jetty.websocket.api.annotations.WebSocket;
+import org.eclipse.jetty.websocket.api.exceptions.WebSocketException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.netflix.config.DynamicIntProperty;
-
-public class WebSocketMessageWriter extends WebSocketAdapter implements MessageWriter {
+@WebSocket(autoDemand = true)
+public class WebSocketMessageWriter implements MessageWriter {
 
     private static final Logger log = LoggerFactory.getLogger(WebSocketMessageWriter.class);
 
-    private static final DynamicIntProperty MAX_QUEUED_MESSAGES = ArchaiusUtil.getInt("subscribe.max.queued.messages");
+    private static final WebSocketWriterSettings DEFAULT_SETTINGS = ArchaiusWebSocketWriterSettings.create();
 
     private Session session;
     private boolean connectionClosed = false;
     private AtomicInteger queuedMessageCount = new AtomicInteger();
 
     private String identifier;
+    private final WebSocketWriterSettings settings;
 
     public WebSocketMessageWriter(String identifier) {
+        this(identifier, DEFAULT_SETTINGS);
+    }
+
+    WebSocketMessageWriter(String identifier, WebSocketWriterSettings settings) {
+        if (settings == null) {
+            throw new IllegalArgumentException("WebSocket writer settings are required");
+        }
         this.identifier = identifier;
+        this.settings = settings;
         if (identifier != null) {
             log.info("Creating websocket message writer for {}", identifier);
         }
     }
 
-    @Override
+    @OnWebSocketOpen
     public void onWebSocketConnect(Session session) {
         this.session = session;
     }
 
-    @Override
+    @OnWebSocketClose
     public void onWebSocketClose(int closeCode, String message) {
         connectionClosed = true;
         if (identifier != null) {
@@ -49,7 +59,7 @@ public class WebSocketMessageWriter extends WebSocketAdapter implements MessageW
         }
     }
 
-    @Override
+    @OnWebSocketError
     public void onWebSocketError(Throwable cause) {
         if (identifier != null) {
             log.warn("Unexpected websocket error for {}", identifier);
@@ -63,13 +73,14 @@ public class WebSocketMessageWriter extends WebSocketAdapter implements MessageW
             throw new EOFException("WebSocket is closed.");
         }
 
-        if (queuedMessageCount.get() > MAX_QUEUED_MESSAGES.get()) {
-            throw new IOException("Reached max queued messages [" + MAX_QUEUED_MESSAGES.get() + "].");
+        int maxQueuedMessages = settings.maxQueuedMessages();
+        if (queuedMessageCount.get() > maxQueuedMessages) {
+            throw new IOException("Reached max queued messages [" + maxQueuedMessages + "].");
         }
 
         if (session != null && session.isOpen()) {
             try {
-                session.getRemote().sendString(message, new WebSocketWriteCallback(this));
+                session.sendText(message, new WebSocketWriteCallback(this));
                 queuedMessageCount.incrementAndGet();
             } catch (WebSocketException e) {
                 // Thrown if getRemote() determines the connection was closed by the client. No need to log.

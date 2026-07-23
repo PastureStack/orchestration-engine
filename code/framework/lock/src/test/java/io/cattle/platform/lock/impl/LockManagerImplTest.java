@@ -1,7 +1,6 @@
 package io.cattle.platform.lock.impl;
 
 import static org.junit.Assert.*;
-import static org.mockito.Mockito.*;
 import io.cattle.platform.lock.Lock;
 import io.cattle.platform.lock.LockCallback;
 import io.cattle.platform.lock.LockCallbackNoReturn;
@@ -9,9 +8,12 @@ import io.cattle.platform.lock.LockCallbackWithException;
 import io.cattle.platform.lock.definition.LockDefinition;
 import io.cattle.platform.lock.definition.MultiLockDefinition;
 import io.cattle.platform.lock.exception.FailedToAcquireLockException;
+import io.cattle.platform.lock.impl.LockTestUtils.TestLock;
 import io.cattle.platform.lock.provider.LockProvider;
 
 import java.io.FileNotFoundException;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.junit.Before;
@@ -25,16 +27,18 @@ public class LockManagerImplTest {
     LockDefinition good2LockDef = new TestLockDefinition("good2");
     LockDefinition badLockDef = new TestLockDefinition("bad");
 
-    Lock goodLock = LockTestUtils.goodLock(goodLockDef);
-    Lock good2Lock = LockTestUtils.goodLock(good2LockDef);
-    Lock badLock = LockTestUtils.badLock(badLockDef);
+    TestLock goodLock = LockTestUtils.goodLock(goodLockDef);
+    TestLock good2Lock = LockTestUtils.goodLock(good2LockDef);
+    TestLock badLock = LockTestUtils.badLock(badLockDef);
+    TestLockProvider testLockProvider;
 
     @Before
     public void setUp() {
-        lockProvider = mock(LockProvider.class);
-        when(lockProvider.getLock(goodLockDef)).thenReturn(goodLock);
-        when(lockProvider.getLock(good2LockDef)).thenReturn(good2Lock);
-        when(lockProvider.getLock(badLockDef)).thenReturn(badLock);
+        testLockProvider = new TestLockProvider();
+        testLockProvider.add(goodLockDef, goodLock);
+        testLockProvider.add(good2LockDef, good2Lock);
+        testLockProvider.add(badLockDef, badLock);
+        lockProvider = testLockProvider;
 
         lockManager = new LockManagerImpl();
         lockManager.setLockProvider(lockProvider);
@@ -55,21 +59,21 @@ public class LockManagerImplTest {
             assertTrue(e.isLock(badLockDef));
         }
 
-        verify(goodLock, times(1)).lock();
-        verify(badLock, times(1)).lock();
-        verify(good2Lock, times(0)).lock();
+        assertEquals(1, goodLock.lockCount);
+        assertEquals(1, badLock.lockCount);
+        assertEquals(0, good2Lock.lockCount);
 
-        verify(goodLock, times(1)).unlock();
-        verify(badLock, times(1)).unlock();
-        verify(good2Lock, times(1)).unlock();
+        assertEquals(1, goodLock.unlockCount);
+        assertEquals(1, badLock.unlockCount);
+        assertEquals(1, good2Lock.unlockCount);
 
-        verify(lockProvider, times(1)).getLock(goodLockDef);
-        verify(lockProvider, times(1)).getLock(badLockDef);
-        verify(lockProvider, times(1)).getLock(good2LockDef);
+        assertEquals(1, testLockProvider.getLockCount(goodLockDef));
+        assertEquals(1, testLockProvider.getLockCount(badLockDef));
+        assertEquals(1, testLockProvider.getLockCount(good2LockDef));
 
-        verify(lockProvider, times(1)).releaseLock(goodLock);
-        verify(lockProvider, times(1)).releaseLock(badLock);
-        verify(lockProvider, times(1)).releaseLock(good2Lock);
+        assertEquals(1, testLockProvider.releaseLockCount(goodLock));
+        assertEquals(1, testLockProvider.releaseLockCount(badLock));
+        assertEquals(1, testLockProvider.releaseLockCount(good2Lock));
     }
 
     @Test
@@ -86,17 +90,17 @@ public class LockManagerImplTest {
 
         assertEquals(1, i.intValue());
 
-        verify(goodLock, times(2)).lock();
-        verify(good2Lock, times(1)).lock();
+        assertEquals(2, goodLock.lockCount);
+        assertEquals(1, good2Lock.lockCount);
 
-        verify(goodLock, times(2)).unlock();
-        verify(good2Lock, times(1)).unlock();
+        assertEquals(2, goodLock.unlockCount);
+        assertEquals(1, good2Lock.unlockCount);
 
-        verify(lockProvider, times(2)).getLock(goodLockDef);
-        verify(lockProvider, times(1)).getLock(good2LockDef);
+        assertEquals(2, testLockProvider.getLockCount(goodLockDef));
+        assertEquals(1, testLockProvider.getLockCount(good2LockDef));
 
-        verify(lockProvider, times(2)).releaseLock(goodLock);
-        verify(lockProvider, times(1)).releaseLock(good2Lock);
+        assertEquals(2, testLockProvider.releaseLockCount(goodLock));
+        assertEquals(1, testLockProvider.releaseLockCount(good2Lock));
     }
 
     @Test
@@ -112,10 +116,10 @@ public class LockManagerImplTest {
             assertEquals("42", e.getMessage());
         }
 
-        verify(goodLock, times(1)).lock();
-        verify(goodLock, times(1)).unlock();
-        verify(lockProvider, times(1)).getLock(goodLockDef);
-        verify(lockProvider, times(1)).releaseLock(goodLock);
+        assertEquals(1, goodLock.lockCount);
+        assertEquals(1, goodLock.unlockCount);
+        assertEquals(1, testLockProvider.getLockCount(goodLockDef));
+        assertEquals(1, testLockProvider.releaseLockCount(goodLock));
     }
 
     @Test
@@ -131,25 +135,61 @@ public class LockManagerImplTest {
             assertEquals("42", e.getMessage());
         }
 
-        verify(goodLock, times(1)).lock();
-        verify(goodLock, times(1)).unlock();
-        verify(lockProvider, times(1)).getLock(goodLockDef);
-        verify(lockProvider, times(1)).releaseLock(goodLock);
+        assertEquals(1, goodLock.lockCount);
+        assertEquals(1, goodLock.unlockCount);
+        assertEquals(1, testLockProvider.getLockCount(goodLockDef));
+        assertEquals(1, testLockProvider.releaseLockCount(goodLock));
     }
 
     @Test
     public void test_return() {
-        assertEquals(new Long(42), lockManager.lock(goodLockDef, new LockCallback<Long>() {
+        assertEquals(Long.valueOf(42), lockManager.lock(goodLockDef, new LockCallback<Long>() {
             @Override
             public Long doWithLock() {
                 return 42L;
             }
         }));
 
-        verify(goodLock, times(1)).lock();
-        verify(goodLock, times(1)).unlock();
-        verify(lockProvider, times(1)).getLock(goodLockDef);
-        verify(lockProvider, times(1)).releaseLock(goodLock);
+        assertEquals(1, goodLock.lockCount);
+        assertEquals(1, goodLock.unlockCount);
+        assertEquals(1, testLockProvider.getLockCount(goodLockDef));
+        assertEquals(1, testLockProvider.releaseLockCount(goodLock));
+    }
+
+    private static class TestLockProvider implements LockProvider {
+        private final Map<LockDefinition, Lock> locks = new HashMap<>();
+        private final Map<LockDefinition, Integer> getLockCounts = new HashMap<>();
+        private final Map<Lock, Integer> releaseLockCounts = new HashMap<>();
+
+        void add(LockDefinition definition, Lock lock) {
+            locks.put(definition, lock);
+        }
+
+        int getLockCount(LockDefinition definition) {
+            Integer count = getLockCounts.get(definition);
+            return count == null ? 0 : count;
+        }
+
+        int releaseLockCount(Lock lock) {
+            Integer count = releaseLockCounts.get(lock);
+            return count == null ? 0 : count;
+        }
+
+        @Override
+        public Lock getLock(LockDefinition lockDefinition) {
+            getLockCounts.put(lockDefinition, getLockCount(lockDefinition) + 1);
+            return locks.get(lockDefinition);
+        }
+
+        @Override
+        public void releaseLock(Lock lock) {
+            releaseLockCounts.put(lock, releaseLockCount(lock) + 1);
+        }
+
+        @Override
+        public String getName() {
+            return "test";
+        }
     }
 
 }

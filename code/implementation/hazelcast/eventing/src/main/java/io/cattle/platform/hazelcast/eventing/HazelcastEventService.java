@@ -7,11 +7,12 @@ import io.cattle.platform.util.type.Named;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 
 import org.apache.cloudstack.managed.context.NoExceptionRunnable;
 import org.slf4j.Logger;
@@ -19,12 +20,12 @@ import org.slf4j.LoggerFactory;
 
 import com.google.common.util.concurrent.SettableFuture;
 import com.hazelcast.core.HazelcastInstance;
-import com.hazelcast.core.ITopic;
-import com.hazelcast.core.Message;
-import com.hazelcast.core.MessageListener;
-import com.hazelcast.spi.AbstractDistributedObject;
-import com.hazelcast.spi.EventService;
-import com.hazelcast.spi.NodeEngine;
+import com.hazelcast.spi.impl.AbstractDistributedObject;
+import com.hazelcast.spi.impl.NodeEngine;
+import com.hazelcast.spi.impl.eventservice.EventService;
+import com.hazelcast.topic.ITopic;
+import com.hazelcast.topic.Message;
+import com.hazelcast.topic.MessageListener;
 import com.hazelcast.topic.impl.TopicService;
 
 public class HazelcastEventService extends AbstractThreadPoolingEventService implements Named {
@@ -35,7 +36,7 @@ public class HazelcastEventService extends AbstractThreadPoolingEventService imp
 
     ScheduledExecutorService scheduledExecutorService;
     HazelcastInstance hazelcast;
-    Map<String, String> registrations = new ConcurrentHashMap<>();
+    Map<String, UUID> registrations = new ConcurrentHashMap<>();
     Map<String, Integer> toDelete = new ConcurrentHashMap<>();
 
     @Override
@@ -77,7 +78,7 @@ public class HazelcastEventService extends AbstractThreadPoolingEventService imp
                 }
             };
 
-            String id = topic.addMessageListener(listener);
+            UUID id = topic.addMessageListener(listener);
             log.info("Subscribing to [{}] id [{}]", eventName, id);
 
             registrations.put(eventName, id);
@@ -137,7 +138,7 @@ public class HazelcastEventService extends AbstractThreadPoolingEventService imp
 
     @Override
     protected synchronized void doUnsubscribe(String eventName) {
-        String id = registrations.remove(eventName);
+        UUID id = registrations.remove(eventName);
         log.info("Unsubscribing from [{}] id [{}]", eventName, id);
 
         if (id != null) {

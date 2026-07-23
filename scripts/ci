@@ -10,20 +10,42 @@ export RUNTIME_DIR_CLEAN=true
 export CATTLE_LOGBACK_ROOT_LEVEL=error
 
 echo Launching Docker
-if grep -q overlay /proc/filesystems; then
-    GRAPH=overlay
-else
-    GRAPH=aufs
-fi
-docker daemon -D -s $GRAPH >/tmp/docker.log 2>&1 &
-for i in {1..10}; do
+
+ensure_docker()
+{
     if docker info >/dev/null 2>&1; then
-        break
-    else
-        sleep 1
+        echo Using existing Docker daemon
+        docker info
+        return
     fi
-done
-docker info
+
+    if grep -q overlay /proc/filesystems; then
+        GRAPH=overlay
+    else
+        GRAPH=aufs
+    fi
+
+    if command -v dockerd >/dev/null 2>&1; then
+        dockerd -D --storage-driver $GRAPH >/tmp/docker.log 2>&1 &
+    elif docker daemon --help >/dev/null 2>&1; then
+        docker daemon -D -s $GRAPH >/tmp/docker.log 2>&1 &
+    else
+        echo "No Docker daemon is available and /var/run/docker.sock is not usable" >&2
+        exit 1
+    fi
+
+    for i in {1..10}; do
+        docker info >/dev/null 2>&1 && break
+        sleep 1
+    done
+    docker info
+}
+
+ensure_docker
+
+./check-cattle-dependency-hygiene
+./check-cattle-archaius-boundary
+./check-cattle-jmx-boundary
 
 echo_dot()
 {
@@ -132,7 +154,14 @@ test_failed()
 # Background to start the Docker pulls
 ./test-warm >/dev/null &
 
-CI=true MAVEN_ARGS='-B -q' run ./build
+CI_PLAN=${CI_PLAN:-unit}
+DEFAULT_UNIT_MAVEN_ARGS='-B -q'
+CI=true MAVEN_ARGS="${MAVEN_ARGS:-$DEFAULT_UNIT_MAVEN_ARGS}" MAVEN_TARGET="${MAVEN_TARGET:-clean package}" run ./build
+./check-cattle-jdk25-bytecode
+
+if [ "$CI_PLAN" = "unit" ]; then
+    gist
+fi
 
 threads=$(($(nproc) + 1))
 if [ $threads -gt 8 ]; then
@@ -214,14 +243,14 @@ do
 
             set_up_agent
             set +e
-            ./test -e py27 -- -m nonparallel && ./test -- -m "'not nonparallel'" -n $threads -v || test_failed $DB
+            ./test -e py314 -- -m nonparallel && ./test -- -m "'not nonparallel'" -n $threads -v || test_failed $DB
             set -e
             ;;
 
         lite )
 
             set +e
-            ./test -e py27 -- core/test_virtual_machine.py core/test_container.py || test_failed $DB
+            ./test -e py314 -- core/test_virtual_machine.py core/test_container.py || test_failed $DB
             set -e
             ;;
 

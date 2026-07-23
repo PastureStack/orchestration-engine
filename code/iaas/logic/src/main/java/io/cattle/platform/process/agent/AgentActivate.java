@@ -6,6 +6,7 @@ import io.cattle.platform.agent.AgentLocator;
 import io.cattle.platform.agent.RemoteAgent;
 import io.cattle.platform.agent.util.AgentUtils;
 import io.cattle.platform.archaius.util.ArchaiusUtil;
+import io.cattle.platform.archaius.util.ConfigProperty;
 import io.cattle.platform.async.utils.AsyncUtils;
 import io.cattle.platform.async.utils.TimeoutException;
 import io.cattle.platform.core.constants.AgentConstants;
@@ -22,22 +23,20 @@ import io.cattle.platform.framework.event.Ping;
 import io.cattle.platform.object.util.DataAccessor;
 import io.cattle.platform.process.base.AbstractDefaultProcessHandler;
 
-import javax.inject.Inject;
-import javax.inject.Named;
+import jakarta.inject.Inject;
+import jakarta.inject.Named;
 
 import org.apache.cloudstack.managed.context.NoExceptionRunnable;
 
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.MoreExecutors;
-import com.netflix.config.DynamicIntProperty;
-import com.netflix.config.DynamicLongProperty;
 
 @Named
 public class AgentActivate extends AbstractDefaultProcessHandler {
 
-    private static final DynamicIntProperty PING_RETRY = ArchaiusUtil.getInt("agent.activate.ping.retries");
-    private static final DynamicLongProperty PING_TIMEOUT = ArchaiusUtil.getLong("agent.activate.ping.timeout");
-    private static final DynamicLongProperty PING_DISCONNECT_TIMEOUT = ArchaiusUtil.getLong("agent.disconnect.after.seconds");
+    private static final ConfigProperty<Integer> PING_RETRY = ArchaiusUtil.getIntProperty("agent.activate.ping.retries");
+    private static final ConfigProperty<Long> PING_TIMEOUT = ArchaiusUtil.getLongProperty("agent.activate.ping.timeout");
+    private static final ConfigProperty<Long> PING_DISCONNECT_TIMEOUT = ArchaiusUtil.getLongProperty("agent.disconnect.after.seconds");
 
     @Inject
     AgentLocator agentLocator;
@@ -99,7 +98,7 @@ public class AgentActivate extends AbstractDefaultProcessHandler {
                 } catch (Exception e) {
                 }
             }
-        }, MoreExecutors.sameThreadExecutor());
+        }, MoreExecutors.directExecutor());
 
 
         if (waitFor) {

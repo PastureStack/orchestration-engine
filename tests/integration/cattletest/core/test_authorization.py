@@ -226,7 +226,7 @@ def test_user_types(user_client, adds=set(), removes=set()):
     }
     types.update(adds)
     types.difference_update(removes)
-    assert set(_clean_types(user_client.schema.types.keys())) == types
+    assert set(_clean_types(list(user_client.schema.types.keys()))) == types
     return types
 
 
@@ -250,21 +250,21 @@ def test_readonly_types(admin_user_client):
         type = client.schema.types[type]
         assert len(type['actions']) == 0
         if type.id == 'container':
-            assert type['resourceActions'].keys() == ['logs']
+            assert list(type['resourceActions'].keys()) == ['logs']
         elif type.id == 'virtualMachine':
-            assert type['resourceActions'].keys() == ['logs']
+            assert list(type['resourceActions'].keys()) == ['logs']
         else:
-            print type.id
+            print(type.id)
             assert len(type['resourceActions']) == 0
         assert len(type['collectionActions']) == 0
         if type.resourceFields is not None:
-            for k, field in type.resourceFields.items():
+            for k, field in list(type.resourceFields.items()):
                 assert field.create is False
                 assert field.update is False
 
 
 def test_agent_register_types(agent_register_client):
-    assert set(_clean_types(agent_register_client.schema.types.keys())) == {
+    assert set(_clean_types(list(agent_register_client.schema.types.keys()))) == {
         'agent',
         'error',
         'schema',
@@ -272,7 +272,7 @@ def test_agent_register_types(agent_register_client):
 
 
 def test_agent_types(agent_client):
-    assert set(_clean_types(agent_client.schema.types.keys())) == {
+    assert set(_clean_types(list(agent_client.schema.types.keys()))) == {
         'agent',
         'configContent',
         'containerEvent',
@@ -478,7 +478,7 @@ def test_admin_types(admin_user_client, adds=set(), removes=set()):
     }
     types.update(adds)
     types.difference_update(removes)
-    assert set(_clean_types(admin_user_client.schema.types.keys())) == types
+    assert set(_clean_types(list(admin_user_client.schema.types.keys()))) == types
 
 
 def test_instance_link_auth(admin_user_client, user_client, project_client):

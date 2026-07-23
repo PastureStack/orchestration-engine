@@ -1,6 +1,7 @@
 package io.cattle.platform.configitem.server.agentinclude.impl;
 
 import io.cattle.platform.archaius.util.ArchaiusUtil;
+import io.cattle.platform.archaius.util.ConfigListProperty;
 import io.cattle.platform.configitem.context.impl.AbstractAgentBaseContextFactory;
 import io.cattle.platform.configitem.model.Client;
 import io.cattle.platform.configitem.request.ConfigUpdateRequest;
@@ -15,11 +16,9 @@ import io.cattle.platform.object.ObjectManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.netflix.config.DynamicListProperty;
-
 public class AgentPackagesContextFactory extends AbstractAgentBaseContextFactory {
 
-    public static final DynamicListProperty<String> REQUIRED = ArchaiusUtil.getList("agent.config.items");
+    public static final ConfigListProperty<String> REQUIRED = ArchaiusUtil.getStringListProperty("agent.config.items");
 
     private static final Logger log = LoggerFactory.getLogger(AgentPackagesContextFactory.class);
 

@@ -65,22 +65,21 @@ public class DefaultManagedContext implements ManagedContext {
         }
     }
 
-    @SuppressWarnings("unchecked")
     @Override
     public <T> T callWithContext(Callable<T> callable) throws Exception {
         Object owner = new Object();
 
-        Stack<ListenerInvocation> invocations = new Stack<ListenerInvocation>();
+        Stack<ListenerInvocation<?>> invocations = new Stack<ListenerInvocation<?>>();
         boolean reentry = !ManagedContextUtils.setAndCheckOwner(owner);
         Throwable preError = null;
         Throwable logicError = null;
 
         try {
             for (ManagedContextListener<?> listener : listeners) {
-                Object data = null;
+                ListenerInvocation<?> invocation = null;
 
                 try {
-                    data = listener.onEnterContext(reentry);
+                    invocation = ListenerInvocation.enter(listener, reentry);
                 } catch (Throwable t) {
                     /*
                      * If one listener fails, still call all other listeners and
@@ -90,13 +89,14 @@ public class DefaultManagedContext implements ManagedContext {
                         preError = t;
                     }
                     log.error("Failed onEnterContext for listener [{}]", listener, t);
+                    invocation = ListenerInvocation.empty(listener);
                 }
 
                 /*
                  * Stack data structure is used because in between onEnter and
                  * onLeave the listeners list could have changed
                  */
-                invocations.push(new ListenerInvocation((ManagedContextListener<Object>) listener, data));
+                invocations.push(invocation);
             }
 
             try {
@@ -124,12 +124,12 @@ public class DefaultManagedContext implements ManagedContext {
                 Throwable postError = null;
 
                 while (!invocations.isEmpty()) {
-                    ListenerInvocation invocation = invocations.pop();
+                    ListenerInvocation<?> invocation = invocations.pop();
                     try {
-                        invocation.listener.onLeaveContext(invocation.data, reentry, logicError == null ? preError : logicError);
+                        invocation.onLeaveContext(reentry, logicError == null ? preError : logicError);
                     } catch (Throwable t) {
                         postError = t;
-                        log.error("Failed onLeaveContext for listener [{}]", invocation.listener, t);
+                        log.error("Failed onLeaveContext for listener [{}]", invocation.getListener(), t);
                     }
                 }
 
@@ -158,14 +158,30 @@ public class DefaultManagedContext implements ManagedContext {
         this.listeners = new CopyOnWriteArrayList<ManagedContextListener<?>>(listeners);
     }
 
-    private static class ListenerInvocation {
-        ManagedContextListener<Object> listener;
-        Object data;
+    private static class ListenerInvocation<T> {
+        ManagedContextListener<T> listener;
+        T data;
 
-        public ListenerInvocation(ManagedContextListener<Object> listener, Object data) {
+        public ListenerInvocation(ManagedContextListener<T> listener, T data) {
             super();
             this.listener = listener;
             this.data = data;
+        }
+
+        static <T> ListenerInvocation<T> enter(ManagedContextListener<T> listener, boolean reentry) {
+            return new ListenerInvocation<T>(listener, listener.onEnterContext(reentry));
+        }
+
+        static <T> ListenerInvocation<T> empty(ManagedContextListener<T> listener) {
+            return new ListenerInvocation<T>(listener, null);
+        }
+
+        void onLeaveContext(boolean reentry, Throwable t) {
+            listener.onLeaveContext(data, reentry, t);
+        }
+
+        ManagedContextListener<T> getListener() {
+            return listener;
         }
     }
 }

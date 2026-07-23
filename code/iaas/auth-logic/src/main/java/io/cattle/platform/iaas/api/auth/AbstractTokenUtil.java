@@ -2,6 +2,7 @@ package io.cattle.platform.iaas.api.auth;
 
 import io.cattle.platform.api.auth.Identity;
 import io.cattle.platform.archaius.util.ArchaiusUtil;
+import io.cattle.platform.archaius.util.ConfigProperty;
 import io.cattle.platform.core.constants.AccountConstants;
 import io.cattle.platform.core.constants.ProjectConstants;
 import io.cattle.platform.core.dao.AccountDao;
@@ -32,15 +33,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import javax.inject.Inject;
-import javax.servlet.http.Cookie;
+import jakarta.inject.Inject;
+import jakarta.servlet.http.Cookie;
 
-import org.apache.commons.lang.ObjectUtils;
+import org.apache.commons.lang3.Strings;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import com.netflix.config.DynamicBooleanProperty;
 
 public abstract class AbstractTokenUtil implements TokenUtil {
 
@@ -57,7 +56,7 @@ public abstract class AbstractTokenUtil implements TokenUtil {
     public static final String UNRESTRICTED_ACCESSMODE = "unrestricted";
 
     private static final Logger log = LoggerFactory.getLogger(AbstractTokenUtil.class);
-    private static final DynamicBooleanProperty CREATE_PROJECT = ArchaiusUtil.getBoolean("project.create.default");
+    private static final ConfigProperty<Boolean> CREATE_PROJECT = ArchaiusUtil.getBooleanProperty("project.create.default");
 
     @Inject
     protected AuthDao authDao;
@@ -86,7 +85,7 @@ public abstract class AbstractTokenUtil implements TokenUtil {
         if (jsonData == null) {
             return null;
         }
-        String accountId = ObjectUtils.toString(jsonData.get(ACCOUNT_ID), null);
+        String accountId = java.util.Objects.toString(jsonData.get(ACCOUNT_ID), (String)null);
         if (null == accountId) {
             return null;
         }
@@ -138,7 +137,7 @@ public abstract class AbstractTokenUtil implements TokenUtil {
         String toParse;
         String[] tokenArr = jwtKey.split("\\s+");
         if (tokenArr.length == 2) {
-            if (!StringUtils.equalsIgnoreCase("bearer", StringUtils.trim(tokenArr[0]))) {
+            if (!Strings.CI.equals("bearer", StringUtils.trim(tokenArr[0]))) {
                 return null;
             }
             toParse = tokenArr[1];
@@ -173,21 +172,19 @@ public abstract class AbstractTokenUtil implements TokenUtil {
         return jwt;
     }
 
-    @SuppressWarnings("unchecked")
     protected boolean isAllowed(Map<String, Object> jsonData) {
-        List<String> idList = (List<String>) jsonData.get(ID_LIST);
+        List<String> idList = stringList(jsonData.get(ID_LIST));
         log.trace("ID List in the token: {}", idList);
         Set<Identity> identities = identities(jsonData);
         return isAllowed(idList, identities);
     }
 
-    @SuppressWarnings("unchecked")
     protected Set<Identity> identities(Map<String, Object> jsonData) {
         Set<Identity> identities = new HashSet<>();
         if (jsonData == null) {
             return identities;
         }
-        List<String> idList = (List<String>) jsonData.get(ID_LIST);
+        List<String> idList = stringList(jsonData.get(ID_LIST));
         for (String id : idList) {
             Identity identityObj = Identity.fromId(id);
             if (identityObj != null) {
@@ -197,6 +194,18 @@ public abstract class AbstractTokenUtil implements TokenUtil {
             }
         }
         return identities;
+    }
+
+    protected static List<String> stringList(Object value) {
+        if (value == null) {
+            return null;
+        }
+        List<?> values = List.class.cast(value);
+        List<String> result = new ArrayList<>(values.size());
+        for (Object item : values) {
+            result.add(String.class.cast(item));
+        }
+        return result;
     }
 
     @Override
@@ -406,12 +415,12 @@ public abstract class AbstractTokenUtil implements TokenUtil {
     }
 
     public Identity jsonToIdentity(Map<String, Object> jsonData) {
-        String externalId = ObjectUtils.toString(jsonData.get("externalId"));
-        String externalIdType = ObjectUtils.toString(jsonData.get("externalIdType"));
-        String name = ObjectUtils.toString(jsonData.get("name"));
-        String profilePicture = ObjectUtils.toString(jsonData.get("profilePicture"));
-        String profileUrl = ObjectUtils.toString(jsonData.get("profileUrl"));
-        String login = ObjectUtils.toString(jsonData.get("login"));
+        String externalId = java.util.Objects.toString(jsonData.get("externalId"), "");
+        String externalIdType = java.util.Objects.toString(jsonData.get("externalIdType"), "");
+        String name = java.util.Objects.toString(jsonData.get("name"), "");
+        String profilePicture = java.util.Objects.toString(jsonData.get("profilePicture"), "");
+        String profileUrl = java.util.Objects.toString(jsonData.get("profileUrl"), "");
+        String login = java.util.Objects.toString(jsonData.get("login"), "");
         boolean user = Boolean.TRUE.equals(jsonData.get("user"));
         return new Identity(externalIdType, externalId, name, profileUrl, profilePicture, login, user);
     }
@@ -427,8 +436,8 @@ public abstract class AbstractTokenUtil implements TokenUtil {
         if (idObject != null) {
             Map<String, Object> idMap = CollectionUtils.toMap(idObject);
             Identity userIdentity = jsonToIdentity(idMap);
-            String userType = ObjectUtils.toString(jsonData.get(USER_TYPE), null);
-            String originalLogin = ObjectUtils.toString(jsonData.get("originalLogin"), null);
+            String userType = java.util.Objects.toString(jsonData.get(USER_TYPE), (String)null);
+            String originalLogin = java.util.Objects.toString(jsonData.get("originalLogin"), (String)null);
             token.setUserIdentity(userIdentity);
             token.setUserType(userType);
             token.setOriginalLogin(originalLogin);

@@ -3,6 +3,7 @@ package io.cattle.platform.task.dao.impl;
 import static io.cattle.platform.core.model.tables.TaskInstanceTable.*;
 import static io.cattle.platform.core.model.tables.TaskTable.*;
 import io.cattle.platform.archaius.util.ArchaiusUtil;
+import io.cattle.platform.archaius.util.ConfigProperty;
 import io.cattle.platform.core.model.Task;
 import io.cattle.platform.db.jooq.dao.impl.AbstractJooqDao;
 import io.cattle.platform.task.dao.TaskDao;
@@ -12,13 +13,11 @@ import org.jooq.exception.DataAccessException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.netflix.config.DynamicLongProperty;
-
 public class TaskDaoImpl extends AbstractJooqDao implements TaskDao {
 
     private static Logger log = LoggerFactory.getLogger(TaskDaoImpl.class);
 
-    private static DynamicLongProperty AFTER_SECONDS = ArchaiusUtil.getLong("task.purge.after.seconds");
+    private static final ConfigProperty<Long> AFTER_SECONDS = ArchaiusUtil.getLongProperty("task.purge.after.seconds");
 
     public void purgeOld() {
         int deleted = create()

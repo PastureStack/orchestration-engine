@@ -6,7 +6,7 @@ import io.cattle.platform.engine.server.ProcessInstanceDispatcher;
 import io.cattle.platform.engine.server.ProcessInstanceReference;
 import io.cattle.platform.eventing.model.Event;
 
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 
 public class ProcessEventListenerImpl implements ProcessEventListener {
 
@@ -20,7 +20,7 @@ public class ProcessEventListenerImpl implements ProcessEventListener {
         if (event.getResourceId() == null)
             return;
 
-        ProcessInstanceReference ref = processManager.loadReference(new Long(event.getResourceId()));
+        ProcessInstanceReference ref = processManager.loadReference(Long.valueOf(event.getResourceId()));
         if (ref != null) {
             ref.setEvent(true);
             dispatcher.dispatch(ref);

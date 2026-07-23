@@ -12,7 +12,6 @@ import io.cattle.platform.object.util.DataAccessor;
 import io.cattle.platform.servicediscovery.deployment.DeploymentUnitInstance;
 import io.cattle.platform.servicediscovery.deployment.impl.DeploymentManagerImpl.DeploymentServiceContext;
 
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
@@ -23,16 +22,14 @@ public class ExternalDeploymentUnitInstance extends DeploymentUnitInstance {
     String serviceHostName;
 
 
-    @SuppressWarnings("unchecked")
     protected ExternalDeploymentUnitInstance(DeploymentServiceContext context, String uuid,
             Service service, String launchConfigName, String ipAddress, String hostName) {
         super(context, uuid, service, launchConfigName);
         if (ipAddress != null) {
             this.ipAddress = ipAddress;
             this.exposeMap = context.exposeMapDao.getServiceIpExposeMap(service, ipAddress);
-            this.serviceExternalIps = DataAccessor.fields(service)
-                    .withKey(ServiceConstants.FIELD_EXTERNALIPS).withDefault(Collections.EMPTY_LIST)
-                    .as(List.class);
+            this.serviceExternalIps = DeploymentUnitTypeUtils.stringList(DataAccessor.fields(service)
+                    .withKey(ServiceConstants.FIELD_EXTERNALIPS).get());
 
         } else {
             this.hostName = hostName;

@@ -20,8 +20,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import javax.inject.Inject;
-import javax.inject.Named;
+import jakarta.inject.Inject;
+import jakarta.inject.Named;
 
 @Named
 public class InstanceAllocate extends AbstractDefaultProcessHandler {
@@ -49,7 +49,7 @@ public class InstanceAllocate extends AbstractDefaultProcessHandler {
         Long hostId = null;
 
         for (InstanceHostMap map : mapDao.findNonRemoved(InstanceHostMap.class, Instance.class, instance.getId())) {
-            CollectionUtils.addToMap(allocationData, "instance:" + instance.getId(), map.getHostId(), HashSet.class);
+            CollectionUtils.addToMap(allocationData, "instance:" + instance.getId(), map.getHostId(), HashSet::new);
             create(map, state.getData());
             hostId = map.getHostId();
         }
@@ -69,7 +69,7 @@ public class InstanceAllocate extends AbstractDefaultProcessHandler {
 
         for (Volume v : volumes) {
             for (VolumeStoragePoolMap map : mapDao.findNonRemoved(VolumeStoragePoolMap.class, Volume.class, v.getId())) {
-                CollectionUtils.addToMap(allocationData, "volume:" + v.getId(), map.getVolumeId(), HashSet.class);
+                CollectionUtils.addToMap(allocationData, "volume:" + v.getId(), map.getVolumeId(), HashSet::new);
                 create(map, state.getData());
             }
         }

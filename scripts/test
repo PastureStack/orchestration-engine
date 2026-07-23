@@ -24,7 +24,9 @@ fi
 
 export CATTLE_URL=${CATTLE_TEST_URL:-http://localhost:8081/v1/schemas}
 
-if [ -e .tox ] && [ ! -e .tox/py27/include/python2.7 ]; then
+TOX_ENV=${TOX_ENV:-py314}
+
+if [ -e .tox ] && [ ! -e .tox/${TOX_ENV}/bin/python ]; then
     rm -rf .tox
 fi
 

@@ -15,7 +15,7 @@ def test_agent_unique(super_client):
     try:
         super_client.create_agent(uri='sim://unique')
         assert False
-    except ApiError, e:
+    except ApiError as e:
         assert e.error.code == 'NotUnique'
         pass
 

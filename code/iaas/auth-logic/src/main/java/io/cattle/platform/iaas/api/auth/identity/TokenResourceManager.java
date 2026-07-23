@@ -4,6 +4,7 @@ import io.cattle.platform.api.auth.Identity;
 import io.cattle.platform.api.auth.Policy;
 import io.cattle.platform.api.pubsub.manager.SubscribeManager;
 import io.cattle.platform.archaius.util.ArchaiusUtil;
+import io.cattle.platform.archaius.util.ConfigProperty;
 import io.cattle.platform.core.dao.AccountDao;
 import io.cattle.platform.eventing.EventService;
 import io.cattle.platform.eventing.model.EventVO;
@@ -30,12 +31,11 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
-import javax.inject.Inject;
-import javax.servlet.http.HttpServletResponse;
+import jakarta.inject.Inject;
+import jakarta.servlet.http.HttpServletResponse;
 
+import org.apache.commons.lang3.Strings;
 import org.apache.commons.lang3.StringUtils;
-
-import com.netflix.config.DynamicBooleanProperty;
 
 public class TokenResourceManager extends AbstractNoOpResourceManager {
 
@@ -67,7 +67,7 @@ public class TokenResourceManager extends AbstractNoOpResourceManager {
     EventService eventService;
 
     private List<TokenCreator> tokenCreators;
-    private static final DynamicBooleanProperty RESTRICT_CONCURRENT_SESSIONS = ArchaiusUtil.getBoolean("api.auth.restrict.concurrent.sessions");
+    private static final ConfigProperty<Boolean> RESTRICT_CONCURRENT_SESSIONS = ArchaiusUtil.getBooleanProperty("api.auth.restrict.concurrent.sessions");
 
     @Override
     public Class<?>[] getTypeClasses() {
@@ -76,7 +76,7 @@ public class TokenResourceManager extends AbstractNoOpResourceManager {
 
     @Override
     protected Object createInternal(String type, ApiRequest request) {
-        if (!StringUtils.equals(AbstractTokenUtil.TOKEN, request.getType())) {
+        if (!Strings.CS.equals(AbstractTokenUtil.TOKEN, request.getType())) {
             return null;
         }
         return createToken(request);
@@ -173,7 +173,7 @@ public class TokenResourceManager extends AbstractNoOpResourceManager {
 
     @Override
     protected Object deleteInternal(String type, String id, Object obj, ApiRequest request) {
-        if (!StringUtils.equals(AbstractTokenUtil.TOKEN, request.getType())) {
+        if (!Strings.CS.equals(AbstractTokenUtil.TOKEN, request.getType())) {
             return null;
         }
         return deleteToken(obj, request);

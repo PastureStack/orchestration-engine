@@ -1,8 +1,8 @@
 package io.cattle.platform.api.pubsub.subscribe.jetty;
 
-import org.eclipse.jetty.websocket.api.WriteCallback;
+import org.eclipse.jetty.websocket.api.Callback;
 
-public class WebSocketWriteCallback implements WriteCallback {
+public class WebSocketWriteCallback implements Callback {
 
     WebSocketMessageWriter writer;
 
@@ -11,12 +11,12 @@ public class WebSocketWriteCallback implements WriteCallback {
     }
 
     @Override
-    public void writeFailed(Throwable e) {
+    public void fail(Throwable e) {
         writer.close();
     }
 
     @Override
-    public void writeSuccess() {
+    public void succeed() {
         writer.getQueuedMessageCount().decrementAndGet();
     }
 

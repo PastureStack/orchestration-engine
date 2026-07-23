@@ -10,9 +10,9 @@ import io.github.ibuildthecloud.gdapi.validation.ValidationErrorCodes;
 import java.io.IOException;
 import java.security.SecureRandom;
 
-import javax.servlet.http.Cookie;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.Cookie;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -25,6 +25,8 @@ public class CSRFCookieHandler extends AbstractApiRequestHandler {
 
     public static final String CSRF = "CSRF";
     public static final String HEADER = "X-API-CSRF";
+    static final int TOKEN_BYTES = 32;
+    static final String SAME_SITE = "Lax";
 
     @Override
     public void handle(ApiRequest request) throws IOException {
@@ -48,7 +50,7 @@ public class CSRFCookieHandler extends AbstractApiRequestHandler {
         }
 
         if (csrf == null) {
-            byte[] bytes = new byte[5];
+            byte[] bytes = new byte[TOKEN_BYTES];
             RANDOM.nextBytes(bytes);
             StringBuilder sb = new StringBuilder();
             for (byte b : bytes) {
@@ -70,7 +72,36 @@ public class CSRFCookieHandler extends AbstractApiRequestHandler {
         }
 
         csrf.setPath("/");
+        csrf.setSecure(isSecureRequest(httpRequest));
+        csrf.setAttribute("SameSite", SAME_SITE);
         response.addCookie(csrf);
+    }
+
+    protected boolean isSecureRequest(HttpServletRequest request) {
+        if (request.isSecure()) {
+            return true;
+        }
+
+        String forwardedProto = request.getHeader("X-Forwarded-Proto");
+        if (forwardedProto != null) {
+            for (String value : forwardedProto.split(",")) {
+                if ("https".equalsIgnoreCase(value.trim())) {
+                    return true;
+                }
+            }
+        }
+
+        String forwarded = request.getHeader("Forwarded");
+        if (forwarded != null) {
+            for (String part : forwarded.split(";")) {
+                String value = part.trim();
+                if (value.regionMatches(true, 0, "proto=https", 0, "proto=https".length())) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
     }
 
 }

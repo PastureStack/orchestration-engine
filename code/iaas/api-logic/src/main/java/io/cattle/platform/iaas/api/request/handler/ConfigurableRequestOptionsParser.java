@@ -1,19 +1,30 @@
 package io.cattle.platform.iaas.api.request.handler;
 
-import io.cattle.platform.archaius.util.ArchaiusUtil;
 import io.github.ibuildthecloud.gdapi.request.handler.RequestOptionsParser;
 
 import java.util.List;
 
-import com.netflix.config.DynamicStringListProperty;
 
 public class ConfigurableRequestOptionsParser extends RequestOptionsParser {
 
-    private static final DynamicStringListProperty OPTIONS = ArchaiusUtil.getList("api.request.options");
+    private static final RequestOptionsSettings DEFAULT_SETTINGS = ArchaiusRequestOptionsSettings.create();
+
+    private final RequestOptionsSettings settings;
+
+    public ConfigurableRequestOptionsParser() {
+        this(DEFAULT_SETTINGS);
+    }
+
+    ConfigurableRequestOptionsParser(RequestOptionsSettings settings) {
+        if (settings == null) {
+            throw new IllegalArgumentException("Request options settings are required");
+        }
+        this.settings = settings;
+    }
 
     @Override
     public List<String> getOptions() {
-        return OPTIONS.get();
+        return settings.options();
     }
 
 }

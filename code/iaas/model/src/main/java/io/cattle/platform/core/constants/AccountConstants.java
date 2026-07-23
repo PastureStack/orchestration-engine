@@ -1,20 +1,19 @@
 package io.cattle.platform.core.constants;
 
 import io.cattle.platform.archaius.util.ArchaiusUtil;
+import io.cattle.platform.archaius.util.ConfigProperty;
 import io.cattle.platform.core.addon.ServicesPortRange;
 import io.cattle.platform.core.model.Account;
 import io.cattle.platform.core.util.ConstantsUtils;
 import io.cattle.platform.core.util.PortRangeSpec;
-
-import com.netflix.config.DynamicStringProperty;
 
 public class AccountConstants {
 
     /*
      * Read from config file to support upgrade scenario when default port range is not set on account
      */
-    private static final DynamicStringProperty ENV_PORT_RANGE = ArchaiusUtil
-            .getString("environment.services.port.range");
+    private static final ConfigProperty<String> ENV_PORT_RANGE = ArchaiusUtil
+            .getStringProperty("environment.services.port.range");
 
     public static final String TYPE = "account";
     public static final String REGISTERED_AGENT_KIND = "registeredAgent";
@@ -33,7 +32,7 @@ public class AccountConstants {
     public static final String FIELD_SCHEDULED_UPGRADE_DELAY = "scheduledUpgradeDelayMinutes";
     public static final String FIELD_EXTERNAL_CREDENTIALS = "externalCredentials";
 
-    public static final DynamicStringProperty ACCOUNT_VERSION = ArchaiusUtil.getString("account.version");
+    public static final ConfigProperty<String> ACCOUNT_VERSION = ArchaiusUtil.getStringProperty("account.version");
     public static final String ACCOUNT_ID = ConstantsUtils.property(Account.class, "accountId");
     public static final String SYSTEM_UUID = "system";
 

@@ -3,6 +3,7 @@ package io.cattle.platform.systemstack.catalog.impl;
 import static io.cattle.platform.core.model.tables.StackTable.*;
 
 import io.cattle.platform.archaius.util.ArchaiusUtil;
+import io.cattle.platform.archaius.util.ConfigProperty;
 import io.cattle.platform.core.addon.CatalogTemplate;
 import io.cattle.platform.core.constants.ServiceConstants;
 import io.cattle.platform.core.dao.GenericResourceDao;
@@ -22,27 +23,21 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 
 import org.apache.commons.codec.digest.DigestUtils;
+import org.apache.commons.lang3.Strings;
 import org.apache.commons.lang3.StringUtils;
-import org.apache.http.HttpResponse;
-import org.apache.http.client.ClientProtocolException;
-import org.apache.http.client.ResponseHandler;
-import org.apache.http.client.fluent.Request;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.yaml.snakeyaml.Yaml;
 
-import com.netflix.config.DynamicBooleanProperty;
-import com.netflix.config.DynamicStringProperty;
-
 public class CatalogServiceImpl implements CatalogService {
 
-    private static DynamicStringProperty CATALOG_VERSION_URL = ArchaiusUtil.getString("system.stack.catalog.versions.url");
-    private static DynamicStringProperty CATALOG_RESOURCE_URL = ArchaiusUtil.getString("system.stack.catalog.url");
-    private static DynamicStringProperty CATALOG_RESOURCE_VERSION = ArchaiusUtil.getString("rancher.server.version");
-    private static final DynamicBooleanProperty LAUNCH_CATALOG = ArchaiusUtil.getBoolean("catalog.execute");
+    private static ConfigProperty<String> CATALOG_VERSION_URL = ArchaiusUtil.getStringProperty("system.stack.catalog.versions.url");
+    private static ConfigProperty<String> CATALOG_RESOURCE_URL = ArchaiusUtil.getStringProperty("system.stack.catalog.url");
+    private static ConfigProperty<String> CATALOG_RESOURCE_VERSION = ArchaiusUtil.getStringProperty("rancher.server.version");
+    private static final ConfigProperty<Boolean> LAUNCH_CATALOG = ArchaiusUtil.getBooleanProperty("catalog.execute");
     private static final Logger log = LoggerFactory.getLogger(CatalogServiceImpl.class);
 
     @Inject
@@ -78,7 +73,7 @@ public class CatalogServiceImpl implements CatalogService {
             return resolveUsingCatalog(template);
         }
 
-        return DigestUtils.md5Hex(template.getDockerCompose() + template.getRancherCompose());
+        return DigestUtils.md5Hex(template.getDockerCompose() + template.getPlatformCompose());
     }
 
     protected void appendVersionCheck(StringBuilder catalogTemplateUrl) {
@@ -140,7 +135,7 @@ public class CatalogServiceImpl implements CatalogService {
         if (StringUtils.isBlank(id)) {
             return null;
         }
-        id = StringUtils.removeStart(id, "catalog://");
+        id = Strings.CS.removeStart(id, "catalog://");
 
         StringBuilder catalogTemplateVersionUrl = new StringBuilder(CATALOG_VERSION_URL.get());
         catalogTemplateVersionUrl.append(id);
@@ -153,15 +148,7 @@ public class CatalogServiceImpl implements CatalogService {
             return null;
         }
 
-        return Request.Get(url).execute().handleResponse(new ResponseHandler<Template>() {
-            @Override
-            public Template handleResponse(HttpResponse response) throws ClientProtocolException, IOException {
-                if (response.getStatusLine().getStatusCode() != 200) {
-                    return null;
-                }
-                return jsonMapper.readValue(response.getEntity().getContent(), Template.class);
-            }
-        });
+        return CatalogHttpClient.getJson(url, jsonMapper, Template.class);
     }
 
     @Override
@@ -195,7 +182,7 @@ public class CatalogServiceImpl implements CatalogService {
         processManager.scheduleProcessInstance(ServiceConstants.PROCESS_STACK_UPGRADE, stack,
                 CollectionUtils.asMap(
                    ServiceConstants.STACK_FIELD_DOCKER_COMPOSE, template.getDockerCompose(),
-                   ServiceConstants.STACK_FIELD_RANCHER_COMPOSE, template.getRancherCompose(),
+                   ServiceConstants.STACK_FIELD_RANCHER_COMPOSE, template.getPlatformCompose(),
                    ServiceConstants.STACK_FIELD_ENVIRONMENT, DataAccessor.fieldMap(stack, ServiceConstants.STACK_FIELD_ENVIRONMENT),
                    ServiceConstants.STACK_FIELD_EXTERNAL_ID, "catalog://" + template.getId()));
 
@@ -210,13 +197,13 @@ public class CatalogServiceImpl implements CatalogService {
         }
 
         String dockerCompose = catalogTemplate.getDockerCompose();
-        String rancherCompose = catalogTemplate.getRancherCompose();
+        String rancherCompose = catalogTemplate.getPlatformCompose();
         Template template = null;
         if (externalId.startsWith("catalog://")) {
-            template = getTemplateAtURL(CATALOG_RESOURCE_URL.get() + StringUtils.removeStart(externalId, "catalog://"));
+            template = getTemplateAtURL(CATALOG_RESOURCE_URL.get() + Strings.CS.removeStart(externalId, "catalog://"));
             if (template != null) {
                 dockerCompose = template.getDockerCompose();
-                rancherCompose = template.getRancherCompose();
+                rancherCompose = template.getPlatformCompose();
             }
         }
 
@@ -234,15 +221,7 @@ public class CatalogServiceImpl implements CatalogService {
     }
 
     protected TemplateCollection getTemplates(String url) throws IOException {
-        return Request.Get(url).execute().handleResponse(new ResponseHandler<TemplateCollection>() {
-            @Override
-            public TemplateCollection handleResponse(HttpResponse response) throws ClientProtocolException, IOException {
-                if (response.getStatusLine().getStatusCode() != 200) {
-                    return null;
-                }
-                return jsonMapper.readValue(response.getEntity().getContent(), TemplateCollection.class);
-            }
-        });
+        return CatalogHttpClient.getJson(url, jsonMapper, TemplateCollection.class);
     }
 
     protected void refresh() throws IOException {
@@ -251,13 +230,10 @@ public class CatalogServiceImpl implements CatalogService {
             if (url.endsWith("/")) {
                 url = url.substring(0, url.length() - 1);
             }
-            Request.Post(String.format("%s?refresh&action=refresh", url)).execute().handleResponse((resp) -> {
-                int status = resp.getStatusLine().getStatusCode();
-                if (status >= 400) {
-                    log.warn("Skipping catalog refresh because it failed. Response code: {}, reason: {}", status, resp.getStatusLine().getReasonPhrase());
-                }
-                return null;
-            });
+            int status = CatalogHttpClient.postNoBody(String.format("%s?refresh&action=refresh", url));
+            if (status >= 400) {
+                log.warn("Skipping catalog refresh because it failed. Response code: {}", status);
+            }
             firstCall = false;
         }
     }
@@ -299,12 +275,24 @@ public class CatalogServiceImpl implements CatalogService {
                     continue;
                 }
 
-                @SuppressWarnings("unchecked")
-                Map<Object, Object> project = yaml.loadAs(file, Map.class);
+                Map<Object, Object> project = projectMap(yaml.load(file));
                 result.put("catalog://" + template.getId(), project);
             }
         }
 
+        return result;
+    }
+
+    protected Map<Object, Object> projectMap(Object input) {
+        if (input == null) {
+            return null;
+        }
+
+        Map<?, ?> source = Map.class.cast(input);
+        Map<Object, Object> result = new HashMap<Object, Object>(source.size());
+        for (Map.Entry<?, ?> entry : source.entrySet()) {
+            result.put(entry.getKey(), entry.getValue());
+        }
         return result;
     }
 
@@ -342,7 +330,7 @@ public class CatalogServiceImpl implements CatalogService {
             return null;
         }
 
-        String templateId = StringUtils.removeStart(externalId, "catalog://");
+        String templateId = Strings.CS.removeStart(externalId, "catalog://");
         String[] parts = StringUtils.split(templateId, ":", 3);
         if (parts.length < 3) {
             return null;

@@ -6,7 +6,7 @@ import io.github.ibuildthecloud.gdapi.factory.SchemaFactory;
 import java.lang.reflect.InvocationTargetException;
 import java.util.Map;
 
-import org.apache.commons.beanutils.BeanUtils;
+import org.apache.commons.beanutils2.BeanUtils;
 
 public class UUIDPostInstantiationHandler implements ObjectPostInstantiationHandler, Priority {
 
@@ -15,7 +15,7 @@ public class UUIDPostInstantiationHandler implements ObjectPostInstantiationHand
     SchemaFactory schemaFactory;
 
     @Override
-    public <T> T postProcess(T obj, Class<T> clz, Map<String, Object> properties) {
+    public <T> T postProcess(T obj, Class<?> clz, Map<String, Object> properties) {
         set(obj, UUID, java.util.UUID.randomUUID().toString());
         return obj;
     }

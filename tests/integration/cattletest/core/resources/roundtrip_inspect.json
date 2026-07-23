@@ -32,7 +32,7 @@
         "Tty": true,
         "CpuShares": 1024,
         "Domainname": "example.com",
-        "Image": "ubuntu:14.04.1",
+        "Image": "ubuntu:26.04",
         "Labels": {
           "io.rancher.labeltest.value": "val"
         },

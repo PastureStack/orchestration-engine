@@ -39,7 +39,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 
 import org.apache.commons.lang3.StringUtils;
 
@@ -145,7 +145,6 @@ public class ProjectResourceManager extends AbstractObjectResourceManager {
         return createProject(type, request);
     }
 
-    @SuppressWarnings("unchecked")
     private Account createProject(String type, ApiRequest apiRequest) {
         Policy policy = (Policy) ApiContext.getContext().getPolicy();
         Map<String, Object> project = CollectionUtils.toMap(apiRequest.getRequestObject());
@@ -157,7 +156,8 @@ public class ProjectResourceManager extends AbstractObjectResourceManager {
             Account newProject = (Account) object;
             newProject.setKind(AccountConstants.PROJECT_KIND);
             objectManager.persist(newProject);
-            List<Map<String, String>> members = (ArrayList<Map<String, String>>) project.get("members");
+            List<Map<String, String>> members = ProjectMemberInput.memberMapList(
+                    project.get(ProjectMemberInput.MEMBERS));
             projectMemberResourceManager.setMembers(newProject, members, true);
             policy.grantObjectAccess(newProject);
             return objectManager.reload(newProject);

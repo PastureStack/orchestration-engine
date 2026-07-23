@@ -1,6 +1,7 @@
 package io.cattle.platform.ssh.common;
 
 import io.cattle.platform.archaius.util.ArchaiusUtil;
+import io.cattle.platform.archaius.util.ConfigProperty;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -54,14 +55,11 @@ import org.bouncycastle.operator.ContentSigner;
 import org.bouncycastle.operator.OperatorCreationException;
 import org.bouncycastle.operator.jcajce.JcaContentSignerBuilder;
 
-import com.netflix.config.DynamicLongProperty;
-import com.netflix.config.DynamicStringProperty;
-
 public class SshKeyGen {
 
     private static final byte[] HEADER = new byte[] { 's', 's', 'h', '-', 'r', 's', 'a' };
-    private static final DynamicStringProperty SSH_FORMAT = ArchaiusUtil.getString("ssh.key.text.format");
-    private static final DynamicLongProperty EXPIRATION = ArchaiusUtil.getLong("cert.expiry.days");
+    private static final ConfigProperty<String> SSH_FORMAT = ArchaiusUtil.getStringProperty("ssh.key.text.format");
+    private static final ConfigProperty<Long> EXPIRATION = ArchaiusUtil.getLongProperty("cert.expiry.days");
     private static final JcaPEMKeyConverter CONVERTER = new JcaPEMKeyConverter().setProvider("BC");
     private static final Random RANDOM = new Random();
     public static final String BOUNCY_CASTLE = "BC";

@@ -8,7 +8,7 @@ import io.github.ibuildthecloud.gdapi.model.impl.SchemaImpl;
 
 import java.util.Map;
 
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 
 public class ObjectBasedSubSchemaFactory extends SubSchemaFactory implements Named {
 

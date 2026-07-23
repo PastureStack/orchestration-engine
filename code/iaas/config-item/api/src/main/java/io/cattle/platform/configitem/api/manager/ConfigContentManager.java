@@ -21,7 +21,7 @@ import io.github.ibuildthecloud.gdapi.validation.ValidationErrorCodes;
 
 import java.io.IOException;
 
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -71,7 +71,7 @@ public class ConfigContentManager extends AbstractNoOpResourceManager {
             if (agentIdStr == null) {
                 throw new ValidationErrorException(ValidationErrorCodes.MISSING_REQUIRED, "agentId");
             } else {
-                agentId = new Long(agentIdStr);
+                agentId = Long.valueOf(agentIdStr);
             }
         }
 

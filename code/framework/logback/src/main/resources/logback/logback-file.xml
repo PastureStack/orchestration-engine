@@ -1,12 +1,10 @@
 <included>
     <appender name="SYNC_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
         <file>${logDir}cattle-debug.log</file>
-        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
             <fileNamePattern>${logDir}cattle-debug${fileNamePattern}</fileNamePattern>
             <maxHistory>${maxHistory}</maxHistory>
-            <timeBasedFileNamingAndTriggeringPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedFNATP">
-                <maxFileSize>${maxFileSize}</maxFileSize>
-            </timeBasedFileNamingAndTriggeringPolicy>
+            <maxFileSize>${maxFileSize}</maxFileSize>
         </rollingPolicy>
         <encoder>
             <pattern>${pattern}</pattern>

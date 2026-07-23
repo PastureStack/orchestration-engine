@@ -6,7 +6,7 @@ import io.cattle.platform.engine.process.ProcessInstance;
 import io.cattle.platform.engine.process.ProcessState;
 import io.cattle.platform.process.base.AbstractDefaultProcessHandler;
 
-import javax.inject.Named;
+import jakarta.inject.Named;
 
 @Named
 public class PortRemove extends AbstractDefaultProcessHandler {

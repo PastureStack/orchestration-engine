@@ -17,9 +17,9 @@ public class DockerImageTest {
 
     @Test
     public void testNoNamespaceWithTag() {
-        DockerImage image = DockerImage.parse("ubuntu:14.04");
+        DockerImage image = DockerImage.parse("ubuntu:26.04");
         assertEquals("index.docker.io", image.getServer());
-        assertEquals("ubuntu:14.04", image.getFullName());
+        assertEquals("ubuntu:26.04", image.getFullName());
     }
 
     @Test

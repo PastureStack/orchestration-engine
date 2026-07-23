@@ -42,7 +42,6 @@ public class HostMetaData {
     public HostMetaData() {
     }
 
-    @SuppressWarnings("unchecked")
     public HostMetaData(String agent_ip, Host host, Account account) {
         super();
         this.agent_ip = agent_ip;
@@ -51,9 +50,9 @@ public class HostMetaData {
         this.hostname = hostname;
         this.state = host.getState();
         this.agent_state = host.getAgentState();
-        this.labels = (Map<String, String>) DataAccessor.fields(host)
+        this.labels = MetadataTypeUtils.stringMap(DataAccessor.fields(host)
                 .withKey(InstanceConstants.FIELD_LABELS)
-                .withDefault(Collections.EMPTY_MAP).as(Map.class);
+                .withDefault(Collections.emptyMap()).get());
         this.uuid = host.getUuid();
         this.hostId = host.getId();
         this.local_storage_mb = host.getLocalStorageMb();

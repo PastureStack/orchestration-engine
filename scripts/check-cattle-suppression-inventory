@@ -1,0 +1,236 @@
+#!/bin/bash
+set -euo pipefail
+
+cd "$(dirname "$0")/.."
+
+resolve_python_cmd() {
+    for candidate in "${PYTHON:-}" python3 python; do
+        [ -n "$candidate" ] || continue
+        if "$candidate" -c 'import sys; sys.exit(0)' >/dev/null 2>&1; then
+            printf '%s\n' "$candidate"
+            return 0
+        fi
+    done
+    return 1
+}
+
+python_cmd="$(resolve_python_cmd)" || {
+    echo "python3 or python is required for the cattle suppression inventory" >&2
+    exit 1
+}
+
+python3() {
+    command "$python_cmd" "$@"
+}
+
+python3 - <<'PY'
+import subprocess
+import sys
+from collections import Counter
+
+SUPPRESSION_MARKERS = ("unchecked", "rawtypes")
+MODEL_PREFIX = "code/iaas/model/"
+MODEL_MAX = 1
+BROAD_MODEL_SUPPRESSION = '@SuppressWarnings({ "all", "unchecked", "rawtypes", "this-escape" })'
+THIS_ESCAPE_MODEL_SUPPRESSION = '@SuppressWarnings({ "unchecked", "rawtypes", "this-escape" })'
+
+# These are the remaining hand-written compatibility boundaries after cattle
+# v0.183.253. Missing entries are allowed so burn-down PRs can remove them, but
+# new suppressions must be explicitly designed and documented.
+ALLOWED_MODEL_CLASSES = {
+    "code/iaas/model/src/main/java/io/cattle/platform/core/dao/impl/GenericMapDaoImpl.java\t@SuppressWarnings(\"unchecked\")\tprivate static <T> List<? extends T> recordList(List<?> records) {": "generic-map-record-list",
+}
+ALLOWED_MODEL = set(ALLOWED_MODEL_CLASSES)
+
+ALLOWED_NON_MODEL_CLASSES = {
+    "code/framework/eventing/src/main/java/io/cattle/platform/eventing/model/EventVO.java\t@SuppressWarnings(\"unchecked\")\tprivate static <T> T eventData(Event event) {": "eventing-map-copy",
+    "code/framework/extension/src/main/java/io/cattle/platform/extension/impl/ExtensionManagerImpl.java\t@SuppressWarnings(\"unchecked\")\tprivate static <T> T extensionErasureCast(Object value) {": "extension-erasure-boundary",
+    "code/framework/jooq/src/main/java/io/cattle/platform/db/jooq/converter/DataConverter.java\t@SuppressWarnings(\"unchecked\")\tprivate static Class<Map<String, Object>> mapType() {": "jooq-converter-metadata",
+    "code/framework/object/src/main/java/io/cattle/platform/object/impl/AbstractObjectManager.java\t@SuppressWarnings(\"unchecked\")\tprivate static <T> T relationshipCast(Object value) {": "object-relationship",
+    "code/framework/object/src/main/java/io/cattle/platform/object/impl/JooqObjectManager.java\t@SuppressWarnings(\"unchecked\")\tprivate static <T> T objectRecordCast(Object value) {": "object-record-mapping",
+    "code/framework/utils/src/main/java/io/cattle/platform/util/type/CollectionUtils.java\t@SuppressWarnings(\"unchecked\")\tprivate static <T> T uncheckedCast(Object obj) {": "collection-map-cast",
+    "code/implementation/hazelcast/common/src/main/java/io/cattle/platform/hazelcast/membership/DBDiscoveryFactory.java\t@SuppressWarnings(\"rawtypes\") Map<String, Comparable> properties) {\tdiscovery.setSelfNode(discoveryNode);": "hazelcast-spi-raw-comparable",
+}
+ALLOWED_NON_MODEL = set(ALLOWED_NON_MODEL_CLASSES)
+
+BOUNDARY_GUARD_TESTS = {
+    "collection-map-cast": (
+        "code/framework/utils/src/test/java/io/cattle/platform/util/type/CollectionUtilsTest.java",
+        ("uncheckedCastBoundaryStaysPrivate",),
+    ),
+    "eventing-map-copy": (
+        "code/framework/eventing/src/test/java/io/cattle/platform/eventing/model/EventVOTest.java",
+        ("erasedDataCastBoundaryStaysPrivate",),
+    ),
+    "extension-erasure-boundary": (
+        "code/framework/extension/src/test/java/io/cattle/platform/extension/impl/ExtensionManagerImplTest.java",
+        ("extensionErasureCastBoundaryStaysPrivate",),
+    ),
+    "generic-map-record-list": (
+        "code/iaas/model/src/test/java/io/cattle/platform/core/dao/impl/GenericMapDaoImplTest.java",
+        ("recordListCastBoundaryStaysPrivate",),
+    ),
+    "hazelcast-spi-raw-comparable": (
+        "code/implementation/hazelcast/common/src/test/java/io/cattle/platform/hazelcast/membership/DBDiscoveryFactoryTest.java",
+        ("newDiscoveryStrategyKeepsHazelcastSpiRawComparableSignature",),
+    ),
+    "jooq-converter-metadata": (
+        "code/framework/jooq/src/test/java/io/cattle/platform/db/jooq/converter/DataConverterTest.java",
+        ("mapClassCastBoundaryStaysPrivate",),
+    ),
+    "object-record-mapping": (
+        "code/framework/object/src/test/java/io/cattle/platform/object/impl/JooqObjectManagerTest.java",
+        ("objectRecordCastBoundaryStaysPrivate",),
+    ),
+    "object-relationship": (
+        "code/framework/object/src/test/java/io/cattle/platform/object/impl/AbstractObjectManagerTest.java",
+        ("relationshipCastBoundaryStaysPrivate",),
+    ),
+}
+
+def tracked_java_files():
+    output = subprocess.check_output(["git", "ls-files", "code/**/*.java"], text=True)
+    return [line for line in output.splitlines() if line]
+
+def suppression_key(path, lines, index):
+    annotation = lines[index].strip()
+    context = ""
+    for next_line in lines[index + 1:]:
+        stripped = next_line.strip()
+        if not stripped or stripped.startswith("@"):
+            continue
+        context = stripped
+        break
+    return f"{path}\t{annotation}\t{context}"
+
+def missing_guard_tests(boundary_classes):
+    missing = []
+    for boundary_class in sorted(boundary_classes):
+        guard = BOUNDARY_GUARD_TESTS.get(boundary_class)
+        if guard is None:
+            missing.append((boundary_class, "<missing guard mapping>", "inventory has no guard mapping"))
+            continue
+        path, markers = guard
+        try:
+            with open(path, encoding="utf-8") as source:
+                contents = source.read()
+        except FileNotFoundError:
+            missing.append((boundary_class, path, "test file not found"))
+            continue
+        for marker in markers:
+            if marker not in contents:
+                missing.append((boundary_class, path, f"missing marker: {marker}"))
+    return missing
+
+items = []
+for path in tracked_java_files():
+    with open(path, encoding="utf-8") as source:
+        lines = source.read().splitlines()
+    for index, line in enumerate(lines):
+        if "@SuppressWarnings" not in line:
+            continue
+        if any(marker in line for marker in SUPPRESSION_MARKERS):
+            items.append((path, index + 1, suppression_key(path, lines, index)))
+
+model = [(path, line, key) for path, line, key in items if path.startswith(MODEL_PREFIX)]
+non_model = [(path, line, key) for path, line, key in items if not path.startswith(MODEL_PREFIX)]
+model_keys = {key for _, _, key in model}
+non_model_keys = {key for _, _, key in non_model}
+unknown_model = [(path, line, key) for path, line, key in model if key not in ALLOWED_MODEL]
+unknown_non_model = [(path, line, key) for path, line, key in non_model if key not in ALLOWED_NON_MODEL]
+missing_allowed_model = sorted(ALLOWED_MODEL - model_keys)
+missing_allowed_non_model = sorted(ALLOWED_NON_MODEL - non_model_keys)
+broad_model_suppressions = [
+    (path, line)
+    for path, line, key in model
+    if BROAD_MODEL_SUPPRESSION in key
+]
+this_escape_model_suppressions = [
+    (path, line)
+    for path, line, key in model
+    if THIS_ESCAPE_MODEL_SUPPRESSION in key
+]
+rawtypes_model_suppressions = [
+    (path, line)
+    for path, line, key in model
+    if "rawtypes" in key
+]
+model_classes = Counter(
+    ALLOWED_MODEL_CLASSES[key]
+    for key in model_keys & ALLOWED_MODEL
+)
+model_class_summary = ",".join(
+    f"{boundary_class}:{model_classes[boundary_class]}"
+    for boundary_class in sorted(model_classes)
+)
+if not model_class_summary:
+    model_class_summary = "none"
+
+non_model_classes = Counter(
+    ALLOWED_NON_MODEL_CLASSES[key]
+    for key in non_model_keys & ALLOWED_NON_MODEL
+)
+non_model_class_summary = ",".join(
+    f"{boundary_class}:{non_model_classes[boundary_class]}"
+    for boundary_class in sorted(non_model_classes)
+)
+if not non_model_class_summary:
+    non_model_class_summary = "none"
+
+guard_test_failures = missing_guard_tests(set(model_classes) | set(non_model_classes))
+
+print(f"suppression_total={len(items)}")
+print(f"model_suppression_count={len(model)}")
+print(f"model_suppression_max={MODEL_MAX}")
+print(f"broad_model_suppression_count={len(broad_model_suppressions)}")
+print(f"this_escape_model_suppression_count={len(this_escape_model_suppressions)}")
+print(f"rawtypes_model_suppression_count={len(rawtypes_model_suppressions)}")
+print(f"allowed_model_suppression_count={len(model_keys & ALLOWED_MODEL)}")
+print(f"missing_allowed_model_suppression_count={len(missing_allowed_model)}")
+print(f"unknown_model_suppression_count={len(unknown_model)}")
+print(f"model_suppression_classes={model_class_summary}")
+print(f"non_model_suppression_count={len(non_model)}")
+print(f"allowed_non_model_suppression_count={len(non_model_keys & ALLOWED_NON_MODEL)}")
+print(f"missing_allowed_non_model_suppression_count={len(missing_allowed_non_model)}")
+print(f"unknown_non_model_suppression_count={len(unknown_non_model)}")
+print(f"non_model_suppression_classes={non_model_class_summary}")
+print(f"guard_test_missing_count={len(guard_test_failures)}")
+
+failure_count = 0
+if len(model) > MODEL_MAX:
+    print(f"MODEL_SUPPRESSION_OVER_BUDGET count={len(model)} max={MODEL_MAX}", file=sys.stderr)
+    failure_count += 1
+
+for path, line in broad_model_suppressions:
+    print(f"BROAD_MODEL_SUPPRESSION {path}:{line}", file=sys.stderr)
+if broad_model_suppressions:
+    failure_count += 1
+
+for path, line in this_escape_model_suppressions:
+    print(f"THIS_ESCAPE_MODEL_SUPPRESSION {path}:{line}", file=sys.stderr)
+if this_escape_model_suppressions:
+    failure_count += 1
+
+for path, line in rawtypes_model_suppressions:
+    print(f"RAWTYPES_MODEL_SUPPRESSION {path}:{line}", file=sys.stderr)
+if rawtypes_model_suppressions:
+    failure_count += 1
+
+for path, line, key in unknown_model:
+    print(f"UNKNOWN_MODEL_SUPPRESSION {path}:{line}:{key}", file=sys.stderr)
+if unknown_model:
+    failure_count += 1
+
+for path, line, key in unknown_non_model:
+    print(f"UNKNOWN_NON_MODEL_SUPPRESSION {path}:{line}:{key}", file=sys.stderr)
+if unknown_non_model:
+    failure_count += 1
+
+for boundary_class, path, reason in guard_test_failures:
+    print(f"MISSING_SUPPRESSION_GUARD_TEST {boundary_class} {path} {reason}", file=sys.stderr)
+if guard_test_failures:
+    failure_count += 1
+
+print(f"failure_count={failure_count}")
+sys.exit(0 if failure_count == 0 else 1)
+PY

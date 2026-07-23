@@ -689,11 +689,10 @@ public class IaasApiConfig {
         return factory;
     }
 
-    @SuppressWarnings("unchecked")
     @Bean
-    DocumentationLoader DocumentationLoader(@Qualifier("DocsLocation") List<?> resources) {
+    DocumentationLoader DocumentationLoader(@Qualifier("DocsLocation") List<URL> resources) {
         DocumentationLoader loader = new DocumentationLoader();
-        loader.setResources((List<URL>) resources);
+        loader.setResources(resources);
         return loader;
     }
 
@@ -767,6 +766,7 @@ public class IaasApiConfig {
         GenericWhitelistedProxy proxy = new GenericWhitelistedProxy("NoAuthenticationProxy");
         proxy.setNoAuthProxy("true");
         proxy.setAllowedPaths(Arrays.asList(
+                "/v1-auth/token",
                 "/v1-auth/saml",
                 "/v1-webhooks/endpoint"));
         return proxy;

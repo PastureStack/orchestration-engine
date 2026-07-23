@@ -4,6 +4,7 @@ import io.cattle.platform.api.auth.Identity;
 import io.cattle.platform.api.auth.Policy;
 import io.cattle.platform.api.pubsub.util.SubscriptionUtils;
 import io.cattle.platform.api.pubsub.util.SubscriptionUtils.SubscriptionStyle;
+import io.cattle.platform.core.constants.AccountConstants;
 import io.cattle.platform.core.dao.AccountDao;
 import io.cattle.platform.core.model.Account;
 import io.cattle.platform.iaas.api.auth.AchaiusPolicyOptionsFactory;
@@ -21,7 +22,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -116,12 +117,40 @@ public class DefaultAuthorizationProvider implements AuthorizationProvider, Init
             policy = new AccountPolicy(account, authenticatedAsAccount, identities, options);
         }
 
+        applyRequiredSystemAccountOptions(account, options);
+        policy = new AccountPolicy(account, authenticatedAsAccount, identities, options);
+
         if (SubscriptionUtils.getSubscriptionStyle(policy) == SubscriptionStyle.QUALIFIED) {
             options.setOption(SubscriptionUtils.POLICY_SUBSCRIPTION_QUALIFIER, IaasEvents.ACCOUNT_QUALIFIER);
             options.setOption(SubscriptionUtils.POLICY_SUBSCRIPTION_QUALIFIER_VALUE, Long.toString(account.getId()));
         }
 
         return policy;
+    }
+
+    protected void applyRequiredSystemAccountOptions(Account account, PolicyOptionsWrapper options) {
+        if (account == null) {
+            return;
+        }
+
+        String kind = account.getKind();
+        if (!AccountConstants.SERVICE_KIND.equals(kind) && !AccountConstants.SUPER_ADMIN_KIND.equals(kind)) {
+            return;
+        }
+
+        /*
+         * Rancher 1.6 external handlers subscribe to exact names such as
+         * stack.create;handler=rancher-compose-executor.  If persisted settings
+         * are missing or polluted during a legacy migration, Archaius falls back
+         * to QUALIFIED subscriptions and those handlers silently stop receiving
+         * events.  These two account kinds were raw/all-account in the original
+         * defaults, so keep that contract explicit in code for upgrade safety.
+         */
+        options.setOption(SubscriptionUtils.POLICY_SUBSCRIPTION_STYLE, SubscriptionStyle.RAW.name().toLowerCase());
+        options.setOption(Policy.AUTHORIZED_FOR_ALL_ACCOUNTS, "true");
+        options.setOption(Policy.LIST_ALL_ACCOUNTS, "true");
+        options.setOption(Policy.LIST_ALL_SETTINGS, "true");
+        options.setOption(Policy.PLAIN_ID_OPTION, "true");
     }
 
     protected String getRole(Policy policy, ApiRequest request) {

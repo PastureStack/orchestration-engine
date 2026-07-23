@@ -4,7 +4,7 @@ umask 077
 
 IMAGE=$1
 if [ "$IMAGE" = "" ]; then
-    IMAGE=rancher/server
+    IMAGE=ghcr.io/pasturestack/server:v1.6.270
 fi
 
 mkdir -p /var/lib/rancher/etc/server
@@ -76,8 +76,8 @@ EOF
 </#if>
 
 
-echo Creating /var/lib/rancher/bin/rancher-ha-start.sh
-cat > /var/lib/rancher/bin/rancher-ha-start.sh << "EOF"
+echo Creating /var/lib/rancher/bin/pasturestack-ha-start.sh
+cat > /var/lib/rancher/bin/pasturestack-ha-start.sh << "EOF"
 #!/bin/sh
 set -e
 
@@ -87,17 +87,17 @@ if [ "$IMAGE" = "" ]; then
     exit 1
 fi
 
-docker rm -fv rancher-ha >/dev/null 2>&1 || true
-ID=`docker run --restart=always -d -v /var/run/docker.sock:/var/run/docker.sock --name rancher-ha --net host --privileged -v /var/lib/rancher/etc:/var/lib/rancher/etc $IMAGE ha`
+docker rm -fv pasturestack-ha >/dev/null 2>&1 || true
+ID=`docker run --restart=always -d -v /var/run/docker.sock:/var/run/docker.sock --name pasturestack-ha --net host --privileged -v /var/lib/rancher/etc:/var/lib/rancher/etc $IMAGE ha`
 
-echo Started container rancher-ha $ID
+echo Started container pasturestack-ha $ID
 echo Run the below to see the logs
 echo
-echo docker logs -f rancher-ha
+echo docker logs -f pasturestack-ha
 EOF
 
-chmod +x /var/lib/rancher/bin/rancher-ha-start.sh
+chmod +x /var/lib/rancher/bin/pasturestack-ha-start.sh
 
-echo Running: /var/lib/rancher/bin/rancher-ha-start.sh $IMAGE
-echo To re-run please execute: /var/lib/rancher/bin/rancher-ha-start.sh $IMAGE
-exec /var/lib/rancher/bin/rancher-ha-start.sh $IMAGE
+echo Running: /var/lib/rancher/bin/pasturestack-ha-start.sh $IMAGE
+echo To re-run please execute: /var/lib/rancher/bin/pasturestack-ha-start.sh $IMAGE
+exec /var/lib/rancher/bin/pasturestack-ha-start.sh $IMAGE

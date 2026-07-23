@@ -6,7 +6,7 @@ import io.cattle.platform.configitem.server.model.Request;
 
 import java.util.Map;
 
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 
 public abstract class AbstractRequest implements Request {
 

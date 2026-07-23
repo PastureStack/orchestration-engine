@@ -4,6 +4,6 @@ import java.util.List;
 
 public interface DynamicExtensionHandler {
 
-    <T> List<T> getExtensionList(String key, Class<T> type);
+    List<?> getExtensionList(String key, Class<?> type);
 
 }

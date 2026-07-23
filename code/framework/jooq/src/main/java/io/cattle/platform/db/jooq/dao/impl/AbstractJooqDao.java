@@ -1,6 +1,6 @@
 package io.cattle.platform.db.jooq.dao.impl;
 
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 
 import org.jooq.Configuration;
 import org.jooq.DSLContext;

@@ -9,8 +9,8 @@ import io.github.ibuildthecloud.gdapi.util.ResponseCodes;
 
 import java.io.IOException;
 
-import javax.inject.Inject;
-import javax.servlet.ServletException;
+import jakarta.inject.Inject;
+import jakarta.servlet.ServletException;
 
 public class ResourceManagerRequestHandler extends AbstractResponseGenerator {
 

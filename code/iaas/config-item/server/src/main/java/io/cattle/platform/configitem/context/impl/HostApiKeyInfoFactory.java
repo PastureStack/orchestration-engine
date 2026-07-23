@@ -14,8 +14,8 @@ import java.security.PublicKey;
 import java.util.Map;
 import java.util.TreeMap;
 
-import javax.inject.Inject;
-import javax.inject.Named;
+import jakarta.inject.Inject;
+import jakarta.inject.Named;
 
 import org.apache.commons.codec.binary.Hex;
 import org.slf4j.Logger;

@@ -19,7 +19,7 @@ import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 
 public class ExternalDynamicExtensionHandlerImpl implements DynamicExtensionHandler {
 
@@ -32,9 +32,8 @@ public class ExternalDynamicExtensionHandlerImpl implements DynamicExtensionHand
     ObjectProcessManager objectProcessManager;
     ObjectMetaDataManager objectMetaDataManager;
 
-    @SuppressWarnings("unchecked")
     @Override
-    public <T> List<T> getExtensionList(String key, Class<T> type) {
+    public List<?> getExtensionList(String key, Class<?> type) {
         if (type != null && !ProcessLogic.class.isAssignableFrom(type)) {
             return Collections.emptyList();
         }
@@ -53,22 +52,22 @@ public class ExternalDynamicExtensionHandlerImpl implements DynamicExtensionHand
                 break;
             }
         }
-        
+
         List<? extends ExternalHandlerData> externalHandlers = externalHandlerDao.getExternalHandlerData(eventName);
-        
+
         if (externalHandlers.size() == 0) {
             return Collections.emptyList();
         }
 
-        List<Object> result = new ArrayList<Object>(externalHandlers.size());
+        List<ProcessLogic> result = new ArrayList<ProcessLogic>(externalHandlers.size());
         for (ExternalHandlerData handler : externalHandlers) {
             result.add(toEventHandler(eventName, handler));
         }
 
-        return (List<T>) result;
+        return result;
     }
 
-    protected Object toEventHandler(String eventName, ExternalHandlerData handler) {
+    protected ProcessLogic toEventHandler(String eventName, ExternalHandlerData handler) {
         if (handler.getEventName() != null) {
             eventName = handler.getEventName();
         }
@@ -77,7 +76,7 @@ public class ExternalDynamicExtensionHandlerImpl implements DynamicExtensionHand
         String priorityName = DataAccessor.fieldString(handler, ExternalHandlerConstants.FIELD_PRIORITY_NAME);
         Integer priority = handler.getPriority();
         String handlerName = handler.getName();
-        
+
         if (priority == null) {
             priority = PriorityUtils.getPriorityFromString(priorityName);
         }

@@ -1,6 +1,7 @@
 package io.cattle.platform.task.impl;
 
 import io.cattle.platform.archaius.util.ArchaiusUtil;
+import io.cattle.platform.archaius.util.ConfigProperty;
 import io.cattle.platform.deferred.util.DeferredUtils;
 import io.cattle.platform.eventing.EventService;
 import io.cattle.platform.framework.event.ExecuteTask;
@@ -18,19 +19,16 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 
 import org.apache.cloudstack.managed.context.NoExceptionRunnable;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.netflix.config.DynamicLongProperty;
-import com.netflix.config.DynamicStringProperty;
-
 public class TaskManagerImpl implements TaskManager, InitializationTask, Runnable {
 
-    private static final DynamicLongProperty DELAY_SECONDS = ArchaiusUtil.getLong("task.initial.delay.seconds");
+    private static final ConfigProperty<Long> DELAY_SECONDS = ArchaiusUtil.getLongProperty("task.initial.delay.seconds");
     private static final String SCHEDULE_FORMAT = "task.%s.schedule";
     private static final Logger log = LoggerFactory.getLogger(TaskManagerImpl.class);
 
@@ -87,7 +85,7 @@ public class TaskManagerImpl implements TaskManager, InitializationTask, Runnabl
             future.cancel(false);
         }
 
-        DynamicStringProperty prop = ArchaiusUtil.getString(String.format(SCHEDULE_FORMAT, name));
+        ConfigProperty<String> prop = ArchaiusUtil.getStringProperty(String.format(SCHEDULE_FORMAT, name));
         if (initial) {
             prop.addCallback(this);
         }

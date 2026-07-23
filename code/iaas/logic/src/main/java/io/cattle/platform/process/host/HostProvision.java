@@ -20,8 +20,8 @@ import io.cattle.platform.object.util.TransitioningUtils;
 import io.cattle.platform.process.base.AbstractDefaultProcessHandler;
 import io.cattle.platform.util.exception.ExecutionException;
 
-import javax.inject.Inject;
-import javax.inject.Named;
+import jakarta.inject.Inject;
+import jakarta.inject.Named;
 
 @Named
 public class HostProvision extends AbstractDefaultProcessHandler {

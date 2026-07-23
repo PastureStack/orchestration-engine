@@ -4,9 +4,12 @@ from cattle import ApiError
 from common_fixtures import *  # NOQA
 from test_volume import VOLUME_CLEANUP_LABEL
 
-TEST_IMAGE = 'ibuildthecloud/helloworld'
-TEST_IMAGE_LATEST = TEST_IMAGE + ':latest'
+TEST_IMAGE = 'busybox:1'
+TEST_IMAGE_LATEST = 'busybox:latest'
+TEST_IMAGE_AMD64_DIGEST = \
+    'busybox@sha256:b8d1827e38a1d49cd17217efd7b07d689e4ea1744e39c7dcbb95533d175bea65'
 TEST_IMAGE_UUID = 'docker:' + TEST_IMAGE
+TEST_IMAGE_SHA_UUID = 'docker:' + TEST_IMAGE_AMD64_DIGEST
 
 if_docker = pytest.mark.skipif("os.environ.get('DOCKER_TEST') == 'false'",
                                reason='DOCKER_TEST is not set')
@@ -48,10 +51,7 @@ def test_docker_create_only(docker_client, super_client):
         image = super_client.reload(container).image()
         assert image.instanceKind == 'container'
 
-        image_mapping = filter(
-            lambda m: m.storagePool().external,
-            image.imageStoragePoolMaps()
-        )
+        image_mapping = [m for m in image.imageStoragePoolMaps() if m.storagePool().external]
 
         assert len(image_mapping) == 0
 
@@ -63,11 +63,8 @@ def test_docker_create_only(docker_client, super_client):
 
 @if_docker
 def test_docker_create_only_from_sha(docker_client, super_client):
-    image_name = 'tianon/true@sha256:662fc60808e6d5628a090e39' \
-                 'b4bcae694add28a626031cc889109c2cf2af5d73'
-    uuid = 'docker:' + image_name
     container = docker_client.create_container(name='test-sha256',
-                                               imageUuid=uuid,
+                                               imageUuid=TEST_IMAGE_SHA_UUID,
                                                networkMode='bridge',
                                                startOnCreate=False)
     try:
@@ -78,10 +75,7 @@ def test_docker_create_only_from_sha(docker_client, super_client):
         image = super_client.reload(container).image()
         assert image.instanceKind == 'container'
 
-        image_mapping = filter(
-            lambda m: m.storagePool().external,
-            image.imageStoragePoolMaps()
-        )
+        image_mapping = [m for m in image.imageStoragePoolMaps() if m.storagePool().external]
 
         assert len(image_mapping) == 0
 
@@ -110,10 +104,7 @@ def test_docker_create_with_start(docker_client, super_client):
 
         image = container.volumes()[0].image()
         image = super_client.reload(image)
-        image_mapping = filter(
-            lambda m: not m.storagePool().external,
-            image.imageStoragePoolMaps()
-        )
+        image_mapping = [m for m in image.imageStoragePoolMaps() if not m.storagePool().external]
 
         assert len(image_mapping) == 1
         assert image_mapping[0].imageId == image.id
@@ -136,7 +127,7 @@ def test_docker_build(docker_client, super_client):
         assert container.state == 'creating'
         container = super_client.wait_success(container)
 
-        # This builds tianon/true which just dies
+        # This builds a short-lived image which may stop before Rancher observes it.
         assert container.state == 'running' or container.state == 'stopped'
         assert container.transitioning == 'no'
         assert container.data.dockerContainer.Image == uuid
@@ -192,8 +183,9 @@ def test_docker_command_args(docker_client, super_client):
 
 @if_docker
 def test_short_lived_container(docker_client, super_client):
-    container = docker_client.create_container(imageUuid="docker:tianon/true",
-                                               networkMode='bridge')
+    container = docker_client.create_container(imageUuid=TEST_IMAGE_UUID,
+                                               networkMode='bridge',
+                                               command=['true'])
     container = wait_for_condition(
         docker_client, container,
         lambda x: x.state == 'stopped',
@@ -422,7 +414,7 @@ def test_docker_ports_from_container(docker_client, super_client):
     c = docker_client.wait_success(c.start())
     if c.state != 'running':
         super_c = super_client.reload(c)
-        print 'DEBUG Container not running: %s' % super_c
+        print('DEBUG Container not running: %s' % super_c)
     assert c.state == 'running'
 
     count = 0
@@ -621,7 +613,7 @@ def test_container_fields(docker_client, super_client):
             "IPC_OWNER", "SYS_CHROOT", "SYS_PTRACE", "SYS_BOOT",
             "LEASE", "SETFCAP", "WAKE_ALARM", "BLOCK_SUSPEND", "ALL"]
     test_name = 'container_test'
-    image_uuid = 'docker:ibuildthecloud/helloworld'
+    image_uuid = TEST_IMAGE_UUID
     restart_policy = {"maximumRetryCount": 2, "name": "on-failure"}
 
     c = docker_client.create_container(name=test_name + random_str(),
@@ -686,7 +678,7 @@ def test_container_fields(docker_client, super_client):
 @if_docker
 def test_docker_newfields(docker_client, super_client):
     test_name = 'container_field_test'
-    image_uuid = 'docker:ibuildthecloud/helloworld'
+    image_uuid = TEST_IMAGE_UUID
     privileged = True
     blkioWeight = 100
     cpuPeriod = 100000
@@ -755,7 +747,7 @@ def test_docker_newfields(docker_client, super_client):
 @if_docker_1_12
 def test_docker_extra_newfields(docker_client, super_client):
     test_name = 'container_field_test'
-    image_uuid = 'docker:ibuildthecloud/helloworld'
+    image_uuid = TEST_IMAGE_UUID
     sysctls = {"net.ipv4.ip_forward": "1"}
 
     healthCmd = ["ls"]
@@ -787,7 +779,7 @@ def test_docker_extra_newfields(docker_client, super_client):
 @if_docker
 def test_container_milli_cpu_reservation(docker_client, super_client):
     test_name = 'container_test'
-    image_uuid = 'docker:ibuildthecloud/helloworld'
+    image_uuid = TEST_IMAGE_UUID
 
     c = docker_client.create_container(name=test_name,
                                        imageUuid=image_uuid,
@@ -1289,17 +1281,20 @@ def _check_path(volume, should_exist, client, super_client, extra_vols=None,
         path = path_to_check
     else:
         path = _path_to_volume(volume)
-    print 'Checking path [%s] for volume [%s].' % (path, volume)
+    print('Checking path [%s] for volume [%s].' % (path, volume))
     data_vols = ['/var/lib/docker:/host/var/lib/docker', '/tmp:/host/tmp']
     if extra_vols:
         data_vols.extend(extra_vols)
 
     c = client. \
         create_container(name="volume_check" + random_str(),
-                         imageUuid="docker:ranchertest/volume-test:v0.1.0",
+                         imageUuid=TEST_IMAGE_UUID,
                          networkMode=None,
                          environment={'TEST_PATH': path},
-                         command='/opt/tools/check_path_exists.sh',
+                         command=[
+                             'sh', '-c',
+                             'test -d "$TEST_PATH" && exit 10 || exit 11'
+                         ],
                          dataVolumes=data_vols)
 
     c = super_client.wait_success(c)
@@ -1310,9 +1305,7 @@ def _check_path(volume, should_exist, client, super_client, extra_vols=None,
 
     code = c.data.dockerInspect.State.ExitCode
 
-    # Note that the test in the container is testing to see if the path is a
-    # directory. Code for the test is here:
-    # https://github.com/rancher/test-images/tree/master/images/volume-test
+    # The container command tests whether TEST_PATH is a directory.
     if should_exist:
         # The exit code of the container should be a 10 if the path existed
         assert code == 10

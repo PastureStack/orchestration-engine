@@ -2,6 +2,7 @@ package io.cattle.platform.iaas.api.filter.compat;
 
 import io.cattle.platform.core.model.Service;
 import io.cattle.platform.object.util.ObjectUtils;
+import io.cattle.platform.util.net.UrlUtils;
 import io.github.ibuildthecloud.gdapi.context.ApiContext;
 import io.github.ibuildthecloud.gdapi.id.IdFormatter;
 import io.github.ibuildthecloud.gdapi.model.Resource;
@@ -88,7 +89,7 @@ public class CompatibilityOutputFilter implements ResourceOutputFilter {
                 continue;
             }
             try {
-                URL newValue = new URL(value.toString().replace(from, to));
+                URL newValue = UrlUtils.toURL(value.toString().replace(from, to));
                 newLinks.put(key, newValue);
             } catch (MalformedURLException e) {
                 log.error("Failed to build new URL for {}", value, e);

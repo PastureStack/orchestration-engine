@@ -1,0 +1,136 @@
+#!/bin/bash
+set -euo pipefail
+
+cd "$(dirname "$0")/.."
+
+resolve_python_cmd() {
+    for candidate in "${PYTHON:-}" python3 python; do
+        [ -n "$candidate" ] || continue
+        if "$candidate" -c 'import sys; sys.exit(0)' >/dev/null 2>&1; then
+            printf '%s\n' "$candidate"
+            return 0
+        fi
+    done
+    return 1
+}
+
+python_cmd="$(resolve_python_cmd)" || {
+    echo "python3 or python is required for the cattle deprecation inventory" >&2
+    exit 1
+}
+
+python3() {
+    command "$python_cmd" "$@"
+}
+
+python3 - <<'PY'
+import os
+import sys
+from collections import Counter
+
+ALLOWED_DEPRECATION_CLASSES = {
+    "code/framework/utils/src/main/java/io/cattle/platform/util/net/UrlUtils.java\t@SuppressWarnings(\"deprecation\")\tprivate static URL legacyURLFromDeprecatedConstructor(String spec, String protocol, String host, String file, Exception cause) throws MalformedURLException {": "url-legacy-constructor-fallback",
+    "code/iaas/config-item/server/src/main/java/io/cattle/platform/configitem/freemarker/Configuration.java\t@SuppressWarnings(\"deprecation\")\tpublic Properties getSettings() {": "freemarker-legacy-settings-api",
+}
+ALLOWED_DEPRECATION_BOUNDARIES = set(ALLOWED_DEPRECATION_CLASSES)
+
+BOUNDARY_GUARD_TESTS = {
+    "freemarker-legacy-settings-api": (
+        "code/iaas/config-item/server/src/test/java/io/cattle/platform/configitem/freemarker/ConfigurationTest.java",
+        ("settingsApiBoundaryKeepsNarrowedPublicReturnType",),
+    ),
+    "url-legacy-constructor-fallback": (
+        "code/framework/utils/src/test/java/io/cattle/platform/util/net/UrlUtilsTest.java",
+        ("legacyUrlConstructorBoundaryStaysPrivate",),
+    ),
+}
+
+
+def java_files():
+    for root, dirs, files in os.walk("code"):
+        dirs[:] = [
+            item for item in dirs
+            if item not in {".git", "target"}
+        ]
+        for name in files:
+            if name.endswith(".java"):
+                yield os.path.join(root, name).replace(os.sep, "/")
+
+
+def missing_guard_tests(boundary_classes):
+    missing = []
+    for boundary_class in sorted(boundary_classes):
+        guard = BOUNDARY_GUARD_TESTS.get(boundary_class)
+        if guard is None:
+            missing.append((boundary_class, "<missing guard mapping>", "inventory has no guard mapping"))
+            continue
+        path, markers = guard
+        try:
+            with open(path, encoding="utf-8") as source:
+                contents = source.read()
+        except FileNotFoundError:
+            missing.append((boundary_class, path, "test file not found"))
+            continue
+        for marker in markers:
+            if marker not in contents:
+                missing.append((boundary_class, path, f"missing marker: {marker}"))
+    return missing
+
+
+def suppression_key(path, lines, index):
+    annotation = lines[index].strip()
+    context = ""
+    for next_line in lines[index + 1:]:
+        stripped = next_line.strip()
+        if not stripped or stripped.startswith("@"):
+            continue
+        context = stripped
+        break
+    return f"{path}\t{annotation}\t{context}"
+
+
+items = []
+for path in java_files():
+    with open(path, encoding="utf-8") as source:
+        lines = source.read().splitlines()
+    for index, line in enumerate(lines):
+        if "@SuppressWarnings" in line and "deprecation" in line:
+            items.append((path, index + 1, suppression_key(path, lines, index)))
+
+keys = {key for _, _, key in items}
+unknown = [(path, line, key) for path, line, key in items if key not in ALLOWED_DEPRECATION_BOUNDARIES]
+missing_allowed = sorted(ALLOWED_DEPRECATION_BOUNDARIES - keys)
+deprecation_classes = Counter(
+    ALLOWED_DEPRECATION_CLASSES[key]
+    for key in keys & ALLOWED_DEPRECATION_BOUNDARIES
+)
+class_summary = ",".join(
+    f"{boundary_class}:{deprecation_classes[boundary_class]}"
+    for boundary_class in sorted(deprecation_classes)
+)
+if not class_summary:
+    class_summary = "none"
+
+guard_test_failures = missing_guard_tests(set(deprecation_classes))
+
+print(f"deprecation_suppression_count={len(items)}")
+print(f"allowed_deprecation_suppression_count={len(keys & ALLOWED_DEPRECATION_BOUNDARIES)}")
+print(f"missing_allowed_deprecation_suppression_count={len(missing_allowed)}")
+print(f"unknown_deprecation_suppression_count={len(unknown)}")
+print(f"deprecation_suppression_classes={class_summary}")
+print(f"deprecation_guard_test_missing_count={len(guard_test_failures)}")
+
+for path, line, key in unknown:
+    print(f"UNKNOWN_DEPRECATION_SUPPRESSION {path}:{line}:{key}", file=sys.stderr)
+
+for boundary_class, path, reason in guard_test_failures:
+    print(f"MISSING_DEPRECATION_GUARD_TEST {boundary_class} {path} {reason}", file=sys.stderr)
+
+failure_count = 0
+if unknown:
+    failure_count += 1
+if guard_test_failures:
+    failure_count += 1
+print(f"failure_count={failure_count}")
+sys.exit(0 if failure_count == 0 else 1)
+PY

@@ -41,21 +41,21 @@ public class ExtensionManagerImpl implements ExtensionManager, InitializationTas
     boolean started = false;
 
 
-    @SuppressWarnings("unchecked")
     @Override
     public <T> T first(String key, String typeString) {
         try {
             Class<?> clz = Class.forName(typeString);
-            return first(key, (Class<T>) clz);
+            Class<T> type = extensionErasureCast(clz);
+            return first(key, type);
         } catch (ClassNotFoundException e) {
             throw new IllegalArgumentException("Failed to find class [" + typeString + "]", e);
         }
     }
 
-    @SuppressWarnings("unchecked")
     @Override
     public <T> T first(String key, Class<T> type) {
-        return (T) Proxy.newProxyInstance(type.getClassLoader(), new Class<?>[]{type}, new FirstInstanceInvocationHandler(getExtensionListInternal(key)));
+        Object proxy = Proxy.newProxyInstance(type.getClassLoader(), new Class<?>[]{type}, new FirstInstanceInvocationHandler(getExtensionListInternal(key)));
+        return type.cast(proxy);
     }
 
     @Override
@@ -83,17 +83,25 @@ public class ExtensionManagerImpl implements ExtensionManager, InitializationTas
         return getExtensionList(ScopeUtils.getScopeFromClass(type), type);
     }
 
-    @SuppressWarnings("unchecked")
     @Override
     public <T> List<T> getExtensionList(String key, Class<T> type) {
         Class<?> clz = keyToType.get(key);
         if (type != null && clz != null && clz != type) {
             throw new IllegalArgumentException("Extension list for key [" + key + "] is of type [" + type + "] got [" + clz + "]");
         }
-        return (List<T>) getExtensionListInternal(key);
+        return extensionList(getExtensionListInternal(key));
     }
 
-    protected synchronized ExtensionList<?> getExtensionListInternal(String key) {
+    protected static <T> List<T> extensionList(List<?> values) {
+        return extensionErasureCast(values);
+    }
+
+    @SuppressWarnings("unchecked")
+    private static <T> T extensionErasureCast(Object value) {
+        return (T) value;
+    }
+
+    protected synchronized ExtensionList<Object> getExtensionListInternal(String key) {
         ExtensionList<Object> list = extensionLists.get(key);
         if (list == null) {
             List<Object> inner = started ? getList(key) : Collections.emptyList();
@@ -120,7 +128,7 @@ public class ExtensionManagerImpl implements ExtensionManager, InitializationTas
 
         objects.add(obj);
 
-        CollectionUtils.addToMap(byName, name, obj, ArrayList.class);
+        CollectionUtils.addToMap(byName, name, obj, ArrayList::new);
         objectToName.put(obj, name);
 
         Pattern pattern = null;
@@ -136,7 +144,7 @@ public class ExtensionManagerImpl implements ExtensionManager, InitializationTas
         }
 
         if (pattern != null) {
-            CollectionUtils.addToMap(wildcards, pattern, name, ArrayList.class);
+            CollectionUtils.addToMap(wildcards, pattern, name, ArrayList::new);
         }
     }
 
@@ -145,9 +153,8 @@ public class ExtensionManagerImpl implements ExtensionManager, InitializationTas
         if (!started) {
             for (Map.Entry<String, List<Object>> entry : byKeyRegistry.entrySet()) {
                 String key = entry.getKey();
-                ExtensionList<?> extensionList = getExtensionListInternal(key);
-                extensionList.inner.clear();
-                extensionList.inner.addAll(getList(key));
+                ExtensionList<Object> extensionList = getExtensionListInternal(key);
+                extensionList.replaceWith(getList(key));
                 ExtensionMap<String, Object> extensionMap = getExtensionMapInternal(key);
                 extensionMap.inner.clear();
                 extensionMap.inner.putAll(getMap(key));
@@ -179,7 +186,7 @@ public class ExtensionManagerImpl implements ExtensionManager, InitializationTas
 
         Set<String> excludes = getSetting(key + ".exclude");
 
-        String list = ArchaiusUtil.getString(key + ".list").get();
+        String list = ArchaiusUtil.getStringProperty(key + ".list").get();
         if (!StringUtils.isBlank(list)) {
             List<Object> result = new ArrayList<Object>();
             for (String name : list.split("\\s*,\\s*")) {
@@ -281,7 +288,7 @@ public class ExtensionManagerImpl implements ExtensionManager, InitializationTas
     }
 
     protected String getSettingValue(String key) {
-        return ArchaiusUtil.getString(key).get();
+        return ArchaiusUtil.getStringProperty(key).get();
     }
 
     @Override

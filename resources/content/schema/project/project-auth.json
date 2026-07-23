@@ -45,6 +45,7 @@
         "projectTemplate" : "r",
         "pullTask" : "cr",
         "register": "cr",
+        "register.agentUriFormat": "cr",
         "registrationToken" : "cr",
         "registryCredential": "crud",
         "registry": "crud",

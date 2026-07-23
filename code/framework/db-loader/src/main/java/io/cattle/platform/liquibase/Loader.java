@@ -1,13 +1,17 @@
 package io.cattle.platform.liquibase;
 
 import io.cattle.platform.archaius.util.ArchaiusUtil;
+import io.cattle.platform.archaius.util.ConfigProperty;
 import io.cattle.platform.datasource.DataSourceFactory;
 
-import java.util.EnumSet;
+import java.util.Arrays;
+import java.util.HashSet;
 import java.util.Set;
 
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 
+import liquibase.Scope;
+import liquibase.changelog.ChangeLogHistoryServiceFactory;
 import liquibase.exception.LiquibaseException;
 import liquibase.integration.spring.SpringLiquibase;
 
@@ -17,16 +21,14 @@ import org.jooq.impl.DSL;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.netflix.config.DynamicStringProperty;
-
 public class Loader extends SpringLiquibase {
 
-    private static final Set<SQLDialect> EMBEDDED = EnumSet.of(SQLDialect.H2, SQLDialect.HSQLDB, SQLDialect.DERBY);
+    private static final Set<SQLDialect> EMBEDDED = new HashSet<SQLDialect>(Arrays.asList(SQLDialect.H2, SQLDialect.HSQLDB));
 
     private static final String LOG_OPTION = "liquibase.databaseChangeLogTableName";
     private static final String LOCK_OPTION = "liquibase.databaseChangeLogLockTableName";
 
-    private static final DynamicStringProperty RELEASE_LOCK = ArchaiusUtil.getString("db.release.change.lock");
+    private static final ConfigProperty<String> RELEASE_LOCK = ArchaiusUtil.getStringProperty("db.release.change.lock");
     private static final Logger log = LoggerFactory.getLogger("ConsoleStatus");
 
     Configuration configuration;
@@ -52,7 +54,7 @@ public class Loader extends SpringLiquibase {
                 } else if ("false".equals(RELEASE_LOCK.get())) {
                     release = false;
                 } else {
-                    release = EMBEDDED.contains(configuration.dialect());
+                    release = isEmbedded(configuration.dialect());
                 }
 
                 if (release) {
@@ -63,6 +65,7 @@ public class Loader extends SpringLiquibase {
             }
 
             log.info("Starting DB migration");
+            Scope.getCurrentScope().getSingleton(ChangeLogHistoryServiceFactory.class).register(new RancherChangeLogHistoryService());
             super.afterPropertiesSet();
             log.info("DB migration done");
         } finally {
@@ -77,6 +80,10 @@ public class Loader extends SpringLiquibase {
                 System.setProperty(LOCK_OPTION, oldLockTable);
             }
         }
+    }
+
+    static boolean isEmbedded(SQLDialect dialect) {
+        return EMBEDDED.contains(dialect) || "DERBY".equals(dialect.name());
     }
 
     @Inject

@@ -15,8 +15,9 @@ import io.github.ibuildthecloud.gdapi.validation.ValidationErrorCodes;
 
 import java.util.List;
 
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 
+import org.apache.commons.lang3.Strings;
 import org.apache.commons.lang3.StringUtils;
 
 public class CredentialUniqueFilter extends AbstractResourceManagerFilter {
@@ -33,7 +34,7 @@ public class CredentialUniqueFilter extends AbstractResourceManagerFilter {
         if (StringUtils.isBlank(credential.getKind())) {
             credential.setKind(request.getType());
         }
-        if (StringUtils.equals(credential.getKind(), CredentialConstants.KIND_PASSWORD)) {
+        if (Strings.CS.equals(credential.getKind(), CredentialConstants.KIND_PASSWORD)) {
             LocalAuthPasswordValidator.validatePassword(credential.getSecretValue(), jsonMapper);
             String clearSecret = credential.getSecretValue();
             credential.setSecretValue(ApiContext.getContext().getTransformationService().transform(clearSecret, "HASH"));

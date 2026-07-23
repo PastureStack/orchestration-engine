@@ -16,7 +16,6 @@ import java.util.zip.GZIPOutputStream;
 import org.apache.commons.codec.binary.Hex;
 import org.apache.commons.compress.archivers.tar.TarArchiveOutputStream;
 import org.apache.commons.io.IOUtils;
-import org.apache.commons.io.output.NullOutputStream;
 
 public class LocalArchiveConfigItem extends AbstractConfigItem {
 
@@ -33,7 +32,7 @@ public class LocalArchiveConfigItem extends AbstractConfigItem {
     public void hash() throws IOException {
         DigestOutputStream os = null;
         try {
-            os = new DigestOutputStream(new NullOutputStream(), MessageDigest.getInstance("SHA-256"));
+            os = new DigestOutputStream(OutputStream.nullOutputStream(), MessageDigest.getInstance("SHA-256"));
             copyFile(os);
             os.close();
             revision = Hex.encodeHexString(os.getMessageDigest().digest());

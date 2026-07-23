@@ -20,11 +20,9 @@ import io.github.ibuildthecloud.gdapi.id.IdFormatter;
 import java.util.Collections;
 import java.util.List;
 
-import javax.inject.Inject;
-import javax.inject.Named;
+import jakarta.inject.Inject;
+import jakarta.inject.Named;
 
-import org.apache.commons.collections.CollectionUtils;
-import org.apache.commons.collections.TransformerUtils;
 
 /**
  * This handler is responsible for activating the service as well as restoring the active service to its scale
@@ -97,17 +95,21 @@ public class ServiceUpdateActivate extends AbstractObjectProcessHandler {
         }
     }
 
-    @SuppressWarnings("unchecked")
     protected void waitForConsumedServicesActivate(ProcessState state, Service service) {
-        List<Integer> consumedServicesIds = DataAccessor.fromMap(state.getData())
+        List<?> consumedServicesIds = DataAccessor.fromMap(state.getData())
                 .withKey(ServiceConstants.FIELD_WAIT_FOR_CONSUMED_SERVICES_IDS)
-                .withDefault(Collections.EMPTY_LIST).as(List.class);
+                .withDefault(Collections.emptyList()).as(List.class);
 
         if (consumedServicesIds.isEmpty()) {
             // 1. Wait for the consumed services to reach a finite state
-            List<Long> servicesViaLinkIds = (List<Long>) CollectionUtils.collect(
-                    consumeMapDao.findConsumedServices(service.getId()),
-                    TransformerUtils.invokerTransformer("getConsumedServiceId"));
+            List<Long> servicesViaLinkIds = new java.util.ArrayList<>();
+            for (io.cattle.platform.core.model.ServiceConsumeMap consumeMap : consumeMapDao.findConsumedServices(service.getId())) {
+                Long consumedServiceId = consumeMap.getConsumedServiceId();
+                if (isSelfLink(service, consumedServiceId)) {
+                    continue;
+                }
+                servicesViaLinkIds.add(consumedServiceId);
+            }
             for (Long serviceViaLinkId : servicesViaLinkIds) {
                 Service consumedService = objectManager.loadResource(Service.class, serviceViaLinkId);
                 if (consumedService == null) {
@@ -117,13 +119,25 @@ public class ServiceUpdateActivate extends AbstractObjectProcessHandler {
             }
         } else {
             // 2. Wait for the services passed by an explicit directive, to activate
-            for (Integer consumedServiceId : consumedServicesIds) {
-                Service consumedService = objectManager.loadResource(Service.class, consumedServiceId.longValue());
+            for (Object consumedServiceId : consumedServicesIds) {
+                Long consumedServiceIdLong = consumedServiceIdLong(consumedServiceId);
+                if (isSelfLink(service, consumedServiceIdLong)) {
+                    continue;
+                }
+                Service consumedService = objectManager.loadResource(Service.class, consumedServiceIdLong);
                 if (consumedService == null) {
                     continue;
                 }
                 resourceMonitor.waitForState(consumedService, CommonStatesConstants.ACTIVE);
             }
         }
+    }
+
+    static Long consumedServiceIdLong(Object consumedServiceId) {
+        return Integer.class.cast(consumedServiceId).longValue();
+    }
+
+    protected boolean isSelfLink(Service service, Long consumedServiceId) {
+        return consumedServiceId != null && consumedServiceId.equals(service.getId());
     }
 }

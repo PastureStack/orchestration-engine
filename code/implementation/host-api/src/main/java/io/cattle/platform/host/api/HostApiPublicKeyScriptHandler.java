@@ -9,8 +9,8 @@ import java.io.IOException;
 import java.security.PublicKey;
 import java.util.Map;
 
-import javax.inject.Inject;
-import javax.servlet.http.HttpServletResponse;
+import jakarta.inject.Inject;
+import jakarta.servlet.http.HttpServletResponse;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

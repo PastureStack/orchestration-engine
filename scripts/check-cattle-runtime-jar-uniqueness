@@ -1,0 +1,180 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+repo_root=$(cd "$(dirname "$0")/.." && pwd)
+cd "$repo_root"
+
+python_cmd=${PYTHON:-}
+if [ -z "$python_cmd" ]; then
+    for candidate in python3 python; do
+        if command -v "$candidate" >/dev/null 2>&1 && "$candidate" -c 'import sys' >/dev/null 2>&1; then
+            python_cmd=$candidate
+            break
+        fi
+    done
+fi
+
+if [ -z "$python_cmd" ]; then
+    echo "python3 or python is required for the cattle runtime jar uniqueness audit" >&2
+    exit 2
+fi
+
+root=${RC16_CATTLE_PACKAGED_ROOT:-code/packaging/app/target}
+
+"$python_cmd" - "$root" <<'PY'
+import re
+import sys
+from collections import defaultdict
+from pathlib import Path
+
+root = Path(sys.argv[1])
+
+known_artifacts = [
+    "jakarta.annotation-api",
+    "javax.annotation-api",
+    "jsr250-api",
+    "jakarta.inject-api",
+    "javax.inject",
+    "jakarta.servlet-api",
+    "javax.servlet-api",
+    "servlet-api",
+    "jakarta.xml.bind-api",
+    "jaxb-api",
+    "slf4j-api",
+    "log4j-over-slf4j",
+    "jcl-over-slf4j",
+    "jul-to-slf4j",
+    "logback-classic",
+    "logback-core",
+    "commons-logging",
+    "commons-logging-api",
+    "log4j",
+    "log4j-api",
+    "log4j-core",
+    "reload4j",
+    "slf4j-jcl",
+    "slf4j-jdk14",
+    "slf4j-log4j12",
+    "slf4j-nop",
+    "slf4j-reload4j",
+    "slf4j-simple",
+    "metrics-core",
+    "metrics-logback",
+    "metrics-jmx",
+    "metrics-jakarta-servlets",
+    "metrics-servlets",
+    "metrics-servlet",
+]
+
+runtime_families = {
+    "annotation-api": {
+        "modern": {"jakarta.annotation-api"},
+        "legacy": {"javax.annotation-api", "jsr250-api"},
+    },
+    "inject-api": {
+        "modern": {"jakarta.inject-api"},
+        "legacy": {"javax.inject"},
+    },
+    "servlet-api": {
+        "modern": {"jakarta.servlet-api"},
+        "legacy": {"javax.servlet-api", "servlet-api"},
+    },
+    "xml-bind-api": {
+        "modern": {"jakarta.xml.bind-api"},
+        "legacy": {"jaxb-api"},
+    },
+}
+
+logging_bindings = {
+    "logback-classic",
+    "slf4j-jdk14",
+    "slf4j-log4j12",
+    "slf4j-nop",
+    "slf4j-reload4j",
+    "slf4j-simple",
+}
+
+legacy_metrics_servlets = {"metrics-servlets", "metrics-servlet"}
+
+
+def artifact_name(jar_name):
+    if not jar_name.endswith(".jar"):
+        return None
+    for artifact in sorted(known_artifacts, key=len, reverse=True):
+        if jar_name == f"{artifact}.jar" or jar_name.startswith(f"{artifact}-"):
+            return artifact
+    match = re.match(r"^(.+)-\d+(?:[.-].*)?\.jar$", jar_name)
+    if match:
+        return match.group(1)
+    return jar_name[:-4]
+
+
+lib_dirs = sorted(root.glob("*/WEB-INF/lib"))
+failures = []
+jar_count = 0
+duplicate_artifact_count = 0
+legacy_modern_family_count = 0
+legacy_metrics_servlet_count = 0
+max_logging_bindings = 0
+
+for lib_dir in lib_dirs:
+    artifacts = defaultdict(list)
+    for jar in sorted(lib_dir.glob("*.jar")):
+        jar_count += 1
+        artifact = artifact_name(jar.name)
+        if artifact:
+            artifacts[artifact].append(jar)
+
+    for artifact, jars in sorted(artifacts.items()):
+        if len(jars) > 1:
+            duplicate_artifact_count += 1
+            joined = ",".join(str(jar) for jar in jars)
+            failures.append(
+                f"CATTLE_RUNTIME_JAR_DUPLICATE_ARTIFACT lib={lib_dir} artifact={artifact} files={joined}"
+            )
+
+    for family, members in runtime_families.items():
+        modern = sorted(artifact for artifact in members["modern"] if artifact in artifacts)
+        legacy = sorted(artifact for artifact in members["legacy"] if artifact in artifacts)
+        if modern and legacy:
+            legacy_modern_family_count += 1
+            failures.append(
+                f"CATTLE_RUNTIME_JAR_LEGACY_MODERN_FAMILY lib={lib_dir} family={family} modern={','.join(modern)} legacy={','.join(legacy)}"
+            )
+
+    legacy_metrics = sorted(artifact for artifact in legacy_metrics_servlets if artifact in artifacts)
+    if legacy_metrics:
+        legacy_metrics_servlet_count += len(legacy_metrics)
+        failures.append(
+            f"CATTLE_RUNTIME_JAR_LEGACY_METRICS_SERVLET lib={lib_dir} artifact={','.join(legacy_metrics)}"
+        )
+    if "metrics-jakarta-servlets" in artifacts and legacy_metrics:
+        failures.append(
+            f"CATTLE_RUNTIME_JAR_DUPLICATE_METRICS_SERVLET_LINE lib={lib_dir} modern=metrics-jakarta-servlets legacy={','.join(legacy_metrics)}"
+        )
+
+    bindings = sorted(artifact for artifact in logging_bindings if artifact in artifacts)
+    max_logging_bindings = max(max_logging_bindings, len(bindings))
+    if len(bindings) > 1:
+        failures.append(
+            f"CATTLE_RUNTIME_JAR_MULTIPLE_SLF4J_BINDINGS lib={lib_dir} bindings={','.join(bindings)}"
+        )
+
+for failure in failures[:100]:
+    print(failure)
+if len(failures) > 100:
+    print(f"CATTLE_RUNTIME_JAR_UNIQUENESS_FAIL_MORE count={len(failures) - 100}")
+
+print(
+    "CATTLE_RUNTIME_JAR_UNIQUENESS_OK "
+    f"lib_dir_count={len(lib_dirs)} jar_count={jar_count} "
+    f"duplicate_artifact_count={duplicate_artifact_count} "
+    f"legacy_modern_family_count={legacy_modern_family_count} "
+    f"legacy_metrics_servlet_count={legacy_metrics_servlet_count} "
+    f"max_logging_binding_count={max_logging_bindings}"
+)
+print("This gate prevents duplicate runtime jars from hiding legacy annotation, logging, and metrics servlet payloads after JDK25/Jakarta migration.")
+print(f"failure_count={len(failures)}")
+if failures:
+    sys.exit(1)
+PY

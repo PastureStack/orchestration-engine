@@ -6,6 +6,7 @@ import static io.cattle.platform.core.model.tables.ProjectMemberTable.*;
 import io.cattle.platform.api.auth.Identity;
 import io.cattle.platform.api.auth.Policy;
 import io.cattle.platform.archaius.util.ArchaiusUtil;
+import io.cattle.platform.archaius.util.ConfigListProperty;
 import io.cattle.platform.core.constants.AccountConstants;
 import io.cattle.platform.core.constants.CommonStatesConstants;
 import io.cattle.platform.core.constants.CredentialConstants;
@@ -42,7 +43,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 
 import org.apache.commons.lang3.StringUtils;
 import org.jooq.Condition;
@@ -52,12 +53,10 @@ import org.jooq.TableField;
 import org.jooq.exception.InvalidResultException;
 import org.jooq.impl.DSL;
 
-import com.netflix.config.DynamicStringListProperty;
-
 public class AuthDaoImpl extends AbstractJooqDao implements AuthDao {
 
     private static final List<String> OWNER_ROLE_LIST = Arrays.asList("owner");
-    private static final DynamicStringListProperty SET_MEMBER_ROLES = ArchaiusUtil.getList("project.set.member.roles");
+    private static final ConfigListProperty<String> SET_MEMBER_ROLES = ArchaiusUtil.getStringListProperty("project.set.member.roles");
 
     @Inject
     GenericResourceDao resourceDao;
@@ -70,7 +69,7 @@ public class AuthDaoImpl extends AbstractJooqDao implements AuthDao {
     @Inject
     AccountDao accountDao;
 
-    private DynamicStringListProperty SUPPORTED_TYPES = ArchaiusUtil.getList("account.by.key.credential.types");
+    private ConfigListProperty<String> SUPPORTED_TYPES = ArchaiusUtil.getStringListProperty("account.by.key.credential.types");
 
     @Override
     public Account getAdminAccount() {
@@ -173,7 +172,7 @@ public class AuthDaoImpl extends AbstractJooqDao implements AuthDao {
 
 
     private int getRolePriority(String role) {
-        return ArchaiusUtil.getInt(SecurityConstants.ROLE_SETTING_BASE + role).get();
+        return ArchaiusUtil.getIntProperty(SecurityConstants.ROLE_SETTING_BASE + role).get();
     }
 
     @Override

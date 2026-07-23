@@ -25,7 +25,7 @@ import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
 
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
@@ -153,8 +153,7 @@ public class AuditServiceImpl implements AuditService{
             return;
         }
 
-        @SuppressWarnings("unchecked")
-        Map<String, Object> obj = jsonMapper.convertValue(objectToPlace, Map.class);
+        Map<String, Object> obj = auditObjectMap(objectToPlace);
 
         if ("secret".equals(type)) {
             obj.remove("value");
@@ -180,5 +179,14 @@ public class AuditServiceImpl implements AuditService{
         } catch (IOException e) {
             log.error("Failed to log [{}]", errMsg, e);
         }
+    }
+
+    protected Map<String, Object> auditObjectMap(Object objectToPlace) {
+        Map<?, ?> converted = jsonMapper.convertValue(objectToPlace, Map.class);
+        Map<String, Object> result = new HashMap<String, Object>(converted.size());
+        for (Map.Entry<?, ?> entry : converted.entrySet()) {
+            result.put(String.class.cast(entry.getKey()), entry.getValue());
+        }
+        return result;
     }
 }

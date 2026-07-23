@@ -4,7 +4,7 @@
     <parent>
         <artifactId>cattle-parent</artifactId>
         <groupId>io.cattle</groupId>
-        <version>0.5.0-SNAPSHOT</version>
+        <version>0.183.269</version>
         <relativePath>../../parent/pom.xml</relativePath>
     </parent>
     <packaging>war</packaging>
@@ -27,8 +27,8 @@
             <scope>provided</scope>
         </dependency>
         <dependency>
-            <groupId>org.eclipse.jetty</groupId>
-            <artifactId>jetty-servlets</artifactId>
+            <groupId>org.eclipse.jetty.ee10</groupId>
+            <artifactId>jetty-ee10-servlets</artifactId>
             <version>${jetty.version}</version>
             <scope>provided</scope>
         </dependency>
@@ -42,8 +42,8 @@
     <build>
         <plugins>
             <plugin>
-                <groupId>org.mortbay.jetty</groupId>
-                <artifactId>jetty-maven-plugin</artifactId>
+                <groupId>org.eclipse.jetty.ee10</groupId>
+                <artifactId>jetty-ee10-maven-plugin</artifactId>
                 <version>${jetty.version}</version>
                 <configuration>
                     <scanIntervalSeconds>10</scanIntervalSeconds>
@@ -54,6 +54,7 @@
             </plugin>
             <plugin>
                 <artifactId>maven-dependency-plugin</artifactId>
+                <version>3.11.0</version>
                 <executions>
                     <execution>
                         <id>Copy Jetty Runtime</id>
@@ -62,7 +63,7 @@
                             <goal>copy-dependencies</goal>
                         </goals>
                         <configuration>
-                            <includeGroupIds>org.eclipse.jetty</includeGroupIds>
+                            <includeGroupIds>org.eclipse.jetty,org.eclipse.jetty.ee,org.eclipse.jetty.ee10,org.eclipse.jetty.ee10.websocket,org.eclipse.jetty.websocket,jakarta.servlet</includeGroupIds>
                             <outputDirectory>${project.build.directory}/${project.build.finalName}/WEB-INF/jetty</outputDirectory>
                         </configuration>
                     </execution>
@@ -80,7 +81,7 @@
                     </execution>
                     <execution>
                         <id>copy main</id>
-                        <phase>generate-resources</phase>
+                        <phase>prepare-package</phase>
                         <goals>
                             <goal>unpack-dependencies</goal>
                         </goals>
@@ -95,7 +96,7 @@
             </plugin>
             <plugin>
                 <artifactId>maven-war-plugin</artifactId>
-                <version>2.1.1</version>
+                <version>3.5.1</version>
                 <configuration>
                     <filteringDeploymentDescriptors>true</filteringDeploymentDescriptors>
                     <archive>
@@ -110,7 +111,7 @@
             </plugin>
             <plugin>
                 <artifactId>maven-resources-plugin</artifactId>
-                <version>2.6</version>
+                <version>3.5.0</version>
                 <executions>
                     <execution>
                         <id>Copy WEB-INF/content</id>

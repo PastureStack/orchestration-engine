@@ -11,14 +11,14 @@ import io.github.ibuildthecloud.gdapi.request.ApiRequest;
 
 import java.io.IOException;
 
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 
 import org.apache.commons.lang3.StringUtils;
-import org.eclipse.jetty.websocket.server.WebSocketServerFactory;
-import org.eclipse.jetty.websocket.servlet.ServletUpgradeRequest;
-import org.eclipse.jetty.websocket.servlet.ServletUpgradeResponse;
-import org.eclipse.jetty.websocket.servlet.WebSocketCreator;
+import org.eclipse.jetty.ee10.websocket.server.JettyServerUpgradeRequest;
+import org.eclipse.jetty.ee10.websocket.server.JettyServerUpgradeResponse;
+import org.eclipse.jetty.ee10.websocket.server.JettyWebSocketCreator;
+import org.eclipse.jetty.ee10.websocket.server.JettyWebSocketServerContainer;
 
 public class JettyWebSocketSubcriptionHandler extends NonBlockingSubscriptionHandler {
 
@@ -37,16 +37,15 @@ public class JettyWebSocketSubcriptionHandler extends NonBlockingSubscriptionHan
             }
         }
         final WebSocketMessageWriter messageWriter = new WebSocketMessageWriter(identifier);
-        WebSocketServerFactory factory = new WebSocketServerFactory();
-        factory.getPolicy().setAsyncWriteTimeout(1000);
-        factory.setCreator(new WebSocketCreator() {
+        JettyWebSocketServerContainer container = JettyWebSocketServerContainer.ensureContainer(req.getServletContext());
+        JettyWebSocketCreator creator = new JettyWebSocketCreator() {
             @Override
-            public Object createWebSocket(ServletUpgradeRequest req, ServletUpgradeResponse resp) {
+            public Object createWebSocket(JettyServerUpgradeRequest req, JettyServerUpgradeResponse resp) {
                 return messageWriter;
             }
-        });
+        };
 
-        if ("websocket".equalsIgnoreCase(req.getHeader("Upgrade")) && factory.acceptWebSocket(req, resp)) {
+        if ("websocket".equalsIgnoreCase(req.getHeader("Upgrade")) && container.upgrade(creator, req, resp)) {
             apiRequest.setResponseCode(101);
             apiRequest.commit();
             return messageWriter;

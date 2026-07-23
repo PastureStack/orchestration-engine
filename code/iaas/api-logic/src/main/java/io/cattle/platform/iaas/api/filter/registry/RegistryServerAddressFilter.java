@@ -17,7 +17,7 @@ import io.github.ibuildthecloud.gdapi.util.ResponseCodes;
 import java.util.List;
 import java.util.Map;
 
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 
 public class RegistryServerAddressFilter extends AbstractDefaultResourceManagerFilter {
 

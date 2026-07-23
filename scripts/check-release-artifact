@@ -1,0 +1,65 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+cd "$(dirname "$0")/.."
+
+artifact=${1:-dist/artifacts/cattle.jar}
+expected_version=${EXPECTED_ENGINE_VERSION:-0.183.269}
+
+test -f "$artifact"
+artifact=$(realpath "$artifact")
+mapfile -t entries < <(jar tf "$artifact")
+
+require_exact_entry()
+{
+    local expected=$1
+    local count=0
+    local entry
+    for entry in "${entries[@]}"; do
+        if [ "$entry" = "$expected" ]; then
+            count=$((count + 1))
+        fi
+    done
+    if [ "$count" -ne 1 ]; then
+        printf 'ENGINE_RELEASE_ENTRY_COUNT_MISMATCH entry=%s count=%s\n' "$expected" "$count" >&2
+        exit 1
+    fi
+}
+
+require_single_versioned_entry()
+{
+    local prefix=$1
+    local suffix=$2
+    local count=0
+    local entry
+    for entry in "${entries[@]}"; do
+        case "$entry" in
+            "$prefix"*"$suffix") count=$((count + 1)) ;;
+        esac
+    done
+    if [ "$count" -ne 1 ]; then
+        printf 'ENGINE_RELEASE_VERSIONED_ENTRY_COUNT_MISMATCH prefix=%s suffix=%s count=%s\n' "$prefix" "$suffix" "$count" >&2
+        exit 1
+    fi
+}
+
+require_exact_entry WEB-INF/web.xml
+require_exact_entry io/cattle/platform/launcher/Main.class
+require_single_versioned_entry WEB-INF/lib/cattle-resources- .jar
+require_single_versioned_entry WEB-INF/lib/cattle-iaas-auth-logic- .jar
+
+workdir=$(mktemp -d "${TMPDIR:-/tmp}/pasturestack-engine-release-gate.XXXXXX")
+cleanup()
+{
+    rm -rf "$workdir"
+}
+trap cleanup EXIT
+(
+    cd "$workdir"
+    jar xf "$artifact" META-INF/MANIFEST.MF META-INF/maven/io.cattle/cattle-app/pom.properties
+)
+tr -d '\r' <"$workdir/META-INF/MANIFEST.MF" | grep -Fx "Implementation-Version: ${expected_version}" >/dev/null
+grep -Fx "version=${expected_version}" "$workdir/META-INF/maven/io.cattle/cattle-app/pom.properties" >/dev/null
+
+printf 'ENGINE_RELEASE_ARTIFACT_OK artifact=%s version=%s webapp=1 resources=1 auth_logic=1 launcher=1\n' \
+    "$artifact" "$expected_version"

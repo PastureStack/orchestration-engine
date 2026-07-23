@@ -33,7 +33,7 @@ def test_hoststats_host(docker_client, context):
     assert '/v1/hoststats' in stats_access.url
 
     try:
-        payload = jwt.decode(stats_access.token, verify=False)
+        payload = jwt.decode(stats_access.token, options={"verify_signature": False})
         assert 'hostUuid' in payload
         assert 'resourceId' in payload
     except jwt.InvalidTokenError:
@@ -51,7 +51,7 @@ def test_hoststats_project(admin_user_client, context):
     assert '/v1/hoststats' in stats_access.url
 
     try:
-        payload = jwt.decode(stats_access.token, verify=False)
+        payload = jwt.decode(stats_access.token, options={"verify_signature": False})
         assert 'project' in payload
     except jwt.InvalidTokenError:
         assert False

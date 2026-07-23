@@ -12,7 +12,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 
 public class VolumesFromConstraintProvider extends CollocationChecker implements AllocationConstraintsProvider {
     @Inject
@@ -21,11 +21,11 @@ public class VolumesFromConstraintProvider extends CollocationChecker implements
     @Override
     public void appendConstraints(AllocationAttempt attempt, AllocationLog log, List<Constraint> constraints) {
         for (Instance instance : attempt.getInstances()) {
-            @SuppressWarnings("unchecked")
-            Set<Integer> intDataVolumesFrom = DataAccessor.fields(instance).withKey(DockerInstanceConstants.FIELD_VOLUMES_FROM).as(jsonMapper, Set.class);
+            Set<?> intDataVolumesFrom = DataAccessor.fields(instance).withKey(DockerInstanceConstants.FIELD_VOLUMES_FROM).as(jsonMapper, Set.class);
             if (intDataVolumesFrom != null && !intDataVolumesFrom.isEmpty()) {
                 Set<Long> dataVolumesFrom = new HashSet<>();
-                for (Integer i : intDataVolumesFrom) {
+                for (Object volumeFrom : intDataVolumesFrom) {
+                    Integer i = Integer.class.cast(volumeFrom);
                     dataVolumesFrom.add(i.longValue());
                 }
 

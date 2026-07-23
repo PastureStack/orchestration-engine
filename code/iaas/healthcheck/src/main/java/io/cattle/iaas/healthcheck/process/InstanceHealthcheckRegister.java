@@ -19,8 +19,8 @@ import io.cattle.platform.util.type.Priority;
 
 import java.util.Date;
 
-import javax.inject.Inject;
-import javax.inject.Named;
+import jakarta.inject.Inject;
+import jakarta.inject.Named;
 
 @Named
 public class InstanceHealthcheckRegister extends AbstractObjectProcessLogic implements ProcessPostListener, Priority {

@@ -1,19 +1,19 @@
 package io.cattle.platform.datasource;
 
 import io.cattle.platform.archaius.util.ArchaiusUtil;
+import io.cattle.platform.archaius.util.ConfigProperty;
 
-import org.apache.commons.dbcp.BasicDataSource;
-import org.apache.commons.dbcp.ManagedBasicDataSource;
-
-import com.netflix.config.DynamicStringProperty;
+import org.apache.commons.dbcp2.BasicDataSource;
 
 public class JMXDataSourceFactoryImpl extends DefaultDataSourceFactoryImpl {
 
-    private static final DynamicStringProperty PREFIX = ArchaiusUtil.getString("dbcp.jmx.prefix");
+    private static final ConfigProperty<String> PREFIX = ArchaiusUtil.getStringProperty("dbcp.jmx.prefix");
 
     @Override
     protected BasicDataSource newBasicDataSource(String name) {
-        return new ManagedBasicDataSource(PREFIX.get() + name);
+        BasicDataSource dataSource = new BasicDataSource();
+        dataSource.setJmxName(PREFIX.get() + name);
+        return dataSource;
     }
 
 }

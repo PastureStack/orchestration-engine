@@ -1,7 +1,6 @@
 package io.cattle.platform.docker.api;
 
 import io.cattle.platform.api.action.ActionHandler;
-import io.cattle.platform.archaius.util.ArchaiusUtil;
 import io.cattle.platform.core.model.Host;
 import io.cattle.platform.core.model.Instance;
 import io.cattle.platform.docker.api.model.ContainerLogs;
@@ -16,16 +15,25 @@ import io.github.ibuildthecloud.gdapi.request.ApiRequest;
 
 import java.util.Map;
 
-import javax.inject.Inject;
-
-import com.netflix.config.DynamicStringProperty;
+import jakarta.inject.Inject;
 
 public class ContainerLogsActionHandler implements ActionHandler {
 
-    private static final DynamicStringProperty HOST_LOGS_PATH = ArchaiusUtil.getString("host.logs.path");
+    private final DockerActionSettings settings;
 
     HostApiService apiService;
     ObjectManager objectManager;
+
+    public ContainerLogsActionHandler() {
+        this(ArchaiusDockerActionSettings.create());
+    }
+
+    ContainerLogsActionHandler(DockerActionSettings settings) {
+        if (settings == null) {
+            throw new IllegalArgumentException("settings is required");
+        }
+        this.settings = settings;
+    }
 
     @Override
     public String getName() {
@@ -53,7 +61,7 @@ public class ContainerLogsActionHandler implements ActionHandler {
         Map<String, Object> data = CollectionUtils.asMap(DockerInstanceConstants.DOCKER_CONTAINER, dockerId, "Lines", logs.getLines(), "Follow",
                 logs.getFollow(), "Timestamps", logs.getTimestamps(), "Since", logs.getSince());
 
-        HostApiAccess apiAccess = apiService.getAccess(request, host.getId(), CollectionUtils.asMap("logs", data), HOST_LOGS_PATH.get());
+        HostApiAccess apiAccess = apiService.getAccess(request, host.getId(), CollectionUtils.asMap("logs", data), settings.hostLogsPath());
 
         if (apiAccess == null) {
             return null;

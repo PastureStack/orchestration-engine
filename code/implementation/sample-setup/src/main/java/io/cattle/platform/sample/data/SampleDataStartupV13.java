@@ -5,6 +5,7 @@ import static io.cattle.platform.core.model.tables.SettingTable.*;
 import static io.cattle.platform.core.model.tables.StackTable.*;
 
 import io.cattle.platform.archaius.util.ArchaiusUtil;
+import io.cattle.platform.archaius.util.ConfigProperty;
 import io.cattle.platform.core.constants.MachineConstants;
 import io.cattle.platform.core.model.Account;
 import io.cattle.platform.core.model.PhysicalHost;
@@ -20,6 +21,10 @@ import io.github.ibuildthecloud.gdapi.condition.ConditionType;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Matcher;
+
+import org.apache.commons.lang3.StringUtils;
+
 
 
 public class SampleDataStartupV13 extends AbstractSampleData {
@@ -54,6 +59,10 @@ public class SampleDataStartupV13 extends AbstractSampleData {
 
     private static final String EC2_CONFIG = "amazonec2Config";
     private static final String SECURITY_GROUP = "securityGroup";
+    private static final ConfigProperty<String> CATALOG_MIGRATION_LIBRARY_URL =
+            ArchaiusUtil.getStringProperty("catalog.url.migration.library.url");
+    private static final ConfigProperty<String> CATALOG_MIGRATION_COMMUNITY_URL =
+            ArchaiusUtil.getStringProperty("catalog.url.migration.community.url");
 
     @Override
     protected String getName() {
@@ -98,10 +107,17 @@ public class SampleDataStartupV13 extends AbstractSampleData {
                 value = "";
             }
 
-            value = value.replaceAll("https://github.com/rancher/rancher-catalog(.git)?",
-                        "https://git.rancher.io/rancher-catalog.git")
-                    .replaceAll("https://github.com/rancher/community-catalog(.git)?",
-                            "https://git.rancher.io/community-catalog.git");
+            String libraryUrl = CATALOG_MIGRATION_LIBRARY_URL.get();
+            if (StringUtils.isNotBlank(libraryUrl)) {
+                value = value.replaceAll("https://github.com/rancher/rancher-catalog(.git)?",
+                        Matcher.quoteReplacement(libraryUrl));
+            }
+
+            String communityUrl = CATALOG_MIGRATION_COMMUNITY_URL.get();
+            if (StringUtils.isNotBlank(communityUrl)) {
+                value = value.replaceAll("https://github.com/rancher/community-catalog(.git)?",
+                        Matcher.quoteReplacement(communityUrl));
+            }
             setting.setValue(value);
             objectManager.persist(setting);
             ArchaiusUtil.refresh();

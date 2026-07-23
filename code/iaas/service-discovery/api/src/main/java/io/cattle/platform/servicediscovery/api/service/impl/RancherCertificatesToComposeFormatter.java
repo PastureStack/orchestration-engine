@@ -9,8 +9,8 @@ import io.cattle.platform.servicediscovery.api.service.RancherConfigToComposeFor
 import java.util.ArrayList;
 import java.util.List;
 
-import javax.inject.Inject;
-import javax.inject.Named;
+import jakarta.inject.Inject;
+import jakarta.inject.Named;
 
 import org.apache.commons.lang3.StringUtils;
 
@@ -22,10 +22,9 @@ public class RancherCertificatesToComposeFormatter extends AbstractJooqDao
     ObjectManager objManager;
 
     @Override
-    @SuppressWarnings("unchecked")
     public Object format(ServiceDiscoveryConfigItem item, Object valueToTransform) {
         if (item.getDockerName().equalsIgnoreCase(ServiceDiscoveryConfigItem.CERTIFICATES.getDockerName())) {
-            List<Number> certificateIds = (List<Number>) valueToTransform;
+            List<Number> certificateIds = certificateIds(valueToTransform);
             List<String> certificateNames = new ArrayList<>();
             for (Number certificateId : certificateIds) {
                 String certName = getCertName(certificateId);
@@ -40,6 +39,15 @@ public class RancherCertificatesToComposeFormatter extends AbstractJooqDao
         } else {
             return null;
         }
+    }
+
+    static List<Number> certificateIds(Object valueToTransform) {
+        List<?> values = List.class.cast(valueToTransform);
+        List<Number> result = new ArrayList<>();
+        for (Object value : values) {
+            result.add(Number.class.cast(value));
+        }
+        return result;
     }
 
     private String getCertName(Number certId) {

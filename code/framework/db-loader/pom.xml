@@ -4,14 +4,10 @@
     <parent>
         <groupId>io.cattle</groupId>
         <artifactId>cattle-parent</artifactId>
-        <version>0.5.0-SNAPSHOT</version>
+        <version>0.183.269</version>
         <relativePath>../../parent/pom.xml</relativePath>
     </parent>
     <dependencies>
-        <dependency>
-            <groupId>net.ju-n.commons-dbcp-jmx</groupId>
-            <artifactId>commons-dbcp-jmx-jdbc4</artifactId>
-        </dependency>
         <dependency>
             <groupId>io.cattle</groupId>
             <artifactId>cattle-framework-pool</artifactId>
@@ -26,12 +22,12 @@
             <artifactId>commons-io</artifactId>
         </dependency>
         <dependency>
-            <groupId>commons-dbcp</groupId>
-            <artifactId>commons-dbcp</artifactId>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-dbcp2</artifactId>
         </dependency>
         <dependency>
-            <groupId>commons-beanutils</groupId>
-            <artifactId>commons-beanutils</artifactId>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-beanutils2</artifactId>
         </dependency>
         <dependency>
             <groupId>org.hsqldb</groupId>

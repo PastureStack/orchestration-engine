@@ -10,7 +10,7 @@ import io.cattle.platform.engine.process.ProcessState;
 import io.cattle.platform.process.common.handler.AbstractObjectProcessLogic;
 import io.cattle.platform.util.type.Priority;
 
-import javax.inject.Named;
+import jakarta.inject.Named;
 
 @Named
 public class InstanceStartCountUpdatePostHandler extends AbstractObjectProcessLogic implements ProcessPostListener,

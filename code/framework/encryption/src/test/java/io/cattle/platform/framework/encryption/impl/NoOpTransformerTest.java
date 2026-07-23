@@ -12,4 +12,13 @@ public class NoOpTransformerTest {
         String decrypted = noOpEncrypter.untransform(encrypted);
         Assert.assertEquals(original, decrypted);
     }
+
+    @org.junit.Test
+    public void testLegacyMarkerHandling() throws Exception {
+        NoOpTransformer noOpEncrypter = new NoOpTransformer();
+        Assert.assertEquals("value", noOpEncrypter.untransform("***eulav***"));
+        Assert.assertEquals("value", noOpEncrypter.untransform("eulav***"));
+        Assert.assertEquals("value", noOpEncrypter.untransform("***eulav"));
+        Assert.assertEquals("value", noOpEncrypter.untransform("eulav"));
+    }
 }

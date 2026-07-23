@@ -1,0 +1,126 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+cd "$(dirname "$0")/.."
+
+fail()
+{
+    printf 'PASTURESTACK_SOURCE_GATE_FAIL reason=%s\n' "$1" >&2
+    exit 1
+}
+
+require_line()
+{
+    local file=$1
+    local line=$2
+    grep -Fx -- "$line" "$file" >/dev/null || fail "required_line_missing:${file}:${line}"
+}
+
+settings=resources/content/cattle-global.properties
+release_base=https://github.com/PastureStack/server/releases/download/v1.6.270
+
+git diff --check
+git diff --quiet || fail tracked_worktree_changes
+git diff --cached --quiet || fail staged_changes
+
+if grep -RIn --include='pom.xml' --exclude-dir=target --exclude-dir=.git \
+    '0\.5\.0-SNAPSHOT' .; then
+    fail snapshot_project_version
+fi
+
+require_line code/meta-parent/pom.xml '    <version>0.183.269</version>'
+require_line code/meta-parent/pom.xml '    <url>https://github.com/PastureStack/orchestration-engine</url>'
+require_line Dockerfile 'FROM ubuntu:26.04'
+require_line Dockerfile.dapper 'FROM ubuntu:26.04'
+require_line Dockerfile 'ARG MAVEN_VERSION=3.9.14'
+require_line Dockerfile.dapper 'ARG MAVEN_VERSION=3.9.14'
+require_line Dockerfile 'ENV JAVA_HOME=/opt/java/openjdk'
+require_line Dockerfile.dapper 'ENV JAVA_HOME=/opt/java/openjdk'
+require_line code/meta-parent/pom.xml '        <jackson.version>2.22.1</jackson.version>'
+require_line code/meta-parent/pom.xml '        <hazelcast.version>5.7.0-pasturestack.2</hazelcast.version>'
+require_line code/meta-parent/pom.xml '                <version>42.7.13</version>'
+require_line code/meta-parent/pom.xml '                <version>4.13.2</version>'
+require_line tests/integration/requirements.txt 'PyJWT==2.13.0'
+require_line tests/integration/requirements.txt 'pytest==9.0.3'
+require_line tests/integration-v1/requirements.txt 'PyJWT==2.13.0'
+require_line tests/integration-v1/requirements.txt 'pytest==9.0.3'
+require_line scripts/build '    MAVEN_ARGS="$MAVEN_ARGS" SOURCE_DATE_EPOCH="$SOURCE_DATE_EPOCH" \'
+require_line scripts/build '        scripts/install-patched-hazelcast "$maven_cmd"'
+require_line scripts/install-patched-hazelcast 'upstream_commit=60c31e3750cbad64f5720e2e02f0a9830973193c'
+require_line scripts/install-patched-hazelcast 'source_sha256=e44d7ebeb6400309a7b672f2190180925f81cdbedab44f2247cd266d03f4fa88'
+require_line scripts/install-patched-hazelcast 'jackson3_version=3.1.5'
+require_line scripts/install-patched-hazelcast 'jackson2_version=2.21.5'
+require_line scripts/install-patched-hazelcast '    -DskipTests \'
+require_line scripts/install-patched-hazelcast 'jar --create --file "$canonical_jar" --no-manifest --date="$canonical_date" \'
+require_line scripts/install-patched-hazelcast 'GIT_CEILING_DIRECTORIES="$work_root" git -C "$work_root/source" apply --check "$patch_file"'
+require_line scripts/install-patched-hazelcast 'GIT_CEILING_DIRECTORIES="$work_root" git -C "$work_root/source" apply "$patch_file"'
+require_line third-party/hazelcast-5.7.0-jackson-security.patch '+        <jackson.version>3.1.5</jackson.version>'
+require_line third-party/hazelcast-5.7.0-jackson-security.patch '+        <jackson2.version>2.21.5</jackson2.version>'
+require_line code/implementation/docker/machine/src/main/java/io/cattle/platform/docker/machine/launch/CatalogLauncher.java '        String pinnedCommit;'
+require_line code/implementation/docker/machine/src/main/java/io/cattle/platform/docker/machine/launch/CatalogLauncher.java '        public String getPinnedCommit() {'
+require_line code/implementation/docker/machine/src/test/java/io/cattle/platform/docker/machine/launch/CatalogLauncherSettingsTest.java '        assertEquals(pinnedCommit, fields.getCatalogs().get("library").getPinnedCommit());'
+
+require_line "$settings" 'api.ui.index=local'
+require_line "$settings" 'api.ui.js.url='
+require_line "$settings" 'api.ui.css.url='
+require_line "$settings" 'lb.instance.image=ghcr.io/pasturestack/load-balancer-service:v0.9.23@sha256:bc08e650fed337c5217f3472a89ab6c843e788f383703327e8f426443285dfaf'
+require_line "$settings" 'bootstrap.required.image=ghcr.io/pasturestack/node-agent:v1.2.30@sha256:5310b748fc52bcd87fdeaa2285f424a07ec13c9b41639692eef96bda53ac8277'
+require_line "$settings" 'bootstrap.required.windows.image='
+
+require_line "$settings" "agent.package.python.agent.url=${release_base}/node-agent-0.13.21.tar.gz"
+require_line "$settings" "agent.package.host.api.url=${release_base}/host-api-0.38.4.tar.gz"
+require_line "$settings" "agent.package.windows.agent.url=${release_base}/node-agent-0.13.21-windows-amd64.zip"
+require_line "$settings" "agent.package.per.host.subnet.url=${release_base}/per-host-subnet-0.2.4-windows-amd64.zip"
+require_line "$settings" "rancher.compose.linux.url=${release_base}/compose-cli-0.14.30-linux-amd64.tar.gz"
+require_line "$settings" "rancher.compose.darwin.url=${release_base}/compose-cli-0.14.30-darwin-amd64.tar.gz"
+require_line "$settings" "rancher.compose.windows.url=${release_base}/compose-cli-0.14.30-windows-amd64.zip"
+require_line "$settings" "service.package.catalog.url=${release_base}/catalog-service-0.20.6.tar.xz,catalog-service"
+require_line "$settings" "service.package.compose.executor.url=${release_base}/compose-executor-0.14.30-linux-amd64.gz,compose-executor"
+require_line "$settings" "service.package.websocket.proxy.url=${release_base}/websocket-proxy-0.23.12-linux-amd64.tar.xz,websocket-proxy"
+require_line "$settings" "service.package.go.machine.service.url=${release_base}/host-provisioner-0.39.4-linux-amd64.tar.xz,host-provisioner"
+require_line "$settings" "service.package.docker.machine.url=${release_base}/machine-driver-bundle-0.14.0-linux-amd64.tar.xz,docker-machine"
+require_line "$settings" "service.package.govc.url=${release_base}/vsphere-cli-bundle-0.54.1-linux-amd64.tar.xz,govc"
+require_line "$settings" "service.package.telemetry.url=${release_base}/usage-telemetry-agent-0.4.0-pasturestack.1-linux-amd64.tar.xz,usage-telemetry-agent"
+require_line "$settings" "service.package.auth.service.url=${release_base}/authentication-service-0.1.7-linux-amd64.tar.xz,authentication-service"
+require_line "$settings" "service.package.webhook.service.url=${release_base}/webhook-automation-service-0.9.15-pasturestack.1-linux-amd64.tar.xz,webhook-automation-service"
+require_line "$settings" "service.package.secrets.api.url=${release_base}/secret-delivery-api-0.2.2-linux-amd64.tar.xz,secret-delivery-api"
+require_line "$settings" "machine.driver.packet=true,${release_base}/machine-driver-packet-0.1.5-linux-amd64.zip,8231136e899311d54eca0b560b1feb96"
+require_line "$settings" "machine.driver.ubiquity=false,${release_base}/machine-driver-ubiquity-0.0.2-linux-amd64,7fba983dfdb040311a93d217b12161d1"
+require_line "$settings" "machine.driver.otc=false,${release_base}/machine-driver-otc-2019.5.7-linux-amd64,3f793ebb0ebd9477b9166ec542f77e25"
+require_line resources/content/haconfig/script.ftl '    IMAGE=ghcr.io/pasturestack/server:v1.6.270'
+require_line resources/content/haconfig/script.ftl 'cat > /var/lib/rancher/bin/pasturestack-ha-start.sh << "EOF"'
+require_line code/iaas/api-logic/src/main/java/io/cattle/platform/iaas/api/manager/HaConfigManager.java '        data.put("containerPrefix", "pasturestack-ha-");'
+require_line code/iaas/api-logic/src/main/java/io/cattle/platform/iaas/api/manager/HaConfigManager.java '        response.setHeader("Content-Disposition", "attachment; filename=pasturestack-ha.sh");'
+require_line tools/development/register-boot2docker.sh 'AGENT_IMAGE=${AGENT_IMAGE:-ghcr.io/pasturestack/node-agent:v1.2.30@sha256:5310b748fc52bcd87fdeaa2285f424a07ec13c9b41639692eef96bda53ac8277}'
+require_line code/iaas/service-discovery/api/src/main/java/io/cattle/platform/servicediscovery/api/service/impl/ServiceDiscoveryApiServiceImpl.java '    private static final String COMPOSE_DNS_SERVICE_IMAGE = "ghcr.io/pasturestack/internal-dns";'
+require_line code/iaas/service-discovery/api/src/main/java/io/cattle/platform/servicediscovery/api/service/impl/ServiceDiscoveryApiServiceImpl.java '            "ghcr.io/pasturestack/load-balancer-service";'
+require_line code/iaas/service-discovery/api/src/main/java/io/cattle/platform/servicediscovery/api/service/impl/ServiceDiscoveryApiServiceImpl.java '    private static final String COMPOSE_EXTERNAL_SERVICE_IMAGE = "ghcr.io/pasturestack/external-service";'
+require_line code/iaas/allocator/src/main/java/io/cattle/platform/allocator/service/impl/AllocatorServiceImpl.java '    private static final String PASTURESTACK_SCHEDULER_IMAGE = "ghcr.io/pasturestack/resource-scheduler";'
+require_line resources/content/config-content/bootstrap/bootstrap.sh '    mkdir -p /usr/share/ca-certificates/pasturestack'
+require_line resources/content/config-content/bootstrap/bootstrap.sh '        timeout 300 docker run --privileged --name pasturestack-node-agent-upgrade -v /var/run/docker.sock:/var/run/docker.sock ${REQUIRED_IMAGE} upgrade'
+require_line code/packaging/app-config/src/main/resources/META-INF/cattle/process/defaults.properties 'compose.executor.service.executable=compose-executor'
+require_line code/packaging/app-config/src/main/resources/META-INF/cattle/process/defaults.properties 'catalog.service.executable=catalog-service'
+require_line code/packaging/app-config/src/main/resources/META-INF/cattle/process/defaults.properties 'auth.service.executable=authentication-service'
+require_line code/packaging/app-config/src/main/resources/META-INF/cattle/api-server/defaults.properties 'default.services.domain=pasturestack.internal'
+require_line code/implementation/system-stack/src/main/java/io/cattle/platform/systemstack/listener/SystemStackUpdate.java '            "compose-executor",'
+require_line code/implementation/system-stack/src/main/java/io/cattle/platform/systemstack/model/Template.java '        String value = this.getFiles().get("platform-compose.yml");'
+require_line code/iaas/model/src/main/java/io/cattle/platform/core/addon/CatalogTemplate.java '    String platformCompose;'
+require_line code/iaas/service-discovery/api/src/main/java/io/cattle/platform/servicediscovery/api/action/StackComposeLinkHandler.java '            zipFile(rancherCompose, zos, "platform-compose.yml");'
+require_line code/iaas/api-logic/src/main/java/io/cattle/platform/iaas/api/manager/HaConfigManager.java '        String prefix = "pasturestack-db-dump-" + now;'
+require_line code/framework/api/src/main/java/io/cattle/platform/api/servlet/ApiRequestFilter.java '    private static final String VERSION = "X-PastureStack-Version";'
+
+if grep -RIn --exclude-dir=target --exclude=check-pasturestack-source \
+    -E 'IMAGE=rancher/server|AGENT_IMAGE=.*rancher/agent|pull rancher/agent|--name rancher-agent-upgrade|rancher-ha-start\.sh|filename=rancher-ha\.sh|rancher/(dns-service|load-balancer-service|external-service)|ca-certificates/rancher|compose\.executor\.service\.executable=rancher-|catalog\.service\.executable=rancher-|auth\.service\.executable=rancher-|default\.services\.domain=rancher\.io|forums\.rancher\.com|rancher-db-dump-|Waiting for rancher-compose-executor|zipFile\(rancherCompose, zos, "rancher-compose\.yml"\)' \
+    resources code tools scripts; then
+    fail legacy_product_runtime_default
+fi
+
+if grep -E '=(https?://|ghcr\.io/)' "$settings" \
+    | grep -Ev "=${release_base}/|=ghcr\\.io/pasturestack/"; then
+    fail non_pasturestack_runtime_source
+fi
+
+require_line README.md 'PastureStack is an independent community effort to preserve, audit, and modernize the Rancher 1.6 ecosystem. It is not affiliated with or endorsed by Rancher Labs or SUSE.'
+require_line ORIGIN.md '- Preserved upstream boundary: `82d154a53f4089fecfb9f320caad826bb4f6055f`'
+
+printf 'PASTURESTACK_SOURCE_GATE_OK version=0.183.269 runtime_sources=github_release images=ghcr_digest_pinned ubuntu=26.04 maven=3.9.14 patched_hazelcast=5.7.0-pasturestack.2\n'

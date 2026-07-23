@@ -11,30 +11,30 @@ public class DynamicExtensionManager extends ExtensionManagerImpl {
 
     private static final String DYNAMIC_HANDLER_KEY = "dynamic.extension.handler";
 
-    @SuppressWarnings("unchecked")
     @Override
     public <T> List<T> getExtensionList(String key, Class<T> type) {
         List<T> extensions = super.getExtensionList(key, type);
+        Class<?> extensionType = type;
         if (type == null) {
-            type = (Class<T>) getExpectedType(key);
+            extensionType = getExpectedType(key);
         }
 
-        if (DYNAMIC_HANDLER_KEY.equals(key) || DynamicExtensionHandler.class == type) {
+        if (DYNAMIC_HANDLER_KEY.equals(key) || DynamicExtensionHandler.class == extensionType) {
             return extensions;
         }
 
         for (DynamicExtensionHandler handler : getExtensionList(DynamicExtensionHandler.class)) {
-            List<T> additional = handler.getExtensionList(key, type);
+            List<T> additional = extensionList(handler.getExtensionList(key, extensionType));
 
             if (additional.size() == 0) {
                 continue;
             }
 
-            List<Object> merged = new ArrayList<Object>(extensions.size() + additional.size());
+            List<T> merged = new ArrayList<T>(extensions.size() + additional.size());
             Iterator<T> iter = additional.iterator();
             T current = iter.next();
 
-            for (Object obj : extensions) {
+            for (T obj : extensions) {
                 while (current != null && PriorityUtils.getPriority(obj) > PriorityUtils.getPriority(current)) {
                     merged.add(current);
                     if (iter.hasNext()) {
@@ -54,7 +54,7 @@ public class DynamicExtensionManager extends ExtensionManagerImpl {
                 merged.add(iter.next());
             }
 
-            return (List<T>) merged;
+            return merged;
         }
 
         return extensions;

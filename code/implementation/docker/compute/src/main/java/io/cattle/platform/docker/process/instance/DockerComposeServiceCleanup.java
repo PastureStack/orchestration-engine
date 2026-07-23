@@ -10,7 +10,7 @@ import io.cattle.platform.engine.process.ProcessInstance;
 import io.cattle.platform.engine.process.ProcessState;
 import io.cattle.platform.process.common.handler.AbstractObjectProcessLogic;
 
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 
 public class DockerComposeServiceCleanup extends AbstractObjectProcessLogic implements ProcessPreListener {
 

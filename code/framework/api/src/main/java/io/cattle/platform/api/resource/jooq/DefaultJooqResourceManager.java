@@ -3,7 +3,7 @@ package io.cattle.platform.api.resource.jooq;
 import io.github.ibuildthecloud.gdapi.request.resource.ResourceManagerLocator;
 import io.github.ibuildthecloud.gdapi.request.resource.impl.ResourceManagerLocatorImpl;
 
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 
 public class DefaultJooqResourceManager extends AbstractJooqResourceManager {
 

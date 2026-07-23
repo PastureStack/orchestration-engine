@@ -40,6 +40,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import org.apache.commons.lang3.Strings;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
 
@@ -76,14 +77,13 @@ public class DefaultDeploymentUnitInstance extends DeploymentUnitInstance implem
         setStartOnce(service, launchConfigName);
     }
 
-    @SuppressWarnings("unchecked")
     public void setStartOnce(Service service, String launghConfig) {
         Object serviceLabels = ServiceDiscoveryUtil.getLaunchConfigObject(service, launchConfigName,
                 InstanceConstants.FIELD_LABELS);
         if (serviceLabels != null) {
-            String startOnceLabel = ((Map<String, String>) serviceLabels)
+            String startOnceLabel = asStringMap(serviceLabels)
                     .get(SystemLabels.LABEL_SERVICE_CONTAINER_START_ONCE);
-            if (StringUtils.equalsIgnoreCase(startOnceLabel, "true")) {
+            if (Strings.CI.equals(startOnceLabel, "true")) {
                 startOnce = true;
             }
         }
@@ -116,17 +116,17 @@ public class DefaultDeploymentUnitInstance extends DeploymentUnitInstance implem
     }
 
     @Override
-    @SuppressWarnings("unchecked")
     public DeploymentUnitInstance create(Map<String, Object> deployParams) {
         if (createNew()) {
             Map<String, Object> launchConfigData = populateLaunchConfigData(deployParams);
             // remove named volumes from the list
             if (launchConfigData.get(InstanceConstants.FIELD_DATA_VOLUMES) != null) {
                 List<String> dataVolumes = new ArrayList<>();
-                dataVolumes.addAll((List<String>) launchConfigData.get(InstanceConstants.FIELD_DATA_VOLUMES));
+                dataVolumes.addAll(DeploymentUnitTypeUtils.stringList(
+                        launchConfigData.get(InstanceConstants.FIELD_DATA_VOLUMES)));
                 if (deployParams.get(ServiceConstants.FIELD_INTERNAL_VOLUMES) != null) {
-                    for (String namedVolume : (List<String>) deployParams
-                            .get(ServiceConstants.FIELD_INTERNAL_VOLUMES)) {
+                    for (String namedVolume : DeploymentUnitTypeUtils.stringList(
+                            deployParams.get(ServiceConstants.FIELD_INTERNAL_VOLUMES))) {
                         dataVolumes.remove(namedVolume);
                     }
                     launchConfigData.put(InstanceConstants.FIELD_DATA_VOLUMES, dataVolumes);
@@ -146,7 +146,6 @@ public class DefaultDeploymentUnitInstance extends DeploymentUnitInstance implem
         return this;
     }
 
-    @SuppressWarnings("unchecked")
     protected Map<String, Object> populateLaunchConfigData(Map<String, Object> deployParams) {
         Map<String, Object> launchConfigData = ServiceDiscoveryUtil.buildServiceInstanceLaunchData(service,
                 deployParams, launchConfigName, context.allocationHelper);
@@ -154,9 +153,9 @@ public class DefaultDeploymentUnitInstance extends DeploymentUnitInstance implem
         launchConfigData.remove(ServiceDiscoveryConfigItem.RESTART.getCattleName());
         Object labels = launchConfigData.get(InstanceConstants.FIELD_LABELS);
         if (labels != null) {
-            String overrideHostName = ((Map<String, String>) labels)
+            String overrideHostName = asStringMap(labels)
                     .get(ServiceConstants.LABEL_OVERRIDE_HOSTNAME);
-            if (StringUtils.equalsIgnoreCase(overrideHostName, "container_name")) {
+            if (Strings.CI.equals(overrideHostName, "container_name")) {
                 String domainName = (String) launchConfigData.get(DockerInstanceConstants.FIELD_DOMAIN_NAME);
                 String overrideName = getOverrideHostName(domainName, this.instanceName);
                 launchConfigData.put(InstanceConstants.FIELD_HOSTNAME, overrideName);
@@ -169,6 +168,10 @@ public class DefaultDeploymentUnitInstance extends DeploymentUnitInstance implem
                 this.serviceIndex.getServiceIndex());
         launchConfigData.put(InstanceConstants.FIELD_ALLOCATED_IP_ADDRESS, serviceIndex.getAddress());
         return launchConfigData;
+    }
+
+    private Map<String, String> asStringMap(Object value) {
+        return DeploymentUnitTypeUtils.stringMap(value);
     }
 
     private String getOverrideHostName(String domainName, String instanceName) {
@@ -316,7 +319,6 @@ public class DefaultDeploymentUnitInstance extends DeploymentUnitInstance implem
         return this.serviceIndex;
     }
 
-    @SuppressWarnings("unchecked")
     protected ServiceIndex createServiceIndex() {
         // create index
         Stack stack = context.objectManager.loadResource(Stack.class, service.getStackId());
@@ -338,7 +340,7 @@ public class DefaultDeploymentUnitInstance extends DeploymentUnitInstance implem
                         service, launchConfigName,
                         InstanceConstants.FIELD_LABELS);
                 if (labels != null) {
-                    String requestedIp = ((Map<String, String>) labels)
+                    String requestedIp = asStringMap(labels)
                             .get(SystemLabels.LABEL_REQUESTED_IP);
                     if (!StringUtils.isEmpty(requestedIp)) {
                         requestedIps.addAll(Arrays.asList(StringUtils.stripAll(StringUtils.split(requestedIp, ","))));
@@ -356,9 +358,9 @@ public class DefaultDeploymentUnitInstance extends DeploymentUnitInstance implem
         Object serviceLabels = ServiceDiscoveryUtil.getLaunchConfigObject(service, launchConfigName,
                 InstanceConstants.FIELD_LABELS);
         if (serviceLabels != null) {
-            String setSearchDomain = ((Map<String, String>) serviceLabels)
+            String setSearchDomain = asStringMap(serviceLabels)
                     .get(SystemLabels.LABEL_RANCHER_CONTAINER_DNS_PRIORITY);
-            if (setSearchDomain != null && !setSearchDomain.isEmpty() && StringUtils.equalsIgnoreCase(setSearchDomain.trim(), "None")) {
+            if (setSearchDomain != null && !setSearchDomain.isEmpty() && Strings.CI.equals(setSearchDomain.trim(), "None")) {
                 return Arrays.asList();
             }
         }

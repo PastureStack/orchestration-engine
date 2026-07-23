@@ -1,6 +1,7 @@
 package io.cattle.platform.object.monitor.impl;
 
 import io.cattle.platform.archaius.util.ArchaiusUtil;
+import io.cattle.platform.archaius.util.ConfigProperty;
 import io.cattle.platform.async.utils.ResourceTimeoutException;
 import io.cattle.platform.eventing.annotation.AnnotatedEventListener;
 import io.cattle.platform.eventing.annotation.EventHandler;
@@ -21,13 +22,11 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
-import javax.inject.Inject;
-
-import com.netflix.config.DynamicLongProperty;
+import jakarta.inject.Inject;
 
 public class ResourceMonitorImpl implements ResourceMonitor, AnnotatedEventListener, Task, TaskOptions {
 
-    private static final DynamicLongProperty DEFAULT_WAIT = ArchaiusUtil.getLong("resource.monitor.default.wait.millis");
+    private static final ConfigProperty<Long> DEFAULT_WAIT = ArchaiusUtil.getLongProperty("resource.monitor.default.wait.millis");
 
     ObjectManager objectManager;
     ConcurrentMap<String, Object> waiters = new ConcurrentHashMap<String, Object>();

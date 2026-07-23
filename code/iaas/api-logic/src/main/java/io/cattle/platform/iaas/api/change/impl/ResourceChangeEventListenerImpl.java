@@ -21,7 +21,7 @@ import io.cattle.platform.task.TaskOptions;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
@@ -58,7 +58,7 @@ public class ResourceChangeEventListenerImpl implements ResourceChangeEventListe
             return;
         }
 
-        Agent agent = objectManager.findAny(Agent.class, AGENT.ACCOUNT_ID, new Long(event.getResourceId()));
+        Agent agent = objectManager.findAny(Agent.class, AGENT.ACCOUNT_ID, Long.valueOf(event.getResourceId()));
         if (agent == null) {
             return;
         }
@@ -81,8 +81,7 @@ public class ResourceChangeEventListenerImpl implements ResourceChangeEventListe
     protected void add(Event event) {
         String id = event.getResourceId();
         String type = event.getResourceType();
-        @SuppressWarnings("unchecked")
-        Map<String, Object> data = (Map<String, Object>) event.getData();
+        Map<?, ?> data = event.getData() == null ? null : Map.class.cast(event.getData());
         Object accountId = data == null ? null : data.get(ObjectMetaDataManager.ACCOUNT_FIELD);
         if (accountId == null) {
             accountId = Boolean.TRUE;

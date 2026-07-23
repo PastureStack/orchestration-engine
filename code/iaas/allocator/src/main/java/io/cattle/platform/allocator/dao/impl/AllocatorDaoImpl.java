@@ -1,5 +1,7 @@
 package io.cattle.platform.allocator.dao.impl;
 
+import org.apache.commons.lang3.Strings;
+
 import static io.cattle.platform.core.model.tables.AgentTable.*;
 import static io.cattle.platform.core.model.tables.HostLabelMapTable.*;
 import static io.cattle.platform.core.model.tables.HostTable.*;
@@ -60,15 +62,14 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.jooq.Condition;
 import org.jooq.Field;
 import org.jooq.Record;
 import org.jooq.Record1;
 import org.jooq.Record3;
-import org.jooq.RecordHandler;
 import org.jooq.Result;
 import org.jooq.SelectConditionStep;
 import org.jooq.exception.InvalidResultException;
@@ -79,7 +80,7 @@ import org.slf4j.LoggerFactory;
 public class AllocatorDaoImpl extends AbstractJooqDao implements AllocatorDao {
 
     private static final Logger log = LoggerFactory.getLogger(AllocatorDaoImpl.class);
-    
+
     private static final String ALLOCATED_IP = "allocatedIP";
     private static final String PROTOCOL = "protocol";
     private static final String PRIVATE_PORT = "privatePort";
@@ -106,7 +107,7 @@ public class AllocatorDaoImpl extends AbstractJooqDao implements AllocatorDao {
     GenericMapDao mapDao;
     @Inject
     EventService eventService;
-    
+
     @Override
     public boolean isInstanceImageKind(long instanceId, String kind) {
         return create().select(STORAGE_POOL.fields())
@@ -251,7 +252,7 @@ public class AllocatorDaoImpl extends AbstractJooqDao implements AllocatorDao {
             }
         }
         if (attempt.getAllocatedIPs() != null) {
-            updateInstancePorts(attempt.getAllocatedIPs()); 
+            updateInstancePorts(attempt.getAllocatedIPs());
         }
 
         return true;
@@ -398,11 +399,11 @@ public class AllocatorDaoImpl extends AbstractJooqDao implements AllocatorDao {
                     .and((INSTANCE.HEALTH_STATE.isNull().or(INSTANCE.HEALTH_STATE.eq(HealthcheckConstants.HEALTH_STATE_HEALTHY)))))
                 .fetch().size() > 0;
     }
-    
+
     @Override
     public Set<Long> findHostsWithVolumeInUse(long volumeId) {
         Set<Long> result = new HashSet<>();
-        create()
+        for (Record1<Long> record : create()
             .select(HOST.ID)
             .from(INSTANCE)
             .join(MOUNT)
@@ -413,13 +414,9 @@ public class AllocatorDaoImpl extends AbstractJooqDao implements AllocatorDao {
                 .on(HOST.ID.eq(INSTANCE_HOST_MAP.HOST_ID))
             .where(INSTANCE.REMOVED.isNull()
                 .and(INSTANCE_HOST_MAP.STATE.notIn(IHM_STATES))
-                .and((INSTANCE.HEALTH_STATE.isNull().or(INSTANCE.HEALTH_STATE.eq(HealthcheckConstants.HEALTH_STATE_HEALTHY)))))
-            .fetchInto(new RecordHandler<Record1<Long>>() {
-                @Override
-                public void next(Record1<Long> record) {
-                   result.add(record.getValue(HOST.ID));
-                }
-            });
+                .and((INSTANCE.HEALTH_STATE.isNull().or(INSTANCE.HEALTH_STATE.eq(HealthcheckConstants.HEALTH_STATE_HEALTHY)))))) {
+            result.add(record.getValue(HOST.ID));
+        }
         return result;
     }
 
@@ -448,24 +445,20 @@ public class AllocatorDaoImpl extends AbstractJooqDao implements AllocatorDao {
     public Map<String, String[]> getLabelsForHost(long hostId) {
         final Map<String, String[]> labelKeyValueStatusMap = new HashMap<String, String[]>();
 
-        create()
+        for (Record3<String, String, String> record : create()
             .select(LABEL.KEY, LABEL.VALUE, HOST_LABEL_MAP.STATE)
                 .from(LABEL)
                 .join(HOST_LABEL_MAP)
                     .on(LABEL.ID.eq(HOST_LABEL_MAP.LABEL_ID))
                 .where(HOST_LABEL_MAP.HOST_ID.eq(hostId))
                     .and(LABEL.REMOVED.isNull())
-                    .and(HOST_LABEL_MAP.REMOVED.isNull())
-            .fetchInto(new RecordHandler<Record3<String, String, String>>() {
-                @Override
-                public void next(Record3<String, String, String> record) {
-                    labelKeyValueStatusMap.put(StringUtils.lowerCase(record.value1()),
-                            new String[] {
-                                StringUtils.lowerCase(record.value2()),
-                                record.value3()
-                                });
-                }
-            });
+                    .and(HOST_LABEL_MAP.REMOVED.isNull())) {
+            labelKeyValueStatusMap.put(StringUtils.lowerCase(record.value1()),
+                    new String[] {
+                        StringUtils.lowerCase(record.value2()),
+                        record.value3()
+                        });
+        }
 
         return labelKeyValueStatusMap;
     }
@@ -562,14 +555,13 @@ public class AllocatorDaoImpl extends AbstractJooqDao implements AllocatorDao {
      *                              ]
      *                          }
      * }
-     *      
-     * Then update 
-     * Port Table. Binding address field in port table and public port field in port table if public port is allocated by external scheduler (for agent)  
+     *
+     * Then update
+     * Port Table. Binding address field in port table and public port field in port table if public port is allocated by external scheduler (for agent)
      */
-    @SuppressWarnings("unchecked")
     @Override
     public void updateInstancePorts(List<Map<String, Object>> dataList) {
-    		
+
         for (Map<String, Object> data: dataList) {
             if (data.get(INSTANCE_ID) == null) {
                 continue;
@@ -578,8 +570,8 @@ public class AllocatorDaoImpl extends AbstractJooqDao implements AllocatorDao {
             if (data.get(ALLOCATED_IPS) == null) {
                 continue;
             }
-            
-            List<Map<String, Object>> allocatedIPList = (List<Map<String, Object>>) data.get(ALLOCATED_IPS);
+
+            List<Map<String, Object>> allocatedIPList = allocatedIpList(data.get(ALLOCATED_IPS));
             Instance instance = objectManager.loadResource(Instance.class, instanceId);
             for (Map<String, Object> allocatedIp: allocatedIPList) {
                 String ipAddress = (String) allocatedIp.get(ALLOCATED_IP);
@@ -587,9 +579,9 @@ public class AllocatorDaoImpl extends AbstractJooqDao implements AllocatorDao {
                 Integer publicPort = (Integer) allocatedIp.get(PUBLIC_PORT);
                 Integer privatePort = (Integer) allocatedIp.get(PRIVATE_PORT);
                 for (Port port : objectManager.children(instance, Port.class)) {
-                    if (port.getPrivatePort().equals(privatePort) 
-                            && StringUtils.equals(port.getProtocol(), protocol) 
-                            && (port.getPublicPort() == null || port.getPublicPort().equals(publicPort))) { 
+                    if (port.getPrivatePort().equals(privatePort)
+                            && Strings.CS.equals(port.getProtocol(), protocol)
+                            && (port.getPublicPort() == null || port.getPublicPort().equals(publicPort))) {
                         DataAccessor.setField(port, BIND_ADDRESS, ipAddress);
                         port.setPublicPort(publicPort);
                         objectManager.persist(port);
@@ -599,6 +591,27 @@ public class AllocatorDaoImpl extends AbstractJooqDao implements AllocatorDao {
             }
         }
         return;
+    }
+
+    List<Map<String, Object>> allocatedIpList(Object allocatedIps) {
+        List<?> source = List.class.cast(allocatedIps);
+        if (source == null) {
+            return null;
+        }
+        List<Map<String, Object>> result = new ArrayList<Map<String, Object>>(source.size());
+        for (Object allocatedIp : source) {
+            result.add(stringObjectMap(allocatedIp));
+        }
+        return result;
+    }
+
+    private Map<String, Object> stringObjectMap(Object mapData) {
+        Map<?, ?> source = Map.class.cast(mapData);
+        Map<String, Object> result = new HashMap<String, Object>();
+        for (Map.Entry<?, ?> entry : source.entrySet()) {
+            result.put(String.class.cast(entry.getKey()), entry.getValue());
+        }
+        return result;
     }
 
     @Override

@@ -4,6 +4,7 @@ import static io.cattle.platform.core.model.tables.AccountTable.*;
 import static io.cattle.platform.core.model.tables.AgentTable.*;
 
 import io.cattle.platform.archaius.util.ArchaiusUtil;
+import io.cattle.platform.archaius.util.ConfigProperty;
 import io.cattle.platform.core.constants.AccountConstants;
 import io.cattle.platform.core.constants.AgentConstants;
 import io.cattle.platform.core.constants.CredentialConstants;
@@ -26,15 +27,14 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import javax.inject.Inject;
-import javax.inject.Named;
+import jakarta.inject.Inject;
+import jakarta.inject.Named;
 
-import com.netflix.config.DynamicBooleanProperty;
 
 @Named
 public class AgentCreate extends AbstractDefaultProcessHandler {
 
-    private static final DynamicBooleanProperty CREATE_ACCOUNT = ArchaiusUtil.getBoolean("process.agent.create.create.account");
+    private static final ConfigProperty<Boolean> CREATE_ACCOUNT = ArchaiusUtil.getBooleanProperty("process.agent.create.create.account");
 
     @Inject
     JsonMapper jsonMapper;

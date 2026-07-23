@@ -11,7 +11,7 @@ import io.cattle.platform.process.base.AbstractDefaultProcessHandler;
 import java.util.HashSet;
 import java.util.Set;
 
-import javax.inject.Named;
+import jakarta.inject.Named;
 
 @Named
 public class VolumeDeactivate extends AbstractDefaultProcessHandler {

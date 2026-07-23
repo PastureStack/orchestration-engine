@@ -3,6 +3,7 @@ package io.cattle.platform.docker.process.account;
 import static io.cattle.platform.core.model.tables.NetworkTable.*;
 
 import io.cattle.platform.archaius.util.ArchaiusUtil;
+import io.cattle.platform.archaius.util.ConfigListProperty;
 import io.cattle.platform.core.addon.ServicesPortRange;
 import io.cattle.platform.core.constants.AccountConstants;
 import io.cattle.platform.core.constants.NetworkConstants;
@@ -23,12 +24,10 @@ import io.cattle.platform.util.type.CollectionUtils;
 import java.util.HashMap;
 import java.util.Map;
 
-import javax.inject.Inject;
-
-import com.netflix.config.DynamicStringListProperty;
+import jakarta.inject.Inject;
 
 public class DockerAccountCreate extends AbstractObjectProcessLogic implements ProcessPostListener {
-    DynamicStringListProperty KINDS = ArchaiusUtil.getList("docker.network.create.account.types");
+    ConfigListProperty<String> KINDS = ArchaiusUtil.getStringListProperty("docker.network.create.account.types");
 
     @Inject
     NetworkDao networkDao;

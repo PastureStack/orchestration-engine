@@ -8,7 +8,7 @@ import io.github.ibuildthecloud.gdapi.request.resource.impl.AbstractNoOpResource
 
 import java.util.Map;
 
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 
 public class ProcessSummaryManager extends AbstractNoOpResourceManager {
 

@@ -7,8 +7,8 @@ import io.github.ibuildthecloud.gdapi.request.ApiRequest;
 import java.io.IOException;
 import java.security.cert.Certificate;
 
-import javax.inject.Inject;
-import javax.servlet.http.HttpServletResponse;
+import jakarta.inject.Inject;
+import jakarta.servlet.http.HttpServletResponse;
 
 public class HostApiPublicCAScriptHandler implements ScriptsHandler {
 
