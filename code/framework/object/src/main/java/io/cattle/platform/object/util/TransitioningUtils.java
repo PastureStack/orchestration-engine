@@ -3,6 +3,7 @@ package io.cattle.platform.object.util;
 import static io.cattle.platform.object.meta.ObjectMetaDataManager.*;
 
 import io.cattle.platform.archaius.util.ArchaiusUtil;
+import io.cattle.platform.archaius.util.ConfigProperty;
 import io.cattle.platform.object.meta.ObjectMetaDataManager;
 import io.cattle.platform.util.exception.ExecutionException;
 import io.cattle.platform.util.type.CollectionUtils;
@@ -10,15 +11,14 @@ import io.cattle.platform.util.type.CollectionUtils;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 
-import org.apache.commons.lang3.ObjectUtils;
 import org.apache.commons.lang3.StringUtils;
 
-import com.netflix.config.DynamicBooleanProperty;
 
 public class TransitioningUtils {
 
-    public static final DynamicBooleanProperty SHOW_INTERNAL_MESSAGES = ArchaiusUtil.getBoolean("api.show.transitioning.internal.message");
+    public static final ConfigProperty<Boolean> SHOW_INTERNAL_MESSAGES = ArchaiusUtil.getBooleanProperty("api.show.transitioning.internal.message");
 
     public static Map<String, Object> getTransitioningData(ExecutionException e) {
         if (e == null) {
@@ -41,7 +41,7 @@ public class TransitioningUtils {
     }
 
     public static String getTransitioningError(Object obj) {
-        return ObjectUtils.toString(getTransitioningErrorData(obj).get(TRANSITIONING_MESSAGE_FIELD), null);
+        return Objects.toString(getTransitioningErrorData(obj).get(TRANSITIONING_MESSAGE_FIELD), null);
     }
 
     public static String getTransitioningMessage(Object obj) {

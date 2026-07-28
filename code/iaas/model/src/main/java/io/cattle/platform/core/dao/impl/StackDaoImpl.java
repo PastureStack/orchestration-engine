@@ -22,11 +22,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import javax.inject.Inject;
-import javax.inject.Named;
+import jakarta.inject.Inject;
+import jakarta.inject.Named;
 
 import org.jooq.Record2;
-import org.jooq.RecordHandler;
 import org.jooq.impl.DSL;
 
 @Named
@@ -47,23 +46,19 @@ public class StackDaoImpl extends AbstractJooqDao implements StackDao {
     @Override
     public Map<Long, List<Object>> getServicesForStack(List<Long> ids, final IdFormatter idFormatter) {
         final Map<Long, List<Object>> result = new HashMap<>();
-        create().select(SERVICE.ID, SERVICE.STACK_ID)
+        for (Record2<Long, Long> record : create().select(SERVICE.ID, SERVICE.STACK_ID)
             .from(SERVICE)
             .where(SERVICE.STACK_ID.in(ids)
-                    .and(SERVICE.REMOVED.isNull()))
-            .fetchInto(new RecordHandler<Record2<Long, Long>>() {
-                @Override
-                public void next(Record2<Long, Long> record) {
-                    Long id = record.getValue(SERVICE.ID);
-                    Long stackId = record.getValue(SERVICE.STACK_ID);
-                    List<Object> list = result.get(stackId);
-                    if (list == null) {
-                        list = new ArrayList<>();
-                        result.put(stackId, list);
-                    }
-                    list.add(idFormatter.formatId(ServiceConstants.KIND_SERVICE, id));
-                }
-            });
+                    .and(SERVICE.REMOVED.isNull()))) {
+            Long id = record.getValue(SERVICE.ID);
+            Long stackId = record.getValue(SERVICE.STACK_ID);
+            List<Object> list = result.get(stackId);
+            if (list == null) {
+                list = new ArrayList<>();
+                result.put(stackId, list);
+            }
+            list.add(idFormatter.formatId(ServiceConstants.KIND_SERVICE, id));
+        }
         return result;
     }
 

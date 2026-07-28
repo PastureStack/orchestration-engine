@@ -1,13 +1,14 @@
 package io.cattle.platform.hazelcast.factory;
 
 import io.cattle.platform.archaius.util.ArchaiusUtil;
+import io.cattle.platform.archaius.util.ConfigProperty;
 import io.cattle.platform.hazelcast.dao.HazelcastDao;
 import io.cattle.platform.hazelcast.membership.DBDiscovery;
 import io.cattle.platform.hazelcast.membership.DBDiscoveryFactory;
 
 import java.util.Arrays;
 
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
@@ -16,22 +17,19 @@ import org.slf4j.LoggerFactory;
 import com.hazelcast.config.Config;
 import com.hazelcast.config.DiscoveryConfig;
 import com.hazelcast.config.DiscoveryStrategyConfig;
-import com.hazelcast.config.GroupConfig;
 import com.hazelcast.config.JoinConfig;
 import com.hazelcast.config.NetworkConfig;
 import com.hazelcast.core.Hazelcast;
 import com.hazelcast.core.HazelcastInstance;
-import com.netflix.config.DynamicBooleanProperty;
-import com.netflix.config.DynamicStringProperty;
 
 public class HazelcastFactory {
 
-    private static final DynamicStringProperty NAME = ArchaiusUtil.getString("hazelcast.group.name");
-    private static final DynamicStringProperty PASS = ArchaiusUtil.getString("hazelcast.group.password");
+    private static final ConfigProperty<String> NAME = ArchaiusUtil.getStringProperty("hazelcast.group.name");
+    private static final ConfigProperty<String> PASS = ArchaiusUtil.getStringProperty("hazelcast.group.password");
 
-    private static final DynamicBooleanProperty JMX = ArchaiusUtil.getBoolean("hazelcast.jmx");
+    private static final ConfigProperty<Boolean> JMX = ArchaiusUtil.getBooleanProperty("hazelcast.jmx");
 
-    private static final DynamicStringProperty LOGGING = ArchaiusUtil.getString("hazelcast.logging.type");
+    private static final ConfigProperty<String> LOGGING = ArchaiusUtil.getStringProperty("hazelcast.logging.type");
 
     private static final Logger log = LoggerFactory.getLogger(HazelcastFactory.class);
 
@@ -62,10 +60,10 @@ public class HazelcastFactory {
         config.setProperty("hazelcast.discovery.enabled", "true");
 
 
-        GroupConfig groupConfig = new GroupConfig();
-        groupConfig.setName(name);
-        groupConfig.setPassword(password);
-        config.setGroupConfig(groupConfig);
+        config.setClusterName(name);
+        if (StringUtils.isNotBlank(password)) {
+            log.warn("Ignoring hazelcast.group.password because Hazelcast 4.x removed group password support");
+        }
 
         DiscoveryStrategyConfig dsc = new DiscoveryStrategyConfig(dbDiscoveryFactory);
 

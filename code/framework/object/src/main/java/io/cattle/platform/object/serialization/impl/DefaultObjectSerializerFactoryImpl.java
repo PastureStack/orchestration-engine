@@ -15,7 +15,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.regex.Pattern;
 
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 
 public class DefaultObjectSerializerFactoryImpl implements ObjectSerializerFactory, InitializationTask {
 
@@ -40,7 +40,7 @@ public class DefaultObjectSerializerFactoryImpl implements ObjectSerializerFacto
     public void start() {
         for (ObjectTypeSerializerPostProcessor postProcessor : postProcessors) {
             for (String type : postProcessor.getTypes()) {
-                CollectionUtils.addToMap(postProcessorsMap, type, postProcessor, ArrayList.class);
+                CollectionUtils.addToMap(postProcessorsMap, type, postProcessor, ArrayList::new);
             }
         }
     }

@@ -2,6 +2,7 @@ package io.cattle.platform.object.postinit;
 
 import static io.cattle.platform.object.util.DataUtils.*;
 import io.cattle.platform.json.JsonMapper;
+import io.cattle.platform.util.type.CollectionUtils;
 import io.cattle.platform.util.type.Priority;
 
 import java.beans.PropertyDescriptor;
@@ -11,17 +12,17 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.TreeMap;
 
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 
-import org.apache.commons.beanutils.BeanUtils;
-import org.apache.commons.beanutils.PropertyUtils;
+import org.apache.commons.beanutils2.BeanUtils;
+import org.apache.commons.beanutils2.PropertyUtils;
 
 public class ObjectDataPostInstantiationHandler implements ObjectPostInstantiationHandler, Priority {
 
     JsonMapper jsonMapper;
 
     @Override
-    public <T> T postProcess(T obj, Class<T> clz, Map<String, Object> properties) {
+    public <T> T postProcess(T obj, Class<?> clz, Map<String, Object> properties) {
         if (!hasDataField(obj))
             return obj;
 
@@ -63,13 +64,12 @@ public class ObjectDataPostInstantiationHandler implements ObjectPostInstantiati
         }
     }
 
-    @SuppressWarnings("unchecked")
     protected Map<String, Object> getData(Object instance, Map<String, Object> properties) throws IOException {
         Map<String, Object> objectData = null;
         Map<String, Object> inputData = getMap(properties.get(DATA));
 
         try {
-            objectData = (Map<String, Object>) PropertyUtils.getProperty(instance, DATA);
+            objectData = getMap(PropertyUtils.getProperty(instance, DATA));
         } catch (IllegalAccessException e) {
         } catch (InvocationTargetException e) {
         } catch (NoSuchMethodException e) {
@@ -118,12 +118,8 @@ public class ObjectDataPostInstantiationHandler implements ObjectPostInstantiati
         }
     }
 
-    @SuppressWarnings("unchecked")
     protected Map<String, Object> getMap(Object obj) {
-        if (obj instanceof Map) {
-            return (Map<String, Object>) obj;
-        }
-        return new HashMap<String, Object>();
+        return CollectionUtils.toMap(obj);
     }
 
     public JsonMapper getJsonMapper() {

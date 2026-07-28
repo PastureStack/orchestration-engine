@@ -6,6 +6,7 @@ import static io.cattle.platform.core.model.tables.PhysicalHostTable.*;
 import io.cattle.platform.agent.instance.service.AgentMetadataService;
 import io.cattle.platform.agent.server.ping.dao.PingDao;
 import io.cattle.platform.archaius.util.ArchaiusUtil;
+import io.cattle.platform.archaius.util.ConfigProperty;
 import io.cattle.platform.core.constants.AgentConstants;
 import io.cattle.platform.core.constants.HostConstants;
 import io.cattle.platform.core.constants.IpAddressConstants;
@@ -33,17 +34,17 @@ import io.cattle.platform.object.meta.ObjectMetaDataManager;
 import io.cattle.platform.object.util.DataAccessor;
 import io.cattle.platform.util.type.CollectionUtils;
 
+import java.time.Duration;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
-import java.util.concurrent.TimeUnit;
 
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 
-import org.apache.commons.lang3.ObjectUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.jooq.exception.DataChangedException;
 import org.slf4j.Logger;
@@ -51,12 +52,11 @@ import org.slf4j.LoggerFactory;
 
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
-import com.netflix.config.DynamicLongProperty;
 
 public class AgentResourcesMonitor implements AnnotatedEventListener {
 
     private static final Logger log = LoggerFactory.getLogger(AgentResourcesMonitor.class);
-    private static final DynamicLongProperty CACHE_RESOURCE = ArchaiusUtil.getLong("agent.resource.monitor.cache.resource.seconds");
+    private static final ConfigProperty<Long> CACHE_RESOURCE = ArchaiusUtil.getLongProperty("agent.resource.monitor.cache.resource.seconds");
 
     private static final String[] UPDATABLE_HOST_FIELDS = new String[] {
             HostConstants.FIELD_API_PROXY,
@@ -97,7 +97,7 @@ public class AgentResourcesMonitor implements AnnotatedEventListener {
     }
 
     protected void buildCache() {
-        resourceCache = CacheBuilder.newBuilder().expireAfterWrite(CACHE_RESOURCE.get(), TimeUnit.SECONDS).build();
+        resourceCache = CacheBuilder.newBuilder().expireAfterWrite(Duration.ofSeconds(CACHE_RESOURCE.get())).build();
     }
 
     @EventHandler
@@ -157,7 +157,7 @@ public class AgentResourcesMonitor implements AnnotatedEventListener {
                 continue;
             }
 
-            Host host = hosts.get(ObjectUtils.toString(data.get(HostConstants.FIELD_HOST_UUID), null));
+            Host host = hosts.get(Objects.toString(data.get(HostConstants.FIELD_HOST_UUID), null));
 
             if (host == null) {
                 continue;
@@ -174,7 +174,7 @@ public class AgentResourcesMonitor implements AnnotatedEventListener {
         for (Map.Entry<String, Map<String, Object>> ipData : resources.getIpAddresses().entrySet()) {
             String address = ipData.getKey();
             Map<String, Object> data = ipData.getValue();
-            Host host = hosts.get(ObjectUtils.toString(data.get(HostConstants.FIELD_HOST_UUID), null));
+            Host host = hosts.get(Objects.toString(data.get(HostConstants.FIELD_HOST_UUID), null));
 
             if (host == null) {
                 continue;
@@ -191,7 +191,7 @@ public class AgentResourcesMonitor implements AnnotatedEventListener {
                     ipAddressDao.updateIpAddress(ip, address);
                 }
                 String currentIp = DataAccessor.fieldString(host, HostConstants.FIELD_IP_ADDRESS);
-                if (!ObjectUtils.equals(currentIp, ip.getAddress())) {
+                if (!Objects.equals(currentIp, ip.getAddress())) {
                     try {
                         objectManager.setFields(host, HostConstants.FIELD_IP_ADDRESS, ip.getAddress());
                         publish = true;
@@ -222,7 +222,7 @@ public class AgentResourcesMonitor implements AnnotatedEventListener {
         for (Map.Entry<String, Map<String, Object>> hostData : resources.getHosts().entrySet()) {
             String uuid = hostData.getKey();
             Map<String, Object> data = hostData.getValue();
-            String physicalHostUuid = ObjectUtils.toString(data.get(HostConstants.FIELD_PHYSICAL_HOST_UUID), null);
+            String physicalHostUuid = Objects.toString(data.get(HostConstants.FIELD_PHYSICAL_HOST_UUID), null);
             Long physicalHostId = getPhysicalHost(agent, physicalHostUuid, new HashMap<String, Object>());
             boolean orchestrate = false;
 
@@ -271,7 +271,7 @@ public class AgentResourcesMonitor implements AnnotatedEventListener {
                         newValueMap.putAll((Map<?, ?>)value);
                         value = newValueMap;
                     }
-                    if (ObjectUtils.notEqual(value, existingValue)) {
+                    if (!Objects.equals(value, existingValue)) {
                         if (ORCHESTRATE_FIELDS.contains(key)) {
                             orchestrate = true;
                         }
@@ -406,8 +406,8 @@ public class AgentResourcesMonitor implements AnnotatedEventListener {
         }
 
         for (Map<String, Object> resource : pingData) {
-            final String type = ObjectUtils.toString(resource.get(ObjectMetaDataManager.TYPE_FIELD), null);
-            final String uuid = ObjectUtils.toString(resource.get(ObjectMetaDataManager.UUID_FIELD), null);
+            final String type = Objects.toString(resource.get(ObjectMetaDataManager.TYPE_FIELD), null);
+            final String uuid = Objects.toString(resource.get(ObjectMetaDataManager.UUID_FIELD), null);
 
             if (type == null || uuid == null) {
                 log.error("type [{}] or uuid [{}] is null for resource on pong from agent [{}]", type, uuid, ping.getResourceId());

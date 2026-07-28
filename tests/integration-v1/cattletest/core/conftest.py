@@ -54,7 +54,7 @@ def init(admin_user_client):
         'task.config.item.migration.schedule': '5',
         'task.config.item.source.version.sync.schedule': '5',
     }
-    for k, v in kv.items():
+    for k, v in list(kv.items()):
         admin_user_client.create_setting(name=k, value=v)
 
 

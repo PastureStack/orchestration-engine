@@ -1,0 +1,138 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+cd "$(dirname "$0")/.."
+
+artifact=${1:-dist/artifacts/cattle.jar}
+expected_version=${EXPECTED_ENGINE_VERSION:-0.183.270}
+
+test -f "$artifact"
+artifact=$(realpath "$artifact")
+# The Windows JDK writes CRLF through Git Bash even though mapfile removes only
+# LF. Normalize the listing so the same exact-entry gate works on Linux and
+# Windows release hosts.
+mapfile -t entries < <(jar tf "$artifact" | tr -d '\r')
+
+require_exact_entry()
+{
+    local expected=$1
+    local count=0
+    local entry
+    for entry in "${entries[@]}"; do
+        if [ "$entry" = "$expected" ]; then
+            count=$((count + 1))
+        fi
+    done
+    if [ "$count" -ne 1 ]; then
+        printf 'ENGINE_RELEASE_ENTRY_COUNT_MISMATCH entry=%s count=%s\n' "$expected" "$count" >&2
+        exit 1
+    fi
+}
+
+require_single_versioned_entry()
+{
+    local prefix=$1
+    local suffix=$2
+    local count=0
+    local entry
+    for entry in "${entries[@]}"; do
+        case "$entry" in
+            "$prefix"*"$suffix") count=$((count + 1)) ;;
+        esac
+    done
+    if [ "$count" -ne 1 ]; then
+        printf 'ENGINE_RELEASE_VERSIONED_ENTRY_COUNT_MISMATCH prefix=%s suffix=%s count=%s\n' "$prefix" "$suffix" "$count" >&2
+        exit 1
+    fi
+}
+
+require_exact_entry WEB-INF/web.xml
+require_exact_entry io/cattle/platform/launcher/Main.class
+require_single_versioned_entry WEB-INF/lib/cattle-resources- .jar
+require_single_versioned_entry WEB-INF/lib/cattle-iaas-auth-logic- .jar
+require_single_versioned_entry WEB-INF/lib/cattle-app-config- .jar
+
+resources_entry=$(printf '%s\n' "${entries[@]}" |
+    grep -E '^WEB-INF/lib/cattle-resources-[^/]+\.jar$')
+auth_logic_entry=$(printf '%s\n' "${entries[@]}" |
+    grep -E '^WEB-INF/lib/cattle-iaas-auth-logic-[^/]+\.jar$')
+app_config_entry=$(printf '%s\n' "${entries[@]}" |
+    grep -E '^WEB-INF/lib/cattle-app-config-[^/]+\.jar$')
+
+workdir=$(mktemp -d "${TMPDIR:-/tmp}/pasturestack-engine-release-gate.XXXXXX")
+cleanup()
+{
+    rm -rf "$workdir"
+}
+trap cleanup EXIT
+(
+    cd "$workdir"
+    jar xf "$artifact" \
+        META-INF/MANIFEST.MF \
+        META-INF/maven/io.cattle/cattle-app/pom.properties \
+        "$resources_entry" \
+        "$auth_logic_entry" \
+        "$app_config_entry"
+)
+tr -d '\r' <"$workdir/META-INF/MANIFEST.MF" | grep -Fx "Implementation-Version: ${expected_version}" >/dev/null
+grep -Fx "version=${expected_version}" "$workdir/META-INF/maven/io.cattle/cattle-app/pom.properties" >/dev/null
+
+for class_name in \
+    io/cattle/platform/iaas/api/auth/identity/AuthIdentityLink.class \
+    io/cattle/platform/iaas/api/auth/identity/AuthIdentityOperation.class \
+    io/cattle/platform/iaas/api/auth/mfa/MfaFactor.class \
+    io/cattle/platform/iaas/api/auth/mfa/MfaOperation.class \
+    io/cattle/platform/iaas/api/auth/mfa/MfaSettings.class \
+    io/cattle/platform/iaas/api/auth/mfa/MfaStatus.class; do
+    test "$(jar tf "$workdir/$auth_logic_entry" |
+        tr -d '\r' |
+        grep -Fxc "$class_name")" -eq 1
+done
+
+for marker in \
+    authIdentityLink \
+    authIdentityOperation \
+    identityProof \
+    localPassword \
+    mfaFactor \
+    mfaOperation \
+    mfaSettings \
+    mfaStatus \
+    providerSwitchCode \
+    smtpClearPassword \
+    smtpPassword \
+    webAuthnResponse; do
+    unzip -p "$workdir/$resources_entry" schema/v1/admin.ser |
+        grep -aF "$marker" >/dev/null
+done
+for marker in \
+    challengeId \
+    emailCode \
+    mfaFactor \
+    mfaOperation \
+    mfaStatus \
+    verificationCode \
+    webAuthnResponse; do
+    unzip -p "$workdir/$resources_entry" schema/v1/user.ser |
+        grep -aF "$marker" >/dev/null
+done
+for marker in \
+    emailCode \
+    localRecoveryEnabled \
+    loginMethod \
+    mfaChallengeId \
+    mfaCode \
+    mfaMethods \
+    mfaRequired \
+    providerSwitchCode \
+    recoveryCode \
+    webAuthnResponse; do
+    unzip -p "$workdir/$resources_entry" schema/v1/token.ser |
+        grep -aF "$marker" >/dev/null
+done
+unzip -p "$workdir/$app_config_entry" \
+    io/cattle/platform/app/IaasApiConfig.class |
+    grep -aF IdentitySecurityApiTypes >/dev/null
+
+printf 'ENGINE_RELEASE_ARTIFACT_OK artifact=%s version=%s webapp=1 resources=1 auth_logic=1 app_config=1 identity_security_v1_schemas=1 launcher=1\n' \
+    "$artifact" "$expected_version"

@@ -1,13 +1,13 @@
 package io.cattle.platform.host.service.impl;
 
 import static io.cattle.platform.server.context.ServerContext.*;
-import io.cattle.platform.archaius.util.ArchaiusUtil;
 import io.cattle.platform.core.constants.CommonStatesConstants;
 import io.cattle.platform.core.constants.HostConstants;
 import io.cattle.platform.core.constants.IpAddressConstants;
 import io.cattle.platform.core.model.Host;
 import io.cattle.platform.core.model.IpAddress;
-import io.cattle.platform.host.api.HostApiUtils;
+import io.cattle.platform.host.api.ArchaiusHostApiSettings;
+import io.cattle.platform.host.api.HostApiSettings;
 import io.cattle.platform.host.model.HostApiAccess;
 import io.cattle.platform.host.service.HostApiRSAKeyProvider;
 import io.cattle.platform.host.service.HostApiService;
@@ -23,22 +23,32 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
 
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 
+import org.apache.commons.lang3.Strings;
 import org.apache.commons.lang3.StringUtils;
 
-import com.netflix.config.DynamicStringProperty;
 
 public class HostApiServiceImpl implements HostApiService {
 
     private static final String HOST_UUID = "hostUuid";
 
-    private static final DynamicStringProperty HEADER_AUTH = ArchaiusUtil.getString("host.api.auth.header");
-    private static final DynamicStringProperty HEADER_AUTH_VALUE = ArchaiusUtil.getString("host.api.auth.header.value");
+    private final HostApiSettings settings;
 
     ObjectManager objectManager;
     TokenService tokenService;
     HostApiRSAKeyProvider keyProvider;
+
+    public HostApiServiceImpl() {
+        this(ArchaiusHostApiSettings.create());
+    }
+
+    HostApiServiceImpl(HostApiSettings settings) {
+        if (settings == null) {
+            throw new IllegalArgumentException("settings is required");
+        }
+        this.settings = settings;
+    }
 
     @Override
     public HostApiAccess getAccess(ApiRequest request, Long hostId, Map<String, Object> data, String... resourcePathSegments) {
@@ -58,7 +68,7 @@ public class HostApiServiceImpl implements HostApiService {
         }
 
         Map<String, String> values = new HashMap<String, String>();
-        values.put(HEADER_AUTH.get(), String.format(HEADER_AUTH_VALUE.get(), token));
+        values.put(settings.authHeader(), String.format(settings.authHeaderValueFormat(), token));
 
         return new HostApiAccess(getHostAccessUrl(request, host, resourcePathSegments), token, values);
     }
@@ -67,9 +77,9 @@ public class HostApiServiceImpl implements HostApiService {
         StringBuilder buffer = new StringBuilder();
         switch (getHostApiProxyMode()) {
         case HOST_API_PROXY_MODE_HA:
-            String proxyHost = HostApiUtils.HOST_API_PROXY_HOST.get();
+            String proxyHost = settings.proxyHost();
             if (StringUtils.isNotBlank(proxyHost)) {
-                String scheme = StringUtils.startsWithIgnoreCase(request.getResponseUrlBase(), "https") ? "wss://" : "ws://";
+                String scheme = Strings.CI.startsWith(request.getResponseUrlBase(), "https") ? "wss://" : "ws://";
                 buffer.append(scheme).append(proxyHost);
                 break;
             }

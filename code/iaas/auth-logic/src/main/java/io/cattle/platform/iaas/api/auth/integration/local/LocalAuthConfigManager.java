@@ -11,8 +11,9 @@ import io.github.ibuildthecloud.gdapi.request.ApiRequest;
 import io.github.ibuildthecloud.gdapi.request.resource.impl.AbstractNoOpResourceManager;
 import java.util.Map;
 
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 
+import org.apache.commons.lang3.Strings;
 import org.apache.commons.lang3.StringUtils;
 
 public class LocalAuthConfigManager extends AbstractNoOpResourceManager {
@@ -33,7 +34,7 @@ public class LocalAuthConfigManager extends AbstractNoOpResourceManager {
 
     @Override
     protected Object createInternal(String type, ApiRequest request) {
-        if (!StringUtils.equalsIgnoreCase(LocalAuthConstants.CONFIG, request.getType())) {
+        if (!Strings.CI.equals(LocalAuthConstants.CONFIG, request.getType())) {
             return null;
         }
         Map<String, Object> config = CollectionUtils.toMap(request.getRequestObject());
@@ -53,6 +54,10 @@ public class LocalAuthConfigManager extends AbstractNoOpResourceManager {
             if (StringUtils.isNotBlank(username)) {
                 LocalAuthPasswordValidator.validatePassword(password, jsonMapper);
                 passwordDao.verifyUsernamePassword(username, password, name);
+                // Retain this verified local administrator credential as an
+                // explicit break-glass path when an external provider is
+                // selected later.  This setting does not replace that provider.
+                settingsUtils.changeSetting(LocalAuthConstants.RECOVERY_ENABLED_SETTING, true);
             }
         }
 

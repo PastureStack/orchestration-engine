@@ -13,7 +13,7 @@ import io.github.ibuildthecloud.gdapi.condition.ConditionType;
 import java.util.List;
 import java.util.concurrent.Callable;
 
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 
 import org.apache.commons.lang3.StringUtils;
 

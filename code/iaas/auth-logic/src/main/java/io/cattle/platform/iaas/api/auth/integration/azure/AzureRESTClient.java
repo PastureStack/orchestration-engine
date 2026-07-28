@@ -1,6 +1,8 @@
 package io.cattle.platform.iaas.api.auth.integration.azure;
 
 import io.cattle.platform.api.auth.Identity;
+import io.cattle.platform.iaas.api.auth.integration.util.AuthHttpClient;
+import io.cattle.platform.iaas.api.auth.integration.util.AuthHttpClient.Response;
 import io.cattle.platform.json.JsonMapper;
 import io.github.ibuildthecloud.gdapi.context.ApiContext;
 import io.github.ibuildthecloud.gdapi.exception.ClientVisibleException;
@@ -9,22 +11,19 @@ import io.cattle.platform.util.type.CollectionUtils;
 
 import java.io.IOException;
 import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 
 import org.apache.commons.lang3.ObjectUtils;
 import org.apache.commons.lang3.StringUtils;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
-import org.apache.http.HttpResponse;
-import org.apache.http.client.fluent.Request;
-import org.apache.http.entity.ContentType;
-import org.apache.http.util.EntityUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class AzureRESTClient extends AzureConfigurable{
 
@@ -34,7 +33,7 @@ public class AzureRESTClient extends AzureConfigurable{
     @Inject
     private AzureTokenUtil azureTokenUtil;
 
-    private static final Log logger = LogFactory.getLog(AzureRESTClient.class);
+    private static final Logger logger = LoggerFactory.getLogger(AzureRESTClient.class);
 
     private Identity getUserIdentity(String azureAccessToken) {
         if (StringUtils.isEmpty(azureAccessToken)) {
@@ -42,7 +41,7 @@ public class AzureRESTClient extends AzureConfigurable{
         }
         try {
             logger.debug("getUserIdentity for logged in user");
-            HttpResponse response = getFromAzure(azureAccessToken, getURL(AzureClientEndpoints.USER, ""));
+            Response response = getFromAzure(azureAccessToken, getURL(AzureClientEndpoints.USER, ""));
             if(hasTokenExpired(response)) {
                 //refresh token
                 refreshAccessToken();
@@ -51,12 +50,12 @@ public class AzureRESTClient extends AzureConfigurable{
                 response = getFromAzure(azureAccessToken, getURL(AzureClientEndpoints.USER, ""));
             }
             
-            int statusCode = response.getStatusLine().getStatusCode();
+            int statusCode = response.getStatusCode();
             if (statusCode >= 300) {
                 noAzure(response);
             }
             
-            Map<String, Object> jsonData = jsonMapper.readValue(response.getEntity().getContent());
+            Map<String, Object> jsonData = jsonMapper.readValue(response.getBody());
             return jsonToAzureAccountInfo(jsonData).toIdentity(AzureConstants.USER_SCOPE, true);
         } catch (IOException e) {
             logger.error("Failed to get Azure user account info.", e);
@@ -77,7 +76,7 @@ public class AzureRESTClient extends AzureConfigurable{
         }
         try {
             logger.debug("getGroupIdentities for logged in user");
-            HttpResponse response = getFromAzure(azureAccessToken, getURL(AzureClientEndpoints.GROUP, ""));
+            Response response = getFromAzure(azureAccessToken, getURL(AzureClientEndpoints.GROUP, ""));
             if(hasTokenExpired(response)) {
                 //refresh token
                 refreshAccessToken();
@@ -86,12 +85,12 @@ public class AzureRESTClient extends AzureConfigurable{
                 response = getFromAzure(azureAccessToken, getURL(AzureClientEndpoints.GROUP, ""));
             }
             
-            int statusCode = response.getStatusLine().getStatusCode();
+            int statusCode = response.getStatusCode();
             if (statusCode >= 300) {
                 noAzure(response);
             }
 
-            Map<String, Object> jsonData = CollectionUtils.toMap(jsonMapper.readValue(response.getEntity().getContent(), Map.class));
+            Map<String, Object> jsonData = CollectionUtils.toMap(jsonMapper.readValue(response.getBody(), Map.class));
             List<AzureAccountInfo> searchResponseList = parseSearchResponseList(jsonData);
 
             List<Identity> groupIdentities = new ArrayList<Identity>();
@@ -141,28 +140,27 @@ public class AzureRESTClient extends AzureConfigurable{
         try{   
             StringBuilder body = new StringBuilder("scope=openid&grant_type=password&resource=https%3A%2F%2Fgraph.windows.net");
             body.append("&client_id=");
-            body.append(URLEncoder.encode(AzureConstants.AZURE_CLIENT_ID.get(), "UTF-8"));
+            body.append(URLEncoder.encode(AzureConstants.AZURE_CLIENT_ID.get(), StandardCharsets.UTF_8));
             body.append("&username=");
-            body.append(URLEncoder.encode(username, "UTF-8"));
+            body.append(URLEncoder.encode(username, StandardCharsets.UTF_8));
             body.append("&password=");
-            body.append(URLEncoder.encode(split[1], "UTF-8")); 
+            body.append(URLEncoder.encode(split[1], StandardCharsets.UTF_8));
             
-            HttpResponse response = Request.Post(AzureConstants.AUTHORITY)
-                    .addHeader(AzureConstants.ACCEPT, AzureConstants.APPLICATION_FORM_URL_ENCODED)
-                    .bodyString(body.toString(), ContentType.APPLICATION_FORM_URLENCODED).execute().returnResponse();
-            int statusCode = response.getStatusLine().getStatusCode();
+            Response response = AuthHttpClient.postForm(AzureConstants.AUTHORITY, body.toString(),
+                    AzureConstants.ACCEPT, AzureConstants.APPLICATION_FORM_URL_ENCODED);
+            int statusCode = response.getStatusCode();
             if(statusCode >= 300) {
                 noAzure(response);
             }
 
-            Map<String, Object> jsonData = jsonMapper.readValue(response.getEntity().getContent());
+            Map<String, Object> jsonData = jsonMapper.readValue(response.getBody());
             accessToken = ObjectUtils.toString(jsonData.get("access_token"));
             refreshToken = ObjectUtils.toString(jsonData.get("refresh_token"));
 
             //Also validate tenantID by issuing a search request for the user, if it errors we error out else login is successful
-            String filter = "$filter=userPrincipalName%20eq%20'" + URLEncoder.encode(username, "UTF-8") + "'";
-            HttpResponse newResponse = getFromAzure(accessToken, getURL(AzureClientEndpoints.USERS, "") + "&"+ filter);
-            statusCode = newResponse.getStatusLine().getStatusCode();
+            String filter = "$filter=userPrincipalName%20eq%20'" + URLEncoder.encode(username, StandardCharsets.UTF_8) + "'";
+            Response newResponse = getFromAzure(accessToken, getURL(AzureClientEndpoints.USERS, "") + "&"+ filter);
+            statusCode = newResponse.getStatusCode();
             if(statusCode >= 300) {
                 noAzure(newResponse);
             }
@@ -199,16 +197,15 @@ public class AzureRESTClient extends AzureConfigurable{
         }
         try{
             //post to the microsoft azure authority
-            HttpResponse response = Request.Post(AzureConstants.AUTHORITY)
-                    .addHeader(AzureConstants.ACCEPT, AzureConstants.APPLICATION_FORM_URL_ENCODED)
-                    .bodyString("grant_type=refresh_token&refresh_token="+azureRefreshToken, ContentType.APPLICATION_FORM_URLENCODED)
-                    .execute().returnResponse();
-            int statusCode = response.getStatusLine().getStatusCode();
+            Response response = AuthHttpClient.postForm(AzureConstants.AUTHORITY,
+                    "grant_type=refresh_token&refresh_token=" + azureRefreshToken,
+                    AzureConstants.ACCEPT, AzureConstants.APPLICATION_FORM_URL_ENCODED);
+            int statusCode = response.getStatusCode();
             if(statusCode >= 300) {
                 noAzure(response);
             }
             
-            Map<String, Object> jsonData = jsonMapper.readValue(response.getEntity().getContent());
+            Map<String, Object> jsonData = jsonMapper.readValue(response.getBody());
             
             String newAccessToken = ObjectUtils.toString(jsonData.get("access_token"));
             String newRefreshToken = ObjectUtils.toString(jsonData.get("refresh_token"));
@@ -262,11 +259,11 @@ public class AzureRESTClient extends AzureConfigurable{
         return new AzureAccountInfo(objectId, accountName, null, userPrincipalName, name);
     }
 
-    public boolean hasTokenExpired(HttpResponse response) throws IOException {
-        int statusCode = response.getStatusLine().getStatusCode();
+    public boolean hasTokenExpired(Response response) throws IOException {
+        int statusCode = response.getStatusCode();
         if(statusCode == 401) {
             //if token expired, refresh token.
-            Map<String, Object> jsonData = jsonMapper.readValue(response.getEntity().getContent());
+            Map<String, Object> jsonData = jsonMapper.readValue(response.getBody());
             Map<String, Object> azureError = CollectionUtils.toMap(jsonData.get("odata.error"));
             String azureCode = ObjectUtils.toString(azureError.get("code"));
             if("Authentication_ExpiredToken".equalsIgnoreCase(azureCode)) {
@@ -276,13 +273,14 @@ public class AzureRESTClient extends AzureConfigurable{
         return false;
     }
 
-    public HttpResponse getFromAzure(String azureAccessToken, String url) throws IOException {
+    public Response getFromAzure(String azureAccessToken, String url) throws IOException {
 
         logger.trace("URL for Azure API call: "+ url);
-        HttpResponse response = Request.Get(url).addHeader(AzureConstants.AUTHORIZATION, "Bearer " +
-                "" + azureAccessToken).addHeader(AzureConstants.ACCEPT, AzureConstants.APPLICATION_JSON).execute().returnResponse();
-        logger.debug("Response from Azure API: "+ response.getStatusLine());
-        logger.trace("Complete Response from Azure: "+ EntityUtils.toString(response.getEntity()));
+        Response response = AuthHttpClient.get(url,
+                AzureConstants.AUTHORIZATION, "Bearer " + azureAccessToken,
+                AzureConstants.ACCEPT, AzureConstants.APPLICATION_JSON);
+        logger.debug("Response from Azure API status: "+ response.getStatusCode());
+        logger.trace("Complete Response from Azure: "+ response.getBody());
 
         return response;
     }    
@@ -297,11 +295,11 @@ public class AzureRESTClient extends AzureConfigurable{
                 "AzureRefreshToken", "No Azure Refresh token", null);
     }
     
-    public void noAzure(HttpResponse response) {
-        int statusCode = response.getStatusLine().getStatusCode();
+    public void noAzure(Response response) {
+        int statusCode = response.getStatusCode();
 
         try {
-            Map<String, Object> jsonData = jsonMapper.readValue(response.getEntity().getContent());
+            Map<String, Object> jsonData = jsonMapper.readValue(response.getBody());
             String azureError = (String)jsonData.get("error");
             String azureErrorDesc = (String)jsonData.get("error_description");
             if("invalid_grant".equalsIgnoreCase(azureError) || "unauthorized_client".equalsIgnoreCase(azureError)) {
@@ -363,13 +361,13 @@ public class AzureRESTClient extends AzureConfigurable{
                 username = username + "@"+ domain;
             }
             
-            username = URLEncoder.encode(username, "UTF-8");
+            username = URLEncoder.encode(username, StandardCharsets.UTF_8);
             
             String filter = "$filter=userPrincipalName%20eq%20'" + username + "'";
             //String filter = "$filter=startswith(userPrincipalName,'" + username+ "')";
 
             
-            HttpResponse response = getFromAzure(azureAccessToken, getURL(AzureClientEndpoints.USERS, "") + "&"+ filter);
+            Response response = getFromAzure(azureAccessToken, getURL(AzureClientEndpoints.USERS, "") + "&"+ filter);
             if(hasTokenExpired(response)) {
                 //refresh token
                 refreshAccessToken();
@@ -378,20 +376,20 @@ public class AzureRESTClient extends AzureConfigurable{
                 response = getFromAzure(azureAccessToken, getURL(AzureClientEndpoints.USERS, "") + "&"+ filter);
             }
             
-            int statusCode = response.getStatusLine().getStatusCode();
+            int statusCode = response.getStatusCode();
             if (statusCode >= 300) {
                 noAzure(response);
             }
 
             
-            Map<String, Object> jsonData = CollectionUtils.toMap(jsonMapper.readValue(response.getEntity().getContent(), Map.class));
+            Map<String, Object> jsonData = CollectionUtils.toMap(jsonMapper.readValue(response.getBody(), Map.class));
             List<AzureAccountInfo> searchResponseList = parseSearchResponseList(jsonData);
             if(searchResponseList != null && !searchResponseList.isEmpty()) {
                 return searchResponseList.get(0);
             }
             return null;
         } catch (IOException e) {
-            logger.error(e);
+            logger.error("Failed to query Azure user by name.", e);
             throw new ClientVisibleException(ResponseCodes.SERVICE_UNAVAILABLE, "AzureUnavailable", "Could not retrieve User by name from Azure", null);
         } catch(ClientVisibleException ex) {
             logger.error("Failed to get Azure user account info by name.", ex);
@@ -415,11 +413,11 @@ public class AzureRESTClient extends AzureConfigurable{
                 throw new ClientVisibleException(ResponseCodes.INTERNAL_SERVER_ERROR,
                         "noAzureGroupName", "No group name specified when retrieving from Azure.", null);
             }
-            org = URLEncoder.encode(org, "UTF-8");
+            org = URLEncoder.encode(org, StandardCharsets.UTF_8);
             String filter = "$filter=displayName%20eq%20'" + org + "'";
             //String filter = "$filter=startswith(displayName,'" + org+ "')";
             
-            HttpResponse response = getFromAzure(azureAccessToken, getURL(AzureClientEndpoints.GROUPS, "") + "&"+ filter);
+            Response response = getFromAzure(azureAccessToken, getURL(AzureClientEndpoints.GROUPS, "") + "&"+ filter);
             if(hasTokenExpired(response)) {
                 //refresh token
                 refreshAccessToken();
@@ -428,20 +426,19 @@ public class AzureRESTClient extends AzureConfigurable{
                 response = getFromAzure(azureAccessToken, getURL(AzureClientEndpoints.GROUPS, "") + "&"+ filter);
             }
             
-            int statusCode = response.getStatusLine().getStatusCode();
+            int statusCode = response.getStatusCode();
             if (statusCode >= 300) {
                 noAzure(response);
             }  
 
-            Map<String, Object> jsonData = CollectionUtils.toMap(jsonMapper.readValue(response.getEntity().getContent
-                    (), Map.class));
+            Map<String, Object> jsonData = CollectionUtils.toMap(jsonMapper.readValue(response.getBody(), Map.class));
             List<AzureAccountInfo> searchResponseList = parseSearchResponseList(jsonData);
             if(searchResponseList != null && !searchResponseList.isEmpty()) {
                 return searchResponseList.get(0);
             }
             return null;
         } catch (IOException e) {
-            logger.error(e);
+            logger.error("Failed to query Azure group by name.", e);
             throw new ClientVisibleException(ResponseCodes.SERVICE_UNAVAILABLE, "AzureUnavailable", "Could not retrieve Group by name from Azure", null);
         } catch(ClientVisibleException ex) {
             logger.error("Failed to get Azure group info by name.", ex);
@@ -460,7 +457,7 @@ public class AzureRESTClient extends AzureConfigurable{
         }
         logger.debug("getUserById: "+ id);
         try {
-            HttpResponse response = getFromAzure(azureAccessToken, getURL(AzureClientEndpoints.USERS, id));
+            Response response = getFromAzure(azureAccessToken, getURL(AzureClientEndpoints.USERS, id));
             if(hasTokenExpired(response)) {
                 //refresh token
                 refreshAccessToken();
@@ -469,12 +466,12 @@ public class AzureRESTClient extends AzureConfigurable{
                 response = getFromAzure(azureAccessToken, getURL(AzureClientEndpoints.USERS, id));
             }
             
-            int statusCode = response.getStatusLine().getStatusCode();
+            int statusCode = response.getStatusCode();
             if (statusCode >= 300) {
                 noAzure(response);
             }  
 
-            Map<String, Object> jsonData = CollectionUtils.toMap(jsonMapper.readValue(response.getEntity().getContent(), Map.class));
+            Map<String, Object> jsonData = CollectionUtils.toMap(jsonMapper.readValue(response.getBody(), Map.class));
             return jsonToAzureAccountInfo(jsonData);
         } catch (IOException e) {
             throw new ClientVisibleException(ResponseCodes.SERVICE_UNAVAILABLE, "AzureUnavailable", "Could not retrieve User by Id from Azure", null);
@@ -494,7 +491,7 @@ public class AzureRESTClient extends AzureConfigurable{
          }
          logger.debug("getGroupById: "+ id);
          try {
-             HttpResponse response = getFromAzure(azureAccessToken, getURL(AzureClientEndpoints.GROUPS, id));
+             Response response = getFromAzure(azureAccessToken, getURL(AzureClientEndpoints.GROUPS, id));
              if(hasTokenExpired(response)) {
                  //refresh token
                  refreshAccessToken();
@@ -503,11 +500,11 @@ public class AzureRESTClient extends AzureConfigurable{
                  response = getFromAzure(azureAccessToken, getURL(AzureClientEndpoints.GROUPS, id));
              }
              
-             int statusCode = response.getStatusLine().getStatusCode();
+             int statusCode = response.getStatusCode();
              if (statusCode >= 300) {
                  noAzure(response);
              } 
-             Map<String, Object> jsonData = CollectionUtils.toMap(jsonMapper.readValue(response.getEntity().getContent(), Map.class));
+             Map<String, Object> jsonData = CollectionUtils.toMap(jsonMapper.readValue(response.getBody(), Map.class));
              return jsonToAzureAccountInfo(jsonData);
          } catch (IOException e) {
              throw new ClientVisibleException(ResponseCodes.SERVICE_UNAVAILABLE, "AzureUnavailable", "Could not retrieve Group by Id from Azure", null);

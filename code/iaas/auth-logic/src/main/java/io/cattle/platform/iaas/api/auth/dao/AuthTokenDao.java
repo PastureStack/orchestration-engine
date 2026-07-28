@@ -12,5 +12,7 @@ public interface AuthTokenDao {
 
     void deletePreviousTokens(long authenticatedAsAccountId, long tokenAccountId);
 
+    int deleteTokensForAccount(long authenticatedAsAccountId);
+
     boolean deleteToken(String key);
 }

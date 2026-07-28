@@ -15,6 +15,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
+import java.util.function.Supplier;
 
 import org.apache.commons.lang3.StringUtils;
 
@@ -30,7 +31,7 @@ public class CollectionUtils {
         return value;
     }
 
-    @SuppressWarnings("unchecked")
+    @SafeVarargs
     public static <T> void setNestedValue(Map<T, Object> map, Object value, T... keys) {
         for (int i = 0; i < keys.length; i++) {
             T key = keys[i];
@@ -42,7 +43,8 @@ public class CollectionUtils {
             if (i == keys.length - 1) {
                 map.put(keys[i], value);
             } else {
-                Map<T, Object> nestedMap = (Map<T, Object>) map.get(keys[i]);
+                Object nested = map.get(keys[i]);
+                Map<T, Object> nestedMap = nested == null ? null : castMap(nested);
                 if (nestedMap == null) {
                     nestedMap = new HashMap<T, Object>();
                     map.put(key, nestedMap);
@@ -52,18 +54,10 @@ public class CollectionUtils {
         }
     }
 
-    @SuppressWarnings({ "unchecked", "rawtypes" })
-    public static <K, V extends Collection<T>, T> void addToMap(Map<K, V> data, K key, T value, Class<? extends Collection> clz) {
+    public static <K, V extends Collection<T>, T> void addToMap(Map<K, V> data, K key, T value, Supplier<V> collectionFactory) {
         V values = data.get(key);
         if (values == null) {
-            try {
-                values = (V) clz.newInstance();
-            } catch (InstantiationException e) {
-                throw new IllegalArgumentException("Failed to create collection class", e);
-            } catch (IllegalAccessException e) {
-                throw new IllegalArgumentException("Failed to create collection class", e);
-            }
-
+            values = collectionFactory.get();
             data.put(key, values);
         }
 
@@ -80,33 +74,30 @@ public class CollectionUtils {
         }
     }
 
-    @SuppressWarnings("unchecked")
     public static <K, V> Map<K, V> toMap(Object obj) {
         if (obj == null) {
             return new HashMap<K, V>();
         }
 
-        if (obj instanceof Map) {
-            return (Map<K, V>) obj;
+        if (obj instanceof Map<?, ?>) {
+            return uncheckedCast(obj);
         } else {
             return new HashMap<K, V>();
         }
     }
 
-    @SuppressWarnings("unchecked")
     public static <K, V> Map<K, V> castMap(Object obj) {
         if (obj == null) {
             return new HashMap<K, V>();
         }
 
-        if (obj instanceof Map) {
-            return (Map<K, V>) obj;
+        if (obj instanceof Map<?, ?>) {
+            return uncheckedCast(obj);
         } else {
             throw new IllegalArgumentException("Expected [" + obj + "] to be a Map");
         }
     }
 
-    @SuppressWarnings("unchecked")
     public static <T> Map<T, Object> asMap(T key, Object... values) {
         Map<T, Object> result = new LinkedHashMap<T, Object>();
 
@@ -116,25 +107,29 @@ public class CollectionUtils {
 
         result.put(key, values[0]);
         for (int i = 1; i < values.length; i += 2) {
-            result.put((T) values[i], values[i + 1]);
+            result.put(uncheckedCast(values[i]), values[i + 1]);
         }
 
         return result;
     }
 
-    private static List<?> getObjectsByName(Map<String, Object> objectByName, String name) {
-        Object obj = objectByName.get(name);
+    @SuppressWarnings("unchecked")
+    private static <T> T uncheckedCast(Object obj) {
+        return (T) obj;
+    }
+
+    private static <T> List<T> getObjectsByName(Map<String, T> objectByName, String name) {
+        T obj = objectByName.get(name);
         if (obj == null) {
             return Collections.emptyList();
         }
         return Arrays.asList(obj);
     }
 
-    @SuppressWarnings("unchecked")
     public static synchronized <T> List<T> orderList(Class<?> clz, List<T> objects) {
         String key = NamedUtils.toDotSeparated(clz.getSimpleName());
-        Map<String, Object> objectsByName = new HashMap<>();
-        final Map<Object, String> objectToName = new HashMap<>();
+        Map<String, T> objectsByName = new HashMap<>();
+        final Map<T, String> objectToName = new HashMap<>();
 
         if (objects != null) {
             for (T obj : objects) {
@@ -146,9 +141,9 @@ public class CollectionUtils {
 
         Set<String> excludes = getSetting(key + ".exclude");
 
-        String list = ArchaiusUtil.getString(key + ".list").get();
+        String list = ArchaiusUtil.getStringProperty(key + ".list").get();
         if (!StringUtils.isBlank(list)) {
-            List<Object> result = new ArrayList<Object>();
+            List<T> result = new ArrayList<T>();
             for (String name : list.split("\\s*,\\s*")) {
                 if (excludes.contains(name)) {
                     continue;
@@ -156,14 +151,14 @@ public class CollectionUtils {
 
                 result.addAll(getObjectsByName(objectsByName, name));
             }
-            return (List<T>) result;
+            return result;
         }
 
         Set<String> includes = getSetting(key + ".include");
 
-        Set<Object> ordered = new TreeSet<Object>(new Comparator<Object>() {
+        Set<T> ordered = new TreeSet<T>(new Comparator<T>() {
             @Override
-            public int compare(Object o1, Object o2) {
+            public int compare(T o1, T o2) {
                 int left = PriorityUtils.getPriority(o1);
                 int right = PriorityUtils.getPriority(o2);
                 if (left < right) {
@@ -189,7 +184,7 @@ public class CollectionUtils {
             ordered.addAll(getObjectsByName(objectsByName, include));
         }
 
-        Iterator<Object> iter = ordered.iterator();
+        Iterator<T> iter = ordered.iterator();
         while (iter.hasNext()) {
             String name = objectToName.get(iter.next());
             if (excludes.contains(name)) {
@@ -197,7 +192,7 @@ public class CollectionUtils {
             }
         }
 
-        return (List<T>) new ArrayList<Object>(ordered);
+        return new ArrayList<T>(ordered);
     }
 
     private static Set<String> getSetting(String key) {
@@ -216,7 +211,7 @@ public class CollectionUtils {
     }
 
     private static String getSettingValue(String key) {
-        return ArchaiusUtil.getString(key).get();
+        return ArchaiusUtil.getStringProperty(key).get();
     }
 
 }

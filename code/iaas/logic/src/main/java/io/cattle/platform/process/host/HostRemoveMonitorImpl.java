@@ -10,7 +10,7 @@ import io.cattle.platform.object.process.ObjectProcessManager;
 import io.cattle.platform.object.process.StandardProcess;
 import io.cattle.platform.task.Task;
 
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 
 public class HostRemoveMonitorImpl implements Task {
 

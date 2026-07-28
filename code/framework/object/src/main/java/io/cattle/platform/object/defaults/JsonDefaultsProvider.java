@@ -11,7 +11,7 @@ import java.io.InputStream;
 import java.util.HashMap;
 import java.util.Map;
 
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 
 import org.apache.commons.io.IOUtils;
 import org.slf4j.Logger;
@@ -47,8 +47,7 @@ public class JsonDefaultsProvider implements ObjectDefaultsProvider, Initializat
                 }
 
                 if (is != null) {
-                    @SuppressWarnings("unchecked")
-                    Map<String, Object> defaults = jsonMapper.readValue(is, Map.class);
+                    Map<String, Object> defaults = jsonMapper.readValue(is);
                     Map<String, Object> existing = this.defaults.get(clz);
                     if (existing != null) {
                         existing.putAll(defaults);

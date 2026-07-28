@@ -31,7 +31,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 
 import org.apache.commons.lang3.StringUtils;
 
@@ -52,7 +52,7 @@ public class MetadataServiceImpl implements MetadataService {
         data.put("public_keys", new HashMap<>());
         data.put("meta", new HashMap<>());
         data.put("uuid", instance.getUuid());
-        String hostname = org.apache.commons.lang3.ObjectUtils.toString(metadata.get("hostname"), null);
+        String hostname = java.util.Objects.toString(metadata.get("hostname"), (String)null);
         if (hostname != null) {
             data.put("hostname", hostname);
             data.put("name", hostname.split("[.]")[0]);
@@ -71,7 +71,6 @@ public class MetadataServiceImpl implements MetadataService {
         return data;
     }
 
-    @SuppressWarnings("unchecked")
     @Override
     public Map<String, Object> getMetadataForInstance(Instance instance, IdFormatter idFormatter) {
         MetadataEntry entry = metadataDao.getMetadataForInstance(instance);
@@ -87,7 +86,7 @@ public class MetadataServiceImpl implements MetadataService {
 
         Object value = data.values().iterator().next();
         if (value instanceof Map<?, ?>) {
-            return CollectionUtils.toMap(((Map<String, Object>) value).get("meta-data"));
+            return CollectionUtils.toMap(metadataMap(value).get("meta-data"));
         }
 
         return null;
@@ -165,7 +164,7 @@ public class MetadataServiceImpl implements MetadataService {
     protected void populateIps(IdFormatter idFormatter, Map<Long, String> primaryIps, Map<String, Object> instanceMetadata, Instance instance, Nic nic,
             Network network, Subnet subnet, IpAddress localIp) {
 
-        boolean firstNic = (org.apache.commons.lang3.ObjectUtils.equals(nic.getDeviceNumber(), 0));
+        boolean firstNic = (java.util.Objects.equals(nic.getDeviceNumber(), 0));
         boolean primaryIp = localIp == null ? firstNic : IpAddressConstants.ROLE_PRIMARY.equals(localIp.getRole());
 
         String localIpAddress = localIp == null ? null : localIp.getAddress();
@@ -181,9 +180,7 @@ public class MetadataServiceImpl implements MetadataService {
             }
         }
 
-        @SuppressWarnings("unchecked")
-        Map<String, Object> nicData = (Map<String, Object>) CollectionUtils.getNestedValue(instanceMetadata, "network", "interfaces", "macs", nic
-                .getMacAddress());
+        Map<String, Object> nicData = metadataMap(CollectionUtils.getNestedValue(instanceMetadata, "network", "interfaces", "macs", nic.getMacAddress()));
 
         if (nicData == null) {
             return;
@@ -250,8 +247,7 @@ public class MetadataServiceImpl implements MetadataService {
 
         int count = 0;
 
-        @SuppressWarnings("unchecked")
-        Map<String, Object> creds = (Map<String, Object>) getNestedValue(instanceMetadata, "public-keys");
+        Map<String, Object> creds = metadataMap(getNestedValue(instanceMetadata, "public-keys"));
 
         if (creds != null) {
             count = creds.size();
@@ -294,8 +290,7 @@ public class MetadataServiceImpl implements MetadataService {
             return;
         }
 
-        @SuppressWarnings("unchecked")
-        Map<String, Object> data = (Map<String, Object>) CollectionUtils.getNestedValue(instanceData, "network", "interfaces", "macs", mac);
+        Map<String, Object> data = metadataMap(CollectionUtils.getNestedValue(instanceData, "network", "interfaces", "macs", mac));
 
         if (data == null) {
             data = new HashMap<String, Object>();
@@ -319,6 +314,13 @@ public class MetadataServiceImpl implements MetadataService {
             instanceData.put("mac", nic.getMacAddress());
             setNestedValue(instanceData, HostnameGenerator.getServicesDomain(network), "services", "domain");
         }
+    }
+
+    protected Map<String, Object> metadataMap(Object value) {
+        if (value == null) {
+            return null;
+        }
+        return CollectionUtils.toMap(Map.class.cast(value));
     }
 
     protected String getZone(IdFormatter idFormatter, Instance instance) {

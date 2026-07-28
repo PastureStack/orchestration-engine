@@ -6,6 +6,7 @@ import static io.cattle.platform.core.model.tables.ProjectMemberTable.*;
 import io.cattle.platform.api.auth.Identity;
 import io.cattle.platform.api.auth.Policy;
 import io.cattle.platform.archaius.util.ArchaiusUtil;
+import io.cattle.platform.archaius.util.ConfigListProperty;
 import io.cattle.platform.core.constants.AccountConstants;
 import io.cattle.platform.core.constants.CommonStatesConstants;
 import io.cattle.platform.core.constants.CredentialConstants;
@@ -20,6 +21,9 @@ import io.cattle.platform.core.model.tables.records.ProjectMemberRecord;
 import io.cattle.platform.db.jooq.dao.impl.AbstractJooqDao;
 import io.cattle.platform.iaas.api.auth.SecurityConstants;
 import io.cattle.platform.iaas.api.auth.dao.AuthDao;
+import io.cattle.platform.iaas.api.auth.identity.IdentityLinkLock;
+import io.cattle.platform.iaas.api.auth.identity.IdentityProofLock;
+import io.cattle.platform.iaas.api.auth.identity.ProviderSwitchLock;
 import io.cattle.platform.iaas.api.auth.projects.Member;
 import io.cattle.platform.iaas.api.auth.projects.ProjectLock;
 import io.cattle.platform.lock.LockCallback;
@@ -36,13 +40,14 @@ import io.github.ibuildthecloud.gdapi.util.TransformationService;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 
 import org.apache.commons.lang3.StringUtils;
 import org.jooq.Condition;
@@ -52,12 +57,10 @@ import org.jooq.TableField;
 import org.jooq.exception.InvalidResultException;
 import org.jooq.impl.DSL;
 
-import com.netflix.config.DynamicStringListProperty;
-
 public class AuthDaoImpl extends AbstractJooqDao implements AuthDao {
 
     private static final List<String> OWNER_ROLE_LIST = Arrays.asList("owner");
-    private static final DynamicStringListProperty SET_MEMBER_ROLES = ArchaiusUtil.getList("project.set.member.roles");
+    private static final ConfigListProperty<String> SET_MEMBER_ROLES = ArchaiusUtil.getStringListProperty("project.set.member.roles");
 
     @Inject
     GenericResourceDao resourceDao;
@@ -70,7 +73,7 @@ public class AuthDaoImpl extends AbstractJooqDao implements AuthDao {
     @Inject
     AccountDao accountDao;
 
-    private DynamicStringListProperty SUPPORTED_TYPES = ArchaiusUtil.getList("account.by.key.credential.types");
+    private ConfigListProperty<String> SUPPORTED_TYPES = ArchaiusUtil.getStringListProperty("account.by.key.credential.types");
 
     @Override
     public Account getAdminAccount() {
@@ -173,7 +176,7 @@ public class AuthDaoImpl extends AbstractJooqDao implements AuthDao {
 
 
     private int getRolePriority(String role) {
-        return ArchaiusUtil.getInt(SecurityConstants.ROLE_SETTING_BASE + role).get();
+        return ArchaiusUtil.getIntProperty(SecurityConstants.ROLE_SETTING_BASE + role).get();
     }
 
     @Override
@@ -241,6 +244,359 @@ public class AuthDaoImpl extends AbstractJooqDao implements AuthDao {
     }
 
     @Override
+    public Account getAccountByIdentityLink(String linkKey) {
+        if (StringUtils.isBlank(linkKey)) {
+            return null;
+        }
+        return create()
+                .select(ACCOUNT.fields())
+                .from(ACCOUNT)
+                .join(CREDENTIAL)
+                .on(CREDENTIAL.ACCOUNT_ID.eq(ACCOUNT.ID))
+                .where(CREDENTIAL.KIND.eq(CredentialConstants.KIND_AUTH_IDENTITY)
+                        .and(CREDENTIAL.PUBLIC_VALUE.eq(linkKey))
+                        .and(CREDENTIAL.STATE.eq(CommonStatesConstants.ACTIVE))
+                        .and(CREDENTIAL.REMOVED.isNull())
+                        .and(ACCOUNT.STATE.in(getActiveStates()))
+                        .and(ACCOUNT.REMOVED.isNull()))
+                .orderBy(ACCOUNT.ID.asc())
+                .limit(1)
+                .fetchOneInto(AccountRecord.class);
+    }
+
+    @Override
+    public Credential getIdentityLink(String linkKey) {
+        if (StringUtils.isBlank(linkKey)) {
+            return null;
+        }
+        return create()
+                .selectFrom(CREDENTIAL)
+                .where(CREDENTIAL.KIND.eq(CredentialConstants.KIND_AUTH_IDENTITY)
+                        .and(CREDENTIAL.PUBLIC_VALUE.eq(linkKey))
+                        .and(CREDENTIAL.STATE.eq(CommonStatesConstants.ACTIVE))
+                        .and(CREDENTIAL.REMOVED.isNull()))
+                .orderBy(CREDENTIAL.ID.asc())
+                .limit(1)
+                .fetchOne();
+    }
+
+    @Override
+    public List<? extends Credential> getIdentityLinks(long accountId) {
+        return create()
+                .selectFrom(CREDENTIAL)
+                .where(CREDENTIAL.KIND.eq(CredentialConstants.KIND_AUTH_IDENTITY)
+                        .and(CREDENTIAL.ACCOUNT_ID.eq(accountId))
+                        .and(CREDENTIAL.STATE.eq(CommonStatesConstants.ACTIVE))
+                        .and(CREDENTIAL.REMOVED.isNull()))
+                .orderBy(CREDENTIAL.ID.asc())
+                .fetch();
+    }
+
+    @Override
+    public Credential linkIdentity(final Account account, final Identity identity, final String provider,
+                                   final String linkKey) {
+        if (account == null || identity == null || StringUtils.isBlank(provider)
+                || StringUtils.isBlank(linkKey) || StringUtils.isBlank(identity.getExternalId())
+                || StringUtils.isBlank(identity.getExternalIdType())) {
+            throw new IllegalArgumentException("A complete account and external identity are required");
+        }
+
+        return lockManager.lock(new IdentityLinkLock(linkKey), new LockCallback<Credential>() {
+            @Override
+            public Credential doWithLock() {
+                Credential existing = getIdentityLink(linkKey);
+                if (existing != null) {
+                    if (!account.getId().equals(existing.getAccountId())) {
+                        throw new ClientVisibleException(ResponseCodes.CONFLICT, "IdentityAlreadyLinked",
+                                "The verified login identity is already linked to another account.", null);
+                    }
+                    return existing;
+                }
+
+                Map<String, Object> data = new HashMap<>();
+                data.put("provider", provider);
+                data.put("externalIdType", identity.getExternalIdType());
+                data.put("externalId", identity.getExternalId());
+                data.put("name", identity.getName());
+                data.put("login", identity.getLogin());
+                data.put("linkedAt", new Date());
+                data.put("lastLoginAt", new Date());
+
+                Map<Object, Object> properties = new HashMap<>();
+                properties.put(CREDENTIAL.ACCOUNT_ID, account.getId());
+                properties.put(CREDENTIAL.KIND, CredentialConstants.KIND_AUTH_IDENTITY);
+                properties.put(CREDENTIAL.PUBLIC_VALUE, linkKey);
+                properties.put(CREDENTIAL.STATE, CommonStatesConstants.ACTIVE);
+                properties.put(CREDENTIAL.DATA, data);
+                return resourceDao.create(Credential.class,
+                        objectManager.convertToPropertiesFor(Credential.class, properties));
+            }
+        });
+    }
+
+    @Override
+    public void recordIdentityLogin(Credential credential) {
+        if (credential == null) {
+            return;
+        }
+        Map<String, Object> data = credential.getData() == null
+                ? new HashMap<String, Object>()
+                : new HashMap<>(credential.getData());
+        data.put("lastLoginAt", new Date());
+        credential.setData(data);
+        objectManager.persist(credential);
+    }
+
+    @Override
+    public Credential moveIdentityLink(final Credential credential, final Account sourceAccount,
+                                       final Account targetAccount, final long actorAccountId) {
+        if (credential == null || sourceAccount == null || targetAccount == null) {
+            throw new IllegalArgumentException("Identity link, source account, and target account are required");
+        }
+        final String linkKey = credential.getPublicValue();
+        return lockManager.lock(new IdentityLinkLock(linkKey), new LockCallback<Credential>() {
+            @Override
+            public Credential doWithLock() {
+                Credential current = getIdentityLink(linkKey);
+                if (current == null) {
+                    throw new ClientVisibleException(ResponseCodes.NOT_FOUND, "IdentityLinkNotFound",
+                            "The verified login identity is no longer linked.", null);
+                }
+                if (!sourceAccount.getId().equals(current.getAccountId())) {
+                    throw new ClientVisibleException(ResponseCodes.CONFLICT, "IdentityLinkChanged",
+                            "The login identity changed accounts while the operation was being prepared.", null);
+                }
+
+                Map<String, Object> data = current.getData() == null
+                        ? new HashMap<String, Object>()
+                        : new HashMap<>(current.getData());
+                data.put("previousAccountId", sourceAccount.getId());
+                data.put("reassignedByAccountId", actorAccountId);
+                data.put("reassignedAt", new Date());
+                current.setAccountId(targetAccount.getId());
+                current.setData(data);
+                objectManager.persist(current);
+                return objectManager.reload(current);
+            }
+        });
+    }
+
+    @Override
+    public void consumeIdentityProof(final String proofKey, final long actorAccountId) {
+        if (StringUtils.isBlank(proofKey)) {
+            throw new IllegalArgumentException("Proof key is required");
+        }
+        lockManager.lock(new IdentityProofLock(proofKey), new LockCallback<Object>() {
+            @Override
+            public Object doWithLock() {
+                Credential existing = create()
+                        .selectFrom(CREDENTIAL)
+                        .where(CREDENTIAL.KIND.eq(CredentialConstants.KIND_AUTH_IDENTITY_PROOF_USE)
+                                .and(CREDENTIAL.PUBLIC_VALUE.eq(proofKey))
+                                .and(CREDENTIAL.REMOVED.isNull()))
+                        .orderBy(CREDENTIAL.ID.asc())
+                        .limit(1)
+                        .fetchOne();
+                if (existing != null) {
+                    throw new ClientVisibleException(ResponseCodes.CONFLICT, "IdentityProofAlreadyUsed",
+                            "The verified identity proof has already been used.", null);
+                }
+
+                Map<String, Object> data = new HashMap<>();
+                data.put("consumedAt", new Date());
+                Map<Object, Object> properties = new HashMap<>();
+                properties.put(CREDENTIAL.ACCOUNT_ID, actorAccountId);
+                properties.put(CREDENTIAL.KIND, CredentialConstants.KIND_AUTH_IDENTITY_PROOF_USE);
+                properties.put(CREDENTIAL.PUBLIC_VALUE, proofKey);
+                properties.put(CREDENTIAL.STATE, CommonStatesConstants.ACTIVE);
+                properties.put(CREDENTIAL.DATA, data);
+                resourceDao.create(Credential.class,
+                        objectManager.convertToPropertiesFor(Credential.class, properties));
+                return null;
+            }
+        });
+    }
+
+    @Override
+    public Credential createProviderSwitchTicket(final Account account, final String ticketKey,
+                                                 final Map<String, Object> data) {
+        if (account == null || StringUtils.isBlank(ticketKey) || data == null) {
+            throw new IllegalArgumentException("A target account, ticket key, and ticket data are required");
+        }
+        return lockManager.lock(new ProviderSwitchLock(ticketKey), new LockCallback<Credential>() {
+            @Override
+            public Credential doWithLock() {
+                Credential existing = providerSwitchTicket(ticketKey);
+                if (existing != null) {
+                    throw new ClientVisibleException(ResponseCodes.CONFLICT, "ProviderSwitchTicketCollision",
+                            "Unable to create a provider-switch ticket.", null);
+                }
+                Map<Object, Object> properties = new HashMap<>();
+                properties.put(CREDENTIAL.ACCOUNT_ID, account.getId());
+                properties.put(CREDENTIAL.KIND, CredentialConstants.KIND_AUTH_PROVIDER_SWITCH);
+                properties.put(CREDENTIAL.PUBLIC_VALUE, ticketKey);
+                properties.put(CREDENTIAL.STATE, CommonStatesConstants.ACTIVE);
+                properties.put(CREDENTIAL.DATA, new HashMap<>(data));
+                return resourceDao.create(Credential.class,
+                        objectManager.convertToPropertiesFor(Credential.class, properties));
+            }
+        });
+    }
+
+    @Override
+    public Credential consumeProviderSwitchTicket(final String ticketKey, final String provider) {
+        return consumeProviderSwitchTicket(ticketKey, provider, null, null, null);
+    }
+
+    @Override
+    public Credential consumeProviderSwitchTicket(final String ticketKey, final String provider,
+                                                  final Long accountId, final String externalIdType,
+                                                  final String externalId) {
+        if (StringUtils.isBlank(ticketKey) || StringUtils.isBlank(provider)) {
+            return null;
+        }
+        return lockManager.lock(new ProviderSwitchLock(ticketKey), new LockCallback<Credential>() {
+            @Override
+            public Credential doWithLock() {
+                Credential ticket = providerSwitchTicket(ticketKey);
+                if (ticket == null || ticket.getData() == null
+                        || !provider.equalsIgnoreCase(String.valueOf(ticket.getData().get("provider")))
+                        || (accountId != null && !accountId.equals(ticket.getAccountId()))
+                        || (externalIdType != null && !externalIdType.equals(
+                        String.valueOf(ticket.getData().get("externalIdType"))))
+                        || (externalId != null && !externalId.equals(
+                        String.valueOf(ticket.getData().get("externalId"))))) {
+                    return null;
+                }
+                Object expiresAtValue = ticket.getData().get("expiresAt");
+                long expiresAt;
+                try {
+                    expiresAt = Long.parseLong(String.valueOf(expiresAtValue));
+                } catch (RuntimeException e) {
+                    expiresAt = 0L;
+                }
+                if (expiresAt <= System.currentTimeMillis()) {
+                    invalidateProviderSwitchTicket(ticket, "expiredAt");
+                    return null;
+                }
+                invalidateProviderSwitchTicket(ticket, "consumedAt");
+                return ticket;
+            }
+        });
+    }
+
+    @Override
+    public void cancelProviderSwitchTicket(final String ticketKey) {
+        if (StringUtils.isBlank(ticketKey)) {
+            return;
+        }
+        lockManager.lock(new ProviderSwitchLock(ticketKey), new LockCallback<Object>() {
+            @Override
+            public Object doWithLock() {
+                Credential ticket = providerSwitchTicket(ticketKey);
+                if (ticket != null) {
+                    invalidateProviderSwitchTicket(ticket, "cancelledAt");
+                }
+                return null;
+            }
+        });
+    }
+
+    private Credential providerSwitchTicket(String ticketKey) {
+        return create()
+                .selectFrom(CREDENTIAL)
+                .where(CREDENTIAL.KIND.eq(CredentialConstants.KIND_AUTH_PROVIDER_SWITCH)
+                        .and(CREDENTIAL.PUBLIC_VALUE.eq(ticketKey))
+                        .and(CREDENTIAL.STATE.eq(CommonStatesConstants.ACTIVE))
+                        .and(CREDENTIAL.REMOVED.isNull()))
+                .orderBy(CREDENTIAL.ID.asc())
+                .limit(1)
+                .fetchOne();
+    }
+
+    private void invalidateProviderSwitchTicket(Credential ticket, String timestampField) {
+        Map<String, Object> data = ticket.getData() == null
+                ? new HashMap<String, Object>()
+                : new HashMap<>(ticket.getData());
+        data.put(timestampField, new Date());
+        ticket.setData(data);
+        ticket.setState(CommonStatesConstants.INACTIVE);
+        objectManager.persist(ticket);
+    }
+
+    @Override
+    public int copyDirectProjectMemberships(Account sourceAccount, Account targetAccount) {
+        if (sourceAccount == null || targetAccount == null || sourceAccount.getId().equals(targetAccount.getId())) {
+            return 0;
+        }
+        String sourceId = String.valueOf(sourceAccount.getId());
+        String targetId = String.valueOf(targetAccount.getId());
+        List<ProjectMemberRecord> sourceMembers = create()
+                .selectFrom(PROJECT_MEMBER)
+                .where(PROJECT_MEMBER.EXTERNAL_ID_TYPE.eq(ProjectConstants.RANCHER_ID)
+                        .and(PROJECT_MEMBER.EXTERNAL_ID.eq(sourceId))
+                        .and(PROJECT_MEMBER.STATE.eq(CommonStatesConstants.ACTIVE))
+                        .and(PROJECT_MEMBER.REMOVED.isNull()))
+                .orderBy(PROJECT_MEMBER.PROJECT_ID.asc(), PROJECT_MEMBER.ID.asc())
+                .fetch();
+        int changed = 0;
+        for (ProjectMemberRecord sourceMember : sourceMembers) {
+            ProjectMemberRecord targetMember = create()
+                    .selectFrom(PROJECT_MEMBER)
+                    .where(PROJECT_MEMBER.EXTERNAL_ID_TYPE.eq(ProjectConstants.RANCHER_ID)
+                            .and(PROJECT_MEMBER.EXTERNAL_ID.eq(targetId))
+                            .and(PROJECT_MEMBER.PROJECT_ID.eq(sourceMember.getProjectId()))
+                            .and(PROJECT_MEMBER.STATE.eq(CommonStatesConstants.ACTIVE))
+                            .and(PROJECT_MEMBER.REMOVED.isNull()))
+                    .orderBy(PROJECT_MEMBER.ID.asc())
+                    .limit(1)
+                    .fetchOne();
+            if (targetMember == null) {
+                Account project = getAccountById(sourceMember.getProjectId());
+                if (project != null) {
+                    Identity targetIdentity = new Identity(ProjectConstants.RANCHER_ID, targetId,
+                            targetAccount.getName(), null, null, null, true);
+                    createProjectMember(project, new Member(targetIdentity, sourceMember.getRole()));
+                    changed++;
+                }
+            } else if (getRolePriority(sourceMember.getRole()) < getRolePriority(targetMember.getRole())) {
+                targetMember.setRole(sourceMember.getRole());
+                targetMember.store();
+                changed++;
+            }
+        }
+        return changed;
+    }
+
+    @Override
+    public int removeDirectProjectMemberships(Account account) {
+        if (account == null) {
+            return 0;
+        }
+        List<ProjectMemberRecord> members = create()
+                .selectFrom(PROJECT_MEMBER)
+                .where(PROJECT_MEMBER.EXTERNAL_ID_TYPE.eq(ProjectConstants.RANCHER_ID)
+                        .and(PROJECT_MEMBER.EXTERNAL_ID.eq(String.valueOf(account.getId())))
+                        .and(PROJECT_MEMBER.STATE.eq(CommonStatesConstants.ACTIVE))
+                        .and(PROJECT_MEMBER.REMOVED.isNull()))
+                .orderBy(PROJECT_MEMBER.ID.asc())
+                .fetch();
+        for (ProjectMember member : members) {
+            deactivateThenRemove(member);
+        }
+        return members.size();
+    }
+
+    @Override
+    public int countActiveAdminAccounts() {
+        return create().fetchCount(
+                create().selectFrom(ACCOUNT)
+                        .where(ACCOUNT.KIND.eq(AccountConstants.ADMIN_KIND)
+                                .and(ACCOUNT.STATE.in(getActiveStates()))
+                                .and(ACCOUNT.REMOVED.isNull())));
+    }
+
+    @Override
     public Account createAccount(String name, String kind, String externalId, String externalType) {
         Account account = getAccountByExternalId(externalId, externalType);
         if (account != null){
@@ -265,9 +621,18 @@ public class AuthDaoImpl extends AbstractJooqDao implements AuthDao {
 
     @Override
     public Identity getIdentity(Long id, IdFormatter idFormatter) {
+        return getIdentity(id, idFormatter, true);
+    }
+
+    @Override
+    public Identity getIdentityForDisplay(Long id, IdFormatter idFormatter) {
+        return getIdentity(id, idFormatter, false);
+    }
+
+    private Identity getIdentity(Long id, IdFormatter idFormatter, boolean activeOnly) {
         Account account = getAccountById(id);
         if (account == null || account.getKind().equalsIgnoreCase(ProjectConstants.TYPE) ||
-                !accountDao.isActiveAccount(account)) {
+                (activeOnly && !accountDao.isActiveAccount(account))) {
             return null;
         }
         Credential credential = create()

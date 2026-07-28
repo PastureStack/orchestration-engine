@@ -13,10 +13,9 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Predicate;
 
-import org.apache.commons.collections.Predicate;
-
-public class SettingsFilter implements Predicate {
+public class SettingsFilter implements Predicate<Object> {
 
     Set<String> publicSettings;
     boolean all;
@@ -38,7 +37,7 @@ public class SettingsFilter implements Predicate {
 
     @Override
 
-    public boolean evaluate(Object object) {
+    public boolean test(Object object) {
         boolean hidden = false;
         Policy policy = (Policy) ApiContext.getContext().getPolicy();
         if (!policy.getRoles().contains("service")) {

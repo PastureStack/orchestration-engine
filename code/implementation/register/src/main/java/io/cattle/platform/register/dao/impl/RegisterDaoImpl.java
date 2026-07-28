@@ -14,7 +14,7 @@ import io.cattle.platform.util.type.CollectionUtils;
 
 import java.util.Map;
 
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 
 public class RegisterDaoImpl extends AbstractJooqDao implements RegisterDao {
 

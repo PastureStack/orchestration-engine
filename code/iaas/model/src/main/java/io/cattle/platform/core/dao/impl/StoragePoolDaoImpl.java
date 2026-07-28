@@ -34,12 +34,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import javax.inject.Inject;
-import javax.inject.Named;
+import jakarta.inject.Inject;
+import jakarta.inject.Named;
 
 import org.jooq.Record;
 import org.jooq.Record2;
-import org.jooq.RecordHandler;
 import org.jooq.Result;
 
 @Named
@@ -128,7 +127,7 @@ public class StoragePoolDaoImpl extends AbstractJooqDao implements StoragePoolDa
     @Override
     public Map<Long, Long> findStoragePoolHostsByDriver(Long accountId, Long storageDriverId) {
         final Map<Long, Long> result = new HashMap<>();
-        create().select(HOST.ID, STORAGE_POOL.ID)
+        for (Record2<Long, Long> record : create().select(HOST.ID, STORAGE_POOL.ID)
             .from(HOST)
             .leftOuterJoin(STORAGE_POOL_HOST_MAP)
                 .on(STORAGE_POOL_HOST_MAP.HOST_ID.eq(HOST.ID))
@@ -138,17 +137,13 @@ public class StoragePoolDaoImpl extends AbstractJooqDao implements StoragePoolDa
             .where(STORAGE_POOL.REMOVED.isNull()
                 .and(STORAGE_POOL_HOST_MAP.REMOVED.isNull())
                 .and(HOST.ACCOUNT_ID.eq(accountId))
-                .and(HOST.REMOVED.isNull()))
-            .fetchInto(new RecordHandler<Record2<Long, Long>>() {
-                @Override
-                public void next(Record2<Long, Long> record) {
-                    Long hostId = record.getValue(HOST.ID);
-                    Long storagePoolId = record.getValue(STORAGE_POOL.ID);
-                    if (!result.containsKey(hostId) || storagePoolId != null) {
-                        result.put(hostId, storagePoolId);
-                    }
-                }
-            });
+                .and(HOST.REMOVED.isNull()))) {
+            Long hostId = record.getValue(HOST.ID);
+            Long storagePoolId = record.getValue(STORAGE_POOL.ID);
+            if (!result.containsKey(hostId) || storagePoolId != null) {
+                result.put(hostId, storagePoolId);
+            }
+        }
         return result;
     }
 
@@ -205,23 +200,19 @@ public class StoragePoolDaoImpl extends AbstractJooqDao implements StoragePoolDa
     public Map<Long, List<Object>> findHostsForPools(List<Long> ids, final IdFormatter idFormatter) {
         final Map<Long, List<Object>> result = new HashMap<>();
 
-        create().select(STORAGE_POOL_HOST_MAP.STORAGE_POOL_ID, STORAGE_POOL_HOST_MAP.HOST_ID)
+        for (Record2<Long, Long> record : create().select(STORAGE_POOL_HOST_MAP.STORAGE_POOL_ID, STORAGE_POOL_HOST_MAP.HOST_ID)
             .from(STORAGE_POOL_HOST_MAP)
             .where(STORAGE_POOL_HOST_MAP.REMOVED.isNull()
-                    .and(STORAGE_POOL_HOST_MAP.STORAGE_POOL_ID.in(ids)))
-            .fetchInto(new RecordHandler<Record2<Long, Long>>() {
-                @Override
-                public void next(Record2<Long, Long> record) {
-                    Long hostId = record.getValue(STORAGE_POOL_HOST_MAP.HOST_ID);
-                    Long storagePoolId = record.getValue(STORAGE_POOL_HOST_MAP.STORAGE_POOL_ID);
-                    List<Object> pools = result.get(storagePoolId);
-                    if (pools == null) {
-                        pools = new ArrayList<>();
-                        result.put(storagePoolId, pools);
-                    }
-                    pools.add(idFormatter.formatId(HostConstants.TYPE, hostId));
-                }
-            });
+                    .and(STORAGE_POOL_HOST_MAP.STORAGE_POOL_ID.in(ids)))) {
+            Long hostId = record.getValue(STORAGE_POOL_HOST_MAP.HOST_ID);
+            Long storagePoolId = record.getValue(STORAGE_POOL_HOST_MAP.STORAGE_POOL_ID);
+            List<Object> pools = result.get(storagePoolId);
+            if (pools == null) {
+                pools = new ArrayList<>();
+                result.put(storagePoolId, pools);
+            }
+            pools.add(idFormatter.formatId(HostConstants.TYPE, hostId));
+        }
         return result;
     }
 
@@ -229,26 +220,22 @@ public class StoragePoolDaoImpl extends AbstractJooqDao implements StoragePoolDa
     public Map<Long, List<Object>> findVolumesForPools(List<Long> ids, final IdFormatter idFormatter) {
         final Map<Long, List<Object>> result = new HashMap<>();
 
-        create().select(VOLUME_STORAGE_POOL_MAP.STORAGE_POOL_ID, VOLUME_STORAGE_POOL_MAP.VOLUME_ID)
+        for (Record2<Long, Long> record : create().select(VOLUME_STORAGE_POOL_MAP.STORAGE_POOL_ID, VOLUME_STORAGE_POOL_MAP.VOLUME_ID)
             .from(VOLUME_STORAGE_POOL_MAP)
             .join(STORAGE_POOL)
                 .on(STORAGE_POOL.ID.eq(VOLUME_STORAGE_POOL_MAP.STORAGE_POOL_ID))
             .where(VOLUME_STORAGE_POOL_MAP.REMOVED.isNull()
                     .and(STORAGE_POOL.KIND.ne("docker"))
-                    .and(VOLUME_STORAGE_POOL_MAP.STORAGE_POOL_ID.in(ids)))
-            .fetchInto(new RecordHandler<Record2<Long, Long>>() {
-                @Override
-                public void next(Record2<Long, Long> record) {
-                    Long volumeId = record.getValue(VOLUME_STORAGE_POOL_MAP.VOLUME_ID);
-                    Long storagePoolId = record.getValue(VOLUME_STORAGE_POOL_MAP.STORAGE_POOL_ID);
-                    List<Object> pools = result.get(storagePoolId);
-                    if (pools == null) {
-                        pools = new ArrayList<>();
-                        result.put(storagePoolId, pools);
-                    }
-                    pools.add(idFormatter.formatId(VolumeConstants.TYPE, volumeId));
-                }
-            });
+                    .and(VOLUME_STORAGE_POOL_MAP.STORAGE_POOL_ID.in(ids)))) {
+            Long volumeId = record.getValue(VOLUME_STORAGE_POOL_MAP.VOLUME_ID);
+            Long storagePoolId = record.getValue(VOLUME_STORAGE_POOL_MAP.STORAGE_POOL_ID);
+            List<Object> pools = result.get(storagePoolId);
+            if (pools == null) {
+                pools = new ArrayList<>();
+                result.put(storagePoolId, pools);
+            }
+            pools.add(idFormatter.formatId(VolumeConstants.TYPE, volumeId));
+        }
         return result;
     }
 

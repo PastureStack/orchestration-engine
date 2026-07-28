@@ -16,7 +16,7 @@ import io.github.ibuildthecloud.gdapi.util.ResponseCodes;
 
 import java.util.Date;
 
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 
 import org.apache.commons.lang3.StringUtils;
 
@@ -88,5 +88,12 @@ public class AuthTokenDaoImpl extends AbstractJooqDao implements AuthTokenDao{
                         .and(AUTH_TOKEN.EXPIRES.greaterThan(new Date()))
                 .execute();
 
+    }
+
+    @Override
+    public int deleteTokensForAccount(long authenticatedAsAccountId) {
+        return create().delete(AUTH_TOKEN)
+                .where(AUTH_TOKEN.AUTHENTICATED_AS_ACCOUNT_ID.eq(authenticatedAsAccountId))
+                .execute();
     }
 }

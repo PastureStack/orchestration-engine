@@ -6,7 +6,7 @@ import io.github.ibuildthecloud.gdapi.request.handler.ApiRequestHandler;
 import java.io.IOException;
 import java.util.List;
 
-import javax.servlet.ServletException;
+import jakarta.servlet.ServletException;
 
 public class DefaultReadWriteApiDelegate implements ReadWriteApiDelegate {
 

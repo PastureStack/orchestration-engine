@@ -1,6 +1,7 @@
 package io.cattle.platform.logback;
 
 import io.cattle.platform.archaius.util.ArchaiusUtil;
+import io.cattle.platform.archaius.util.ConfigProperty;
 
 import java.net.URL;
 
@@ -11,11 +12,9 @@ import ch.qos.logback.classic.LoggerContext;
 import ch.qos.logback.classic.joran.JoranConfigurator;
 import ch.qos.logback.core.joran.spi.JoranException;
 
-import com.netflix.config.DynamicStringProperty;
-
 public class LogbackStartup implements Runnable {
 
-    private static final DynamicStringProperty LOGBACK_CONFIG = ArchaiusUtil.getString("logback.config");
+    private static final ConfigProperty<String> LOGBACK_CONFIG = ArchaiusUtil.getStringProperty("logback.config");
 
     final static Logger log = LoggerFactory.getLogger(LogbackStartup.class);
 

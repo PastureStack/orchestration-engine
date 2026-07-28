@@ -8,7 +8,7 @@ import io.github.ibuildthecloud.gdapi.request.handler.AbstractApiRequestHandler;
 
 import java.io.IOException;
 
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 
 public class AuditLogsRequestHandler extends AbstractApiRequestHandler {
 

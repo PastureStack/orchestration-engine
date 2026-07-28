@@ -3,6 +3,7 @@ package io.cattle.platform.sample.data;
 import static io.cattle.platform.core.model.tables.DataTable.*;
 
 import io.cattle.platform.archaius.util.ArchaiusUtil;
+import io.cattle.platform.archaius.util.ConfigProperty;
 import io.cattle.platform.core.dao.AccountDao;
 import io.cattle.platform.core.model.Account;
 import io.cattle.platform.core.model.Data;
@@ -22,18 +23,17 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.netflix.config.DynamicBooleanProperty;
 
 public abstract class AbstractSampleData implements InitializationTask {
 
     private static final Logger log = LoggerFactory.getLogger(SampleDataStartupV3.class);
 
-    private static final DynamicBooleanProperty RUN = ArchaiusUtil.getBoolean("sample.setup");
+    private static final ConfigProperty<Boolean> RUN = ArchaiusUtil.getBooleanProperty("sample.setup");
 
     protected ObjectManager objectManager;
     protected ObjectProcessManager processManager;

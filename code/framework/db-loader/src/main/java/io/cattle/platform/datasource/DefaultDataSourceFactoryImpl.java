@@ -4,7 +4,7 @@ import io.cattle.platform.pool.PoolConfig;
 
 import javax.sql.DataSource;
 
-import org.apache.commons.dbcp.BasicDataSource;
+import org.apache.commons.dbcp2.BasicDataSource;
 
 public class DefaultDataSourceFactoryImpl implements DataSourceFactory {
 
@@ -14,6 +14,11 @@ public class DefaultDataSourceFactoryImpl implements DataSourceFactory {
         String alias = PoolConfig.getProperty("db." + name + ".alias");
 
         if (server == null && alias != null) {
+            server = PoolConfig.getProperty("db." + alias + ".database");
+        }
+
+        if (server == null && alias == null && ("liquibase".equals(name) || "config".equals(name))) {
+            alias = "cattle";
             server = PoolConfig.getProperty("db." + alias + ".database");
         }
 

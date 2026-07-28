@@ -14,9 +14,10 @@ import io.cattle.platform.object.util.DataAccessor;
 import io.cattle.platform.process.common.lock.ResourceChangeLock;
 
 import java.lang.reflect.InvocationTargetException;
+import java.util.HashMap;
 import java.util.Map;
 
-import org.apache.commons.beanutils.BeanUtils;
+import org.apache.commons.beanutils2.BeanUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.jooq.exception.DataChangedException;
 import org.slf4j.Logger;
@@ -128,8 +129,8 @@ public class GenericResourceProcessState extends AbstractStatesBasedProcessState
     }
 
     @Override
-    protected Map<String, Object> convertMap(Map<Object, Object> data) {
-        return objectManager.convertToPropertiesFor(resource, data);
+    protected Map<String, Object> convertMap(Map<?, ?> data) {
+        return objectManager.convertToPropertiesFor(resource, new HashMap<Object, Object>(data));
     }
 
     @Override

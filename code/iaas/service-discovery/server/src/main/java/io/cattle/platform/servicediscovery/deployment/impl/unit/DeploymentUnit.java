@@ -43,6 +43,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.apache.commons.lang3.Strings;
 import org.apache.commons.lang3.StringUtils;
 
 public class DeploymentUnit {
@@ -128,7 +129,7 @@ public class DeploymentUnit {
         this(context, io.cattle.platform.util.resource.UUID.randomUUID().toString(), service, stack, null);
         setLabels(labels);
 
-        if (StringUtils.equalsIgnoreCase(ServiceConstants.SERVICE_INDEX_DU_STRATEGY,
+        if (Strings.CI.equals(ServiceConstants.SERVICE_INDEX_DU_STRATEGY,
                 DataAccessor.fieldString(service, ServiceConstants.FIELD_SERVICE_INDEX_STRATEGY))) {
             Map<String, Object> params = new HashMap<>();
             // create deploymentunit
@@ -509,22 +510,27 @@ public class DeploymentUnit {
         return context.resourceDao.createAndSchedule(Volume.class, params);
     }
 
-    @SuppressWarnings("unchecked")
     protected List<String> getNamedVolumes(String launchConfigName, Service service) {
         Object dataVolumesObj = ServiceDiscoveryUtil.getLaunchConfigObject(service, launchConfigName,
                 InstanceConstants.FIELD_DATA_VOLUMES);
+        return namedVolumes(dataVolumesObj);
+    }
+
+    static List<String> namedVolumes(Object dataVolumesObj) {
         List<String> namedVolumes = new ArrayList<>();
-        if (dataVolumesObj != null) {
-            for (String volume : (List<String>) dataVolumesObj) {
-                if (isNamedVolume(volume)) {
-                    namedVolumes.add(volume);
-                }
+        for (String volume : DeploymentUnitTypeUtils.stringList(dataVolumesObj)) {
+            if (isNamedVolumeName(volume)) {
+                namedVolumes.add(volume);
             }
         }
         return namedVolumes;
     }
 
     protected boolean isNamedVolume(String volumeName) {
+        return isNamedVolumeName(volumeName);
+    }
+
+    static boolean isNamedVolumeName(String volumeName) {
         String[] splitted = volumeName.split(":");
         if (splitted.length < 2) {
             return false;
@@ -535,28 +541,22 @@ public class DeploymentUnit {
         return true;
     }
 
-    @SuppressWarnings("unchecked")
     protected List<Integer> getSidekickContainersId(Service service, String launchConfigName, SidekickType sidekickType) {
         List<Integer> sidekickInstanceIds = new ArrayList<>();
         Object sidekickInstances = ServiceDiscoveryUtil.getLaunchConfigObject(service, launchConfigName,
                 sidekickType.launchConfigFieldName);
         if (sidekickInstances != null) {
             if (sidekickType.isList) {
-                sidekickInstanceIds.addAll((List<Integer>) sidekickInstances);
+                sidekickInstanceIds.addAll(DeploymentUnitTypeUtils.integerList(sidekickInstances));
             } else {
-                sidekickInstanceIds.add((Integer) sidekickInstances);
+                sidekickInstanceIds.add(Integer.class.cast(sidekickInstances));
             }
         }
 
         Object sidekicksLaunchConfigObj = ServiceDiscoveryUtil.getLaunchConfigObject(service, launchConfigName,
                 sidekickType.launchConfigType);
         if (sidekicksLaunchConfigObj != null) {
-            List<String> sidekicksLaunchConfigNames = new ArrayList<>();
-            if (sidekickType.isList) {
-                sidekicksLaunchConfigNames.addAll((List<String>) sidekicksLaunchConfigObj);
-            } else {
-                sidekicksLaunchConfigNames.add(sidekicksLaunchConfigObj.toString());
-            }
+            List<String> sidekicksLaunchConfigNames = sidekickConfigNames(sidekicksLaunchConfigObj, sidekickType);
             for (String sidekickLaunchConfigName : sidekicksLaunchConfigNames) {
                 // check if the service is present in the service map (it can be referenced, but removed already)
                 if (sidekickLaunchConfigName.toString().equalsIgnoreCase(service.getName())) {
@@ -774,19 +774,12 @@ public class DeploymentUnit {
 
     }
 
-    @SuppressWarnings("unchecked")
     public List<String> getSidekickRefs(Service service, String launchConfigName) {
         List<String> configNames = new ArrayList<>();
         for (DeploymentUnit.SidekickType sidekickType : DeploymentUnit.SidekickType.supportedTypes) {
             Object sidekicksLaunchConfigObj = ServiceDiscoveryUtil.getLaunchConfigObject(service, launchConfigName,
                     sidekickType.launchConfigType);
-            if (sidekicksLaunchConfigObj != null) {
-                if (sidekickType.isList) {
-                    configNames.addAll((List<String>) sidekicksLaunchConfigObj);
-                } else {
-                    configNames.add(sidekicksLaunchConfigObj.toString());
-                }
-            }
+            configNames.addAll(sidekickConfigNames(sidekicksLaunchConfigObj, sidekickType));
         }
 
         List<String> toReturn = new ArrayList<>();
@@ -799,6 +792,20 @@ public class DeploymentUnit {
         }
 
         return toReturn;
+    }
+
+    static List<String> sidekickConfigNames(Object sidekicksLaunchConfigObj, SidekickType sidekickType) {
+        List<String> configNames = new ArrayList<>();
+        if (sidekicksLaunchConfigObj == null) {
+            return configNames;
+        }
+
+        if (sidekickType.isList) {
+            configNames.addAll(DeploymentUnitTypeUtils.stringList(sidekicksLaunchConfigObj));
+        } else {
+            configNames.add(sidekicksLaunchConfigObj.toString());
+        }
+        return configNames;
     }
 
 }

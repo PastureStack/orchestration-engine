@@ -7,6 +7,9 @@ import io.github.ibuildthecloud.gdapi.annotation.Field;
 import io.github.ibuildthecloud.gdapi.annotation.Type;
 
 import java.util.List;
+import java.util.Map;
+
+import io.github.ibuildthecloud.gdapi.model.FieldType;
 
 @Type(name = AbstractTokenUtil.TOKEN)
 public class Token {
@@ -18,7 +21,25 @@ public class Token {
     private  Boolean security = SecurityConstants.SECURITY.get();
     private  String userType;
     private  String authProvider = SecurityConstants.AUTH_PROVIDER.get();
+    private String loginMethod;
+    private Boolean localRecoveryEnabled;
     private String originalLogin;
+    private Boolean mfaRequired;
+    private Boolean mfaEnrollmentRequired;
+    private String mfaChallengeId;
+    private List<String> mfaMethods;
+    private String mfaMethod;
+    private String mfaCode;
+    private String webAuthnResponse;
+    private String recoveryCode;
+    private String emailCode;
+    private String providerSwitchCode;
+    private Map<String, Object> webAuthnOptions;
+    private String totpProvisioningUri;
+    private String totpSecret;
+    private List<String> recoveryCodes;
+    private String recoveryEmailMasked;
+    private Boolean emailCodeSent;
 
     private  String accountId;
     private  Identity userIdentity;
@@ -106,6 +127,28 @@ public class Token {
         return authProvider;
     }
 
+    public void setAuthProvider(String authProvider) {
+        this.authProvider = authProvider;
+    }
+
+    @Field(nullable = true)
+    public String getLoginMethod() {
+        return loginMethod;
+    }
+
+    public void setLoginMethod(String loginMethod) {
+        this.loginMethod = loginMethod;
+    }
+
+    @Field(nullable = true)
+    public Boolean getLocalRecoveryEnabled() {
+        return localRecoveryEnabled;
+    }
+
+    public void setLocalRecoveryEnabled(Boolean localRecoveryEnabled) {
+        this.localRecoveryEnabled = localRecoveryEnabled;
+    }
+
     public void setJwt(String jwt) {
         this.jwt = jwt;
     }
@@ -133,5 +176,149 @@ public class Token {
 
     public void setOriginalLogin(String originalLogin) {
         this.originalLogin = originalLogin;
+    }
+
+    @Field(nullable = true)
+    public Boolean getMfaRequired() {
+        return mfaRequired;
+    }
+
+    public void setMfaRequired(Boolean mfaRequired) {
+        this.mfaRequired = mfaRequired;
+    }
+
+    @Field(nullable = true)
+    public Boolean getMfaEnrollmentRequired() {
+        return mfaEnrollmentRequired;
+    }
+
+    public void setMfaEnrollmentRequired(Boolean mfaEnrollmentRequired) {
+        this.mfaEnrollmentRequired = mfaEnrollmentRequired;
+    }
+
+    @Field(nullable = true)
+    public String getMfaChallengeId() {
+        return mfaChallengeId;
+    }
+
+    public void setMfaChallengeId(String mfaChallengeId) {
+        this.mfaChallengeId = mfaChallengeId;
+    }
+
+    @Field(nullable = true)
+    public List<String> getMfaMethods() {
+        return mfaMethods;
+    }
+
+    public void setMfaMethods(List<String> mfaMethods) {
+        this.mfaMethods = mfaMethods;
+    }
+
+    @Field(create = true, nullable = true)
+    public String getMfaMethod() {
+        return mfaMethod;
+    }
+
+    public void setMfaMethod(String mfaMethod) {
+        this.mfaMethod = mfaMethod;
+    }
+
+    @Field(create = true, nullable = true, type = FieldType.PASSWORD)
+    public String getMfaCode() {
+        return mfaCode;
+    }
+
+    public void setMfaCode(String mfaCode) {
+        this.mfaCode = mfaCode;
+    }
+
+    @Field(create = true, nullable = true, type = FieldType.PASSWORD)
+    public String getWebAuthnResponse() {
+        return webAuthnResponse;
+    }
+
+    public void setWebAuthnResponse(String webAuthnResponse) {
+        this.webAuthnResponse = webAuthnResponse;
+    }
+
+    @Field(create = true, nullable = true, type = FieldType.PASSWORD)
+    public String getRecoveryCode() {
+        return recoveryCode;
+    }
+
+    public void setRecoveryCode(String recoveryCode) {
+        this.recoveryCode = recoveryCode;
+    }
+
+    @Field(create = true, nullable = true, type = FieldType.PASSWORD)
+    public String getEmailCode() {
+        return emailCode;
+    }
+
+    public void setEmailCode(String emailCode) {
+        this.emailCode = emailCode;
+    }
+
+    @Field(create = true, nullable = true, type = FieldType.PASSWORD)
+    public String getProviderSwitchCode() {
+        return providerSwitchCode;
+    }
+
+    public void setProviderSwitchCode(String providerSwitchCode) {
+        this.providerSwitchCode = providerSwitchCode;
+    }
+
+    @Field(nullable = true)
+    public Map<String, Object> getWebAuthnOptions() {
+        return webAuthnOptions;
+    }
+
+    public void setWebAuthnOptions(Map<String, Object> webAuthnOptions) {
+        this.webAuthnOptions = webAuthnOptions;
+    }
+
+    @Field(nullable = true)
+    public String getTotpProvisioningUri() {
+        return totpProvisioningUri;
+    }
+
+    public void setTotpProvisioningUri(String totpProvisioningUri) {
+        this.totpProvisioningUri = totpProvisioningUri;
+    }
+
+    @Field(nullable = true, type = FieldType.PASSWORD)
+    public String getTotpSecret() {
+        return totpSecret;
+    }
+
+    public void setTotpSecret(String totpSecret) {
+        this.totpSecret = totpSecret;
+    }
+
+    @Field(nullable = true)
+    public List<String> getRecoveryCodes() {
+        return recoveryCodes;
+    }
+
+    public void setRecoveryCodes(List<String> recoveryCodes) {
+        this.recoveryCodes = recoveryCodes;
+    }
+
+    @Field(nullable = true)
+    public String getRecoveryEmailMasked() {
+        return recoveryEmailMasked;
+    }
+
+    public void setRecoveryEmailMasked(String recoveryEmailMasked) {
+        this.recoveryEmailMasked = recoveryEmailMasked;
+    }
+
+    @Field(nullable = true)
+    public Boolean getEmailCodeSent() {
+        return emailCodeSent;
+    }
+
+    public void setEmailCodeSent(Boolean emailCodeSent) {
+        this.emailCodeSent = emailCodeSent;
     }
 }

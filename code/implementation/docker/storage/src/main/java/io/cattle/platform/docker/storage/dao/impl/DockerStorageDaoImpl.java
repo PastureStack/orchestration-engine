@@ -15,7 +15,7 @@ import io.cattle.platform.storage.service.StorageService;
 
 import java.util.List;
 
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 
 public class DockerStorageDaoImpl implements DockerStorageDao {
 

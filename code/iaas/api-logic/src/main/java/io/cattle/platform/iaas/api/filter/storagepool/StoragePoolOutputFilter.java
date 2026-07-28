@@ -14,7 +14,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 
 public class StoragePoolOutputFilter extends CachedOutputFilter<Map<Long, Map<String, Object>>> {
 
@@ -72,6 +72,11 @@ public class StoragePoolOutputFilter extends CachedOutputFilter<Map<Long, Map<St
         }
 
         return allFields;
+    }
+
+    @Override
+    protected Map<Long, Map<String, Object>> castCached(Object cached) {
+        return CollectionUtils.castMap(cached);
     }
 
     @Override

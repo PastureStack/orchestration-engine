@@ -16,8 +16,8 @@ import io.cattle.platform.process.common.handler.AbstractObjectProcessLogic;
 
 import java.util.List;
 
-import javax.inject.Inject;
-import javax.inject.Named;
+import jakarta.inject.Inject;
+import jakarta.inject.Named;
 
 @Named
 public class PSKProcessHandler extends AbstractObjectProcessLogic implements ProcessPreListener {

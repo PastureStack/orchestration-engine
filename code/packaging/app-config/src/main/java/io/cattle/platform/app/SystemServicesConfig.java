@@ -148,6 +148,7 @@ import io.github.ibuildthecloud.gdapi.json.JacksonMapper;
 import io.github.ibuildthecloud.gdapi.model.Transformer;
 import io.github.ibuildthecloud.gdapi.util.TransformationService;
 
+import java.net.URL;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -243,11 +244,16 @@ public class SystemServicesConfig {
         return EMUtils.add(em, Transformer.class, new Aes256Encrypter(), "AES256");
     }
 
-    @SuppressWarnings("unchecked")
     @Bean
-    TransformationService transformationService(ExtensionManagerImpl em) {
+    TransformationService transformationService(ExtensionManagerImpl em, Sha256Hasher sha256Hasher, Aes256Encrypter aes256Encrypter) {
         TransformationServiceImpl ts = new TransformationServiceImpl();
-        ts.setTransformers((Map<String, Transformer>)(Map<?, ?>)em.map("transformer"));
+        Map<String, Transformer> transformers = new HashMap<String, Transformer>();
+        for (Map.Entry<String, Object> entry : em.map("transformer").entrySet()) {
+            transformers.put(entry.getKey(), Transformer.class.cast(entry.getValue()));
+        }
+        transformers.put(sha256Hasher.getName(), sha256Hasher);
+        transformers.put(aes256Encrypter.getName(), aes256Encrypter);
+        ts.setTransformers(transformers);
         return ts;
     }
 
@@ -402,9 +408,8 @@ public class SystemServicesConfig {
         return factory;
     }
 
-    @SuppressWarnings({ "rawtypes", "unchecked" })
     @Bean
-    JmxPublisherFactory jmxPublisherFactory(@Qualifier("JmxTransConfig") List urls) {
+    JmxPublisherFactory jmxPublisherFactory(@Qualifier("JmxTransConfig") List<URL> urls) {
        JmxPublisherFactory factory = new JmxPublisherFactory();
        factory.setResources(urls);
        return factory;
@@ -883,13 +888,13 @@ public class SystemServicesConfig {
     SecretsService SecretsService() {
         return new SecretsServiceImpl();
     }
-    
-    @Bean 
+
+    @Bean
     RegionMonitor RegionMonitor() {
         return new RegionMonitor();
     }
-    
-    @Bean 
+
+    @Bean
     IpsecHealthcheckEnabledListener HealthcheckMonitor() {
             return new IpsecHealthcheckEnabledListener();
     }

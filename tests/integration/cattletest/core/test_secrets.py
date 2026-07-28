@@ -241,9 +241,9 @@ def test_service_secrets_fields(context, secret_context):
     assert docker_yml["version"] == "2"
     svc = docker_yml['services'][service.name]
     assert len(docker_yml["secrets"]) == 3
-    assert secret1.name in docker_yml["secrets"].keys()
-    assert secret2.name in docker_yml["secrets"].keys()
-    assert secret3.name in docker_yml["secrets"].keys()
+    assert secret1.name in list(docker_yml["secrets"].keys())
+    assert secret2.name in list(docker_yml["secrets"].keys())
+    assert secret3.name in list(docker_yml["secrets"].keys())
     assert len(svc['secrets']) == 3
     assert svc['secrets'][0] == secret1.name
     assert svc['secrets'][1]['uid'] == '0'

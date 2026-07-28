@@ -21,12 +21,10 @@ import io.github.ibuildthecloud.gdapi.validation.ValidationErrorCodes;
 import java.util.ArrayList;
 import java.util.List;
 
-import javax.inject.Inject;
-import javax.inject.Named;
+import jakarta.inject.Inject;
+import jakarta.inject.Named;
 
-import org.apache.commons.collections.CollectionUtils;
-import org.apache.commons.collections.TransformerUtils;
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 
 @Named
 public class LoadBalancerServiceCertificateRemoveFilter extends AbstractDefaultResourceManagerFilter {
@@ -51,7 +49,6 @@ public class LoadBalancerServiceCertificateRemoveFilter extends AbstractDefaultR
         return super.delete(type, id, request, next);
     }
 
-    @SuppressWarnings("unchecked")
     protected void validateIfCertificateInUse(String certificateId) {
         Certificate cert = objectManager.loadResource(Certificate.class, certificateId);
         List<String> serviceNames = new ArrayList<>();
@@ -59,9 +56,10 @@ public class LoadBalancerServiceCertificateRemoveFilter extends AbstractDefaultR
                 SERVICE.REMOVED, null, SERVICE.KIND, ServiceConstants.KIND_LOAD_BALANCER_SERVICE);
         for (Service lbService : lbServices) {
             if (sdService.isV1LB(lbService)) {
-                List<Long> certIds = (List<Long>) CollectionUtils.collect(
-                        svcDao.getLoadBalancerServiceCertificates(lbService),
-                        TransformerUtils.invokerTransformer("getId"));
+                List<Long> certIds = new ArrayList<>();
+                for (Certificate lbCert : svcDao.getLoadBalancerServiceCertificates(lbService)) {
+                    certIds.add(lbCert.getId());
+                }
                 Certificate defaultCert = svcDao.getLoadBalancerServiceDefaultCertificate(lbService);
                 if (defaultCert != null) {
                     certIds.add(defaultCert.getId());

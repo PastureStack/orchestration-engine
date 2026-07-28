@@ -1,6 +1,7 @@
 package io.cattle.platform.spring.web;
 
 import io.cattle.platform.archaius.util.ArchaiusUtil;
+import io.cattle.platform.archaius.util.ConfigListProperty;
 import io.cattle.platform.util.type.InitializationTask;
 import io.cattle.platform.util.type.NamedUtils;
 
@@ -12,19 +13,17 @@ import java.util.List;
 import java.util.Map;
 import java.util.TreeSet;
 
-import javax.inject.Inject;
-import javax.servlet.ServletContextEvent;
-import javax.servlet.ServletContextListener;
+import jakarta.inject.Inject;
+import jakarta.servlet.ServletContextEvent;
+import jakarta.servlet.ServletContextListener;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.web.context.support.WebApplicationContextUtils;
 
-import com.netflix.config.DynamicStringListProperty;
-
 public class StartupListener implements ServletContextListener {
 
-    private static DynamicStringListProperty START_ORDER = ArchaiusUtil.getList("startup.priority");
+    private static ConfigListProperty<String> START_ORDER = ArchaiusUtil.getStringListProperty("startup.priority");
     private static final Logger log = LoggerFactory.getLogger("ConsoleStatus");
 
     @Inject

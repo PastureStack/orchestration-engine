@@ -15,8 +15,9 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 
+import org.apache.commons.lang3.Strings;
 import org.apache.commons.lang3.StringUtils;
 
 public class LabelsServiceImpl implements LabelsService {
@@ -40,7 +41,7 @@ public class LabelsServiceImpl implements LabelsService {
         // DB query ignores leading/trailing whitesapce, so we need to check that keys and values are truly equal
         Label label = null;
         for (Label l : labels) {
-            if (StringUtils.equals(StringUtils.trim(key), l.getKey()) && StringUtils.equals(StringUtils.trim(value), l.getValue())) {
+            if (Strings.CS.equals(StringUtils.trim(key), l.getKey()) && Strings.CS.equals(StringUtils.trim(value), l.getValue())) {
                 label = l;
                 break;
             }

@@ -13,15 +13,16 @@ import java.util.Set;
 
 public class DefaultPolicy implements Policy {
 
+    private static final String WHITELIST_ATTRIBUTE = "whitelist";
+
     long accountId;
     long authenticatedAsAccountId;
     String name;
     Set<Identity> identities;
     PolicyOptions options;
 
-    @SuppressWarnings("unchecked")
     public DefaultPolicy() {
-        this(Policy.NO_ACCOUNT, Policy.NO_ACCOUNT, null, Collections.EMPTY_SET, new NoPolicyOptions());
+        this(Policy.NO_ACCOUNT, Policy.NO_ACCOUNT, null, Collections.<Identity>emptySet(), new NoPolicyOptions());
     }
 
     public DefaultPolicy(long accountId, long authenticatedAsAccountId, String name, Set<Identity> identities, PolicyOptions options) {
@@ -82,20 +83,32 @@ public class DefaultPolicy implements Policy {
     @Override
     public <T> void grantObjectAccess(T obj) {
         ApiRequest apiRequest = ApiContext.getContext().getApiRequest();
-        @SuppressWarnings("unchecked")
-        Set<Object> whitelist = (Set<Object>) (apiRequest.getAttribute("whitelist"));
+        Set<Object> whitelist = whitelist(apiRequest);
         if (whitelist == null) {
-            whitelist = new HashSet<>();
+            whitelist = new HashSet<Object>();
         }
         whitelist.add(obj);
-        apiRequest.setAttribute("whitelist", whitelist);
+        apiRequest.setAttribute(WHITELIST_ATTRIBUTE, whitelist);
     }
 
     protected <T> boolean hasGrantedAccess(T obj) {
         ApiRequest request = ApiContext.getContext().getApiRequest();
-        @SuppressWarnings("unchecked")
-        Set<Object> whitelist = (Set<Object>) request.getAttribute("whitelist");
+        Set<Object> whitelist = whitelist(request);
         return (null != whitelist && whitelist.contains(obj));
+    }
+
+    private Set<Object> whitelist(ApiRequest request) {
+        Object value = request.getAttribute(WHITELIST_ATTRIBUTE);
+        if (value == null) {
+            return null;
+        }
+        if (!(value instanceof Set<?>)) {
+            throw new ClassCastException(value.getClass().getName() + " cannot be cast to java.util.Set");
+        }
+
+        Set<Object> result = new HashSet<Object>();
+        result.addAll((Set<?>) value);
+        return result;
     }
 
     @Override

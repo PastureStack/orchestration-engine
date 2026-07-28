@@ -13,9 +13,9 @@ import io.cattle.platform.json.JsonMapper;
 import io.cattle.platform.object.util.DataAccessor;
 import io.cattle.platform.process.common.handler.AbstractObjectProcessLogic;
 
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 
-import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.Strings;
 
 public class DockerInstancePostCreate extends AbstractObjectProcessLogic implements ProcessPostListener {
 
@@ -48,7 +48,7 @@ public class DockerInstancePostCreate extends AbstractObjectProcessLogic impleme
 
         String imageUuid = DataAccessor.fieldString(instance, InstanceConstants.FIELD_IMAGE_UUID);
         if (imageUuid != null) {
-            String tag = StringUtils.removeStart(imageUuid, "docker:");
+            String tag = Strings.CS.removeStart(imageUuid, "docker:");
             build.setTag(tag);
         }
 

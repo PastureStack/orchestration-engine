@@ -14,7 +14,6 @@ import java.util.List;
 import java.util.Map;
 
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 
 public class SchemaFactoryImplTest {
@@ -117,9 +116,13 @@ public class SchemaFactoryImplTest {
     }
 
     @Test
-    @Ignore
     public void testDefaultValue() {
-        fail();
+        Schema schema = parseSchema(TestType.class);
+
+        Map<String, Field> fields = schema.getResourceFields();
+
+        assertEquals("DEFAULT", fields.get("defaultValue").getDefault());
+        assertNull(fields.get("defaultSettings").getDefault());
     }
 
     @Test
@@ -244,10 +247,10 @@ public class SchemaFactoryImplTest {
         assertNull(fields.get("defaultSettings").getMin());
         assertNull(fields.get("defaultSettings").getMax());
 
-        assertEquals(new Long(142), fields.get("lengths").getMinLength());
-        assertEquals(new Long(242), fields.get("lengths").getMaxLength());
-        assertEquals(new Long(342), fields.get("lengths").getMin());
-        assertEquals(new Long(442), fields.get("lengths").getMax());
+        assertEquals(Long.valueOf(142), fields.get("lengths").getMinLength());
+        assertEquals(Long.valueOf(242), fields.get("lengths").getMaxLength());
+        assertEquals(Long.valueOf(342), fields.get("lengths").getMin());
+        assertEquals(Long.valueOf(442), fields.get("lengths").getMax());
     }
 
     @Test

@@ -31,10 +31,10 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 
-import org.apache.commons.lang3.ObjectUtils;
 import org.jooq.Condition;
 import org.jooq.Configuration;
 import org.jooq.DSLContext;
@@ -89,7 +89,13 @@ public abstract class AbstractJooqResourceManager extends AbstractObjectResource
         addConditions(schemaFactory, query, type, table, criteria);
         addLimit(schemaFactory, type, pagination, query);
 
-        List<?> result = mapper == null ? query.fetch() : query.fetchInto(mapper);
+        List<?> result;
+        if (mapper == null) {
+            result = query.fetch();
+        } else {
+            query.forEach(mapper);
+            result = mapper;
+        }
 
         addCapabilities(result, schemaFactory.getSchema(clz));
 
@@ -121,7 +127,7 @@ public abstract class AbstractJooqResourceManager extends AbstractObjectResource
                 continue;
             }
 
-            String capability = ObjectUtils.toString(attributes.get(ObjectMetaDataManager.CAPABILITY), null);
+            String capability = Objects.toString(attributes.get(ObjectMetaDataManager.CAPABILITY), null);
             if (ObjectMetaDataManager.MODIFY_INFRA_CAPABILITY.equals(capability)) {
                 addCapability = true;
                 break;
@@ -268,26 +274,26 @@ public abstract class AbstractJooqResourceManager extends AbstractObjectResource
          */
         String mappingType = getObjectManager().getSchemaFactory().getSchemaName(rel.getMappingType());
 
-        TableField<?, Object> fieldFrom = JooqUtils.getTableField(getMetaDataManager(), fromType, ObjectMetaDataManager.ID_FIELD);
-        TableField<?, Object> fieldTo = JooqUtils.getTableField(getMetaDataManager(), mappingType, rel.getPropertyName());
-        TableField<?, Object> fieldRemoved = JooqUtils.getTableField(getMetaDataManager(), mappingType, ObjectMetaDataManager.REMOVED_FIELD);
+        TableField<?, ?> fieldFrom = JooqUtils.getTableField(getMetaDataManager(), fromType, ObjectMetaDataManager.ID_FIELD);
+        TableField<?, ?> fieldTo = JooqUtils.getTableField(getMetaDataManager(), mappingType, rel.getPropertyName());
+        TableField<?, ?> fieldRemoved = JooqUtils.getTableField(getMetaDataManager(), mappingType, ObjectMetaDataManager.REMOVED_FIELD);
 
-        org.jooq.Condition cond = fieldFrom.eq(fieldTo.getTable().field(fieldTo.getName())).and(
+        org.jooq.Condition cond = JooqUtils.fieldEquals(fieldFrom, fieldTo.getTable().field(fieldTo.getName())).and(
                 fieldRemoved == null ? DSL.trueCondition() : fieldRemoved.isNull());
         query.addJoin(mappingTable, JoinType.LEFT_OUTER_JOIN, cond);
 
         fieldFrom = JooqUtils.getTableField(getMetaDataManager(), mappingType, rel.getOtherRelationship().getPropertyName());
         fieldTo = JooqUtils.getTableField(getMetaDataManager(), schemaFactory.getSchemaName(rel.getObjectType()), ObjectMetaDataManager.ID_FIELD);
 
-        cond = fieldFrom.eq(fieldTo.getTable().asTable(asName).field(fieldTo.getName()));
+        cond = JooqUtils.fieldEquals(fieldFrom, fieldTo.getTable().asTable(asName).field(fieldTo.getName()));
         query.addJoin(toTable, JoinType.LEFT_OUTER_JOIN, cond);
         query.addOrderBy(fieldTo.getTable().asTable(asName).field(fieldTo.getName()).asc());
     }
 
     protected void addJoin(SelectQuery<?> query, Table<?> toTable, SchemaFactory schemaFactory, String fromType, Table<?> from, String asName,
                                  Relationship rel) {
-        TableField<?, Object> fieldFrom = null;
-        TableField<?, Object> fieldTo = null;
+        TableField<?, ?> fieldFrom = null;
+        TableField<?, ?> fieldTo = null;
 
         switch (rel.getRelationshipType()) {
         case REFERENCE:
@@ -306,7 +312,7 @@ public abstract class AbstractJooqResourceManager extends AbstractObjectResource
             throw new IllegalStateException("Failed to construction join query for [" + fromType + "] [" + from + "] [" + rel + "]");
         }
 
-        query.addJoin(toTable, JoinType.LEFT_OUTER_JOIN, fieldFrom.eq(fieldTo.getTable().as(asName).field(fieldTo.getName())));
+        query.addJoin(toTable, JoinType.LEFT_OUTER_JOIN, JooqUtils.fieldEquals(fieldFrom, fieldTo.getTable().as(asName).field(fieldTo.getName())));
         query.addOrderBy(fieldTo.getTable().as(asName).field(ObjectMetaDataManager.ID_FIELD).asc());
     }
 
@@ -337,16 +343,16 @@ public abstract class AbstractJooqResourceManager extends AbstractObjectResource
 
         Table<?> mappingTable = JooqUtils.getTable(schemaFactory, rel.getMappingType());
 
-        TableField<?, Object> fieldFrom = JooqUtils.getTableField(getMetaDataManager(), type, ObjectMetaDataManager.ID_FIELD);
-        TableField<?, Object> fieldTo = JooqUtils.getTableField(getMetaDataManager(), mappingType, rel.getOtherRelationship().getPropertyName());
-        TableField<?, Object> fieldRemoved = JooqUtils.getTableField(getMetaDataManager(), mappingType, ObjectMetaDataManager.REMOVED_FIELD);
-        TableField<?, Object> fromTypeIdField = JooqUtils.getTableField(getMetaDataManager(), mappingType, rel.getSelfRelationship().getPropertyName());
+        TableField<?, ?> fieldFrom = JooqUtils.getTableField(getMetaDataManager(), type, ObjectMetaDataManager.ID_FIELD);
+        TableField<?, ?> fieldTo = JooqUtils.getTableField(getMetaDataManager(), mappingType, rel.getOtherRelationship().getPropertyName());
+        TableField<?, ?> fieldRemoved = JooqUtils.getTableField(getMetaDataManager(), mappingType, ObjectMetaDataManager.REMOVED_FIELD);
+        TableField<?, ?> fromTypeIdField = JooqUtils.getTableField(getMetaDataManager(), mappingType, rel.getSelfRelationship().getPropertyName());
 
-        org.jooq.Condition cond = fieldFrom.eq(fieldTo.getTable().field(fieldTo.getName())).and(
+        org.jooq.Condition cond = JooqUtils.fieldEquals(fieldFrom, fieldTo.getTable().field(fieldTo.getName())).and(
                 fieldRemoved == null ? DSL.trueCondition() : fieldRemoved.isNull());
 
         joins.put(mappingTable, cond);
-        criteria.put(Condition.class, fromTypeIdField.eq(id));
+        criteria.put(Condition.class, JooqUtils.fieldEqualsValue(fromTypeIdField, id));
 
         return listInternal(schemaFactory, type, criteria, new ListOptions(request), joins);
     }
@@ -363,7 +369,7 @@ public abstract class AbstractJooqResourceManager extends AbstractObjectResource
 
     protected void addSort(SchemaFactory schemaFactory, String type, Sort sort, SelectQuery<?> query) {
         if (sort != null) {
-            TableField<?, Object> sortField = JooqUtils.getTableField(getMetaDataManager(), type, sort.getName());
+            TableField<?, ?> sortField = JooqUtils.getTableField(getMetaDataManager(), type, sort.getName());
             if (sortField == null) {
                 return;
             }
@@ -377,7 +383,7 @@ public abstract class AbstractJooqResourceManager extends AbstractObjectResource
             }
         }
 
-        TableField<?, Object> idSort = JooqUtils.getTableField(getMetaDataManager(), type, ObjectMetaDataManager.ID_FIELD);
+        TableField<?, ?> idSort = JooqUtils.getTableField(getMetaDataManager(), type, ObjectMetaDataManager.ID_FIELD);
         if (idSort == null) {
             return;
         }
@@ -405,8 +411,8 @@ public abstract class AbstractJooqResourceManager extends AbstractObjectResource
                 return;
             }
 
-            TableField<?, Object> accountField = JooqUtils.getTableField(getMetaDataManager(), type, ObjectMetaDataManager.ACCOUNT_FIELD);
-            TableField<?, Object> publicField = JooqUtils.getTableField(getMetaDataManager(), type, ObjectMetaDataManager.PUBLIC_FIELD);
+            TableField<?, ?> accountField = JooqUtils.getTableField(getMetaDataManager(), type, ObjectMetaDataManager.ACCOUNT_FIELD);
+            TableField<?, ?> publicField = JooqUtils.getTableField(getMetaDataManager(), type, ObjectMetaDataManager.PUBLIC_FIELD);
             Object accountValue = criteria.get(ObjectMetaDataManager.ACCOUNT_FIELD);
 
             if (accountField == null || publicField == null || accountValue == null) {
@@ -425,7 +431,7 @@ public abstract class AbstractJooqResourceManager extends AbstractObjectResource
                 if (accountValue instanceof io.github.ibuildthecloud.gdapi.condition.Condition) {
                     accountCondition = accountField.in(((io.github.ibuildthecloud.gdapi.condition.Condition) accountValue).getValues());
                 } else {
-                    accountCondition = accountField.eq(accountValue);
+                    accountCondition = JooqUtils.fieldEqualsValue(accountField, accountValue);
                 }
 
                 criteria.put(Condition.class, publicField.isTrue().or(accountCondition));
@@ -437,9 +443,9 @@ public abstract class AbstractJooqResourceManager extends AbstractObjectResource
     @Override
     protected Object removeFromStore(String type, String id, Object obj, ApiRequest request) {
         Table<?> table = JooqUtils.getTableFromRecordClass(JooqUtils.getRecordClass(request.getSchemaFactory(), obj.getClass()));
-        TableField<?, Object> idField = JooqUtils.getTableField(getMetaDataManager(), type, ObjectMetaDataManager.ID_FIELD);
+        TableField<?, ?> idField = JooqUtils.getTableField(getMetaDataManager(), type, ObjectMetaDataManager.ID_FIELD);
 
-        int result = create().delete(table).where(idField.eq(id)).execute();
+        int result = create().delete(table).where(JooqUtils.fieldEqualsValue(idField, id)).execute();
 
         if (result != 1) {
             log.error("While deleting type [{}] and id [{}] got a result of [{}]", type, id, result);

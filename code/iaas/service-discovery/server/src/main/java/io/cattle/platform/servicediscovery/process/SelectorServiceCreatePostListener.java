@@ -28,8 +28,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import javax.inject.Inject;
-import javax.inject.Named;
+import jakarta.inject.Inject;
+import jakarta.inject.Named;
 
 import org.apache.commons.lang3.StringUtils;
 
@@ -73,21 +73,22 @@ public class SelectorServiceCreatePostListener extends AbstractObjectProcessLogi
         return null;
     }
 
-    @SuppressWarnings("unchecked")
     protected void cleanupOldSelectorLinks(ProcessState state, Service service) {
         String selectorLink = service.getSelectorLink();
-        String oldSelectorLink = "";
-        Object oldObj = state.getData().get("old");
-        if (oldObj != null) {
-            Map<String, Object> old = (Map<String, Object>) oldObj;
-            Object obj = old.get(ServiceConstants.FIELD_SELECTOR_LINK);
-            if (obj != null) {
-                oldSelectorLink = obj.toString();
-            }
-        }
+        String oldSelectorLink = oldSelectorLink(state.getData().get("old"));
         if (!StringUtils.isEmpty(oldSelectorLink) && !oldSelectorLink.equalsIgnoreCase(selectorLink)) {
             deregisterOldServiceLinks(service, oldSelectorLink);
         }
+    }
+
+    static String oldSelectorLink(Object oldObj) {
+        if (oldObj == null) {
+            return "";
+        }
+
+        Map<?, ?> old = Map.class.cast(oldObj);
+        Object obj = old.get(ServiceConstants.FIELD_SELECTOR_LINK);
+        return obj == null ? "" : obj.toString();
     }
 
 

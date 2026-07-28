@@ -1,23 +1,22 @@
 package io.cattle.platform.engine.idempotent;
 
 import io.cattle.platform.archaius.util.ArchaiusUtil;
+import io.cattle.platform.archaius.util.ConfigProperty;
 import io.cattle.platform.util.exception.ExceptionUtils;
 
 import java.util.HashSet;
+import java.util.Objects;
 import java.util.Set;
 
 import org.apache.cloudstack.managed.threadlocal.ManagedThreadLocal;
-import org.apache.commons.lang3.ObjectUtils;
 
-import com.netflix.config.DynamicBooleanProperty;
-import com.netflix.config.DynamicIntProperty;
 
 public class Idempotent {
 
     private static final int LOOP_MAX = 1000;
 
-    private static final DynamicBooleanProperty CHECKS = ArchaiusUtil.getBoolean("idempotent.checks");
-    private static final DynamicIntProperty LOOP_COUNT = ArchaiusUtil.getInt("idempotent.retry.count");
+    private static final ConfigProperty<Boolean> CHECKS = ArchaiusUtil.getBooleanProperty("idempotent.checks");
+    private static final ConfigProperty<Integer> LOOP_COUNT = ArchaiusUtil.getIntProperty("idempotent.retry.count");
 
     private static final ThreadLocal<Set<String>> STACK_TRACES = new ManagedThreadLocal<Set<String>>() {
         @Override
@@ -29,7 +28,7 @@ public class Idempotent {
     private static final ThreadLocal<Long> LEVEL = new ManagedThreadLocal<Long>() {
         @Override
         protected Long initialValue() {
-            return new Long(0);
+            return 0L;
         }
     };
 
@@ -60,7 +59,7 @@ public class Idempotent {
                             return resultAgain;
                         }
 
-                        if (!ObjectUtils.equals(result, resultAgain)) {
+                        if (!Objects.equals(result, resultAgain)) {
                             throw new OperationNotIdemponent("Result [" + result + "] does not match second result [" + resultAgain + "]");
                         }
                         i+=j;

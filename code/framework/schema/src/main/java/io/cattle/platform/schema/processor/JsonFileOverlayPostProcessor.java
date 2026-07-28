@@ -21,12 +21,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 
-import org.apache.commons.beanutils.BeanUtils;
-import org.apache.commons.beanutils.PropertyUtils;
+import org.apache.commons.beanutils2.BeanUtils;
+import org.apache.commons.beanutils2.PropertyUtils;
 import org.apache.commons.io.IOUtils;
-import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -153,11 +152,10 @@ public class JsonFileOverlayPostProcessor extends AbstractSchemaPostProcessor im
         }
     }
 
-    @SuppressWarnings("unchecked")
     protected void processMapData(SchemaImpl schema, SchemaOverlayImpl data, Map<String, Object> mapData, String name) throws IllegalAccessException,
             InvocationTargetException, NoSuchMethodException {
-        Map<String, Object> oldValues = (Map<String, Object>) PropertyUtils.getProperty(schema, name);
-        Map<String, Object> newValues = (Map<String, Object>) PropertyUtils.getProperty(data, name);
+        Map<String, Object> oldValues = stringObjectMap(PropertyUtils.getProperty(schema, name));
+        Map<String, Object> newValues = stringObjectMap(PropertyUtils.getProperty(data, name));
 
         Object value = null;
         try {
@@ -175,12 +173,13 @@ public class JsonFileOverlayPostProcessor extends AbstractSchemaPostProcessor im
         }
 
         if (newValues == null || newValues.size() == 0) {
+            PropertyUtils.setProperty(schema, name, oldValues);
             return;
         }
 
         for (String key : newValues.keySet()) {
             if (key.startsWith(REMOVE)) {
-                oldValues.remove(StringUtils.removeStart(key, REMOVE));
+                oldValues.remove(key.substring(REMOVE.length()));
                 continue;
             }
 
@@ -190,7 +189,7 @@ public class JsonFileOverlayPostProcessor extends AbstractSchemaPostProcessor im
                 continue;
             }
 
-            Map<String, Object> mapProperty = (Map<String, Object>) mapData.get(name);
+            Map<String, Object> mapProperty = stringObjectMap(mapData.get(name));
 
             if (oldValue == null) {
                 BeanUtils.copyProperties(newValue, mapProperty.get(key));
@@ -200,6 +199,21 @@ public class JsonFileOverlayPostProcessor extends AbstractSchemaPostProcessor im
 
             BeanUtils.copyProperties(oldValue, mapProperty.get(key));
         }
+
+        PropertyUtils.setProperty(schema, name, oldValues);
+    }
+
+    protected Map<String, Object> stringObjectMap(Object value) {
+        if (value == null) {
+            return null;
+        }
+
+        Map<?, ?> source = Map.class.cast(value);
+        Map<String, Object> result = new HashMap<String, Object>(source.size());
+        for (Map.Entry<?, ?> entry : source.entrySet()) {
+            result.put(String.class.cast(entry.getKey()), entry.getValue());
+        }
+        return result;
     }
 
     @Override

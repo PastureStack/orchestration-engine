@@ -11,7 +11,7 @@ import io.cattle.platform.util.type.NamedUtils;
 
 import java.lang.reflect.Method;
 
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 
 public class EventUtils {
 

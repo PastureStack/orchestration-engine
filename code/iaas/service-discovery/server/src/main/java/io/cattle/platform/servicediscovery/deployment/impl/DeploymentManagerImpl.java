@@ -7,6 +7,7 @@ import io.cattle.platform.activity.ActivityLog;
 import io.cattle.platform.activity.ActivityService;
 import io.cattle.platform.allocator.service.AllocationHelper;
 import io.cattle.platform.archaius.util.ArchaiusUtil;
+import io.cattle.platform.archaius.util.ConfigProperty;
 import io.cattle.platform.configitem.events.ConfigUpdate;
 import io.cattle.platform.configitem.model.Client;
 import io.cattle.platform.configitem.request.ConfigUpdateRequest;
@@ -56,21 +57,20 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.netflix.config.DynamicIntProperty;
 
 public class DeploymentManagerImpl implements DeploymentManager {
 
     private static final String RECONCILE = "reconcile";
     private static final Logger log = LoggerFactory.getLogger(DeploymentManagerImpl.class);
 
-    private static final DynamicIntProperty EXECUTION_MAX = ArchaiusUtil.getInt("service.execution.credits");
-    private static final DynamicIntProperty EXECUTION_PERIOD = ArchaiusUtil.getInt("service.execution.period.seconds");
-    private static final DynamicIntProperty EXECUTION_DELAY = ArchaiusUtil.getInt("service.execution.delay.seconds");
+    private static final ConfigProperty<Integer> EXECUTION_MAX = ArchaiusUtil.getIntProperty("service.execution.credits");
+    private static final ConfigProperty<Integer> EXECUTION_PERIOD = ArchaiusUtil.getIntProperty("service.execution.period.seconds");
+    private static final ConfigProperty<Integer> EXECUTION_DELAY = ArchaiusUtil.getIntProperty("service.execution.delay.seconds");
 
     @Inject
     ActivityService activity;
@@ -494,7 +494,7 @@ public class DeploymentManagerImpl implements DeploymentManager {
 
     @Override
     public void serviceUpdate(ConfigUpdate update) {
-        final Client client = new Client(Service.class, new Long(update.getResourceId()));
+        final Client client = new Client(Service.class, Long.valueOf(update.getResourceId()));
         itemManager.runUpdateForEvent(RECONCILE, update, client, new Runnable() {
             @Override
             public void run() {

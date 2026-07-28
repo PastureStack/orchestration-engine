@@ -8,7 +8,7 @@ import io.cattle.platform.lock.definition.LockDefinition;
 import io.cattle.platform.task.TaskManager;
 import io.cattle.platform.task.eventing.TaskManagerEventListener;
 
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

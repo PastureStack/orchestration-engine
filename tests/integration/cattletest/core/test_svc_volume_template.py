@@ -74,7 +74,7 @@ def test_stack_volume(client, context):
     path_to_mount = c1.dataVolumeMounts
     assert len(path_to_mount) == 1
     volume_id_1 = 0
-    for key, value in path_to_mount.iteritems():
+    for key, value in path_to_mount.items():
         assert key == '/bar'
         assert value is not None
         volume_id_1 = value
@@ -91,7 +91,7 @@ def test_stack_volume(client, context):
     path_to_mount = c2.dataVolumeMounts
     assert len(path_to_mount) == 1
     volume_id_2 = 0
-    for key, value in path_to_mount.iteritems():
+    for key, value in path_to_mount.items():
         assert key == '/bar'
         assert value is not None
         volume_id_2 = value
@@ -233,7 +233,7 @@ def test_du_unhealthy_reuse_volume(new_context, super_client):
 
     c3 = client.wait_success(c3)
     assert c3.removed is not None
-    volume = client.by_id_volume(dict(c3.dataVolumeMounts).values()[0])
+    volume = client.by_id_volume(list(dict(c3.dataVolumeMounts).values())[0])
     volume = client.wait_success(volume)
     assert volume.removed is None
 
@@ -241,11 +241,11 @@ def test_du_unhealthy_reuse_volume(new_context, super_client):
     stack = client.wait_success(stack)
     assert stack.removed is not None
 
-    volume = client.by_id_volume(dict(c2.dataVolumeMounts).values()[0])
+    volume = client.by_id_volume(list(dict(c2.dataVolumeMounts).values())[0])
     volume = client.wait_success(volume)
     assert volume.removed is not None
 
-    volume = client.by_id_volume(dict(c1.dataVolumeMounts).values()[0])
+    volume = client.by_id_volume(list(dict(c1.dataVolumeMounts).values())[0])
     volume = client.wait_success(volume)
     assert volume.removed is not None
 
@@ -278,7 +278,7 @@ def test_du_volume(new_context, super_client):
     c11 = _validate_compose_instance_start(client, svc, stack, "1")
     path_to_mount = c11.dataVolumeMounts
     assert len(path_to_mount) == 1
-    for key, value in path_to_mount.iteritems():
+    for key, value in path_to_mount.items():
         assert key == '/bar'
         assert value is not None
 
@@ -296,7 +296,7 @@ def test_du_volume(new_context, super_client):
                                            "1", "secondary")
     path_to_mount = c12.dataVolumeMounts
     assert len(path_to_mount) == 1
-    for key, value in path_to_mount.iteritems():
+    for key, value in path_to_mount.items():
         assert key == '/bar'
         assert value is not None
 
@@ -314,7 +314,7 @@ def test_du_volume(new_context, super_client):
     c21 = _validate_compose_instance_start(client, svc, stack, "2")
     path_to_mount = c21.dataVolumeMounts
     assert len(path_to_mount) == 1
-    for key, value in path_to_mount.iteritems():
+    for key, value in path_to_mount.items():
         assert key == '/bar'
         assert value is not None
 
@@ -394,7 +394,7 @@ def test_upgrade_du_volume(client, context, super_client):
     c11 = _validate_compose_instance_start(client, svc, stack, "1")
     path_to_mount = c11.dataVolumeMounts
     assert len(path_to_mount) == 1
-    for key, value in path_to_mount.iteritems():
+    for key, value in path_to_mount.items():
         assert key == '/bar'
         assert value is not None
 
@@ -420,7 +420,7 @@ def test_upgrade_du_volume(client, context, super_client):
 
     path_to_mount = c12.dataVolumeMounts
     assert len(path_to_mount) == 1
-    for key, value in path_to_mount.iteritems():
+    for key, value in path_to_mount.items():
         assert key == '/bar'
         assert value is not None
 
@@ -630,7 +630,7 @@ def test_du_volume_recreate_disabled_host(new_context, super_client):
     c11 = _validate_compose_instance_start(client, svc, stack, "1")
     path_to_mount = c11.dataVolumeMounts
     assert len(path_to_mount) == 1
-    for key, value in path_to_mount.iteritems():
+    for key, value in path_to_mount.items():
         assert key == '/bar'
         assert value is not None
 
@@ -652,7 +652,7 @@ def test_du_volume_recreate_disabled_host(new_context, super_client):
     c12 = _validate_compose_instance_start(client, svc, stack, "1")
     path_to_mount = c12.dataVolumeMounts
     assert len(path_to_mount) == 1
-    for key, value in path_to_mount.iteritems():
+    for key, value in path_to_mount.items():
         assert key == '/bar'
         assert value is not None
 

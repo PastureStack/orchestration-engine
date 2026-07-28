@@ -1,0 +1,45 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+cd "$(dirname "$0")/.."
+
+failure_count=0
+
+tmp=$(mktemp)
+trap 'rm -f "$tmp"' EXIT
+
+grep -RIn \
+    --include='*.java' \
+    --exclude-dir=target \
+    -E '^import com\.netflix\.config\.' code \
+    | grep -v '^code/framework/archaius/src/main/java/' \
+    | grep -v '/src/test/java/' \
+    > "$tmp" || true
+
+if [ -s "$tmp" ]; then
+    echo "Direct com.netflix.config imports must stay isolated in the rc16 cattle-framework-archaius compatibility layer." >&2
+    cat "$tmp" >&2
+    failure_count=$((failure_count + 1))
+fi
+
+tmp_pom=$(mktemp)
+trap 'rm -f "$tmp" "$tmp_pom"' EXIT
+
+grep -RIn \
+    --include='pom.xml' \
+    --exclude-dir=target \
+    -E '<artifactId>(archaius-core|commons-configuration)</artifactId>' . \
+    > "$tmp_pom" || true
+
+if [ -s "$tmp_pom" ]; then
+    echo "Retired Archaius/Commons Configuration Maven dependencies must not return." >&2
+    cat "$tmp_pom" >&2
+    failure_count=$((failure_count + 1))
+fi
+
+printf 'failure_count=%s\n' "$failure_count"
+if [ "$failure_count" -gt 0 ]; then
+    exit 1
+fi
+
+echo "CATTLE_ARCHAIUS_BOUNDARY_OK production_direct_import_scope=code/framework/archaius internal_compat_layer=true test_fixtures_allowed=true"

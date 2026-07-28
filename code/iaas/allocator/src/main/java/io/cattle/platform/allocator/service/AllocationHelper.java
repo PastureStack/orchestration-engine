@@ -23,11 +23,9 @@ public interface AllocationHelper {
 
     List<Long> getHostsSatisfyingHostAffinity(Long accountId, Map<String, String> labelConstraints);
 
-    @SuppressWarnings("rawtypes")
-    List<Constraint> extractConstraintsFromEnv(Map env);
+    List<Constraint> extractConstraintsFromEnv(Map<?, ?> env);
 
-    @SuppressWarnings("rawtypes")
-    List<Constraint> extractConstraintsFromLabels(Map labels, Instance instance);
+    List<Constraint> extractConstraintsFromLabels(Map<?, ?> labels, Instance instance);
 
     List<Long> getAllHostsSatisfyingHostAffinity(Long accountId, Map<String, String> labelConstraints);
 

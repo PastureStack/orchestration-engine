@@ -4,6 +4,7 @@ import static io.cattle.platform.core.model.tables.AccountTable.*;
 import static io.cattle.platform.core.model.tables.AgentTable.*;
 
 import io.cattle.platform.archaius.util.ArchaiusUtil;
+import io.cattle.platform.archaius.util.ConfigProperty;
 import io.cattle.platform.core.constants.AccountConstants;
 import io.cattle.platform.core.constants.AgentConstants;
 import io.cattle.platform.core.constants.CommonStatesConstants;
@@ -26,13 +27,11 @@ import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
 import java.util.List;
 
-import javax.inject.Inject;
-import javax.servlet.http.HttpServletResponse;
+import jakarta.inject.Inject;
+import jakarta.servlet.http.HttpServletResponse;
 
 import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.lang3.StringUtils;
-
-import com.netflix.config.DynamicStringProperty;
 
 public class BasicAuthImpl implements AccountLookup, Priority {
 
@@ -43,7 +42,7 @@ public class BasicAuthImpl implements AccountLookup, Priority {
     private static final String NO_CHALLENGE_HEADER = "X-API-No-Challenge";
     private static final String CONNECTION = "Connection";
 
-    private static final DynamicStringProperty REALM = ArchaiusUtil.getString("api.auth.realm");
+    private static final ConfigProperty<String> REALM = ArchaiusUtil.getStringProperty("api.auth.realm");
 
     AuthDao authDao;
     @Inject
