@@ -6,7 +6,7 @@ import io.github.ibuildthecloud.gdapi.request.ApiRequest;
 import java.io.IOException;
 import java.io.OutputStream;
 
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 
 public class HtmlResponseWriter extends JsonResponseWriter {
 

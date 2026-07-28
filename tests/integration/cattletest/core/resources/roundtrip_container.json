@@ -54,7 +54,7 @@
         "name": "on-failure"
       },
       "cpuShares": 1024,
-      "imageUuid": "docker:ubuntu:14.04.1",
+      "imageUuid": "docker:ubuntu:26.04",
       "dns": [
         "8.8.4.4",
         "2.2.2.2"
@@ -145,7 +145,7 @@
   "externalId": "30ad6d9ca7238f6d0e6e311e6487368596855725bd87629353ac1bcf5487d8c3",
   "firstRunning": null,
   "hostname": "ahostname",
-  "imageUuid": "docker:ubuntu:14.04.1",
+  "imageUuid": "docker:ubuntu:26.04",
   "kind": "container",
   "lxcConf": null,
   "memory": null,

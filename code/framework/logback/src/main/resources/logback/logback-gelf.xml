@@ -7,7 +7,7 @@
         <name>logback.output.gelf.port</name>
     </define>
 
-    <appender name="GELF" class="me.moocar.logbackgelf.GelfAppender">
+    <appender name="GELF" class="io.cattle.platform.logback.GelfAppender">
         <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
             <level>${aggregationLevel}</level>
         </filter>

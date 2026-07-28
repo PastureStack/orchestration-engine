@@ -1,0 +1,89 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+repo_root=$(cd "$(dirname "$0")/.." && pwd)
+cd "$repo_root"
+
+maven_image=${RC16_CATTLE_JDK25_MAVEN_IMAGE:-maven:3.9.14-eclipse-temurin-25}
+maven_target=${RC16_CATTLE_JDK25_MAVEN_TARGET:-clean package -Drelease}
+maven_args=${RC16_CATTLE_JDK25_MAVEN_ARGS:--B -q -Dmaven.compiler.failOnWarning=true}
+maven_opts=${MAVEN_OPTS:--Xmx2048m}
+
+run_hygiene_gates()
+{
+    ./scripts/check-cattle-dependency-hygiene
+    ./scripts/check-cattle-archaius-boundary
+    ./scripts/check-cattle-jmx-boundary
+}
+
+windows_cmd()
+{
+    local candidate
+    for candidate in "${COMSPEC:-}" /mnt/c/Windows/System32/cmd.exe /c/Windows/System32/cmd.exe cmd.exe; do
+        if [ -n "$candidate" ] && command -v "$candidate" >/dev/null 2>&1; then
+            printf '%s\n' "$candidate"
+            return
+        fi
+    done
+}
+
+run_maven()
+{
+    local wrapper_version
+
+    if command -v mvn >/dev/null 2>&1; then
+        if mvn -version | grep -q 'Java version: 25'; then
+            MAVEN_OPTS="$maven_opts" mvn $maven_args $maven_target
+            return
+        fi
+        echo "Local mvn is not running on JDK25; trying wrapper/container fallbacks" >&2
+    fi
+
+    if [ -x ./mvnw ]; then
+        wrapper_version=$(MAVEN_OPTS="$maven_opts" ./mvnw -version 2>/dev/null || true)
+        if printf '%s\n' "$wrapper_version" | grep -q 'Java version: 25'; then
+            MAVEN_OPTS="$maven_opts" ./mvnw $maven_args $maven_target
+            return
+        fi
+        echo "POSIX Maven wrapper is not running on JDK25; trying Windows/container fallbacks" >&2
+    fi
+
+    local cmd_exe=
+    cmd_exe=$(windows_cmd || true)
+    if [ -n "$cmd_exe" ] && [ -f ./mvnw.cmd ]; then
+        if MAVEN_OPTS="$maven_opts" "$cmd_exe" /d /s /c "mvnw.cmd -version" 2>/dev/null | grep -q 'Java version: 25'; then
+            MAVEN_OPTS="$maven_opts" "$cmd_exe" /d /s /c "mvnw.cmd $maven_args $maven_target"
+            return
+        fi
+        echo "Windows Maven wrapper is not running on JDK25; falling back to ${maven_image}" >&2
+    fi
+
+    if ! command -v docker >/dev/null 2>&1; then
+        echo "JDK25 mvn is unavailable and docker is not installed; cannot run JDK25 package gate" >&2
+        exit 2
+    fi
+
+    docker run --rm "$maven_image" mvn -version
+    docker run --rm \
+        -v "$repo_root:/usr/src/cattle" \
+        -v "${HOME}/.m2:/root/.m2" \
+        -w /usr/src/cattle \
+        -e MAVEN_OPTS="$maven_opts" \
+        "$maven_image" \
+        bash -lc "git config --global --add safe.directory /usr/src/cattle && mvn $maven_args $maven_target"
+}
+
+run_hygiene_gates
+run_maven
+./scripts/check-cattle-packaged-lib-hygiene
+./scripts/check-cattle-jdk25-bytecode
+if [ "${RC16_CATTLE_RUN_STANDALONE_GATE:-true}" = "true" ]; then
+    ./scripts/check-cattle-jdk25-standalone
+fi
+
+target_classes_dirs=$(find code -path '*/target/classes' -type d | wc -l)
+surefire_xml_count=$(find code -path '*/target/surefire-reports/TEST-*.xml' -type f | wc -l)
+
+printf 'CATTLE_JDK25_FULL_PACKAGE_OK maven_target=%q target_classes_dirs=%s surefire_xml_count=%s\n' \
+    "$maven_target" "$target_classes_dirs" "$surefire_xml_count"
+echo "failure_count=0"

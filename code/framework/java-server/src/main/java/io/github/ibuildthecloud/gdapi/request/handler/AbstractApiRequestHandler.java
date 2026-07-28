@@ -4,7 +4,7 @@ import io.github.ibuildthecloud.gdapi.request.ApiRequest;
 
 import java.io.IOException;
 
-import javax.servlet.ServletException;
+import jakarta.servlet.ServletException;
 
 public abstract class AbstractApiRequestHandler implements ApiRequestHandler {
 

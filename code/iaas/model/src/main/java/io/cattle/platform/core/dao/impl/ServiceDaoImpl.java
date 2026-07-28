@@ -41,14 +41,12 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import javax.inject.Inject;
-import javax.inject.Named;
+import jakarta.inject.Inject;
+import jakarta.inject.Named;
 
 import org.jooq.Record;
 import org.jooq.Record2;
 import org.jooq.Record3;
-import org.jooq.Record7;
-import org.jooq.RecordHandler;
 
 @Named
 public class ServiceDaoImpl extends AbstractJooqDao implements ServiceDao {
@@ -102,26 +100,22 @@ public class ServiceDaoImpl extends AbstractJooqDao implements ServiceDao {
     @Override
     public Map<Long, List<Object>> getServicesForInstances(List<Long> ids, final IdFormatter idFormatter) {
         final Map<Long, List<Object>> result = new HashMap<>();
-        create().select(SERVICE_EXPOSE_MAP.INSTANCE_ID, SERVICE_EXPOSE_MAP.SERVICE_ID)
+        for (Record2<Long, Long> record : create().select(SERVICE_EXPOSE_MAP.INSTANCE_ID, SERVICE_EXPOSE_MAP.SERVICE_ID)
             .from(SERVICE_EXPOSE_MAP)
             .join(SERVICE)
                 .on(SERVICE.ID.eq(SERVICE_EXPOSE_MAP.SERVICE_ID))
             .where(SERVICE_EXPOSE_MAP.REMOVED.isNull()
                     .and(SERVICE.REMOVED.isNull())
-                    .and(SERVICE_EXPOSE_MAP.INSTANCE_ID.in(ids)))
-            .fetchInto(new RecordHandler<Record2<Long, Long>>() {
-                @Override
-                public void next(Record2<Long, Long> record) {
-                    Long serviceId = record.getValue(SERVICE_EXPOSE_MAP.SERVICE_ID);
-                    Long instanceId = record.getValue(SERVICE_EXPOSE_MAP.INSTANCE_ID);
-                    List<Object> list = result.get(instanceId);
-                    if (list == null) {
-                        list = new ArrayList<>();
-                        result.put(instanceId, list);
-                    }
-                    list.add(idFormatter.formatId("service", serviceId));
-                }
-            });
+                    .and(SERVICE_EXPOSE_MAP.INSTANCE_ID.in(ids)))) {
+            Long serviceId = record.getValue(SERVICE_EXPOSE_MAP.SERVICE_ID);
+            Long instanceId = record.getValue(SERVICE_EXPOSE_MAP.INSTANCE_ID);
+            List<Object> list = result.get(instanceId);
+            if (list == null) {
+                list = new ArrayList<>();
+                result.put(instanceId, list);
+            }
+            list.add(idFormatter.formatId("service", serviceId));
+        }
 
         return result;
     }
@@ -129,27 +123,23 @@ public class ServiceDaoImpl extends AbstractJooqDao implements ServiceDao {
     @Override
     public Map<Long, List<Object>> getInstances(List<Long> ids, final IdFormatter idFormatter) {
         final Map<Long, List<Object>> result = new HashMap<>();
-        create().select(SERVICE_EXPOSE_MAP.INSTANCE_ID, SERVICE_EXPOSE_MAP.SERVICE_ID)
+        for (Record2<Long, Long> record : create().select(SERVICE_EXPOSE_MAP.INSTANCE_ID, SERVICE_EXPOSE_MAP.SERVICE_ID)
             .from(SERVICE_EXPOSE_MAP)
             .join(INSTANCE)
                 .on(INSTANCE.ID.eq(SERVICE_EXPOSE_MAP.INSTANCE_ID))
             .where(SERVICE_EXPOSE_MAP.REMOVED.isNull()
                     .and(INSTANCE.REMOVED.isNull())
                     .and(SERVICE_EXPOSE_MAP.SERVICE_ID.in(ids))
-                    .and(SERVICE_EXPOSE_MAP.REMOVED.isNull()))
-            .fetchInto(new RecordHandler<Record2<Long, Long>>() {
-                @Override
-                public void next(Record2<Long, Long> record) {
-                    Long serviceId = record.getValue(SERVICE_EXPOSE_MAP.SERVICE_ID);
-                    Long instanceId = record.getValue(SERVICE_EXPOSE_MAP.INSTANCE_ID);
-                    List<Object> list = result.get(serviceId);
-                    if (list == null) {
-                        list = new ArrayList<>();
-                        result.put(serviceId, list);
-                    }
-                    list.add(idFormatter.formatId(InstanceConstants.TYPE, instanceId));
-                }
-            });
+                    .and(SERVICE_EXPOSE_MAP.REMOVED.isNull()))) {
+            Long serviceId = record.getValue(SERVICE_EXPOSE_MAP.SERVICE_ID);
+            Long instanceId = record.getValue(SERVICE_EXPOSE_MAP.INSTANCE_ID);
+            List<Object> list = result.get(serviceId);
+            if (list == null) {
+                list = new ArrayList<>();
+                result.put(serviceId, list);
+            }
+            list.add(idFormatter.formatId(InstanceConstants.TYPE, instanceId));
+        }
         return result;
     }
 
@@ -165,9 +155,7 @@ public class ServiceDaoImpl extends AbstractJooqDao implements ServiceDao {
                 .on(STACK.ID.eq(SERVICE.STACK_ID))
             .where(SERVICE_CONSUME_MAP.SERVICE_ID.in(ids)
                     .and(SERVICE_CONSUME_MAP.REMOVED.isNull()))
-                .fetchInto(new RecordHandler<Record7<String, Long, String, Long, String, Long, String>>() {
-                @Override
-                    public void next(Record7<String, Long, String, Long, String, Long, String> record) {
+                .forEach(record -> {
                     Long serviceId = record.getValue(SERVICE_CONSUME_MAP.SERVICE_ID);
                     List<ServiceLink> links = result.get(serviceId);
                     if (links == null) {
@@ -183,7 +171,6 @@ public class ServiceDaoImpl extends AbstractJooqDao implements ServiceDao {
                                 record.getValue(SERVICE.ID),
                                 record.getValue(STACK.ID),
                                 record.getValue(STACK.NAME)));
-                }
             });
         return result;
     }
@@ -232,9 +219,10 @@ public class ServiceDaoImpl extends AbstractJooqDao implements ServiceDao {
             }
         };
 
-        HealthcheckInstanceHostMapTable hostMap = mapper.add(HEALTHCHECK_INSTANCE_HOST_MAP);
-        InstanceTable instance = mapper.add(INSTANCE, INSTANCE.UUID, INSTANCE.ID);
-        HostTable host = mapper.add(HOST, HOST.UUID, HOST.ID);
+        HealthcheckInstanceHostMapTable hostMap = mapper.add(HEALTHCHECK_INSTANCE_HOST_MAP,
+                HealthcheckInstanceHostMapTable.class);
+        InstanceTable instance = mapper.add(INSTANCE, InstanceTable.class, INSTANCE.UUID, INSTANCE.ID);
+        HostTable host = mapper.add(HOST, HostTable.class, HOST.UUID, HOST.ID);
         List<HealthcheckInstanceHostMap> maps = create()
                 .select(mapper.fields())
                 .from(hostMap)
@@ -258,29 +246,25 @@ public class ServiceDaoImpl extends AbstractJooqDao implements ServiceDao {
     public Map<Long, List<HealthcheckState>> getHealthcheckStatesForInstances(List<Long> ids,
             final IdFormatter idFormatter) {
         final Map<Long, List<HealthcheckState>> result = new HashMap<>();
-        create().select(HEALTHCHECK_INSTANCE_HOST_MAP.INSTANCE_ID, HEALTHCHECK_INSTANCE_HOST_MAP.HOST_ID,
+        for (Record3<Long, Long, String> record : create().select(HEALTHCHECK_INSTANCE_HOST_MAP.INSTANCE_ID, HEALTHCHECK_INSTANCE_HOST_MAP.HOST_ID,
                 HEALTHCHECK_INSTANCE_HOST_MAP.HEALTH_STATE)
                 .from(HEALTHCHECK_INSTANCE_HOST_MAP)
                 .join(HOST)
                 .on(HOST.ID.eq(HEALTHCHECK_INSTANCE_HOST_MAP.HOST_ID))
                 .where(HEALTHCHECK_INSTANCE_HOST_MAP.REMOVED.isNull()
                         .and(HOST.REMOVED.isNull())
-                        .and(HEALTHCHECK_INSTANCE_HOST_MAP.INSTANCE_ID.in(ids)))
-                .fetchInto(new RecordHandler<Record3<Long, Long, String>>() {
-                    @Override
-                    public void next(Record3<Long, Long, String> record) {
-                        Long instanceId = record.getValue(HEALTHCHECK_INSTANCE_HOST_MAP.INSTANCE_ID);
-                        Long hostId = record.getValue(HEALTHCHECK_INSTANCE_HOST_MAP.HOST_ID);
-                        String healthState = record.getValue(HEALTHCHECK_INSTANCE_HOST_MAP.HEALTH_STATE);
-                        List<HealthcheckState> list = result.get(instanceId);
-                        if (list == null) {
-                            list = new ArrayList<>();
-                            result.put(instanceId, list);
-                        }
-                        HealthcheckState state = new HealthcheckState(idFormatter.formatId("host", hostId).toString(), healthState);
-                        list.add(state);
-                    }
-                });
+                        .and(HEALTHCHECK_INSTANCE_HOST_MAP.INSTANCE_ID.in(ids)))) {
+            Long instanceId = record.getValue(HEALTHCHECK_INSTANCE_HOST_MAP.INSTANCE_ID);
+            Long hostId = record.getValue(HEALTHCHECK_INSTANCE_HOST_MAP.HOST_ID);
+            String healthState = record.getValue(HEALTHCHECK_INSTANCE_HOST_MAP.HEALTH_STATE);
+            List<HealthcheckState> list = result.get(instanceId);
+            if (list == null) {
+                list = new ArrayList<>();
+                result.put(instanceId, list);
+            }
+            HealthcheckState state = new HealthcheckState(idFormatter.formatId("host", hostId).toString(), healthState);
+            list.add(state);
+        }
 
         return result;
     }

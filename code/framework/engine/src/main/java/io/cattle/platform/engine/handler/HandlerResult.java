@@ -22,9 +22,8 @@ public class HandlerResult {
         this(null, CollectionUtils.asMap(key, values));
     }
 
-    @SuppressWarnings("unchecked")
     public HandlerResult(Map<?, Object> data) {
-        this(null, (Map<Object, Object>) data);
+        this(null, data == null ? null : new HashMap<Object, Object>(data));
     }
 
     public HandlerResult(Boolean shouldContinue, Map<Object, Object> data) {

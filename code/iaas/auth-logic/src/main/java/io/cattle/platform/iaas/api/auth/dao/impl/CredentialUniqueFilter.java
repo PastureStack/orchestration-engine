@@ -7,16 +7,19 @@ import io.cattle.platform.iaas.api.auth.integration.local.LocalAuthPasswordValid
 import io.cattle.platform.json.JsonMapper;
 import io.github.ibuildthecloud.gdapi.context.ApiContext;
 import io.github.ibuildthecloud.gdapi.exception.ValidationErrorException;
+import io.github.ibuildthecloud.gdapi.exception.ClientVisibleException;
 import io.github.ibuildthecloud.gdapi.factory.SchemaFactory;
 import io.github.ibuildthecloud.gdapi.request.ApiRequest;
 import io.github.ibuildthecloud.gdapi.request.resource.AbstractResourceManagerFilter;
 import io.github.ibuildthecloud.gdapi.request.resource.ResourceManager;
 import io.github.ibuildthecloud.gdapi.validation.ValidationErrorCodes;
+import io.github.ibuildthecloud.gdapi.util.ResponseCodes;
 
 import java.util.List;
 
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 
+import org.apache.commons.lang3.Strings;
 import org.apache.commons.lang3.StringUtils;
 
 public class CredentialUniqueFilter extends AbstractResourceManagerFilter {
@@ -33,7 +36,11 @@ public class CredentialUniqueFilter extends AbstractResourceManagerFilter {
         if (StringUtils.isBlank(credential.getKind())) {
             credential.setKind(request.getType());
         }
-        if (StringUtils.equals(credential.getKind(), CredentialConstants.KIND_PASSWORD)) {
+        if (CredentialConstants.INTERNAL_CREDENTIAL_TYPES.contains(credential.getKind())) {
+            throw new ClientVisibleException(ResponseCodes.FORBIDDEN, "InternalCredentialKind",
+                    "This credential kind can only be managed by the authentication subsystem.", null);
+        }
+        if (Strings.CS.equals(credential.getKind(), CredentialConstants.KIND_PASSWORD)) {
             LocalAuthPasswordValidator.validatePassword(credential.getSecretValue(), jsonMapper);
             String clearSecret = credential.getSecretValue();
             credential.setSecretValue(ApiContext.getContext().getTransformationService().transform(clearSecret, "HASH"));

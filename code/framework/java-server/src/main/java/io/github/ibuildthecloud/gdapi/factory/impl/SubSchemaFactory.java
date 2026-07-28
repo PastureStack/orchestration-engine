@@ -1,6 +1,7 @@
 package io.github.ibuildthecloud.gdapi.factory.impl;
 
 import io.cattle.platform.archaius.util.ArchaiusUtil;
+import io.cattle.platform.archaius.util.ConfigProperty;
 import io.github.ibuildthecloud.gdapi.factory.SchemaFactory;
 import io.github.ibuildthecloud.gdapi.model.Field;
 import io.github.ibuildthecloud.gdapi.model.FieldType;
@@ -19,16 +20,15 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
-import com.netflix.config.DynamicBooleanProperty;
 
 public class SubSchemaFactory extends AbstractSchemaFactory implements SchemaFactory {
 
-    private static DynamicBooleanProperty SERIALIZE = ArchaiusUtil.getBoolean("serialize.schemas");
+    private static ConfigProperty<Boolean> SERIALIZE = ArchaiusUtil.getBooleanProperty("serialize.schemas");
 
     SchemaFactory schemaFactory;
     String id;
     Map<String, Schema> schemaMap;
-    List<SchemaImpl> schemaList = new ArrayList<SchemaImpl>();
+    List<Schema> schemaList = new ArrayList<Schema>();
     List<SchemaPostProcessor> postProcessors = new ArrayList<SchemaPostProcessor>();
     boolean init = false;
 
@@ -43,7 +43,7 @@ public class SubSchemaFactory extends AbstractSchemaFactory implements SchemaFac
             ((SubSchemaFactory)schemaFactory).init();
         }
 
-        List<SchemaImpl> result = new ArrayList<SchemaImpl>();
+        List<Schema> result = new ArrayList<Schema>();
 
         for (Schema schema : schemaFactory.listSchemas()) {
             if (schema instanceof SchemaImpl) {
@@ -66,14 +66,15 @@ public class SubSchemaFactory extends AbstractSchemaFactory implements SchemaFac
 
         schemaList = result;
 
-        for (SchemaImpl schema : schemaList) {
+        for (Schema schema : schemaList) {
+            SchemaImpl schemaImpl = SchemaImpl.class.cast(schema);
             for (SchemaPostProcessor post : postProcessors) {
-                schema = post.postProcess(schema, this);
+                schemaImpl = post.postProcess(schemaImpl, this);
             }
         }
 
-        for (SchemaImpl schema : schemaList) {
-            prune(schema);
+        for (Schema schema : schemaList) {
+            prune(SchemaImpl.class.cast(schema));
         }
 
         if (SERIALIZE.get()) {
@@ -128,10 +129,9 @@ public class SubSchemaFactory extends AbstractSchemaFactory implements SchemaFac
         return id;
     }
 
-    @SuppressWarnings({ "unchecked", "rawtypes" })
     @Override
     public List<Schema> listSchemas() {
-        return (List)schemaList;
+        return schemaList;
     }
 
     @Override

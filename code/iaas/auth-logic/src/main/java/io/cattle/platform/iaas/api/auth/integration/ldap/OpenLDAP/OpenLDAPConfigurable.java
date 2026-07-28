@@ -4,6 +4,7 @@ import io.cattle.platform.iaas.api.auth.SecurityConstants;
 import io.cattle.platform.iaas.api.auth.integration.interfaces.Configurable;
 import io.cattle.platform.iaas.api.auth.integration.interfaces.Provider;
 
+import org.apache.commons.lang3.Strings;
 import org.apache.commons.lang3.StringUtils;
 
 public abstract class OpenLDAPConfigurable implements Configurable, Provider {
@@ -24,7 +25,7 @@ public abstract class OpenLDAPConfigurable implements Configurable, Provider {
                 StringUtils.isNotBlank(OpenLDAPConstants.USER_MEMBER_ATTRIBUTE.get()) &&
                 StringUtils.isNotBlank(OpenLDAPConstants.GROUP_MEMBER_MAPPING_ATTRIBUTE.get()) &&
                 StringUtils.isNotBlank(OpenLDAPConstants.LDAP_DOMAIN.get());
-        return StringUtils.equalsIgnoreCase(SecurityConstants.AUTH_PROVIDER.get(), OpenLDAPConstants.CONFIG) &&
+        return Strings.CI.equals(SecurityConstants.AUTH_PROVIDER.get(), OpenLDAPConstants.CONFIG) &&
                 allProps;
     }
 

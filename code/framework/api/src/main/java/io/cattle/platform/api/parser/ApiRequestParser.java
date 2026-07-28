@@ -1,28 +1,42 @@
 package io.cattle.platform.api.parser;
 
-import io.cattle.platform.archaius.util.ArchaiusUtil;
 import io.cattle.platform.server.context.ServerContext;
 import io.cattle.platform.server.context.ServerContext.BaseProtocol;
 import io.github.ibuildthecloud.gdapi.request.ApiRequest;
 import io.github.ibuildthecloud.gdapi.request.parser.DefaultApiRequestParser;
 
 import java.io.IOException;
-import javax.servlet.http.HttpServletRequest;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.util.List;
+import java.util.Locale;
+
+import jakarta.servlet.http.HttpServletRequest;
 
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.StringUtils;
 
-import com.netflix.config.DynamicBooleanProperty;
-import com.netflix.config.DynamicStringListProperty;
 
 public class ApiRequestParser extends DefaultApiRequestParser {
 
-    private static final DynamicBooleanProperty ALLOW_OVERRIDE = ArchaiusUtil.getBoolean("api.allow.client.override");
-    private static final DynamicStringListProperty HTTPS_PORTS = ArchaiusUtil.getList("proxy.protocol.https.ports");
+    private static final ApiRequestParserSettings DEFAULT_SETTINGS = ArchaiusApiRequestParserSettings.create();
+
+    private final ApiRequestParserSettings settings;
+
+    public ApiRequestParser() {
+        this(DEFAULT_SETTINGS);
+    }
+
+    ApiRequestParser(ApiRequestParserSettings settings) {
+        if (settings == null) {
+            throw new IllegalArgumentException("API request parser settings are required");
+        }
+        this.settings = settings;
+    }
 
     @Override
     public boolean isAllowClientOverrideHeaders() {
-        return ALLOW_OVERRIDE.get();
+        return settings.allowClientOverrideHeaders();
     }
 
     @Override
@@ -40,11 +54,41 @@ public class ApiRequestParser extends DefaultApiRequestParser {
             }
         }
 
-        for (String p : HTTPS_PORTS.get()) {
+        for (String p : settings.httpsPorts()) {
             if (p.equals(port)) {
                 return true;
             }
         }
+        return false;
+    }
+
+    @Override
+    protected boolean isForwardedHostAllowed(String forwardedHost, HttpServletRequest request) {
+        if (settings.trustForwardedHost()) {
+            return true;
+        }
+
+        HostValue forwarded = HostValue.parse(forwardedHost);
+        if (forwarded == null) {
+            return false;
+        }
+
+        if (forwarded.hasSameHost(HostValue.parse(request.getHeader(HOST_HEADER)))) {
+            return true;
+        }
+        if (forwarded.matches(HostValue.parse(settings.apiHost()))) {
+            return true;
+        }
+
+        List<String> allowedHosts = settings.allowedForwardedHosts();
+        if (allowedHosts != null) {
+            for (String allowedHost : allowedHosts) {
+                if (forwarded.matches(HostValue.parse(allowedHost))) {
+                    return true;
+                }
+            }
+        }
+
         return false;
     }
 
@@ -67,6 +111,80 @@ public class ApiRequestParser extends DefaultApiRequestParser {
         }
 
         return super.parse(apiRequest);
+    }
+
+    private static final class HostValue {
+        private final String host;
+        private final Integer port;
+        private final boolean wildcard;
+
+        private HostValue(String host, Integer port, boolean wildcard) {
+            this.host = host;
+            this.port = port;
+            this.wildcard = wildcard;
+        }
+
+        static HostValue parse(String value) {
+            String normalized = firstHeaderValue(value);
+            if (StringUtils.isBlank(normalized)) {
+                return null;
+            }
+
+            boolean wildcard = normalized.startsWith("*.");
+            if (wildcard) {
+                normalized = normalized.substring(2);
+            }
+
+            URI uri;
+            try {
+                uri = new URI(normalized.contains("://") ? normalized : "http://" + normalized);
+            } catch (URISyntaxException e) {
+                return null;
+            }
+
+            String host = uri.getHost();
+            if (StringUtils.isBlank(host)) {
+                return null;
+            }
+
+            host = host.toLowerCase(Locale.ENGLISH);
+            if (host.endsWith(".")) {
+                host = host.substring(0, host.length() - 1);
+            }
+            int port = uri.getPort();
+            return new HostValue(host, port == -1 ? null : port, wildcard);
+        }
+
+        boolean matches(HostValue allowed) {
+            if (allowed == null) {
+                return false;
+            }
+            if (allowed.port != null && !allowed.port.equals(port)) {
+                return false;
+            }
+            if (allowed.wildcard) {
+                return host.endsWith("." + allowed.host) && !host.equals(allowed.host);
+            }
+            return host.equals(allowed.host);
+        }
+
+        boolean hasSameHost(HostValue other) {
+            if (other == null) {
+                return false;
+            }
+            if (other.wildcard) {
+                return host.endsWith("." + other.host) && !host.equals(other.host);
+            }
+            return host.equals(other.host);
+        }
+
+        private static String firstHeaderValue(String value) {
+            if (value == null) {
+                return null;
+            }
+            String[] parts = StringUtils.split(value, ",");
+            return parts.length == 0 ? null : StringUtils.trim(parts[0]);
+        }
     }
 
 }

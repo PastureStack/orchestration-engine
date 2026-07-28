@@ -266,4 +266,44 @@ public class DefaultManagedContextTest {
         assertEquals("leave1", touch.get(2));
         assertEquals("leave", touch.get(3));
     }
+
+    @Test
+    public void managedThreadLocalResetClearsAllTypedValues() throws Exception {
+        final ManagedThreadLocal<String> first = new ManagedThreadLocal<String>();
+        final ManagedThreadLocal<Integer> second = new ManagedThreadLocal<Integer>();
+
+        context.callWithContext(new Callable<Object>() {
+            @Override
+            public Object call() throws Exception {
+                first.set("value");
+                second.set(7);
+                assertEquals("value", first.get());
+                assertEquals(Integer.valueOf(7), second.get());
+                return null;
+            }
+        });
+
+        assertNull(first.get());
+        assertNull(second.get());
+        first.remove();
+        second.remove();
+    }
+
+    @Test
+    public void managedThreadLocalKeepsNullInitialValueBehavior() {
+        final List<Object> touches = new ArrayList<Object>();
+        ManagedThreadLocal<Object> local = new ManagedThreadLocal<Object>() {
+            @Override
+            protected Object initialValue() {
+                touches.add("init");
+                return null;
+            }
+        };
+
+        assertNull(local.get());
+        assertNull(local.get());
+
+        assertEquals(2, touches.size());
+        local.remove();
+    }
 }

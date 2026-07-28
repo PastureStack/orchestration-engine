@@ -1,6 +1,5 @@
 package io.cattle.platform.iaas.api.manager;
 
-import io.cattle.platform.archaius.util.ArchaiusUtil;
 import io.cattle.platform.core.util.SettingsUtils;
 import io.cattle.platform.framework.encryption.impl.Aes256Encrypter;
 import io.cattle.platform.object.util.DataAccessor;
@@ -28,20 +27,17 @@ import java.util.Arrays;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 import java.util.TimeZone;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
-import javax.annotation.PostConstruct;
-import javax.inject.Inject;
-import javax.servlet.http.HttpServletResponse;
+import jakarta.annotation.PostConstruct;
+import jakarta.inject.Inject;
+import jakarta.servlet.http.HttpServletResponse;
 
 import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.io.IOUtils;
-
-import com.netflix.config.DynamicBooleanProperty;
-import com.netflix.config.DynamicIntProperty;
-import com.netflix.config.DynamicStringProperty;
 
 import freemarker.template.Configuration;
 import freemarker.template.Template;
@@ -49,20 +45,7 @@ import freemarker.template.TemplateException;
 
 public class HaConfigManager extends AbstractNoOpResourceManager {
 
-    public static DynamicStringProperty DB = ArchaiusUtil.getString("db.cattle.database");
-    public static DynamicStringProperty DB_HOST = DB.get().equals("mysql")
-            ? ArchaiusUtil.getString("db.cattle.mysql.host")
-            : ArchaiusUtil.getString("db.cattle.postgres.host");
-    public static DynamicStringProperty DB_PORT = DB.get().equals("mysql")
-            ? ArchaiusUtil.getString("db.cattle.mysql.port")
-            : ArchaiusUtil.getString("db.cattle.postgres.port");
-    public static DynamicStringProperty DB_NAME = DB.get().equals("mysql")
-            ? ArchaiusUtil.getString("db.cattle.mysql.name")
-            : ArchaiusUtil.getString("db.cattle.postgres.name");
-    public static DynamicStringProperty DB_USER = ArchaiusUtil.getString("db.cattle.username");
-    public static DynamicStringProperty DB_PASS = ArchaiusUtil.getString("db.cattle.password");
-    private static DynamicBooleanProperty HA_ENABLED = ArchaiusUtil.getBoolean("ha.enabled");
-    private static DynamicIntProperty HA_CLUSTER_SIZE = ArchaiusUtil.getInt("ha.cluster.size");
+    private static final HaConfigSettings DEFAULT_SETTINGS = ArchaiusHaConfigSettings.create();
 
     @Inject
     Aes256Encrypter encrypter;
@@ -70,6 +53,19 @@ public class HaConfigManager extends AbstractNoOpResourceManager {
     SettingsUtils settingsUtils;
     Configuration configuration;
     Template template;
+    HaConfigSettings settings;
+
+    public HaConfigManager() {
+        this(DEFAULT_SETTINGS);
+    }
+
+    HaConfigManager(HaConfigSettings settings) {
+        this.settings = Objects.requireNonNull(settings, "settings");
+    }
+
+    public void setSettings(HaConfigSettings settings) {
+        this.settings = Objects.requireNonNull(settings, "settings");
+    }
 
     @Override
     protected Object listInternal(SchemaFactory schemaFactory, String type, Map<Object, Object> criteria, ListOptions options) {
@@ -78,10 +74,10 @@ public class HaConfigManager extends AbstractNoOpResourceManager {
 
     protected Resource getHaConfig() {
         Map<String, Object> data = new HashMap<>();
-        String host = DB_HOST.get();
+        String host = settings.dbHost();
         data.put("dbHost", host);
-        data.put("enabled", HA_ENABLED.get());
-        data.put("clusterSize", HA_CLUSTER_SIZE.get());
+        data.put("enabled", settings.haEnabled());
+        data.put("clusterSize", settings.haClusterSize());
 
         if ("localhost".equals(host) || "127.0.0.1".equals(host)) {
             try {
@@ -141,18 +137,18 @@ public class HaConfigManager extends AbstractNoOpResourceManager {
         settingsUtils.changeSetting("ha.cluster.size", clusterSize.toString());
 
         data.put("encryptionKey", Base64.encodeBase64String(key.getEncoded()));
-        data.put("db", DB.get());
-        data.put("dbHost", DB_HOST.get());
-        data.put("dbPort", DB_PORT.get());
-        data.put("dbUser", DB_USER.get());
-        data.put("dbPass", encrypter.encrypt(DB_PASS.get(), key));
-        data.put("dbName", DB_NAME.get());
-        data.put("containerPrefix", "rancher-ha-");
+        data.put("db", settings.dbType());
+        data.put("dbHost", settings.dbHost());
+        data.put("dbPort", settings.dbPort());
+        data.put("dbUser", settings.dbUser());
+        data.put("dbPass", encrypter.encrypt(settings.dbPassword(), key));
+        data.put("dbName", settings.dbName());
+        data.put("containerPrefix", "pasturestack-ha-");
 
         HttpServletResponse response = request.getServletContext().getResponse();
 
         response.setContentType("application/octet-stream");
-        response.setHeader("Content-Disposition", "attachment; filename=rancher-ha.sh");
+        response.setHeader("Content-Disposition", "attachment; filename=pasturestack-ha.sh");
         response.setHeader("Cache-Control", "private");
         response.setHeader("Pragma", "private");
         response.setHeader("Expires", "Sun 26 Jul 1981 18:42:00 GMT");
@@ -168,22 +164,24 @@ public class HaConfigManager extends AbstractNoOpResourceManager {
     }
 
     protected long dbSize() throws IOException  {
-        ProcessBuilder pb = DB.get().equals("mysql")
+        ProcessBuilder pb = dbSizeProcessBuilder();
+        pb.redirectError(Redirect.INHERIT);
+        Process p = pb.start();
+        try (InputStream in = p.getInputStream()) {
+            return Long.parseLong(IOUtils.toString(in, java.nio.charset.StandardCharsets.UTF_8).split("[.]")[0].trim());
+        }
+    }
+
+    protected ProcessBuilder dbSizeProcessBuilder() {
+        return "mysql".equals(settings.dbType())
                 ? new ProcessBuilder("mysql", "--skip-column-names", "-s", "-uroot", "-e",
                 "SELECT SUM(data_length)/power(1024,2) AS dbsize_mb FROM information_schema.tables WHERE table_schema='cattle' GROUP BY table_schema;")
                 : new ProcessBuilder("psql", "cattle", "cattle", "-t", "-q", "-c",
                 "SELECT pg_database_size('cattle')/power(1024,2)");
-        pb.redirectError(Redirect.INHERIT);
-        Process p = pb.start();
-        try (InputStream in = p.getInputStream()) {
-            return Long.parseLong(IOUtils.toString(in).split("[.]")[0].trim());
-        }
     }
 
     protected Object dbDump(ApiRequest request) throws IOException, InterruptedException {
-        ProcessBuilder pb = DB.get().equals("mysql")
-                ? new ProcessBuilder("mysqldump", "-uroot", "cattle")
-                : new ProcessBuilder("pg_dump", "-Fc", "-Ucattle", "cattle");
+        ProcessBuilder pb = dbDumpProcessBuilder();
 
         pb.redirectError(Redirect.INHERIT);
 
@@ -193,7 +191,7 @@ public class HaConfigManager extends AbstractNoOpResourceManager {
         String now = df.format(new Date());
 
         HttpServletResponse response = request.getServletContext().getResponse();
-        String prefix = "rancher-db-dump-" + now;
+        String prefix = "pasturestack-db-dump-" + now;
 
         response.setContentType("application/octet-stream");
         response.setHeader("Content-Disposition", "attachment; filename=" + prefix + ".zip");
@@ -213,6 +211,12 @@ public class HaConfigManager extends AbstractNoOpResourceManager {
         p.waitFor();
 
         return new Object();
+    }
+
+    protected ProcessBuilder dbDumpProcessBuilder() {
+        return "mysql".equals(settings.dbType())
+                ? new ProcessBuilder("mysqldump", "-uroot", "cattle")
+                : new ProcessBuilder("pg_dump", "-Fc", "-Ucattle", "cattle");
     }
 
     @PostConstruct

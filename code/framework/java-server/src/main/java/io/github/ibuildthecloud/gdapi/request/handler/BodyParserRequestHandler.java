@@ -16,8 +16,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import javax.annotation.PostConstruct;
-import javax.inject.Inject;
+import jakarta.annotation.PostConstruct;
+import jakarta.inject.Inject;
 
 import org.apache.commons.io.IOUtils;
 
@@ -85,12 +85,10 @@ public class BodyParserRequestHandler extends AbstractApiRequestHandler implemen
 
     protected Object merge(Object body, ApiRequest request) {
         if (body instanceof Map) {
-            @SuppressWarnings("unchecked")
-            Map<String, Object> map = (Map<String, Object>)body;
+            Map<?, ?> map = (Map<?, ?>)body;
             return mergeMap(map, request);
         } else if (body instanceof List) {
-            @SuppressWarnings("unchecked")
-            List<Object> list = (List<Object>)body;
+            List<?> list = (List<?>)body;
             List<Object> result = new ArrayList<Object>(list.size());
             for (Object object : list) {
                 if (isAllowedType(object)) {
@@ -103,7 +101,7 @@ public class BodyParserRequestHandler extends AbstractApiRequestHandler implemen
         }
     }
 
-    protected Map<String, Object> mergeMap(Map<String, Object> overlay, ApiRequest request) {
+    protected Map<String, Object> mergeMap(Map<?, ?> overlay, ApiRequest request) {
         Map<String, Object> result = new HashMap<String, Object>();
 
         /*
@@ -115,8 +113,8 @@ public class BodyParserRequestHandler extends AbstractApiRequestHandler implemen
         }
 
         if (overlay != null) {
-            for (Map.Entry<String, Object> entry : overlay.entrySet()) {
-                result.put(entry.getKey(), entry.getValue());
+            for (Map.Entry<?, ?> entry : overlay.entrySet()) {
+                result.put(String.class.cast(entry.getKey()), entry.getValue());
             }
         }
 

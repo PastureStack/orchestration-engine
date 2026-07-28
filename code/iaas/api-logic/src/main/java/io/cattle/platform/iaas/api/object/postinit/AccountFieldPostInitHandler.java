@@ -14,7 +14,7 @@ import java.util.Map;
 public class AccountFieldPostInitHandler implements ObjectPostInstantiationHandler, Priority {
 
     @Override
-    public <T> T postProcess(T obj, Class<T> clz, Map<String, Object> properties) {
+    public <T> T postProcess(T obj, Class<?> clz, Map<String, Object> properties) {
         ApiContext apiContext = ApiContext.getContext();
         if (apiContext == null) {
             /* Back-end can do whatever it wants */

@@ -10,6 +10,7 @@ import io.cattle.platform.server.context.ServerContext;
 import io.cattle.platform.server.context.ServerContext.BaseProtocol;
 import io.cattle.platform.token.CertSet;
 import io.cattle.platform.token.impl.RSAKeyProvider;
+import io.cattle.platform.util.net.UrlUtils;
 import io.github.ibuildthecloud.gdapi.context.ApiContext;
 import io.github.ibuildthecloud.gdapi.exception.ClientVisibleException;
 import io.github.ibuildthecloud.gdapi.id.IdFormatter;
@@ -21,8 +22,8 @@ import java.net.URL;
 import java.util.LinkedHashSet;
 import java.util.Set;
 
-import javax.inject.Inject;
-import javax.servlet.http.HttpServletResponse;
+import jakarta.inject.Inject;
+import jakarta.servlet.http.HttpServletResponse;
 
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
@@ -62,10 +63,10 @@ public class ApiKeyCertificateDownloadLinkHandler implements LinkHandler {
                 Account account = objectManager.loadResource(Account.class, cred.getAccountId());
                 if (account != null && AccountConstants.SERVICE_KIND.equals(account.getKind())) {
                     Set<String> sanSet = new LinkedHashSet<>();
-                    URL url = new URL(request.getResponseUrlBase());
+                    URL url = UrlUtils.toURL(request.getResponseUrlBase());
                     sanSet.add(url.getHost());
 
-                    url = new URL(ServerContext.getHostApiBaseUrl(BaseProtocol.HTTP));
+                    url = UrlUtils.toURL(ServerContext.getHostApiBaseUrl(BaseProtocol.HTTP));
                     sanSet.add(url.getHost());
 
                     sanSet.add("IP:127.0.0.1");

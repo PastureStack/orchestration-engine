@@ -1,0 +1,8 @@
+*.sh text eol=lf
+mvnw text eol=lf
+scripts/* text eol=lf
+scripts/**/* text eol=lf
+resources/content/config-content/** text eol=lf
+resources/content/agent/** text eol=lf
+code/implementation/register/src/main/resources/registration/*.sh text eol=lf
+tools/**/*.sh text eol=lf

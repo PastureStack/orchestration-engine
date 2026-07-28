@@ -6,6 +6,7 @@ import io.cattle.platform.core.dao.VolumeDao;
 import io.cattle.platform.core.model.Volume;
 import io.cattle.platform.iaas.api.filter.common.CachedOutputFilter;
 import io.cattle.platform.object.ObjectManager;
+import io.cattle.platform.util.type.CollectionUtils;
 import io.github.ibuildthecloud.gdapi.context.ApiContext;
 import io.github.ibuildthecloud.gdapi.id.IdFormatter;
 import io.github.ibuildthecloud.gdapi.model.Resource;
@@ -15,7 +16,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 
 public class VolumeOutputFilter extends CachedOutputFilter<Map<Long, Map<String, Object>>> {
 
@@ -69,6 +70,11 @@ public class VolumeOutputFilter extends CachedOutputFilter<Map<Long, Map<String,
         }
 
         return result;
+    }
+
+    @Override
+    protected Map<Long, Map<String, Object>> castCached(Object cached) {
+        return CollectionUtils.castMap(cached);
     }
 
     @Override

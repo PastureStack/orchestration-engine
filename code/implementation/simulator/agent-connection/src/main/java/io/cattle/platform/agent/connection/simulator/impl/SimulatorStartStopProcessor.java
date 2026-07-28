@@ -23,6 +23,7 @@ import io.cattle.platform.util.type.CollectionUtils;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ScheduledExecutorService;
@@ -30,7 +31,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 
 import org.apache.commons.lang3.StringUtils;
 
@@ -52,7 +53,6 @@ public class SimulatorStartStopProcessor implements AgentSimulatorEventProcessor
     JsonMapper jsonMapper;
     ScheduledExecutorService scheduleExecutorService;
 
-    @SuppressWarnings("unchecked")
     @Override
     public Event handle(final AgentConnectionSimulator simulator, Event event) throws Exception {
         String action = null;
@@ -71,7 +71,7 @@ public class SimulatorStartStopProcessor implements AgentSimulatorEventProcessor
 
         String eventString = jsonMapper.writeValueAsString(event);
 
-        Map<String, Object> instance = (Map<String, Object>)CollectionUtils.getNestedValue(event.getData(), "instanceHostMap", "instance");
+        Map<String, Object> instance = instanceMap(event);
         Map<String, Object> update = null;
         String externalId = (String)instance.get("externalId");
         if (externalId == null) {
@@ -123,6 +123,23 @@ public class SimulatorStartStopProcessor implements AgentSimulatorEventProcessor
         }
 
         return EventVO.reply(event).withData(update);
+    }
+
+    protected Map<String, Object> instanceMap(Event event) {
+        return stringObjectMap(CollectionUtils.getNestedValue(event.getData(), "instanceHostMap", "instance"));
+    }
+
+    protected Map<String, Object> stringObjectMap(Object input) {
+        if (input == null) {
+            return null;
+        }
+
+        Map<?, ?> source = Map.class.cast(input);
+        Map<String, Object> result = new HashMap<String, Object>(source.size());
+        for (Map.Entry<?, ?> entry : source.entrySet()) {
+            result.put(String.class.cast(entry.getKey()), entry.getValue());
+        }
+        return result;
     }
 
     protected void publishItemUpdates(long agentId) {

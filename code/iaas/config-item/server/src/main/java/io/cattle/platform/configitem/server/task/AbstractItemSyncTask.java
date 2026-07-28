@@ -4,7 +4,7 @@ import io.cattle.platform.configitem.version.ConfigItemStatusManager;
 import io.cattle.platform.engine.process.util.ProcessEngineUtils;
 import io.cattle.platform.task.AbstractSingletonTask;
 
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 
 public abstract class AbstractItemSyncTask extends AbstractSingletonTask {
 

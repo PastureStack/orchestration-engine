@@ -16,13 +16,12 @@ import io.cattle.platform.object.util.DataAccessor;
 import io.cattle.platform.process.base.AbstractDefaultProcessHandler;
 import io.cattle.platform.util.type.CollectionUtils;
 
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import javax.inject.Inject;
-import javax.inject.Named;
+import jakarta.inject.Inject;
+import jakarta.inject.Named;
 
 @Named
 public class NetworkCreate extends AbstractDefaultProcessHandler {
@@ -45,9 +44,9 @@ public class NetworkCreate extends AbstractDefaultProcessHandler {
                 }
             }
 
-            List<? extends Subnet> subnets = jsonMapper.convertCollectionValue(obj, ArrayList.class, SubnetRecord.class);
+            List<SubnetRecord> subnets = jsonMapper.convertListValue(obj, SubnetRecord.class);
             for (int i = 0 ; i < subnets.size() ; i++) {
-                Long key = new Long(i);
+                Long key = Long.valueOf(i);
                 if (existingSubnets.containsKey(key)) {
                     continue;
                 }

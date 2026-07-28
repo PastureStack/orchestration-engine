@@ -1,6 +1,7 @@
 package io.cattle.platform.framework.encryption;
 
 import io.cattle.platform.archaius.util.ArchaiusUtil;
+import io.cattle.platform.archaius.util.ConfigProperty;
 
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
@@ -11,10 +12,9 @@ import org.apache.commons.codec.DecoderException;
 import org.apache.commons.codec.binary.Hex;
 import org.apache.commons.lang3.StringUtils;
 
-import com.netflix.config.DynamicStringProperty;
 
 public class EncryptionUtils {
-    private static DynamicStringProperty fileName = ArchaiusUtil.getString("api.encryption.key");
+    private static final ConfigProperty<String> FILE_NAME = ArchaiusUtil.getStringProperty("api.encryption.key");
 
     public static boolean isEqual(String aa, String bb) {
         if (aa == null || bb == null) {
@@ -50,7 +50,7 @@ public class EncryptionUtils {
     }
 
     private static Properties getKey() {
-        String file = fileName.get();
+        String file = FILE_NAME.get();
         try (FileInputStream reader = new FileInputStream(file)) {
             Properties properties = new Properties();
             properties.load(reader);
@@ -61,7 +61,7 @@ public class EncryptionUtils {
     }
 
     public static synchronized void saveKeyToFile(String key, byte[] value) throws IOException {
-        String file = fileName.get();
+        String file = FILE_NAME.get();
         try (FileOutputStream fileWriter = new FileOutputStream(file)){
             Properties properties = getKey();
             if (properties == null) {

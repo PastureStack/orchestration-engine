@@ -29,7 +29,13 @@ import io.cattle.platform.iaas.api.auth.dao.impl.AuthDaoImpl;
 import io.cattle.platform.iaas.api.auth.dao.impl.AuthTokenDaoImpl;
 import io.cattle.platform.iaas.api.auth.dynamic.DynamicSchemaAuthorizationProvider;
 import io.cattle.platform.iaas.api.auth.identity.AccountOutputFilter;
+import io.cattle.platform.iaas.api.auth.identity.AuthIdentityLink;
+import io.cattle.platform.iaas.api.auth.identity.AuthIdentityLinkResourceManager;
+import io.cattle.platform.iaas.api.auth.identity.AuthIdentityOperation;
 import io.cattle.platform.iaas.api.auth.identity.IdentityManager;
+import io.cattle.platform.iaas.api.auth.identity.IdentityProofVerifier;
+import io.cattle.platform.iaas.api.auth.identity.ProviderSwitchTicketService;
+import io.cattle.platform.iaas.api.auth.identity.ProviderSwitchTokenService;
 import io.cattle.platform.iaas.api.auth.identity.TokenResourceManager;
 import io.cattle.platform.iaas.api.auth.impl.AgentQualifierAuthorizationProvider;
 import io.cattle.platform.iaas.api.auth.impl.ApiAuthenticator;
@@ -54,6 +60,19 @@ import io.cattle.platform.iaas.api.auth.integration.ldap.OpenLDAP.OpenLDAPUtils;
 import io.cattle.platform.iaas.api.auth.integration.local.LocalAuthConfigManager;
 import io.cattle.platform.iaas.api.auth.integration.local.LocalAuthTokenCreator;
 import io.cattle.platform.iaas.api.auth.integration.local.LocalAuthTokenUtils;
+import io.cattle.platform.iaas.api.auth.mfa.MfaDaoImpl;
+import io.cattle.platform.iaas.api.auth.mfa.EmailRecoveryService;
+import io.cattle.platform.iaas.api.auth.mfa.MfaFactor;
+import io.cattle.platform.iaas.api.auth.mfa.MfaMailService;
+import io.cattle.platform.iaas.api.auth.mfa.MfaOperation;
+import io.cattle.platform.iaas.api.auth.mfa.MfaPolicyService;
+import io.cattle.platform.iaas.api.auth.mfa.MfaResourceManager;
+import io.cattle.platform.iaas.api.auth.mfa.MfaService;
+import io.cattle.platform.iaas.api.auth.mfa.MfaSettings;
+import io.cattle.platform.iaas.api.auth.mfa.MfaSettingsResourceManager;
+import io.cattle.platform.iaas.api.auth.mfa.MfaStatus;
+import io.cattle.platform.iaas.api.auth.mfa.TotpService;
+import io.cattle.platform.iaas.api.auth.mfa.WebAuthnService;
 import io.cattle.platform.iaas.api.auth.projects.ProjectMemberResourceManager;
 import io.cattle.platform.iaas.api.auth.projects.ProjectResourceManager;
 import io.cattle.platform.iaas.api.auth.projects.SetProjectMembersActionHandler;
@@ -675,6 +694,20 @@ public class IaasApiConfig {
     }
 
     @Bean
+    TypeSet IdentitySecurityApiTypes() {
+        TypeSet typeSet = new TypeSet("IdentitySecurityApiTypes");
+        typeSet.setTypeClasses(Arrays.<Class<?>>asList(
+                AuthIdentityLink.class,
+                AuthIdentityOperation.class,
+                MfaStatus.class,
+                MfaFactor.class,
+                MfaOperation.class,
+                MfaSettings.class
+                ));
+        return typeSet;
+    }
+
+    @Bean
     DocumentationHandler DocumentationHandler() {
         return new DocumentationHandler();
     }
@@ -689,17 +722,81 @@ public class IaasApiConfig {
         return factory;
     }
 
-    @SuppressWarnings("unchecked")
     @Bean
-    DocumentationLoader DocumentationLoader(@Qualifier("DocsLocation") List<?> resources) {
+    DocumentationLoader DocumentationLoader(@Qualifier("DocsLocation") List<URL> resources) {
         DocumentationLoader loader = new DocumentationLoader();
-        loader.setResources((List<URL>) resources);
+        loader.setResources(resources);
         return loader;
     }
 
     @Bean
     TokenResourceManager TokenResourceManager() {
         return new TokenResourceManager();
+    }
+
+    @Bean
+    AuthIdentityLinkResourceManager AuthIdentityLinkResourceManager() {
+        return new AuthIdentityLinkResourceManager();
+    }
+
+    @Bean
+    IdentityProofVerifier IdentityProofVerifier() {
+        return new IdentityProofVerifier();
+    }
+
+    @Bean
+    ProviderSwitchTicketService ProviderSwitchTicketService() {
+        return new ProviderSwitchTicketService();
+    }
+
+    @Bean
+    ProviderSwitchTokenService ProviderSwitchTokenService() {
+        return new ProviderSwitchTokenService();
+    }
+
+    @Bean
+    MfaDaoImpl MfaDaoImpl() {
+        return new MfaDaoImpl();
+    }
+
+    @Bean
+    MfaPolicyService MfaPolicyService() {
+        return new MfaPolicyService();
+    }
+
+    @Bean
+    TotpService TotpService() {
+        return new TotpService();
+    }
+
+    @Bean
+    WebAuthnService WebAuthnService() {
+        return new WebAuthnService();
+    }
+
+    @Bean
+    MfaService MfaService() {
+        return new MfaService();
+    }
+
+    @Bean
+    MfaResourceManager MfaResourceManager() {
+        return new MfaResourceManager();
+    }
+
+    @Bean
+    MfaMailService MfaMailService() {
+        return new MfaMailService();
+    }
+
+    @Bean
+    EmailRecoveryService EmailRecoveryService() {
+        return new EmailRecoveryService();
+    }
+
+    @Bean
+    MfaSettingsResourceManager MfaSettingsResourceManager() {
+        return new MfaSettingsResourceManager();
     }
 
     @Bean
@@ -767,6 +864,7 @@ public class IaasApiConfig {
         GenericWhitelistedProxy proxy = new GenericWhitelistedProxy("NoAuthenticationProxy");
         proxy.setNoAuthProxy("true");
         proxy.setAllowedPaths(Arrays.asList(
+                "/v1-auth/token",
                 "/v1-auth/saml",
                 "/v1-webhooks/endpoint"));
         return proxy;

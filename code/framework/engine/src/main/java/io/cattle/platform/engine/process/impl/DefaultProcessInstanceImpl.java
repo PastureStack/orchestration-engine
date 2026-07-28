@@ -4,6 +4,7 @@ import static io.cattle.platform.engine.process.ExitReason.*;
 import static io.cattle.platform.util.time.TimeUtils.*;
 
 import io.cattle.platform.archaius.util.ArchaiusUtil;
+import io.cattle.platform.archaius.util.ConfigProperty;
 import io.cattle.platform.async.utils.TimeoutException;
 import io.cattle.platform.deferred.util.DeferredUtils;
 import io.cattle.platform.engine.context.EngineContext;
@@ -56,11 +57,10 @@ import java.util.Stack;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.netflix.config.DynamicLongProperty;
 
 public class DefaultProcessInstanceImpl implements ProcessInstance {
-    private static final DynamicLongProperty RETRY_MAX_WAIT = ArchaiusUtil.getLong("process.retry_max_wait.millis");
-    private static final DynamicLongProperty RETRY_RUNNING_DELAY = ArchaiusUtil.getLong("process.running_delay.millis");
+    private static final ConfigProperty<Long> RETRY_MAX_WAIT = ArchaiusUtil.getLongProperty("process.retry_max_wait.millis");
+    private static final ConfigProperty<Long> RETRY_RUNNING_DELAY = ArchaiusUtil.getLongProperty("process.running_delay.millis");
 
     private static final Logger log = LoggerFactory.getLogger(DefaultProcessInstanceImpl.class);
 

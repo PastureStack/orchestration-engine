@@ -1,7 +1,6 @@
 package io.cattle.platform.docker.api;
 
 import io.cattle.platform.api.action.ActionHandler;
-import io.cattle.platform.archaius.util.ArchaiusUtil;
 import io.cattle.platform.core.constants.InstanceConstants;
 import io.cattle.platform.core.model.Host;
 import io.cattle.platform.core.model.Instance;
@@ -24,23 +23,31 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 
 import org.apache.commons.lang3.StringUtils;
 
-import com.netflix.config.DynamicLongProperty;
-import com.netflix.config.DynamicStringProperty;
-
 public class ContainerProxyActionHandler implements ActionHandler {
 
-    private static final DynamicStringProperty HOST_PROXY_PATH = ArchaiusUtil.getString("host.proxy.path");
-    private static final DynamicLongProperty EXPIRE_SECONDS = ArchaiusUtil.getLong("host.proxy.jwt.expiration.seconds");
     private static final Set<String> VALID_SCHEMES = new HashSet<>(Arrays.asList("http", "https"));
+
+    private final DockerActionSettings settings;
 
     @Inject
     HostApiService apiService;
     @Inject
     ObjectManager objectManager;
+
+    public ContainerProxyActionHandler() {
+        this(ArchaiusDockerActionSettings.create());
+    }
+
+    ContainerProxyActionHandler(DockerActionSettings settings) {
+        if (settings == null) {
+            throw new IllegalArgumentException("settings is required");
+        }
+        this.settings = settings;
+    }
 
     @Override
     public String getName() {
@@ -80,10 +87,10 @@ public class ContainerProxyActionHandler implements ActionHandler {
                 "scheme", StringUtils.isBlank(scheme) ? proxy.getScheme() : scheme,
                 "address", ipAddress + ":" + (StringUtils.isBlank(port) ? proxy.getPort() : port));
 
-        Date expiration = new Date(System.currentTimeMillis() + EXPIRE_SECONDS.get() * 1000);
+        Date expiration = new Date(System.currentTimeMillis() + settings.hostProxyJwtExpirationSeconds() * 1000);
 
         HostApiAccess apiAccess = apiService.getAccess(request, host.getId(), CollectionUtils.asMap("proxy", data),
-                expiration, HOST_PROXY_PATH.get());
+                expiration, settings.hostProxyPath());
 
         if (apiAccess == null) {
             return null;

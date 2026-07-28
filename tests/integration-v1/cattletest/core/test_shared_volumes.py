@@ -41,7 +41,7 @@ def create_new_agent(super_client, project):
 
     assert agent.state == "active"
     account = agent.account()
-    creds = filter(lambda x: x.kind == 'agentApiKey', account.credentials())
+    creds = [x for x in account.credentials() if x.kind == 'agentApiKey']
     agent_client = api_client(creds[0].publicValue, creds[0].secretValue)
     return agent, account, agent_client
 
@@ -102,7 +102,7 @@ def single_instance_rw_test(super_client, new_context, disks, sp_name=None):
 
     svm = super_client.reload(vm)
 
-    for k, vol_id in svm.dataVolumeMounts.__dict__.iteritems():
+    for k, vol_id in svm.dataVolumeMounts.__dict__.items():
         create_mount(vol_id, vm, client, super_client)
 
     data_volumes = []

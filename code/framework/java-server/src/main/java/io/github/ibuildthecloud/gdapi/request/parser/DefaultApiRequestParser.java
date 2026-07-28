@@ -1,5 +1,6 @@
 package io.github.ibuildthecloud.gdapi.request.parser;
 
+import io.cattle.platform.util.net.UrlUtils;
 import io.github.ibuildthecloud.gdapi.exception.ClientVisibleException;
 import io.github.ibuildthecloud.gdapi.factory.SchemaFactory;
 import io.github.ibuildthecloud.gdapi.model.Resource;
@@ -18,14 +19,15 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 
-import javax.annotation.PostConstruct;
-import javax.servlet.http.HttpServletRequest;
+import jakarta.annotation.PostConstruct;
+import jakarta.servlet.http.HttpServletRequest;
 
-import org.apache.commons.fileupload.FileItem;
-import org.apache.commons.fileupload.FileUploadBase;
-import org.apache.commons.fileupload.FileUploadException;
-import org.apache.commons.fileupload.disk.DiskFileItemFactory;
-import org.apache.commons.fileupload.servlet.ServletFileUpload;
+import org.apache.commons.fileupload2.core.DiskFileItem;
+import org.apache.commons.fileupload2.core.DiskFileItemFactory;
+import org.apache.commons.fileupload2.core.FileUploadException;
+import org.apache.commons.fileupload2.core.FileUploadSizeException;
+import org.apache.commons.fileupload2.jakarta.servlet6.JakartaServletFileUpload;
+import org.apache.commons.lang3.Strings;
 import org.apache.commons.lang3.StringUtils;
 
 public class DefaultApiRequestParser implements ApiRequestParser {
@@ -41,7 +43,7 @@ public class DefaultApiRequestParser implements ApiRequestParser {
     public static final String HTML = "html";
     public static final String JSON = "json";
 
-    ServletFileUpload servletFileUpload;
+    JakartaServletFileUpload<DiskFileItem, DiskFileItemFactory> servletFileUpload;
     int maxUploadSize = 100 * 1024;
     boolean allowClientOverrideHeaders = false;
     String overrideUrlHeader = DEFAULT_OVERRIDE_URL_HEADER;
@@ -93,36 +95,41 @@ public class DefaultApiRequestParser implements ApiRequestParser {
         return null;
     }
 
-    @SuppressWarnings("unchecked")
     protected Map<String, Object> parseParams(ApiRequest apiRequest, HttpServletRequest request) throws IOException {
         try {
             Map<String, Object> multiPart = parseMultipart(request);
 
-            return multiPart == null ? request.getParameterMap() : multiPart;
+            if (multiPart != null) {
+                return multiPart;
+            }
+
+            Map<String, Object> result = new HashMap<String, Object>();
+            result.putAll(request.getParameterMap());
+            return result;
         } catch (IOException e) {
-            if (e.getCause() instanceof FileUploadBase.SizeLimitExceededException)
+            if (e.getCause() instanceof FileUploadSizeException)
                 throw new ClientVisibleException(ResponseCodes.REQUEST_ENTITY_TOO_LARGE);
             throw e;
         }
     }
 
     protected Map<String, Object> parseMultipart(HttpServletRequest request) throws IOException {
-        if (!ServletFileUpload.isMultipartContent(request))
+        if (!JakartaServletFileUpload.isMultipartContent(request))
             return null;
 
         Map<String, List<String>> params = new HashMap<String, List<String>>();
 
         try {
-            List<FileItem> items = servletFileUpload.parseRequest(request);
+            List<DiskFileItem> items = servletFileUpload.parseRequest(request);
 
-            for (FileItem item : items) {
+            for (DiskFileItem item : items) {
                 if (item.isFormField()) {
                     List<String> values = params.get(item.getFieldName());
                     if (values == null) {
                         values = new ArrayList<String>();
                         params.put(item.getFieldName(), values);
                     }
-                    values.add(item.getString());
+                    values.add(item.getString(item.getCharsetDefault()));
                 }
             }
 
@@ -207,7 +214,11 @@ public class DefaultApiRequestParser implements ApiRequestParser {
     }
 
     private String getUrlFromStandardHeaders(HttpServletRequest request) {
-        String host = getOverrideHeader(request, FORWARDED_HOST_HEADER, null, false);
+        String forwardedHost = getOverrideHeader(request, FORWARDED_HOST_HEADER, null, false);
+        String host = null;
+        if (forwardedHost != null && isForwardedHostAllowed(forwardedHost, request)) {
+            host = forwardedHost;
+        }
         if (host == null) {
             host = getOverrideHeader(request, HOST_HEADER, null, false);
         }
@@ -223,7 +234,7 @@ public class DefaultApiRequestParser implements ApiRequestParser {
             return null;
         }
 
-        if (StringUtils.equals(port, "443") || StringUtils.equals(port, "80")) {
+        if (Strings.CS.equals(port, "443") || Strings.CS.equals(port, "80")) {
             port = null; // Don't include default ports in url
         }
 
@@ -243,6 +254,10 @@ public class DefaultApiRequestParser implements ApiRequestParser {
         return builder.toString();
     }
 
+    protected boolean isForwardedHostAllowed(String forwardedHost, HttpServletRequest request) {
+        return true;
+    }
+
     protected String parseResponseUrlBase(ApiRequest apiRequest, HttpServletRequest request) {
         String servletPath = request.getServletPath();
         String requestUrl = apiRequest.getRequestUrl();
@@ -253,7 +268,7 @@ public class DefaultApiRequestParser implements ApiRequestParser {
                 /*
                  * Fallback, if we can't find servletPath in requestUrl, then we just assume the base is the root of the web request
                  */
-                URL url = new URL(requestUrl);
+                URL url = UrlUtils.toURL(requestUrl);
                 StringBuilder buffer = new StringBuilder(url.getProtocol()).append("://").append(url.getHost());
 
                 if (url.getPort() != -1) {
@@ -363,12 +378,13 @@ public class DefaultApiRequestParser implements ApiRequestParser {
 
     @PostConstruct
     public void init() {
-        DiskFileItemFactory factory = new DiskFileItemFactory();
-        factory.setSizeThreshold(maxUploadSize * 2);
+        DiskFileItemFactory factory = DiskFileItemFactory.builder()
+                .setThreshold(maxUploadSize * 2)
+                .get();
 
-        servletFileUpload = new ServletFileUpload(factory);
-        servletFileUpload.setFileSizeMax(maxUploadSize);
-        servletFileUpload.setSizeMax(maxUploadSize);
+        servletFileUpload = new JakartaServletFileUpload<DiskFileItem, DiskFileItemFactory>(factory);
+        servletFileUpload.setMaxFileSize(maxUploadSize);
+        servletFileUpload.setMaxSize(maxUploadSize);
 
         if (allowedFormats == null) {
             allowedFormats = new HashSet<String>();

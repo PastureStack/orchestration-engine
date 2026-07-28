@@ -1,10 +1,13 @@
 package io.cattle.platform.configitem.server.resource;
 
 import io.cattle.platform.archaius.util.ArchaiusUtil;
+import io.cattle.platform.archaius.util.ConfigListProperty;
+import io.cattle.platform.archaius.util.ConfigProperty;
 
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.nio.file.Files;
 import java.security.DigestOutputStream;
 import java.security.MessageDigest;
@@ -14,15 +17,11 @@ import java.util.concurrent.Callable;
 
 import org.apache.commons.codec.binary.Hex;
 import org.apache.commons.io.IOUtils;
-import org.apache.commons.io.output.NullOutputStream;
-
-import com.netflix.config.DynamicBooleanProperty;
-import com.netflix.config.DynamicStringListProperty;
 
 public abstract class AbstractCachingResourceRoot implements ResourceRoot {
 
-    public static final DynamicStringListProperty IGNORE_PREFIX = ArchaiusUtil.getList("config.item.ignore.prefixes");
-    public static final DynamicBooleanProperty DYNAMIC = ArchaiusUtil.getBoolean("config.item.dynamic");
+    public static final ConfigListProperty<String> IGNORE_PREFIX = ArchaiusUtil.getStringListProperty("config.item.ignore.prefixes");
+    public static final ConfigProperty<Boolean> DYNAMIC = ArchaiusUtil.getBooleanProperty("config.item.dynamic");
 
     Collection<Resource> resources;
     String sourceRevision;
@@ -57,7 +56,7 @@ public abstract class AbstractCachingResourceRoot implements ResourceRoot {
         DigestOutputStream outputStream = null;
         String revision = null;
         try {
-            outputStream = new DigestOutputStream(new NullOutputStream(), MessageDigest.getInstance("SHA-256"));
+            outputStream = new DigestOutputStream(OutputStream.nullOutputStream(), MessageDigest.getInstance("SHA-256"));
 
             if (additionalRevisionData != null) {
                 try {

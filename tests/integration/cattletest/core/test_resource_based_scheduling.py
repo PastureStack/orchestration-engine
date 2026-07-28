@@ -245,7 +245,7 @@ def mock_sched(new_context, super_client):
     c = super_client.reload(c)
     agent = c.agent()
     account = agent.account()
-    creds = filter(lambda x: x.kind == 'agentApiKey', account.credentials())
+    creds = [x for x in account.credentials() if x.kind == 'agentApiKey']
     access_key = creds[0].publicValue
     secret_key = creds[0].secretValue
 

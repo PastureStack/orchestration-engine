@@ -12,8 +12,8 @@ import io.cattle.platform.eventing.model.EventVO;
 import io.cattle.platform.iaas.event.IaasEvents;
 import io.cattle.platform.util.type.Priority;
 
-import javax.inject.Inject;
-import javax.inject.Named;
+import jakarta.inject.Inject;
+import jakarta.inject.Named;
 
 @Named
 public class ClearCacheHandler extends AbstractProcessLogic implements ProcessPostListener, Priority {

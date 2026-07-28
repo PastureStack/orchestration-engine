@@ -19,7 +19,7 @@ import io.github.ibuildthecloud.gdapi.request.ApiRequest;
 import java.util.List;
 import java.util.Map;
 
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 
 import org.apache.commons.lang3.StringUtils;
 
@@ -88,6 +88,11 @@ public class HostsFilter extends CachedOutputFilter<HostsFilter.Data> implements
         data.instancesPerHost = hostDao.getInstancesPerHost(ids, ApiContext.getContext().getIdFormatter());
         data.physicalHosts = hostDao.getPhysicalHostsForHosts(ids);
         return data;
+    }
+
+    @Override
+    protected HostsFilter.Data castCached(Object cached) {
+        return HostsFilter.Data.class.cast(cached);
     }
 
     @Override

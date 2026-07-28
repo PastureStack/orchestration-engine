@@ -12,6 +12,7 @@ public class CatalogTemplate {
     String templateId;
     String templateVersionId;
     String dockerCompose;
+    String platformCompose;
     String rancherCompose;
     Map<String, Object> answers;
     Object binding;
@@ -56,8 +57,16 @@ public class CatalogTemplate {
         this.dockerCompose = dockerCompose;
     }
 
+    public String getPlatformCompose() {
+        return platformCompose == null || platformCompose.trim().isEmpty() ? rancherCompose : platformCompose;
+    }
+
+    public void setPlatformCompose(String platformCompose) {
+        this.platformCompose = platformCompose;
+    }
+
     public String getRancherCompose() {
-        return rancherCompose;
+        return getPlatformCompose();
     }
 
     public void setRancherCompose(String rancherCompose) {

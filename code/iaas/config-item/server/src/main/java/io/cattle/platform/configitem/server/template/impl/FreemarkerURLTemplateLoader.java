@@ -1,5 +1,7 @@
 package io.cattle.platform.configitem.server.template.impl;
 
+import io.cattle.platform.util.net.UrlUtils;
+
 import java.net.MalformedURLException;
 import java.net.URL;
 
@@ -15,7 +17,7 @@ public class FreemarkerURLTemplateLoader extends URLTemplateLoader {
     @Override
     protected URL getURL(String name) {
         try {
-            return new URL(name);
+            return UrlUtils.toURL(name);
         } catch (MalformedURLException e) {
             log.error("Bad URL for template [{}]", name, e);
             return null;

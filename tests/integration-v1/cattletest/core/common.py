@@ -312,7 +312,7 @@ def wait_for_condition(client, resource, check_function, fail_handler=None,
 
 def assert_fields(obj, fields):
     assert obj is not None
-    for k, v in fields.items():
+    for k, v in list(fields.items()):
         assert k in obj
         if v is None:
             assert obj[k] is None
@@ -345,7 +345,7 @@ def format_time(time):
 def assert_required_fields(method, **kw):
     method(**kw)
 
-    for k in kw.keys():
+    for k in list(kw.keys()):
         args = dict(kw)
         del args[k]
 
@@ -490,7 +490,7 @@ def auth_check(schema, id, access, props=None):
 
     assert prop_actual == prop
 
-    for name, field in type.resourceFields.items():
+    for name, field in list(type.resourceFields.items()):
         assert name in props
 
         prop = set(props[name])

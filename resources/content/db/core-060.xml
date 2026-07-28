@@ -4,6 +4,7 @@
     <property name="mediumtext" value="MEDIUMTEXT" />
     <changeSet dbms="!mysql" author="darren (generated)" id="dump1">
         <validCheckSum>7:46c16c76490ce496b22a9faa6bf6db0c</validCheckSum>
+        <validCheckSum>9:2648d403bd3b07292206179a1bd12889</validCheckSum>
         <createIndex indexName="idx_label_key_value" tableName="label" unique="false">
             <column name="key"/>
             <column name="value"/>
@@ -12,6 +13,7 @@
     <changeSet dbms="mysql" author="darren (generated)" id="dump1">
         <validCheckSum>7:46c16c76490ce496b22a9faa6bf6db0c</validCheckSum>
         <validCheckSum>7:435f414e3ee3bafb1de08adb404c7c68</validCheckSum>
+        <validCheckSum>9:2648d403bd3b07292206179a1bd12889</validCheckSum>
         <sql>
 CREATE INDEX idx_label_key_value ON label(`key`(255), `value`(255));
         </sql>

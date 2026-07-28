@@ -1,8 +1,7 @@
 package io.cattle.platform.lock.impl;
 
 import static org.junit.Assert.*;
-import static org.mockito.Mockito.*;
-import io.cattle.platform.lock.Lock;
+import io.cattle.platform.lock.impl.LockTestUtils.TestLock;
 import io.cattle.platform.lock.exception.FailedToAcquireLockException;
 
 import org.junit.Test;
@@ -11,49 +10,49 @@ public class MultiLockTest {
 
     @Test
     public void test_good_lock() {
-        Lock good = LockTestUtils.goodLock(null);
-        Lock good2 = LockTestUtils.goodLock(null);
+        TestLock good = LockTestUtils.goodLock(null);
+        TestLock good2 = LockTestUtils.goodLock(null);
 
         MultiLock multiLock = new MultiLock(null, good, good2);
         multiLock.lock();
 
-        verify(good, times(0)).tryLock();
-        verify(good, times(1)).lock();
-        verify(good2, times(0)).tryLock();
-        verify(good2, times(1)).lock();
+        assertEquals(0, good.tryLockCount);
+        assertEquals(1, good.lockCount);
+        assertEquals(0, good2.tryLockCount);
+        assertEquals(1, good2.lockCount);
     }
 
     @Test
     public void test_good_tryLock() {
-        Lock good = LockTestUtils.goodLock(null);
-        Lock good2 = LockTestUtils.goodLock(null);
+        TestLock good = LockTestUtils.goodLock(null);
+        TestLock good2 = LockTestUtils.goodLock(null);
 
         MultiLock multiLock = new MultiLock(null, good, good2);
         multiLock.tryLock();
 
-        verify(good, times(1)).tryLock();
-        verify(good, times(0)).lock();
-        verify(good2, times(1)).tryLock();
-        verify(good2, times(0)).lock();
+        assertEquals(1, good.tryLockCount);
+        assertEquals(0, good.lockCount);
+        assertEquals(1, good2.tryLockCount);
+        assertEquals(0, good2.lockCount);
     }
 
     @Test
     public void test_good_unlock() {
-        Lock good = LockTestUtils.goodLock(null);
-        Lock good2 = LockTestUtils.goodLock(null);
+        TestLock good = LockTestUtils.goodLock(null);
+        TestLock good2 = LockTestUtils.goodLock(null);
 
         MultiLock multiLock = new MultiLock(null, good, good2);
         multiLock.unlock();
 
-        verify(good, times(1)).unlock();
-        verify(good2, times(1)).unlock();
+        assertEquals(1, good.unlockCount);
+        assertEquals(1, good2.unlockCount);
     }
 
     @Test
     public void test_bad_lock() {
-        Lock good = LockTestUtils.goodLock(null);
-        Lock bad = LockTestUtils.badLock(null);
-        Lock good2 = LockTestUtils.goodLock(null);
+        TestLock good = LockTestUtils.goodLock(null);
+        TestLock bad = LockTestUtils.badLock(null);
+        TestLock good2 = LockTestUtils.goodLock(null);
 
         try {
             MultiLock multiLock = new MultiLock(null, good, bad, good2);
@@ -62,23 +61,23 @@ public class MultiLockTest {
         } catch (FailedToAcquireLockException e) {
         }
 
-        verify(good, times(1)).lock();
-        verify(bad, times(1)).lock();
-        verify(good2, times(0)).lock();
+        assertEquals(1, good.lockCount);
+        assertEquals(1, bad.lockCount);
+        assertEquals(0, good2.lockCount);
     }
 
     @Test
     public void test_bad_trylock() {
-        Lock good = LockTestUtils.goodLock(null);
-        Lock bad = LockTestUtils.badLock(null);
-        Lock good2 = LockTestUtils.goodLock(null);
+        TestLock good = LockTestUtils.goodLock(null);
+        TestLock bad = LockTestUtils.badLock(null);
+        TestLock good2 = LockTestUtils.goodLock(null);
 
         MultiLock multiLock = new MultiLock(null, good, bad, good2);
         assertTrue(!multiLock.tryLock());
 
-        verify(good, times(1)).tryLock();
-        verify(bad, times(1)).tryLock();
-        verify(good2, times(0)).tryLock();
+        assertEquals(1, good.tryLockCount);
+        assertEquals(1, bad.tryLockCount);
+        assertEquals(0, good2.tryLockCount);
     }
 
 }

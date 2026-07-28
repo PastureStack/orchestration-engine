@@ -42,21 +42,25 @@ public class InstanceManager extends AbstractJooqResourceManager {
         }
     }
 
-    @SuppressWarnings("unchecked")
     @Override
-    protected <T> T createAndScheduleObject(Class<T> clz, Map<String, Object> properties) {
+    protected Object createAndScheduleObject(Class<?> clz, Map<String, Object> properties) {
         Object count = properties.get(InstanceConstants.FIELD_COUNT);
 
         if (count instanceof Number && ((Number) count).intValue() > 1) {
             int max = ((Number) count).intValue();
 
+            /*
+             * Rancher 1.6 multi-create compatibility: the public create path
+             * historically returns a List when count > 1. Do not replace this
+             * with clz.cast(result), which would break that API behavior.
+             */
             List<Object> result = new ArrayList<Object>(max);
             for (int i = 0; i < max; i++) {
                 Object instance = super.createAndScheduleObject(clz, properties);
                 result.add(instance);
             }
 
-            return (T) result;
+            return result;
         } else {
             return super.createAndScheduleObject(clz, properties);
         }

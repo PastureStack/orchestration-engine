@@ -82,7 +82,7 @@ def init(admin_user_client):
         'task.config.item.migration.schedule': '5',
         'task.config.item.source.version.sync.schedule': '5',
     }
-    for k, v in kv.items():
+    for k, v in list(kv.items()):
         admin_user_client.create_setting(name=k, value=v)
 
 
@@ -301,8 +301,8 @@ def register_simulated_host(client_or_context, return_agent=False):
     try:
         register = c.wait_success(register)
     except:
-        print register
-        print process_instances(s, register)
+        print(register)
+        print(process_instances(s, register))
         raise
     register = c.list_register(key=key)[0]
 
@@ -323,8 +323,8 @@ def register_simulated_host(client_or_context, return_agent=False):
     try:
         host = wait_state(client, host, 'active')
     except:
-        print client.list_host()
-        print process_instances(s, host)
+        print(client.list_host())
+        print(process_instances(s, host))
         raise
     wait_for(lambda: _wait_for_pool(host))
 
@@ -447,7 +447,7 @@ def wait_for_condition(client, resource, check_function, fail_handler=None,
 
 def assert_fields(obj, fields):
     assert obj is not None
-    for k, v in fields.items():
+    for k, v in list(fields.items()):
         assert k in obj
         if v is None:
             assert obj[k] is None
@@ -480,7 +480,7 @@ def format_time(time):
 def assert_required_fields(method, **kw):
     method(**kw)
 
-    for k in kw.keys():
+    for k in list(kw.keys()):
         args = dict(kw)
         del args[k]
 
@@ -625,7 +625,7 @@ def auth_check(schema, id, access, props=None):
 
     assert prop_actual == prop
 
-    for name, field in type.resourceFields.items():
+    for name, field in list(type.resourceFields.items()):
         assert name in props
 
         prop = set(props[name])

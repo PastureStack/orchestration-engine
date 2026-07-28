@@ -1,16 +1,12 @@
 package io.cattle.platform.iaas.api.auth.integration.ldap.OpenLDAP;
 
 import io.cattle.platform.archaius.util.ArchaiusUtil;
+import io.cattle.platform.archaius.util.ConfigProperty;
 
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
-
-import com.netflix.config.DynamicBooleanProperty;
-import com.netflix.config.DynamicIntProperty;
-import com.netflix.config.DynamicLongProperty;
-import com.netflix.config.DynamicStringProperty;
 
 public class OpenLDAPConstants {
 
@@ -57,24 +53,24 @@ public class OpenLDAPConstants {
                     GROUP_SCOPE
             )));
 
-    public static final DynamicStringProperty ACCESS_MODE = ArchaiusUtil.getString(ACCESS_MODE_SETTING);
-    public static final DynamicStringProperty LDAP_DOMAIN = ArchaiusUtil.getString(DOMAIN_SETTING);
-    public static final DynamicStringProperty LDAP_GROUP_SEARCH_DOMAIN = ArchaiusUtil.getString(GROUP_SEARCH_DOMAIN_SETTING);
-    public static final DynamicStringProperty LDAP_LOGIN_DOMAIN = ArchaiusUtil.getString(LOGIN_DOMAIN_SETTING);
-    public static final DynamicIntProperty LDAP_PORT = ArchaiusUtil.getInt(PORT_SETTING);
-    public static final DynamicStringProperty LDAP_SERVER = ArchaiusUtil.getString(SERVER_SETTING);
-    public static final DynamicStringProperty SERVICE_ACCOUNT_PASSWORD = ArchaiusUtil.getString(SERVICE_ACCOUNT_PASSWORD_SETTING);
-    public static final DynamicStringProperty SERVICE_ACCOUNT_USER = ArchaiusUtil.getString(SERVICE_ACCOUNT_USERNAME_SETTING);
+    public static final ConfigProperty<String> ACCESS_MODE = ArchaiusUtil.getStringProperty(ACCESS_MODE_SETTING);
+    public static final ConfigProperty<String> LDAP_DOMAIN = ArchaiusUtil.getStringProperty(DOMAIN_SETTING);
+    public static final ConfigProperty<String> LDAP_GROUP_SEARCH_DOMAIN = ArchaiusUtil.getStringProperty(GROUP_SEARCH_DOMAIN_SETTING);
+    public static final ConfigProperty<String> LDAP_LOGIN_DOMAIN = ArchaiusUtil.getStringProperty(LOGIN_DOMAIN_SETTING);
+    public static final ConfigProperty<Integer> LDAP_PORT = ArchaiusUtil.getIntProperty(PORT_SETTING);
+    public static final ConfigProperty<String> LDAP_SERVER = ArchaiusUtil.getStringProperty(SERVER_SETTING);
+    public static final ConfigProperty<String> SERVICE_ACCOUNT_PASSWORD = ArchaiusUtil.getStringProperty(SERVICE_ACCOUNT_PASSWORD_SETTING);
+    public static final ConfigProperty<String> SERVICE_ACCOUNT_USER = ArchaiusUtil.getStringProperty(SERVICE_ACCOUNT_USERNAME_SETTING);
 
     public static final String TOKEN_CREATOR = NAME + "TokenCreator";
-    public static final DynamicBooleanProperty TLS_ENABLED = ArchaiusUtil.getBoolean(TLS_SETTING);
-    public static final DynamicStringProperty USER_SEARCH_FIELD = ArchaiusUtil.getString(USER_SEARCH_FIELD_SETTING);
-    public static final DynamicStringProperty USER_LOGIN_FIELD = ArchaiusUtil.getString(USER_LOGIN_FIELD_SETTING);
-    public static final DynamicStringProperty GROUP_SEARCH_FIELD = ArchaiusUtil.getString(GROUP_SEARCH_FIELD_SETTING);
-    public static final DynamicStringProperty GROUP_MEMBER_MAPPING_ATTRIBUTE = ArchaiusUtil.getString(GROUP_USER_MAPPING_ATTRIBUTE_SETTING);
-    public static final DynamicStringProperty USER_OBJECT_CLASS = ArchaiusUtil.getString(USER_OBJECT_CLASS_SETTING);
-    public static final DynamicIntProperty USER_DISABLED_BIT_MASK = ArchaiusUtil.getInt(USER_DISABLED_BIT_MASK_SETTING);
-    public static final DynamicStringProperty USER_ENABLED_ATTRIBUTE = ArchaiusUtil.getString(USER_ENABLED_ATTRIBUTE_SETTING);
+    public static final ConfigProperty<Boolean> TLS_ENABLED = ArchaiusUtil.getBooleanProperty(TLS_SETTING);
+    public static final ConfigProperty<String> USER_SEARCH_FIELD = ArchaiusUtil.getStringProperty(USER_SEARCH_FIELD_SETTING);
+    public static final ConfigProperty<String> USER_LOGIN_FIELD = ArchaiusUtil.getStringProperty(USER_LOGIN_FIELD_SETTING);
+    public static final ConfigProperty<String> GROUP_SEARCH_FIELD = ArchaiusUtil.getStringProperty(GROUP_SEARCH_FIELD_SETTING);
+    public static final ConfigProperty<String> GROUP_MEMBER_MAPPING_ATTRIBUTE = ArchaiusUtil.getStringProperty(GROUP_USER_MAPPING_ATTRIBUTE_SETTING);
+    public static final ConfigProperty<String> USER_OBJECT_CLASS = ArchaiusUtil.getStringProperty(USER_OBJECT_CLASS_SETTING);
+    public static final ConfigProperty<Integer> USER_DISABLED_BIT_MASK = ArchaiusUtil.getIntProperty(USER_DISABLED_BIT_MASK_SETTING);
+    public static final ConfigProperty<String> USER_ENABLED_ATTRIBUTE = ArchaiusUtil.getStringProperty(USER_ENABLED_ATTRIBUTE_SETTING);
     public static final String MANAGER = NAME + "Manager";
 
 
@@ -83,16 +79,16 @@ public class OpenLDAPConstants {
            * Add the member attributes and memberOf attributes. Make Comma separated list of ous that are allowed as setting.
            * This setting will be iterated on every login request/ search for results. We only support direct membership currently.
         * */
-    public static final DynamicStringProperty USER_NAME_FIELD = ArchaiusUtil.getString(USER_NAME_FIELD_SETTING);
-    public static final DynamicStringProperty GROUP_NAME_FIELD = ArchaiusUtil.getString(GROUP_NAME_FIELD_SETTING);
+    public static final ConfigProperty<String> USER_NAME_FIELD = ArchaiusUtil.getStringProperty(USER_NAME_FIELD_SETTING);
+    public static final ConfigProperty<String> GROUP_NAME_FIELD = ArchaiusUtil.getStringProperty(GROUP_NAME_FIELD_SETTING);
     public static final String OBJECT_CLASS = "objectClass";
-    public static final DynamicStringProperty GROUP_OBJECT_CLASS = ArchaiusUtil.getString(GROUP_OBJECT_CLASS_SETTING);
+    public static final ConfigProperty<String> GROUP_OBJECT_CLASS = ArchaiusUtil.getStringProperty(GROUP_OBJECT_CLASS_SETTING);
 
-    public static final DynamicStringProperty USER_MEMBER_ATTRIBUTE = ArchaiusUtil.getString(USER_MEMBER_ATTRIBUTE_SETTING);
-    public static final DynamicLongProperty CONNECTION_TIMEOUT = ArchaiusUtil.getLong(TIMEOUT_SETTING);
-    public static final DynamicStringProperty GROUP_DN_FIELD = ArchaiusUtil.getString(GROUP_DN_FIELD_SETTING);
-    public static final DynamicStringProperty GROUP_MEMBER_USER_ATTRIBUTE = ArchaiusUtil.getString(GROUP_MEMBER_USER_ATTRIBUTE_SETTING);
-    public static final DynamicStringProperty LDAP_ALLOWED_IDENTITIES = ArchaiusUtil.getString(ALLOWED_IDENTITIES_SETTING);
+    public static final ConfigProperty<String> USER_MEMBER_ATTRIBUTE = ArchaiusUtil.getStringProperty(USER_MEMBER_ATTRIBUTE_SETTING);
+    public static final ConfigProperty<Long> CONNECTION_TIMEOUT = ArchaiusUtil.getLongProperty(TIMEOUT_SETTING);
+    public static final ConfigProperty<String> GROUP_DN_FIELD = ArchaiusUtil.getStringProperty(GROUP_DN_FIELD_SETTING);
+    public static final ConfigProperty<String> GROUP_MEMBER_USER_ATTRIBUTE = ArchaiusUtil.getStringProperty(GROUP_MEMBER_USER_ATTRIBUTE_SETTING);
+    public static final ConfigProperty<String> LDAP_ALLOWED_IDENTITIES = ArchaiusUtil.getStringProperty(ALLOWED_IDENTITIES_SETTING);
 
 
     public static final String CONFIG_DOMAIN = "domain";

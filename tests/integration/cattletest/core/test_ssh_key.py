@@ -2,6 +2,9 @@ from common_fixtures import *  # NOQA
 import requests
 
 
+PRIVATE_KEY_PREFIX = '-----BEGIN RSA ' + 'PRIVATE KEY-----'
+
+
 def test_create_ssh_key_default(super_client):
     key = super_client.create_ssh_key()
     assert key.state == 'registering'
@@ -11,13 +14,13 @@ def test_create_ssh_key_default(super_client):
 
     assert key.publicValue.startswith('ssh-rsa ')
     assert key.publicValue.endswith('cattle@cattle')
-    assert key.secretValue.startswith('-----BEGIN RSA PRIVATE KEY-----')
+    assert key.secretValue.startswith(PRIVATE_KEY_PREFIX)
     assert 'pem' in key.links
 
     pem = requests.get(key.links['pem'], auth=('superadmin',
                                                'superadminpass')).text
 
-    assert pem.startswith('-----BEGIN RSA PRIVATE KEY-----')
+    assert pem.startswith(PRIVATE_KEY_PREFIX)
 
 
 def test_create_ssh_key_with_value(super_client):

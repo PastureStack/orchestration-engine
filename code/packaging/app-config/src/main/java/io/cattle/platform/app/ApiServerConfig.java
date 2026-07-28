@@ -104,7 +104,6 @@ import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.ComponentScans;
 import org.springframework.context.annotation.Configuration;
 
-@SuppressWarnings("deprecation")
 @Configuration
 @ComponentScans({
     @ComponentScan("io.cattle.platform.configitem.context.impl"),
@@ -298,7 +297,8 @@ public class ApiServerConfig {
 
     @Bean
     freemarker.template.Configuration FreemarkerConfig() {
-        freemarker.template.Configuration config = new freemarker.template.Configuration();
+        freemarker.template.Configuration config = new freemarker.template.Configuration(
+                freemarker.template.Configuration.VERSION_2_3_0);
         config.setTemplateLoader(new FreemarkerURLTemplateLoader());
         config.setLocalizedLookup(false);
         config.setNumberFormat("computer");

@@ -1,0 +1,28 @@
+{
+    "collectionMethods": [ "GET", "POST" ],
+    "resourceMethods": [ "GET" ],
+    "resourceFields": {
+        "enforcement": { "type": "enum", "options": [ "optional", "requiredAdmins", "requiredAll" ], "nullable": false, "default": "optional" },
+        "passkeyLimit": { "type": "int", "min": 1, "max": 20, "nullable": false, "default": 5 },
+        "relyingPartyId": { "type": "string", "nullable": true },
+        "origin": { "type": "string", "nullable": true },
+        "relyingPartyName": { "type": "string", "nullable": false, "default": "PastureStack" },
+        "issuer": { "type": "string", "nullable": false, "default": "PastureStack" },
+        "smtpEnabled": { "type": "boolean", "nullable": false, "default": false },
+        "smtpHost": { "type": "string", "nullable": true },
+        "smtpPort": { "type": "int", "min": 1, "max": 65535, "nullable": false, "default": 587 },
+        "smtpUsername": { "type": "string", "nullable": true },
+        "smtpPassword": { "type": "password", "nullable": true },
+        "smtpClearPassword": { "type": "boolean", "nullable": true, "default": false },
+        "smtpPasswordConfigured": { "type": "boolean", "create": false, "update": false, "nullable": false },
+        "smtpFrom": { "type": "string", "nullable": true },
+        "smtpStartTls": { "type": "boolean", "nullable": false, "default": true },
+        "smtpSsl": { "type": "boolean", "nullable": false, "default": false },
+        "smtpConnectionTimeoutMillis": { "type": "int", "min": 1000, "max": 30000, "nullable": false, "default": 5000 },
+        "smtpReadTimeoutMillis": { "type": "int", "min": 1000, "max": 30000, "nullable": false, "default": 10000 },
+        "emailCodeTtlSeconds": { "type": "int", "min": 60, "max": 600, "nullable": false, "default": 600 },
+        "sendTestEmail": { "type": "boolean", "nullable": true, "default": false },
+        "testRecipient": { "type": "string", "nullable": true },
+        "status": { "type": "string", "create": false, "update": false, "nullable": true }
+    }
+}

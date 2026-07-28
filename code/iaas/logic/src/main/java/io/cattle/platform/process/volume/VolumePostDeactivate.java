@@ -10,7 +10,7 @@ import io.cattle.platform.object.process.StandardProcess;
 import io.cattle.platform.process.common.handler.AbstractObjectProcessLogic;
 import io.cattle.platform.util.type.Priority;
 
-import javax.inject.Named;
+import jakarta.inject.Named;
 
 @Named
 public class VolumePostDeactivate extends AbstractObjectProcessLogic implements ProcessPostListener, Priority {

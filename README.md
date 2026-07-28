@@ -1,39 +1,67 @@
-# Cattle [![Build Status](https://drone.rancher.io/api/badges/rancher/cattle/status.svg)](https://drone.rancher.io/rancher/cattle)
+# PastureStack Orchestration Engine
 
-Cattle is the orchestration engine that powers Rancher.  Its primary role is meta data management and orchestration of external systems.  Cattle in fact does no real work, but instead delegates to other components (agents) to do the actual work.  You can look at Cattle as the middle management layer in Rancher.  Do middle managers really do anything?
+Orchestration Engine provides the metadata, process, API, scheduling, storage, networking, and lifecycle coordination layer for the preserved control platform.
 
-# Running
+PastureStack is an independent community effort to preserve, audit, and modernize the Rancher 1.6 ecosystem. It is not affiliated with or endorsed by Rancher Labs or SUSE.
 
-You probably just want to run [Rancher](http://github.com/rancher/rancher) and not Cattle directly.
+**Upstream:** [`rancher/cattle`](https://github.com/rancher/cattle). This GitHub fork preserves upstream history, authorship, dates, tags, licenses, and bundled dependency notices. PastureStack maintenance is consolidated into one commit after the preserved upstream boundary.
 
-# Developing
+## Project status
 
-If you are a brave soul and want to hack on Cattle instructions for setting up a development environment and understanding how it works are at the [Rancher Wiki](https://github.com/rancher/rancher/wiki)
+This source tree produces engine version `0.183.271`. It retains the existing Java 25, Ubuntu 26.04, Maven, Liquibase, MariaDB/MySQL, WebSocket, dependency, concurrency, and runtime-hardening work from the maintained compatibility line. Release builds also compile a pinned Hazelcast `5.7.0` source revision with the tracked Jackson security patch described in [`third-party/HAZELCAST.md`](third-party/HAZELCAST.md); the patched artifact is never downloaded from an unverified binary source.
 
-# License
-Copyright (c) 2014-2015 [Rancher Labs, Inc.](http://rancher.com)
+WebAuthn verification uses WebAuthn4J's maintained `tools.jackson` 3.1
+dependency line. The existing platform JSON surface remains on
+`com.fasterxml.jackson` 2.22. Packaging gates admit only the reviewed,
+version-pinned pair and verify that their class namespaces are disjoint.
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
+Host compatibility is evidence-based. The default policy recognizes the preserved legacy ranges plus only the modern Docker Engine releases that have completed the PastureStack host matrix: `24.0.9`, `29.4.1`, and `29.6.2`. It does not imply support for untested intervening releases.
 
-[http://www.apache.org/licenses/LICENSE-2.0](http://www.apache.org/licenses/LICENSE-2.0)
+Product-facing names use PastureStack terminology. Established Java packages, Maven coordinates, database identifiers, settings, API schemas, event names, Docker labels, and executable aliases remain where changing them would break compatible installations.
 
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+Authentication keeps a platform account as the stable authorization
+principal. Local credentials and external identities are explicit login links;
+provider changes do not recreate accounts. External OpenID Connect identities
+are matched by exact issuer and subject rather than username or email.
+System-administrator workflows support verified identity reassignment,
+permission transfer, disabled-account restoration, safe provider switching,
+and MFA-protected local recovery.
 
-  [1]: http://docs.cattle.io/en/latest/examples/toc.html
-  [3]: http://docs.cattle.io/en/latest/examples/hypervisor.html
-  [4]: http://docs.cattle.io/en/latest/examples/libvirt-template.html
-  [5]: http://cattle.readthedocs.org/en/latest/installation/ec2.html
-  [6]: http://docs.cattle.io/en/latest/concepts/orchestration.html
-  [8]: http://cattle.readthedocs.org/en/latest/toc.html
-  [9]: http://docs.docker.io/en/latest/installation/
-  [10]: https://github.com/cattleio/cattle-cli/blob/master/README.md
-  [11]: docs/source/images/apiui.png
-  [12]: http://stedolan.github.io/jq/
-  [13]: docs/source/images/ui.png
-  
+Interactive MFA supports RFC 6238 six-digit TOTP, WebAuthn passkeys including
+Windows Hello, phones, and hardware security keys, hashed single-use recovery
+codes, and verified email account recovery. Email is not treated as an MFA
+factor. Passkey limits, enforcement, WebAuthn relying-party settings, and
+encrypted SMTP configuration are administrator-controlled.
+Enrollment, recovery-code generation, and recovery-address verification
+require the account holder's authenticated session. Administrators can inspect
+and revoke another account's security material, but cannot create factors or
+retrieve recovery codes on that account holder's behalf.
+
+## Build and test
+
+Run the complete JDK 25 package gate before publishing an engine artifact or Server image:
+
+```sh
+bash scripts/check-cattle-jdk25-full-package
+```
+
+The gate performs dependency-hygiene checks, builds every Maven module with JDK 25, rejects retired packaged libraries, verifies class-file major version `69`, and starts the standalone application against an isolated H2 database.
+
+To create the complete release archive after the gate passes:
+
+```sh
+ENGINE_VERSION=0.183.271 bash scripts/build --release
+bash scripts/check-release-artifact dist/artifacts/cattle.jar
+```
+
+Release packaging uses the exact Git revision and commit timestamp as reproducible build inputs. The selector accepts only a complete web application containing the launcher, Runtime resources, authentication logic, and `WEB-INF/web.xml`.
+
+Database-backed and full-stack suites require isolated MariaDB/MySQL and companion-service fixtures. See [COMPATIBILITY.md](COMPATIBILITY.md), [SECURITY.md](SECURITY.md), and [ORIGIN.md](ORIGIN.md).
+
+## Language support
+
+User-facing translations are supplied by the PastureStack web console. API field names, persisted values, event names, identifiers, and remote error payloads are compatibility data and are not translated.
+
+## License and attribution
+
+The inherited project remains licensed under [Apache License 2.0](LICENSE). Copyright and attribution for inherited work and bundled dependencies remain with their respective authors and contributors. PastureStack contributors claim authorship only for their own changes.

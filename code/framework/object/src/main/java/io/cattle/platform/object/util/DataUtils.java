@@ -11,8 +11,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import org.apache.commons.beanutils.BeanUtils;
-import org.apache.commons.beanutils.ConvertUtils;
+import org.apache.commons.beanutils2.BeanUtils;
+import org.apache.commons.beanutils2.ConvertUtils;
 
 public class DataUtils {
 
@@ -37,10 +37,10 @@ public class DataUtils {
         return Collections.unmodifiableMap(fields);
     }
 
-    @SuppressWarnings("unchecked")
     public static Map<String, Object> getWritableFields(Object obj) {
         Map<String, Object> data = DataAccessor.getData(obj, false);
-        Map<String, Object> fields = (Map<String, Object>) data.get(FIELDS);
+        Object fieldsObject = data.get(FIELDS);
+        Map<String, Object> fields = fieldsObject == null ? null : CollectionUtils.castMap(fieldsObject);
 
         if (fields == null) {
             fields = new HashMap<String, Object>();
@@ -54,7 +54,6 @@ public class DataUtils {
         ObjectUtils.setPropertyIgnoreErrors(obj, DATA, data);
     }
 
-    @SuppressWarnings("unchecked")
     public static <T> List<T> getFieldList(Map<String, Object> data, String name, Class<T> type) {
         Map<String, Object> fields = CollectionUtils.castMap(data.get(FIELDS));
         Object value = fields.get(name);
@@ -63,16 +62,10 @@ public class DataUtils {
             return null;
         }
 
-        if (value instanceof List) {
-            List<?> list = (List<?>) value;
-            Object firstValue = list.size() > 0 ? list.get(0) : null;
-            if (list.size() > 0 && firstValue != null && type.isAssignableFrom(firstValue.getClass())) {
-                return (List<T>) list;
-            }
-
+        if (value instanceof List<?> list) {
             List<T> result = new ArrayList<T>(list.size());
             for (Object obj : list) {
-                result.add((T) ConvertUtils.convert(obj, type));
+                result.add(convert(obj, type));
             }
             return result;
         } else {
@@ -80,20 +73,6 @@ public class DataUtils {
         }
     }
 
-    // @SuppressWarnings("unchecked")
-    // public static <T> T getField(Map<String,Object> data, String name,
-    // Class<T> type) {
-    // Map<String,Object> fields = CollectionUtils.castMap(data.get(FIELDS));
-    // Object value = fields.get(name);
-    //
-    // if ( value == null ) {
-    // return null;
-    // }
-    //
-    // return (T)ConvertUtils.convert(value, type);
-    // }
-
-    @SuppressWarnings("unchecked")
     public static <T> T getFieldFromRequest(ApiRequest request, String name, Class<T> type) {
         if (request == null) {
             return null;
@@ -106,6 +85,14 @@ public class DataUtils {
             return null;
         }
 
-        return (T) ConvertUtils.convert(value, type);
+        return convert(value, type);
+    }
+
+    private static <T> T convert(Object value, Class<T> type) {
+        if (value == null || type.isInstance(value)) {
+            return type.cast(value);
+        }
+
+        return type.cast(ConvertUtils.convert(value, type));
     }
 }

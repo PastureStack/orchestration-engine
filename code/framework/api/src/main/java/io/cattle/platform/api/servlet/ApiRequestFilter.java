@@ -1,6 +1,5 @@
 package io.cattle.platform.api.servlet;
 
-import io.cattle.platform.archaius.util.ArchaiusUtil;
 import io.cattle.platform.metrics.util.MetricsUtil;
 import io.cattle.platform.spring.web.SpringFilter;
 import io.cattle.platform.util.exception.ExceptionUtils;
@@ -12,44 +11,58 @@ import io.github.ibuildthecloud.gdapi.version.Versions;
 
 import java.io.IOException;
 import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 
-import javax.inject.Inject;
-import javax.servlet.FilterChain;
-import javax.servlet.FilterConfig;
-import javax.servlet.ServletException;
-import javax.servlet.ServletRequest;
-import javax.servlet.ServletResponse;
-import javax.servlet.http.Cookie;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
+import jakarta.inject.Inject;
+import jakarta.servlet.FilterChain;
+import jakarta.servlet.FilterConfig;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.ServletRequest;
+import jakarta.servlet.ServletResponse;
+import jakarta.servlet.http.Cookie;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 
 import org.apache.cloudstack.managed.context.ManagedContextRunnable;
 import org.apache.commons.lang3.StringUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import com.codahale.metrics.Timer;
-import com.netflix.config.DynamicStringListProperty;
-import com.netflix.config.DynamicStringProperty;
 
 public class ApiRequestFilter extends SpringFilter {
 
-    private static final Logger log = LoggerFactory.getLogger(ApiRequestFilter.class);
-    private static final DynamicStringListProperty IGNORE = ArchaiusUtil.getList("api.ignore.paths");
-    private static final DynamicStringProperty PL_SETTING = ArchaiusUtil.getString("ui.pl");
+    private static final ApiRequestFilterSettings DEFAULT_SETTINGS = ArchaiusApiRequestFilterSettings.create();
     private static final String PL = "PL";
     private static final String LANG = "LANG";
-    private static final String VERSION = "X-Rancher-Version";
-    private static final DynamicStringProperty LOCALIZATION = ArchaiusUtil.getString("localization");
-    private static final DynamicStringProperty SERVER_VERSION = ArchaiusUtil.getString("rancher.server.version");
+    private static final String VERSION = "X-PastureStack-Version";
+    private static final String LEGACY_VERSION = "X-Rancher-Version";
 
+    private final ApiRequestFilterSettings settings;
     ApiRequestFilterDelegate delegate;
     Versions versions;
     Map<String, Timer> timers = new ConcurrentHashMap<String, Timer>();
-    IndexFile indexFile = new IndexFile();
+    IndexFile indexFile;
+    SecurityHeaders securityHeaders;
+
+    public ApiRequestFilter() {
+        this(DEFAULT_SETTINGS, new IndexFile(), new SecurityHeaders());
+    }
+
+    ApiRequestFilter(ApiRequestFilterSettings settings, IndexFile indexFile, SecurityHeaders securityHeaders) {
+        if (settings == null) {
+            throw new IllegalArgumentException("API request filter settings are required");
+        }
+        if (indexFile == null) {
+            throw new IllegalArgumentException("Index file is required");
+        }
+        if (securityHeaders == null) {
+            throw new IllegalArgumentException("Security headers are required");
+        }
+        this.settings = settings;
+        this.indexFile = indexFile;
+        this.securityHeaders = securityHeaders;
+    }
 
     @Override
     public void init(FilterConfig filterConfig) throws ServletException {
@@ -62,13 +75,9 @@ public class ApiRequestFilter extends SpringFilter {
         HttpServletRequest httpRequest = (HttpServletRequest)request;
         String path = httpRequest.getServletPath();
 
-        boolean ignore = false;
-        for (String prefix : IGNORE.get()) {
-            if (path.startsWith(prefix)) {
-                ignore = true;
-                break;
-            }
-        }
+        securityHeaders.apply(httpRequest, (HttpServletResponse) response);
+
+        boolean ignore = isIgnoredPath(path);
 
         if (ignore) {
             chain.doFilter(request, response);
@@ -80,7 +89,12 @@ public class ApiRequestFilter extends SpringFilter {
         addVersionHeader(httpRequest, (HttpServletResponse) response);
 
         if (isUIRequest(httpRequest, path)) {
-            if (path.contains(".") || !indexFile.canServeContent()) {
+            if (isIndexHtmlPath(path) && indexFile.isLocal()) {
+                chain.doFilter(request, response);
+                return;
+            }
+
+            if ((path.contains(".") && !isIndexHtmlPath(path)) || !indexFile.canServeContent()) {
                 chain.doFilter(request, response);
                 return;
             } else {
@@ -117,7 +131,17 @@ public class ApiRequestFilter extends SpringFilter {
     }
 
     protected void addVersionHeader(HttpServletRequest httpRequest, HttpServletResponse response) {
-        response.setHeader(VERSION, SERVER_VERSION.get());
+        response.setHeader(VERSION, settings.serverVersion());
+        response.setHeader(LEGACY_VERSION, settings.serverVersion());
+    }
+
+    boolean isIgnoredPath(String path) {
+        for (String prefix : settings.ignorePaths()) {
+            if (path.startsWith(prefix)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     protected void done(ApiContext context, long start, boolean success) {
@@ -165,6 +189,11 @@ public class ApiRequestFilter extends SpringFilter {
         return !found;
     }
 
+    protected boolean isIndexHtmlPath(String path) {
+        path = path.replaceAll("//+", "/");
+        return "/index.html".equals(path);
+    }
+
     public ApiRequestFilterDelegate getDelegate() {
         return delegate;
     }
@@ -192,7 +221,7 @@ public class ApiRequestFilter extends SpringFilter {
     }
 
 
-    private void addPLCookie(HttpServletRequest httpRequest, HttpServletResponse response) {
+    void addPLCookie(HttpServletRequest httpRequest, HttpServletResponse response) {
         Cookie plCookie = null;
         if (httpRequest.getCookies() != null) {
             for (Cookie c : httpRequest.getCookies()) {
@@ -203,23 +232,18 @@ public class ApiRequestFilter extends SpringFilter {
             }
         }
 
-        if (plCookie == null || !PL_SETTING.getValue().equalsIgnoreCase(plCookie.getValue())) {
-            String plValue = PL_SETTING.getValue();
-            try {
-              plValue = URLEncoder.encode(PL_SETTING.getValue(), "UTF-8");
-            } catch (IOException e) {
-              log.error("Failed to encode PL value with UTF-8.", e);
-              return;
-            }
+        if (plCookie == null || !settings.projectLabel().equalsIgnoreCase(plCookie.getValue())) {
+            String plValue = settings.projectLabel();
+            plValue = URLEncoder.encode(settings.projectLabel(), StandardCharsets.UTF_8);
             plCookie = new Cookie(PL, plValue);
             plCookie.setPath("/");
             response.addCookie(plCookie);
         }
     }
 
-    private void addDefaultLanguageCookie(HttpServletRequest httpRequest, HttpServletResponse response) {
+    void addDefaultLanguageCookie(HttpServletRequest httpRequest, HttpServletResponse response) {
         Cookie languageCookie = null;
-        if(!StringUtils.isNotBlank(LOCALIZATION.get()))
+        if(!StringUtils.isNotBlank(settings.localization()))
             return;
         if(httpRequest.getCookies()!=null) {
             for(Cookie c : httpRequest.getCookies()) {
@@ -230,7 +254,7 @@ public class ApiRequestFilter extends SpringFilter {
                 }
         }
         if(languageCookie == null) {
-            languageCookie = new Cookie(LANG, LOCALIZATION.get());
+            languageCookie = new Cookie(LANG, settings.localization());
             languageCookie.setPath("/");
             response.addCookie(languageCookie);
         }

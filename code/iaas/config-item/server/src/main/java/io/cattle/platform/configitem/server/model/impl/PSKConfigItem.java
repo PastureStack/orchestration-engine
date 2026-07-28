@@ -3,6 +3,7 @@ package io.cattle.platform.configitem.server.model.impl;
 import static io.cattle.platform.core.model.tables.InstanceTable.*;
 
 import io.cattle.platform.archaius.util.ArchaiusUtil;
+import io.cattle.platform.archaius.util.ConfigProperty;
 import io.cattle.platform.configitem.server.model.Request;
 import io.cattle.platform.configitem.version.ConfigItemStatusManager;
 import io.cattle.platform.core.dao.DataDao;
@@ -17,11 +18,9 @@ import java.util.concurrent.Callable;
 
 import org.apache.commons.codec.binary.Hex;
 
-import com.netflix.config.DynamicIntProperty;
-
 public class PSKConfigItem extends AbstractConfigItem {
 
-    private static final DynamicIntProperty LENGTH = ArchaiusUtil.getInt("ipsec.psk.byte.length");
+    private static final ConfigProperty<Integer> LENGTH = ArchaiusUtil.getIntProperty("ipsec.psk.byte.length");
 
     public static final String ITEM = "psk";
 

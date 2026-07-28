@@ -12,7 +12,7 @@ import io.github.ibuildthecloud.gdapi.validation.ValidationErrorCodes;
 import java.io.IOException;
 import java.util.Map;
 
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
@@ -36,7 +36,7 @@ public class SecretManager extends AbstractJooqResourceManager {
     }
 
     @Override
-    protected <T> T createAndScheduleObject(Class<T> clz, Map<String, Object> properties) {
+    protected Object createAndScheduleObject(Class<?> clz, Map<String, Object> properties) {
         String value = DataAccessor.fromMap(properties).withKey("value").as(String.class);
         if (StringUtils.isNotBlank(value)) {
             try {
@@ -49,7 +49,7 @@ public class SecretManager extends AbstractJooqResourceManager {
         } else {
             throw new ClientVisibleException(ResponseCodes.UNPROCESSABLE_ENTITY, ValidationErrorCodes.NOT_NULLABLE, "Secret value cannot be null/empty", "");
         }
-        T result = super.createAndScheduleObject(clz, properties);
+        Object result = super.createAndScheduleObject(clz, properties);
         if (result instanceof Secret) {
             ((Secret) result).setValue(value);
         }

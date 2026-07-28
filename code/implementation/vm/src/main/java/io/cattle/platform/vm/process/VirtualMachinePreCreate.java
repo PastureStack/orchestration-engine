@@ -34,8 +34,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.regex.Pattern;
 
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 
+import org.apache.commons.lang3.Strings;
 import org.apache.commons.lang3.StringUtils;
 
 public class VirtualMachinePreCreate extends AbstractObjectProcessLogic implements ProcessPreListener, Priority {
@@ -127,7 +128,7 @@ public class VirtualMachinePreCreate extends AbstractObjectProcessLogic implemen
 
             boolean rootFound = false;
             int index = 0;
-            List<VirtualMachineDisk> disks = jsonMapper.convertCollectionValue(objectDisks, List.class, VirtualMachineDisk.class);
+            List<VirtualMachineDisk> disks = jsonMapper.convertListValue(objectDisks, VirtualMachineDisk.class);
             for (int i = 0; i < disks.size(); i++) {
                 VirtualMachineDisk disk = disks.get(i);
                 if (disk.isRoot() && rootFound) {
@@ -180,7 +181,7 @@ public class VirtualMachinePreCreate extends AbstractObjectProcessLogic implemen
                     if (StringUtils.isNotEmpty(blockDevPath)) {
                         opts.put("dont-format", "true");
                         if (disk.isRoot()) {
-                            String image = StringUtils.removeStart(DataAccessor.fieldString(instance, InstanceConstants.FIELD_IMAGE_UUID), "docker:");
+                            String image = Strings.CS.removeStart(DataAccessor.fieldString(instance, InstanceConstants.FIELD_IMAGE_UUID), "docker:");
                             if (StringUtils.isNotBlank(image)) {
                                 opts.put(VolumeConstants.DRIVER_OPT_BASE_IMAGE, image);
                             }

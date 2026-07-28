@@ -11,9 +11,10 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.UnsupportedEncodingException;
 import java.net.URL;
+import java.nio.charset.Charset;
 
-import javax.annotation.PostConstruct;
-import javax.servlet.http.Cookie;
+import jakarta.annotation.PostConstruct;
+import jakarta.servlet.http.Cookie;
 
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -89,7 +90,7 @@ public class DefaultHtmlTemplate implements HtmlTemplate {
             if (is == null) {
                 is = DefaultHtmlTemplate.class.getResourceAsStream("header.txt");
             }
-            header = IOUtils.toString(is);
+            header = IOUtils.toString(is, Charset.defaultCharset());
         } finally {
             IOUtils.closeQuietly(is);
         }

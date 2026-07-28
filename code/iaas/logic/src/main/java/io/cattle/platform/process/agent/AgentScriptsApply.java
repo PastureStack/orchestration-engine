@@ -1,6 +1,7 @@
 package io.cattle.platform.process.agent;
 
 import io.cattle.platform.archaius.util.ArchaiusUtil;
+import io.cattle.platform.archaius.util.ConfigListProperty;
 import io.cattle.platform.configitem.request.ConfigUpdateRequest;
 import io.cattle.platform.configitem.request.util.ConfigUpdateRequestUtils;
 import io.cattle.platform.configitem.version.ConfigItemStatusManager;
@@ -14,15 +15,14 @@ import io.cattle.platform.engine.process.ProcessInstance;
 import io.cattle.platform.engine.process.ProcessState;
 import io.cattle.platform.json.JsonMapper;
 
-import javax.inject.Inject;
-import javax.inject.Named;
+import jakarta.inject.Inject;
+import jakarta.inject.Named;
 
-import com.netflix.config.DynamicStringListProperty;
 
 @Named
 public class AgentScriptsApply extends AbstractProcessLogic implements ProcessPreListener, ProcessPostListener {
 
-    private static final DynamicStringListProperty ITEMS = ArchaiusUtil.getList("agent.config.items");
+    private static final ConfigListProperty<String> ITEMS = ArchaiusUtil.getStringListProperty("agent.config.items");
 
     ConfigItemStatusManager statusManager;
     JsonMapper jsonMapper;

@@ -2,7 +2,7 @@ package io.cattle.platform.docker.machine.launch;
 
 import static io.cattle.platform.server.context.ServerContext.*;
 
-import io.cattle.platform.archaius.util.ArchaiusUtil;
+import io.cattle.platform.archaius.util.ConfigProperty;
 import io.cattle.platform.core.model.Credential;
 import io.cattle.platform.hazelcast.membership.ClusterService;
 import io.cattle.platform.hazelcast.membership.ClusteredMember;
@@ -16,53 +16,62 @@ import java.lang.management.ManagementFactory;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 
 import org.apache.commons.io.IOUtils;
+import org.apache.commons.lang3.Strings;
 import org.apache.commons.lang3.StringUtils;
-import org.apache.http.client.fluent.Request;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import com.netflix.config.DynamicStringProperty;
 
 public class WebsocketProxyLauncher extends GenericServiceLauncher {
 
     private static final Logger log = LoggerFactory.getLogger(WebsocketProxyLauncher.class);
     private static final String MASTER_CONF = "master.conf";
-
-    private static final DynamicStringProperty ACCESS_LOG = ArchaiusUtil.getString("access.log");
-    private static final DynamicStringProperty API_INTERCEPTOR_CONFIG = ArchaiusUtil.getString("api.interceptor.config");
-    private static final DynamicStringProperty API_INTERCEPTOR_CONFIG_FILE = ArchaiusUtil.getString("api.interceptor.config.file");
+    private static final WebsocketProxyLauncherSettings DEFAULT_SETTINGS = ArchaiusWebsocketProxyLauncherSettings.create();
 
     @Inject
     ClusterService clusterService;
 
     String written = "start";
+    private WebsocketProxyLauncherSettings settings;
+
+    public WebsocketProxyLauncher() {
+        this(DEFAULT_SETTINGS);
+    }
+
+    WebsocketProxyLauncher(WebsocketProxyLauncherSettings settings) {
+        this.settings = Objects.requireNonNull(settings, "settings");
+    }
+
+    public void setSettings(WebsocketProxyLauncherSettings settings) {
+        this.settings = Objects.requireNonNull(settings, "settings");
+    }
 
     @Override
-    protected List<DynamicStringProperty> getReloadSettings() {
-        List<DynamicStringProperty> list = new ArrayList<DynamicStringProperty>();
-        list.add(ACCESS_LOG);
-        list.add(API_INTERCEPTOR_CONFIG);
+    protected List<ConfigProperty<String>> getReloadSettings() {
+        List<ConfigProperty<String>> list = new ArrayList<ConfigProperty<String>>();
+        list.add(settings.accessLogProperty());
+        list.add(settings.apiInterceptorConfigProperty());
         return list;
     }
 
     protected void prepareConfigFile() throws IOException {
-        String config = API_INTERCEPTOR_CONFIG.get();
+        String config = settings.apiInterceptorConfig();
         if (StringUtils.isBlank(config)) {
-            new File(API_INTERCEPTOR_CONFIG_FILE.get()).delete();
+            new File(settings.apiInterceptorConfigFile()).delete();
         } else {
-            try(FileWriter fw = new FileWriter(API_INTERCEPTOR_CONFIG_FILE.get())) {
-                IOUtils.write(API_INTERCEPTOR_CONFIG.get(), fw);
+            try(FileWriter fw = new FileWriter(settings.apiInterceptorConfigFile())) {
+                IOUtils.write(settings.apiInterceptorConfig(), fw);
             }
         }
     }
 
     @Override
     protected boolean shouldRun() {
-        return StringUtils.equals(HOST_API_PROXY_MODE_EMBEDDED, getHostApiProxyMode());
+        return Strings.CS.equals(HOST_API_PROXY_MODE_EMBEDDED, getHostApiProxyMode());
     }
 
     @Override
@@ -107,7 +116,7 @@ public class WebsocketProxyLauncher extends GenericServiceLauncher {
         env.put("PROXY_MASTER_FILE", MASTER_CONF);
         env.put("PROXY_CATTLE_ADDRESS", cattleProxyAddress);
         env.put("PROXY_HTTPS_PROXY_PROTOCOL_PORTS", getProxyProtocolHttpsPorts());
-        env.put("PROXY_API_INTERCEPTOR_CONFIG_FILE", API_INTERCEPTOR_CONFIG_FILE.get());
+        env.put("PROXY_API_INTERCEPTOR_CONFIG_FILE", settings.apiInterceptorConfigFile());
 
         String processName = ManagementFactory.getRuntimeMXBean().getName();
         if (processName != null) {
@@ -138,7 +147,7 @@ public class WebsocketProxyLauncher extends GenericServiceLauncher {
             prepareConfigFile();
             StringBuilder apiProxyUrl = new StringBuilder();
             apiProxyUrl.append("http://localhost:").append(getProxyPort()).append("/v1-api-interceptor/reload");
-            Request.Post(apiProxyUrl.toString()).execute();
+            LocalReloadRequest.post(apiProxyUrl.toString());
         } catch (IOException e) {
             log.error("Failed to reload api proxy service: {}", e.getMessage());
         }
@@ -151,14 +160,14 @@ public class WebsocketProxyLauncher extends GenericServiceLauncher {
 
     private String getProxiedPort() {
         // To match the functionality in the Jetty Main class, need to get value this way as opposed
-        // to using ArchaiusUtils
+        // to using the dynamic settings helper.
         String port = System.getenv("CATTLE_HTTP_PROXIED_PORT");
         return port == null ? System.getProperty("cattle.http.proxied.port", "8081") : port;
     }
 
     private String getProxyPort() {
         // To match the functionality in the Jetty Main class, need to get value this way as opposed
-        // to using ArchaiusUtils
+        // to using the dynamic settings helper.
         String port = System.getenv("CATTLE_HTTP_PORT");
         return port == null ? System.getProperty("cattle.http.port", "8080") : port;
     }

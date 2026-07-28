@@ -1,0 +1,11 @@
+diff --git a/hazelcast/pom.xml b/hazelcast/pom.xml
+--- a/hazelcast/pom.xml
++++ b/hazelcast/pom.xml
+@@ -51,6 +51,7 @@
+                     </execution>
+                 </executions>
+                 <configuration>
++                    <skip>true</skip>
+                     <useNativeGit>false</useNativeGit>
+                     <dotGitDirectory>${project.basedir}/.git</dotGitDirectory>
+                     <failOnNoGitDirectory>false</failOnNoGitDirectory>

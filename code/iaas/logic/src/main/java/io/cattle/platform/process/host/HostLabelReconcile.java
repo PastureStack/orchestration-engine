@@ -20,8 +20,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 
-import javax.inject.Inject;
-import javax.inject.Named;
+import jakarta.inject.Inject;
+import jakarta.inject.Named;
 
 @Named
 public class HostLabelReconcile extends AbstractObjectProcessHandler implements Priority {
@@ -41,13 +41,11 @@ public class HostLabelReconcile extends AbstractObjectProcessHandler implements 
     }
 
     @Override
-    @SuppressWarnings("unchecked")
     public HandlerResult handle(ProcessState state, ProcessInstance process) {
         final Host host = (Host) state.getResource();
 
-        Map<String, String> labelsField = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
-        labelsField.putAll(DataAccessor.fields(host).withKey(HostConstants.FIELD_LABELS)
-                .withDefault(Collections.EMPTY_MAP).as(Map.class));
+        Map<String, String> labelsField = hostLabels(DataAccessor.fields(host).withKey(HostConstants.FIELD_LABELS)
+                .withDefault(Collections.emptyMap()).get());
 
 
         List<Label> existing = labelsDao.getLabelsForHost(host.getId());
@@ -79,6 +77,15 @@ public class HostLabelReconcile extends AbstractObjectProcessHandler implements 
         }
 
         return null;
+    }
+
+    static Map<String, String> hostLabels(Object value) {
+        Map<String, String> result = new TreeMap<String, String>(String.CASE_INSENSITIVE_ORDER);
+        Map<?, ?> labels = Map.class.cast(value);
+        for (Map.Entry<?, ?> label : labels.entrySet()) {
+            result.put(String.class.cast(label.getKey()), String.class.cast(label.getValue()));
+        }
+        return result;
     }
 
     @Override

@@ -30,9 +30,8 @@ import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 
-import org.apache.commons.collections.TransformerUtils;
 
 public class HealthcheckServiceImpl implements HealthcheckService {
     
@@ -267,7 +266,6 @@ public class HealthcheckServiceImpl implements HealthcheckService {
     }
 
 
-    @SuppressWarnings("unchecked")
     private List<Long> getHealthCheckHostIds(HealthcheckInstance healthInstance, Long inferiorHostId) {
         int requiredNumber = 3;
 
@@ -279,16 +277,20 @@ public class HealthcheckServiceImpl implements HealthcheckService {
         // skip hosts labeled accordingly
         Iterator<? extends Host> it = availableActiveHosts.iterator();
         while (it.hasNext()) {
-            String deployStrategy = (String) CollectionUtils.getNestedValue(it.next().getData(), "fields", "labels", LABEL_HEALTHCHECK_DEPLOY_STRATEGY);
+            String deployStrategy = healthcheckDeployStrategy(it.next().getData());
             if (deployStrategy != null && "skip".equals(deployStrategy)) {
                it.remove();
             }
         }
         
-        List<Long> availableActiveHostIds = (List<Long>) org.apache.commons.collections.CollectionUtils.collect(availableActiveHosts,
-                TransformerUtils.invokerTransformer("getId"));
-        List<Long> allocatedActiveHostIds = (List<Long>) org.apache.commons.collections.CollectionUtils.collect(existingHostMaps,
-                TransformerUtils.invokerTransformer("getHostId"));
+        List<Long> availableActiveHostIds = new ArrayList<>();
+        for (Host host : availableActiveHosts) {
+            availableActiveHostIds.add(host.getId());
+        }
+        List<Long> allocatedActiveHostIds = new ArrayList<>();
+        for (HealthcheckInstanceHostMap hostMap : existingHostMaps) {
+            allocatedActiveHostIds.add(hostMap.getHostId());
+        }
 
         // skip the host that if not active (being removed, reconnecting, etc)
         Iterator<Long> it2 = allocatedActiveHostIds.iterator();
@@ -325,6 +327,11 @@ public class HealthcheckServiceImpl implements HealthcheckService {
         // always include inferiorHostId
         int start_index = availableActiveHostIds.size() - returnedNumber; 
         return availableActiveHostIds.subList(start_index, availableActiveHostIds.size());
+    }
+
+    static String healthcheckDeployStrategy(Object hostData) {
+        Object value = CollectionUtils.getNestedValue(hostData, "fields", "labels", LABEL_HEALTHCHECK_DEPLOY_STRATEGY);
+        return value == null ? null : String.class.cast(value);
     }
 
     private Long getInstanceHostId(HealthcheckInstanceType type, long instanceId) {

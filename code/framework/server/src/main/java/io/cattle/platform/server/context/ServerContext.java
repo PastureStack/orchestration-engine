@@ -1,6 +1,7 @@
 package io.cattle.platform.server.context;
 
 import io.cattle.platform.archaius.util.ArchaiusUtil;
+import io.cattle.platform.archaius.util.ConfigProperty;
 
 import java.net.Inet6Address;
 import java.net.InetAddress;
@@ -8,19 +9,14 @@ import java.net.NetworkInterface;
 import java.net.SocketException;
 import java.util.Collections;
 
-import org.apache.commons.lang.StringUtils;
-
-import com.netflix.config.DynamicIntProperty;
-import com.netflix.config.DynamicStringProperty;
-
 public class ServerContext {
 
-    public static final DynamicIntProperty HTTP_PORT = ArchaiusUtil.getInt("cattle.http.port");
-    public static final DynamicIntProperty HTTPS_PORT = ArchaiusUtil.getInt("cattle.https.port");
-    public static final DynamicStringProperty URL_PATH = ArchaiusUtil.getString("cattle.url.path");
-    public static final DynamicStringProperty SERVER_IP = ArchaiusUtil.getString("cattle.server.ip");
-    public static final DynamicStringProperty SERVER_ID = ArchaiusUtil.getString("cattle.server.id");
-    public static final DynamicStringProperty HOST = ArchaiusUtil.getString("api.host");
+    public static final ConfigProperty<Integer> HTTP_PORT = ArchaiusUtil.getIntProperty("cattle.http.port");
+    public static final ConfigProperty<Integer> HTTPS_PORT = ArchaiusUtil.getIntProperty("cattle.https.port");
+    public static final ConfigProperty<String> URL_PATH = ArchaiusUtil.getStringProperty("cattle.url.path");
+    public static final ConfigProperty<String> SERVER_IP = ArchaiusUtil.getStringProperty("cattle.server.ip");
+    public static final ConfigProperty<String> SERVER_ID = ArchaiusUtil.getStringProperty("cattle.server.id");
+    public static final ConfigProperty<String> HOST = ArchaiusUtil.getStringProperty("api.host");
 
     private static final String FOUND_SERVER_IP = lookupServerIp();
     private static final String SERVER_ID_FORMAT = System.getProperty("cattle.server.id.format", "%s");
@@ -30,7 +26,7 @@ public class ServerContext {
     public static final String HOST_API_PROXY_MODE_HA = "ha";
 
     public static boolean isCustomApiHost() {
-        return !StringUtils.isBlank(HOST.get());
+        return !isBlank(HOST.get());
     }
 
     public enum BaseProtocol {
@@ -106,7 +102,7 @@ public class ServerContext {
 
     public static String getHostApiProxyMode() {
         String embedded = System.getenv("CATTLE_HOST_API_PROXY_MODE");
-        if (StringUtils.isEmpty(embedded)) {
+        if (isEmpty(embedded)) {
             embedded = System.getProperty("host.api.proxy.mode", "off");
         }
         return embedded;
@@ -144,6 +140,14 @@ public class ServerContext {
         } catch (SocketException e) {
             throw new IllegalStateException("Failed to lookup IP of server", e);
         }
+    }
+
+    private static boolean isEmpty(String value) {
+        return value == null || value.isEmpty();
+    }
+
+    private static boolean isBlank(String value) {
+        return value == null || value.trim().isEmpty();
     }
 
 }
