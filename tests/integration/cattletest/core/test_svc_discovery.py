@@ -52,7 +52,7 @@ def test_mix_cased_labels(client, context):
     assert launch_config['labels'] == service.launchConfig.labels
 
     instance = find_one(_get_instance_for_service, client, service.id)
-    for k, v in service.launchConfig.labels.items():
+    for k, v in list(service.launchConfig.labels.items()):
         assert instance.labels[k] == v
 
 

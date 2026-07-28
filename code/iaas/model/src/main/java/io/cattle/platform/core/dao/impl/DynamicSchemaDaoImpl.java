@@ -14,17 +14,17 @@ import io.cattle.platform.db.jooq.dao.impl.AbstractJooqDao;
 import io.cattle.platform.util.type.CollectionUtils;
 import io.github.ibuildthecloud.gdapi.util.TypeUtils;
 
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.TimeUnit;
+import java.util.Objects;
 
-import javax.annotation.PostConstruct;
-import javax.inject.Inject;
-import javax.inject.Named;
+import jakarta.annotation.PostConstruct;
+import jakarta.inject.Inject;
+import jakarta.inject.Named;
 
-import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.jooq.InsertValuesStep2;
 import org.jooq.Record;
@@ -51,7 +51,7 @@ public class DynamicSchemaDaoImpl extends AbstractJooqDao implements DynamicSche
     @PostConstruct
     public void init() {
         schemasListCache = CacheBuilder.newBuilder()
-                .expireAfterWrite(15, TimeUnit.MINUTES)
+                .expireAfterWrite(Duration.ofMinutes(15))
                 .build(new CacheLoader<Pair<Long, String>, List<? extends DynamicSchema>>() {
                     @Override
                     public List<? extends DynamicSchema> load(Pair<Long, String> key) throws Exception {
@@ -59,7 +59,7 @@ public class DynamicSchemaDaoImpl extends AbstractJooqDao implements DynamicSche
                     }
                 });
         schemaCache = CacheBuilder.newBuilder()
-                .expireAfterWrite(15, TimeUnit.MINUTES)
+                .expireAfterWrite(Duration.ofMinutes(15))
                 .build(new CacheLoader<CacheKey, DynamicSchema>() {
                     @Override
                     public DynamicSchema load(CacheKey key) throws Exception {
@@ -157,7 +157,7 @@ public class DynamicSchemaDaoImpl extends AbstractJooqDao implements DynamicSche
             int priority = 0;
             if (withRole.getAccountId() != null &&
                     withRole.getAccountId().equals(accountId) &&
-                    StringUtils.equals(withRole.getRole(), role)) {
+                    Objects.equals(withRole.getRole(), role)) {
                 priority = 3;
             } else if (withRole.getAccountId() != null &&
                     withRole.getAccountId().equals(accountId) &&
@@ -174,17 +174,24 @@ public class DynamicSchemaDaoImpl extends AbstractJooqDao implements DynamicSche
         return record == null ? NULL : record.into(DynamicSchema.class);
     }
 
-    @SuppressWarnings("unchecked")
     @Override
     public void createRoles(DynamicSchema dynamicSchema) {
-        List<String> roles = (List<String>) CollectionUtils.toList(CollectionUtils.getNestedValue(dynamicSchema.getData(),
-                "fields", "roles"));
         InsertValuesStep2<DynamicSchemaRoleRecord, Long, String> insertStart = create()
                 .insertInto(DYNAMIC_SCHEMA_ROLE, DYNAMIC_SCHEMA_ROLE.DYNAMIC_SCHEMA_ID, DYNAMIC_SCHEMA_ROLE.ROLE);
-        for (String role: roles) {
+        for (String role: roles(dynamicSchema)) {
                     insertStart = insertStart.values(dynamicSchema.getId(), role);
         }
         insertStart.execute();
+    }
+
+    protected List<String> roles(DynamicSchema dynamicSchema) {
+        List<?> values = CollectionUtils.toList(CollectionUtils.getNestedValue(dynamicSchema.getData(),
+                "fields", "roles"));
+        List<String> roles = new ArrayList<>(values.size());
+        for (Object value : values) {
+            roles.add(String.class.cast(value));
+        }
+        return roles;
     }
 
     @Override

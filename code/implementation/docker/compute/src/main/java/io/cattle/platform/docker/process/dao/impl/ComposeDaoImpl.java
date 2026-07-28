@@ -17,7 +17,7 @@ import io.github.ibuildthecloud.gdapi.condition.ConditionType;
 
 import java.util.List;
 
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 
 public class ComposeDaoImpl extends AbstractJooqDao implements ComposeDao {
 

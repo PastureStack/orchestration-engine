@@ -39,14 +39,12 @@ import io.cattle.platform.eventing.EventService;
 import io.cattle.platform.eventing.model.Event;
 import io.cattle.platform.eventing.model.EventVO;
 import io.cattle.platform.iaas.event.IaasEvents;
-import io.cattle.platform.json.JsonMapper;
 import io.cattle.platform.lock.LockCallback;
 import io.cattle.platform.lock.LockManager;
 import io.cattle.platform.object.process.StandardProcess;
 import io.cattle.platform.object.util.DataAccessor;
 import io.cattle.platform.process.common.handler.AbstractObjectProcessLogic;
 import io.cattle.platform.process.common.lock.MountVolumeLock;
-import io.cattle.platform.util.type.CollectionUtils;
 import io.cattle.platform.util.type.Priority;
 import io.github.ibuildthecloud.gdapi.condition.Condition;
 import io.github.ibuildthecloud.gdapi.condition.ConditionType;
@@ -56,9 +54,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 
-import org.apache.commons.lang3.ObjectUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -68,8 +65,6 @@ public class DockerPostInstanceHostMapActivate extends AbstractObjectProcessLogi
 
     private static final Logger log = LoggerFactory.getLogger(DockerPostInstanceHostMapActivate.class);
 
-    @Inject
-    JsonMapper jsonMapper;
     @Inject
     IpAddressDao ipAddressDao;
     @Inject
@@ -92,7 +87,6 @@ public class DockerPostInstanceHostMapActivate extends AbstractObjectProcessLogi
         return new String[] { "instancehostmap.activate" };
     }
 
-    @SuppressWarnings("unchecked")
     @Override
     public HandlerResult handle(ProcessState state, ProcessInstance process) {
         InstanceHostMap map = (InstanceHostMap)state.getResource();
@@ -104,7 +98,7 @@ public class DockerPostInstanceHostMapActivate extends AbstractObjectProcessLogi
 
         IpAddress hostIpAddress = hostDao.getIpAddressForHost(host.getId());
         IpAddress primaryIp = ipAddressDao.getInstancePrimaryIp(instance);
-        List<String> ports = DataAccessor.fields(instance).withKey(DockerInstanceConstants.FIELD_DOCKER_PORTS).as(jsonMapper, List.class);
+        List<String> ports = stringListOrNull(DataAccessor.fields(instance).withKey(DockerInstanceConstants.FIELD_DOCKER_PORTS).get());
 
         if (dockerIp != null) {
             primaryIp = processDockerIp(instance, nic, primaryIp, dockerIp);
@@ -128,15 +122,13 @@ public class DockerPostInstanceHostMapActivate extends AbstractObjectProcessLogi
         return null;
     }
 
-    @SuppressWarnings("unchecked")
     void processLabels(Instance instance) {
-        Map<String, String> labels = CollectionUtils.toMap(CollectionUtils.getNestedValue(instance.getData(), FIELD_DOCKER_INSPECT, "Config",
-                "Labels"));
+        Map<String, String> labels = stringMapOrEmpty(nestedValue(instance.getData(), FIELD_DOCKER_INSPECT, "Config", "Labels"));
         for (Map.Entry<String, String>label : labels.entrySet()) {
             labelsService.createContainerLabel(instance.getAccountId(), instance.getId(), label.getKey(), label.getValue());
         }
 
-        Map<String, Object> inspect = (Map<String, Object>)instance.getData().get(FIELD_DOCKER_INSPECT);
+        Map<String, Object> inspect = stringObjectMapOrNull(instance.getData().get(FIELD_DOCKER_INSPECT));
         if (inspect == null) {
             return;
         }
@@ -144,9 +136,8 @@ public class DockerPostInstanceHostMapActivate extends AbstractObjectProcessLogi
         objectManager.persist(instance);
     }
 
-    @SuppressWarnings({ "unchecked" })
     protected void nativeDockerBackPopulate(Instance instance) {
-        Map<String, Object> inspect = (Map<String, Object>)instance.getData().get(FIELD_DOCKER_INSPECT);
+        Map<String, Object> inspect = stringObjectMapOrNull(instance.getData().get(FIELD_DOCKER_INSPECT));
         if (inspect == null || instance.getNativeContainer() == null || !instance.getNativeContainer().booleanValue()) {
             return;
         }
@@ -154,11 +145,10 @@ public class DockerPostInstanceHostMapActivate extends AbstractObjectProcessLogi
         objectManager.persist(instance);
     }
 
-    @SuppressWarnings({ "unchecked" })
     protected void processVolumes(Instance instance, Host host, ProcessState state) {
 
-        Map<String, Object> inspect = (Map<String, Object>) instance.getData().get(FIELD_DOCKER_INSPECT);
-        List<Object> mounts = (List<Object>) instance.getData().get(FIELD_DOCKER_MOUNTS);
+        Map<String, Object> inspect = stringObjectMapOrNull(instance.getData().get(FIELD_DOCKER_INSPECT));
+        List<Object> mounts = objectListOrNull(instance.getData().get(FIELD_DOCKER_MOUNTS));
         if (inspect == null && mounts == null) {
             return;
         }
@@ -304,9 +294,9 @@ public class DockerPostInstanceHostMapActivate extends AbstractObjectProcessLogi
             } else {
                 String bindAddress = DataAccessor.fields(port).withKey(PortConstants.FIELD_BIND_ADDR).as(String.class);
                 boolean bindAddressNull = bindAddress == null;
-                if (!ObjectUtils.equals(port.getPublicPort(), spec.getPublicPort())
-                        || !ObjectUtils.equals(port.getPrivateIpAddressId(), privateIpAddressId)
-                        || (bindAddressNull && !ObjectUtils.equals(port.getPublicIpAddressId(), publicIpAddressId))
+                if (!java.util.Objects.equals(port.getPublicPort(), spec.getPublicPort())
+                        || !java.util.Objects.equals(port.getPrivateIpAddressId(), privateIpAddressId)
+                        || (bindAddressNull && !java.util.Objects.equals(port.getPublicIpAddressId(), publicIpAddressId))
                         || (!bindAddressNull && !bindAddress.equals(spec.getIpAddress()))){
                     if (spec.getPublicPort() != null) {
                         port.setPublicPort(spec.getPublicPort());
@@ -343,5 +333,64 @@ public class DockerPostInstanceHostMapActivate extends AbstractObjectProcessLogi
     @Override
     public int getPriority() {
         return Priority.PRE;
+    }
+
+    static List<String> stringListOrNull(Object value) {
+        if (value == null) {
+            return null;
+        }
+
+        List<?> source = (List<?>) value;
+        List<String> result = new ArrayList<String>(source.size());
+        for (Object item : source) {
+            result.add(String.class.cast(item));
+        }
+        return result;
+    }
+
+    static List<Object> objectListOrNull(Object value) {
+        if (value == null) {
+            return null;
+        }
+
+        return new ArrayList<Object>((List<?>) value);
+    }
+
+    static Map<String, String> stringMapOrEmpty(Object value) {
+        Map<String, String> result = new HashMap<String, String>();
+        if (!(value instanceof Map<?, ?>)) {
+            return result;
+        }
+
+        Map<?, ?> source = (Map<?, ?>) value;
+        for (Map.Entry<?, ?> entry : source.entrySet()) {
+            result.put(String.class.cast(entry.getKey()), String.class.cast(entry.getValue()));
+        }
+        return result;
+    }
+
+    static Map<String, Object> stringObjectMapOrNull(Object value) {
+        if (value == null) {
+            return null;
+        }
+
+        Map<?, ?> source = (Map<?, ?>) value;
+        Map<String, Object> result = new HashMap<String, Object>();
+        for (Map.Entry<?, ?> entry : source.entrySet()) {
+            result.put(String.class.cast(entry.getKey()), entry.getValue());
+        }
+        return result;
+    }
+
+    static Object nestedValue(Object map, String... keys) {
+        Object value = map;
+        for (String key : keys) {
+            Map<String, Object> mapObject = stringObjectMapOrNull(value);
+            if (mapObject == null) {
+                return null;
+            }
+            value = mapObject.get(key);
+        }
+        return value;
     }
 }

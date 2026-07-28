@@ -23,6 +23,7 @@ import io.cattle.platform.allocator.service.AllocationHelper;
 import io.cattle.platform.allocator.service.AllocationLog;
 import io.cattle.platform.allocator.service.AllocatorService;
 import io.cattle.platform.archaius.util.ArchaiusUtil;
+import io.cattle.platform.archaius.util.ConfigProperty;
 import io.cattle.platform.core.constants.CommonStatesConstants;
 import io.cattle.platform.core.constants.InstanceConstants;
 import io.cattle.platform.core.constants.StorageDriverConstants;
@@ -66,7 +67,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
@@ -74,12 +75,12 @@ import org.slf4j.LoggerFactory;
 
 import com.codahale.metrics.Timer;
 import com.codahale.metrics.Timer.Context;
-import com.netflix.config.DynamicStringProperty;
-
 public class AllocatorServiceImpl implements AllocatorService, Named {
 
     private static final Logger log = LoggerFactory.getLogger(AllocatorServiceImpl.class);
-    private static final DynamicStringProperty PORT_SCHEDULER_IMAGE_VERSION = ArchaiusUtil.getString("port.scheduler.image.version");
+    private static final ConfigProperty<String> PORT_SCHEDULER_IMAGE_VERSION = ArchaiusUtil.getStringProperty("port.scheduler.image.version");
+    private static final String PASTURESTACK_SCHEDULER_IMAGE = "ghcr.io/pasturestack/resource-scheduler";
+    private static final String LEGACY_SCHEDULER_IMAGE = "rancher/scheduler";
     private static final String FORCE_RESERVE = "force";
     private static final String HOST_ID = "hostID";
     private static final String RESOURCE_REQUESTS = "resourceRequests";
@@ -216,7 +217,6 @@ public class AllocatorServiceImpl implements AllocatorService, Named {
     }
 
     @Override
-    @SuppressWarnings("unchecked")
     public List<String> callExternalSchedulerForHostsSatisfyingLabels(Long accountId, Map<String, String> labels) {
         List<Long> agentIds = agentInstanceDao.getAgentProvider(SystemLabels.LABEL_AGENT_SERVICE_SCHEDULING_PROVIDER, accountId);
         List<String> hosts = null;
@@ -229,9 +229,9 @@ public class AllocatorServiceImpl implements AllocatorService, Named {
                 RemoteAgent agent = agentLocator.lookupAgent(agentId);
                 Event eventResult = callScheduler("Error getting hosts for resources for global service", schedulerEvent, agent);
                 if (hosts == null) {
-                    hosts = (List<String>) CollectionUtils.getNestedValue(eventResult.getData(), SCHEDULER_PRIORITIZE_RESPONSE);
+                    hosts = stringList(CollectionUtils.getNestedValue(eventResult.getData(), SCHEDULER_PRIORITIZE_RESPONSE));
                 } else {
-                    List<String> newHosts = (List<String>) CollectionUtils.getNestedValue(eventResult.getData(), SCHEDULER_PRIORITIZE_RESPONSE);
+                    List<String> newHosts = stringList(CollectionUtils.getNestedValue(eventResult.getData(), SCHEDULER_PRIORITIZE_RESPONSE));
                     hosts.retainAll(newHosts);
                 }
             }
@@ -252,7 +252,7 @@ public class AllocatorServiceImpl implements AllocatorService, Named {
         instance.put("data", data);
         return instance;
     }
-    
+
     protected List<Instance> getInstancesToAllocate(Instance instance) {
         if (instance.getDeploymentUnitUuid() != null) {
             return allocatorDao.getUnmappedDeploymentUnitInstances(instance.getDeploymentUnitUuid());
@@ -361,7 +361,7 @@ public class AllocatorServiceImpl implements AllocatorService, Named {
         for (Volume v : volsToLock) {
                 locks.add(new AllocateConstraintLock(AllocateConstraintLock.Type.VOLUME, v.getId().toString()));
         }
-        
+
         List<Volume> volumes = InstanceHelpers.extractVolumesFromMounts(origInstance, objectManager);
         for (Volume volume: volumes) {
             StorageDriver driver = objectManager.loadResource(StorageDriver.class, volume.getStorageDriverId());
@@ -422,7 +422,7 @@ public class AllocatorServiceImpl implements AllocatorService, Named {
                         resourceMsg = String.format("Host must satisfy resource constraints: %s. ", requests.toString());
                     }
                 }
-                throw new FailedToAllocate(String.format("%s%s", 
+                throw new FailedToAllocate(String.format("%s%s",
                         resourceMsg, toErrorMessage(finalFailedConstraints)));
             }
             throw new FailedToAllocate("Failed to find placement");
@@ -699,7 +699,6 @@ public class AllocatorServiceImpl implements AllocatorService, Named {
         }
     }
 
-    @SuppressWarnings("unchecked")
     private void callExternalSchedulerToReserve(AllocationAttempt attempt, AllocationCandidate candidate) {
         List<Long> agentIds = getAgentResource(attempt.getAccountId(), attempt.getInstances());
         if (agentIds.isEmpty() && !attempt.getInstances().get(0).getSystem() && allocatorDao.isSchedulerServiceEnabled(attempt.getAccountId())
@@ -733,11 +732,11 @@ public class AllocatorServiceImpl implements AllocatorService, Named {
                 if (eventResult.getData() == null) {
                     return;
                 }
-                
-                List<Map<String, Object>> data = (List<Map<String, Object>>) CollectionUtils.getNestedValue(eventResult.getData(), PORT_RESERVATION);
+
+                List<Map<String, Object>> data = portReservationList(CollectionUtils.getNestedValue(eventResult.getData(), PORT_RESERVATION));
                 if (data != null) {
                     attempt.setAllocatedIPs(data);
-                } 
+                }
             }
         }
     }
@@ -759,7 +758,7 @@ public class AllocatorServiceImpl implements AllocatorService, Named {
             }
         }
     }
-    
+
     private void callExternalSchedulerToRelease(Volume volume) {
         String hostUuid = allocatorDao.getAllocatedHostUuid(volume);
         if (StringUtils.isEmpty(hostUuid)) {
@@ -777,7 +776,6 @@ public class AllocatorServiceImpl implements AllocatorService, Named {
         }
     }
 
-    @SuppressWarnings("unchecked")
     private List<String> callExternalSchedulerForHosts(AllocationAttempt attempt) {
         List<String> hosts = null;
         List<Long> agentIds = getAgentResource(attempt.getAccountId(), attempt.getInstances());
@@ -790,9 +788,9 @@ public class AllocatorServiceImpl implements AllocatorService, Named {
                 RemoteAgent agent = agentLocator.lookupAgent(agentId);
                 Event eventResult = callScheduler("Error getting hosts for resources: %s", schedulerEvent, agent);
                 if (hosts == null) {
-                    hosts = (List<String>) CollectionUtils.getNestedValue(eventResult.getData(), SCHEDULER_PRIORITIZE_RESPONSE);
+                    hosts = stringList(CollectionUtils.getNestedValue(eventResult.getData(), SCHEDULER_PRIORITIZE_RESPONSE));
                 } else {
-                    List<String> newHosts = (List<String>) CollectionUtils.getNestedValue(eventResult.getData(), SCHEDULER_PRIORITIZE_RESPONSE);
+                    List<String> newHosts = stringList(CollectionUtils.getNestedValue(eventResult.getData(), SCHEDULER_PRIORITIZE_RESPONSE));
                     hosts.retainAll(newHosts);
                 }
             }
@@ -800,7 +798,6 @@ public class AllocatorServiceImpl implements AllocatorService, Named {
         return hosts;
     }
 
-    @SuppressWarnings("unchecked")
     private void callExternalSchedulerToAllocatePorts(Instance instance, List<Port> newPorts) {
         List<Long> agentIds = getAgentResource(instance.getAccountId(), Arrays.asList(instance));
         for (Long agentId : agentIds) {
@@ -822,10 +819,10 @@ public class AllocatorServiceImpl implements AllocatorService, Named {
                 if (eventResult.getData() == null) {
                     return;
                 }
-                List<Map<String, Object>> allocatedDataList = (List<Map<String, Object>>) CollectionUtils
-                        .getNestedValue(eventResult.getData(), PORT_RESERVATION);
+                List<Map<String, Object>> allocatedDataList = portReservationList(CollectionUtils
+                        .getNestedValue(eventResult.getData(), PORT_RESERVATION));
                 allocatorDao.updateInstancePorts(allocatedDataList);
-                
+
             }
         }
     }
@@ -918,9 +915,54 @@ public class AllocatorServiceImpl implements AllocatorService, Named {
         }
     }
 
-    @SuppressWarnings("unchecked")
-    private List<ResourceRequest> extractResourceRequests(EventVO<Map<String, Object>> schedulerEvent) {
-        return  (List<ResourceRequest>)((Map<String, Object>)schedulerEvent.getData().get(SCHEDULER_REQUEST_DATA_NAME)).get(RESOURCE_REQUESTS);
+    List<ResourceRequest> extractResourceRequests(EventVO<Map<String, Object>> schedulerEvent) {
+        Map<?, ?> requestData = Map.class.cast(schedulerEvent.getData().get(SCHEDULER_REQUEST_DATA_NAME));
+        return resourceRequestList(requestData.get(RESOURCE_REQUESTS));
+    }
+
+    private List<ResourceRequest> resourceRequestList(Object requests) {
+        List<?> source = List.class.cast(requests);
+        if (source == null) {
+            return null;
+        }
+        List<ResourceRequest> result = new ArrayList<ResourceRequest>(source.size());
+        for (Object request : source) {
+            result.add(ResourceRequest.class.cast(request));
+        }
+        return result;
+    }
+
+    List<Map<String, Object>> portReservationList(Object reservations) {
+        List<?> source = List.class.cast(reservations);
+        if (source == null) {
+            return null;
+        }
+        List<Map<String, Object>> result = new ArrayList<Map<String, Object>>(source.size());
+        for (Object reservation : source) {
+            result.add(stringObjectMap(reservation));
+        }
+        return result;
+    }
+
+    List<String> stringList(Object values) {
+        List<?> source = List.class.cast(values);
+        if (source == null) {
+            return null;
+        }
+        List<String> result = new ArrayList<String>(source.size());
+        for (Object value : source) {
+            result.add(String.class.cast(value));
+        }
+        return result;
+    }
+
+    private Map<String, Object> stringObjectMap(Object mapData) {
+        Map<?, ?> source = Map.class.cast(mapData);
+        Map<String, Object> result = new HashMap<String, Object>();
+        for (Map.Entry<?, ?> entry : source.entrySet()) {
+            result.put(String.class.cast(entry.getKey()), entry.getValue());
+        }
+        return result;
     }
 
     private EventVO<Map<String, Object>> buildReleaseEvent(String phase, Object resource, Long agentId) {
@@ -994,7 +1036,7 @@ public class AllocatorServiceImpl implements AllocatorService, Named {
         if (cpuRequest != null) {
             requests.add(cpuRequest);
         }
-        
+
         ResourceRequest portRequests = populateResourceRequestFromInstance(instance, PORT_RESERVATION, PORT_POOL, schedulerVersion);
         if (portRequests != null) {
             requests.add(portRequests);
@@ -1060,7 +1102,7 @@ public class AllocatorServiceImpl implements AllocatorService, Named {
             if (instance.getMemoryReservation() != null && instance.getMemoryReservation() > 0) {
                 ResourceRequest rr = new ComputeResourceRequest(MEMORY_RESERVATION, instance.getMemoryReservation(), poolType);
                 return rr;
-            } 
+            }
             return null;
         case CPU_RESERVATION:
             if (instance.getMilliCpuReservation() != null && instance.getMilliCpuReservation() > 0) {
@@ -1101,10 +1143,14 @@ public class AllocatorServiceImpl implements AllocatorService, Named {
         if (imageParts.length <= 1) {
             return "";
         }
-        if (!imageParts[0].equals("rancher/scheduler")) {
+        if (!isSchedulerImage(imageParts[0])) {
             return "NotApplicable";
         }
         return imageParts[imageParts.length - 1];
+    }
+
+    protected boolean isSchedulerImage(String imageName) {
+        return PASTURESTACK_SCHEDULER_IMAGE.equals(imageName) || LEGACY_SCHEDULER_IMAGE.equals(imageName);
     }
 
     protected boolean useLegacyPortAllocation(String actualVersion) {

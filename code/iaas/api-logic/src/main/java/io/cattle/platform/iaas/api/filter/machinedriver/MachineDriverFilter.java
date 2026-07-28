@@ -7,8 +7,9 @@ import io.cattle.platform.object.util.DataAccessor;
 import io.github.ibuildthecloud.gdapi.request.ApiRequest;
 import io.github.ibuildthecloud.gdapi.request.resource.ResourceManager;
 
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 
+import org.apache.commons.lang3.Strings;
 import org.apache.commons.lang3.StringUtils;
 
 public class MachineDriverFilter extends AbstractDefaultResourceManagerFilter {
@@ -31,8 +32,8 @@ public class MachineDriverFilter extends AbstractDefaultResourceManagerFilter {
         if (url != null && StringUtils.isBlank(md.getName())) {
             String[] parts = url.split("/");
             String name = parts[parts.length-1];
-            name = StringUtils.removeStart(name, "docker-machine-driver-");
-            name = StringUtils.removeStart(name, "docker-machine-");
+            name = Strings.CS.removeStart(name, "docker-machine-driver-");
+            name = Strings.CS.removeStart(name, "docker-machine-");
             name = name.split("[^a-zA-Z0-9]")[0];
             md.setName(name);
         }

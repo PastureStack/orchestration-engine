@@ -22,8 +22,8 @@ import io.cattle.platform.resource.pool.ResourcePoolManager;
 import io.cattle.platform.resource.pool.util.ResourcePoolConstants;
 import io.cattle.platform.util.exception.ExecutionException;
 
-import javax.inject.Inject;
-import javax.inject.Named;
+import jakarta.inject.Inject;
+import jakarta.inject.Named;
 
 @Named
 public class NicActivate extends AbstractDefaultProcessHandler {

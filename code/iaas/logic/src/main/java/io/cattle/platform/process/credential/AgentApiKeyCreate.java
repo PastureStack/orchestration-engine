@@ -2,7 +2,7 @@ package io.cattle.platform.process.credential;
 
 import io.cattle.platform.core.constants.CredentialConstants;
 
-import javax.inject.Named;
+import jakarta.inject.Named;
 
 @Named
 public class AgentApiKeyCreate extends ApiKeyCreate {

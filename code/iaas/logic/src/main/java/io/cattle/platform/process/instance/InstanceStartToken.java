@@ -11,7 +11,7 @@ import io.cattle.platform.util.type.Priority;
 
 import java.security.SecureRandom;
 
-import javax.inject.Named;
+import jakarta.inject.Named;
 
 import org.apache.commons.codec.binary.Base64;
 

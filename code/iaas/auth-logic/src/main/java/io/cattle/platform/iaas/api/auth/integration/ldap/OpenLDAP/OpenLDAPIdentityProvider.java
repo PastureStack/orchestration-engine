@@ -9,6 +9,7 @@ import io.cattle.platform.iaas.api.auth.dao.AuthTokenDao;
 import io.cattle.platform.iaas.api.auth.identity.Token;
 import io.cattle.platform.iaas.api.auth.integration.interfaces.IdentityProvider;
 import io.cattle.platform.iaas.api.auth.integration.ldap.LDAPIdentityProvider;
+import io.cattle.platform.iaas.api.auth.integration.ldap.LDAPSearchFilter;
 import io.cattle.platform.iaas.api.auth.integration.ldap.LDAPUtils;
 import io.cattle.platform.iaas.api.auth.integration.ldap.UserLoginFailureException;
 import io.cattle.platform.iaas.api.auth.integration.ldap.interfaces.LDAPConstants;
@@ -24,13 +25,14 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
 
-import javax.inject.Inject;
 import javax.naming.InvalidNameException;
 import javax.naming.NamingException;
 import javax.naming.directory.Attribute;
 import javax.naming.directory.Attributes;
 import javax.naming.ldap.LdapContext;
 import javax.naming.ldap.LdapName;
+
+import jakarta.inject.Inject;
 
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.pool2.impl.GenericObjectPool;
@@ -114,7 +116,7 @@ public class OpenLDAPIdentityProvider extends LDAPIdentityProvider implements Id
             }
         }
         Attribute memberOf = userAttributes.get(getConstantsConfig().getUserMemberAttribute());
-        if(memberOf == null) {
+        if (memberOf == null && opAttributes != null) {
             memberOf = opAttributes.get(getConstantsConfig().getUserMemberAttribute());
         }
         logger.trace("getIdentities: memberOf attribute: " + memberOf);
@@ -129,26 +131,25 @@ public class OpenLDAPIdentityProvider extends LDAPIdentityProvider implements Id
             }
             if (memberOf != null) {// null if this user belongs to no group at all
                 for (int i = 0; i < memberOf.size(); i++) {
-                    String query = "(&(" + getConstantsConfig().getGroupDNField() +
-                            '=' + memberOf.get(i).toString() + ")(" + getConstantsConfig().objectClass() + '=' +
-                            getConstantsConfig().getGroupObjectClass() + "))";
-                    logger.trace("getIdentities: memberOf attribute query: "+query);
-                    identities.addAll(resultsToIdentities(searchLdap(query, getConstantsConfig().getGroupScope())));
+                    LDAPSearchFilter filter = LDAPSearchFilter.and(
+                            LDAPSearchFilter.equality(getConstantsConfig().getGroupDNField(), memberOf.get(i).toString()),
+                            LDAPSearchFilter.equality(getConstantsConfig().objectClass(), getConstantsConfig().getGroupObjectClass()));
+                    logger.trace("getIdentities: memberOf attribute query: " + filter);
+                    identities.addAll(resultsToIdentities(searchLdap(filter, getConstantsConfig().getGroupScope())));
                 }
             }
 
             Attribute groupMemberUserAttribute = userAttributes.get(getConstantsConfig().getGroupMemberUserAttribute());
-            if(groupMemberUserAttribute == null) {
+            if (groupMemberUserAttribute == null && opAttributes != null) {
                 groupMemberUserAttribute = opAttributes.get(getConstantsConfig().getGroupMemberUserAttribute());
             }
-            logger.trace("getIdentities: groupMemberUserAttribute attribute: "+groupMemberUserAttribute);
+            logger.trace("getIdentities: groupMemberUserAttribute attribute: " + groupMemberUserAttribute);
             if (groupMemberUserAttribute != null && StringUtils.isNotBlank(groupMemberUserAttribute.toString())){
-                String query = "(&(" + getConstantsConfig().getGroupMemberMappingAttribute()
-                        + '=' + ((String)groupMemberUserAttribute.get())
-                        + ")(" + getConstantsConfig().objectClass() + '='
-                        + getConstantsConfig().getGroupObjectClass() + "))";
-                logger.trace("getIdentities: groupMemberUserAttribute attribute query: "+query);
-                identities.addAll(resultsToIdentities(searchLdap(query, getConstantsConfig().getGroupScope())));
+                LDAPSearchFilter filter = LDAPSearchFilter.and(
+                        LDAPSearchFilter.equality(getConstantsConfig().getGroupMemberMappingAttribute(), String.valueOf(groupMemberUserAttribute.get())),
+                        LDAPSearchFilter.equality(getConstantsConfig().objectClass(), getConstantsConfig().getGroupObjectClass()));
+                logger.trace("getIdentities: groupMemberUserAttribute attribute query: " + filter);
+                identities.addAll(resultsToIdentities(searchLdap(filter, getConstantsConfig().getGroupScope())));
             }
             return identities;
         } catch (NamingException e) {
@@ -162,9 +163,9 @@ public class OpenLDAPIdentityProvider extends LDAPIdentityProvider implements Id
             return new HashSet<>();
         }
         LdapName user;
-        String query = "(&(" + getConstantsConfig().getUserLoginField() + '=' + username + ")(" + getConstantsConfig().objectClass() + '='
-                + getConstantsConfig().getUserObjectClass() + "))";
-        List<Identity> users = resultsToIdentities(searchLdap(query, getConstantsConfig().getUserScope()));
+        LDAPSearchFilter filter = LDAPSearchFilter.and(LDAPSearchFilter.equality(getConstantsConfig().getUserLoginField(), username),
+                LDAPSearchFilter.equality(getConstantsConfig().objectClass(), getConstantsConfig().getUserObjectClass()));
+        List<Identity> users = resultsToIdentities(searchLdap(filter, getConstantsConfig().getUserScope()));
         if (users.size() != 1){
             logger.error("Found no or multiple users for: " + username);
             throw new ClientVisibleException(ResponseCodes.UNAUTHORIZED);

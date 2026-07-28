@@ -16,11 +16,11 @@ import java.util.List;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
-import javax.inject.Inject;
-import javax.inject.Named;
-import javax.servlet.http.HttpServletResponse;
+import jakarta.inject.Inject;
+import jakarta.inject.Named;
+import jakarta.servlet.http.HttpServletResponse;
 
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 
 @Named
 public class StackComposeLinkHandler implements LinkHandler {
@@ -69,7 +69,7 @@ public class StackComposeLinkHandler implements LinkHandler {
         ZipOutputStream zos = new ZipOutputStream(baos);
         try {
             zipFile(dockerCompose, zos, "docker-compose.yml");
-            zipFile(rancherCompose, zos, "rancher-compose.yml");
+            zipFile(rancherCompose, zos, "platform-compose.yml");
         } finally {
             zos.flush();
             baos.flush();

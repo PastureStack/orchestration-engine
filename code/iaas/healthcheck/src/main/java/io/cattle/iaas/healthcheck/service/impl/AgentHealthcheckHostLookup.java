@@ -7,7 +7,7 @@ import io.cattle.platform.core.model.Host;
 import io.cattle.platform.db.jooq.dao.impl.AbstractJooqDao;
 import io.cattle.platform.object.ObjectManager;
 
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 
 public class AgentHealthcheckHostLookup extends AbstractJooqDao implements HealthcheckHostLookup {
 

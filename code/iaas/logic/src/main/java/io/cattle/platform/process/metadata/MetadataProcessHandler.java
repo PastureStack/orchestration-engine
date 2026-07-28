@@ -3,6 +3,7 @@ package io.cattle.platform.process.metadata;
 import io.cattle.platform.agent.instance.dao.AgentInstanceDao;
 import io.cattle.platform.agent.instance.service.AgentMetadataService;
 import io.cattle.platform.archaius.util.ArchaiusUtil;
+import io.cattle.platform.archaius.util.ConfigListProperty;
 import io.cattle.platform.configitem.version.ConfigItemStatusManager;
 import io.cattle.platform.core.constants.AgentConstants;
 import io.cattle.platform.core.dao.AccountDao;
@@ -26,18 +27,17 @@ import io.cattle.platform.process.common.handler.AbstractObjectProcessLogic;
 import java.util.ArrayList;
 import java.util.List;
 
-import javax.inject.Inject;
-import javax.inject.Named;
+import jakarta.inject.Inject;
+import jakarta.inject.Named;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.netflix.config.DynamicStringListProperty;
 
 @Named
 public class MetadataProcessHandler extends AbstractObjectProcessLogic implements ProcessPostListener {
 
-    private static DynamicStringListProperty PROCESSES = ArchaiusUtil.getList("metadata.increment.processes");
+    private static final ConfigListProperty<String> PROCESSES = ArchaiusUtil.getStringListProperty("metadata.increment.processes");
     private static Logger log = LoggerFactory.getLogger(MetadataProcessHandler.class);
 
     @Inject

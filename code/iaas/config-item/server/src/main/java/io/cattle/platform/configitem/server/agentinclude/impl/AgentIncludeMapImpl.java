@@ -1,6 +1,8 @@
 package io.cattle.platform.configitem.server.agentinclude.impl;
 
 import io.cattle.platform.archaius.util.ArchaiusUtil;
+import io.cattle.platform.archaius.util.ConfigListProperty;
+import io.cattle.platform.archaius.util.ConfigProperty;
 import io.cattle.platform.configitem.server.agentinclude.AgentIncludeMap;
 
 import java.io.UnsupportedEncodingException;
@@ -13,14 +15,12 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import org.apache.commons.codec.binary.Hex;
 
-import com.netflix.config.DynamicListProperty;
-import com.netflix.config.DynamicStringProperty;
-
 public class AgentIncludeMapImpl implements AgentIncludeMap {
 
-    private static final DynamicListProperty<String> KEYS = ArchaiusUtil.getList("agent.packages.types");
+    private static final ConfigListProperty<String> KEYS = ArchaiusUtil.getStringListProperty("agent.packages.types");
 
-    Map<String, DynamicStringProperty> values = new ConcurrentHashMap<String, DynamicStringProperty>();
+    Map<String, ConfigListProperty<String>> packages = new ConcurrentHashMap<String, ConfigListProperty<String>>();
+    Map<String, ConfigProperty<String>> values = new ConcurrentHashMap<String, ConfigProperty<String>>();
 
     @Override
     public List<String> getNamedMaps() {
@@ -43,12 +43,20 @@ public class AgentIncludeMapImpl implements AgentIncludeMap {
             return result;
         }
 
-        for (String item : ArchaiusUtil.getList("agent.packages." + sanitize(name)).get()) {
+        String packageKey = "agent.packages." + sanitize(name);
+        ConfigListProperty<String> packageProperty = packages.get(packageKey);
+
+        if (packageProperty == null) {
+            packageProperty = ArchaiusUtil.getStringListProperty(packageKey);
+            packages.put(packageKey, packageProperty);
+        }
+
+        for (String item : packageProperty.get()) {
             String key = String.format("agent.package.%s.url", sanitize(item));
-            DynamicStringProperty prop = values.get(key);
+            ConfigProperty<String> prop = values.get(key);
 
             if (prop == null) {
-                prop = ArchaiusUtil.getString(key);
+                prop = ArchaiusUtil.getStringProperty(key);
                 values.put(key, prop);
             }
 

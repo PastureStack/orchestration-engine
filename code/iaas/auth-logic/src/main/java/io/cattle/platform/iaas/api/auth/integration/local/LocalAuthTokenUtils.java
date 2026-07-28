@@ -46,4 +46,12 @@ public class LocalAuthTokenUtils extends AbstractTokenUtil {
     public String getName() {
         return LocalAuthConstants.CONFIG;
     }
+
+    @Override
+    public boolean isConfigured() {
+        return LocalAuthConstants.CONFIG.equalsIgnoreCase(
+                io.cattle.platform.iaas.api.auth.SecurityConstants.AUTH_PROVIDER.get())
+                || (io.cattle.platform.iaas.api.auth.SecurityConstants.SECURITY.get()
+                && LocalAuthConstants.RECOVERY_ENABLED.get());
+    }
 }

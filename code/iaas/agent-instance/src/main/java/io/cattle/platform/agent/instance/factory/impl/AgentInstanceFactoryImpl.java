@@ -7,6 +7,7 @@ import io.cattle.platform.agent.instance.dao.AgentInstanceDao;
 import io.cattle.platform.agent.instance.factory.AgentInstanceFactory;
 import io.cattle.platform.agent.instance.factory.lock.AgentInstanceAgentCreateLock;
 import io.cattle.platform.archaius.util.ArchaiusUtil;
+import io.cattle.platform.archaius.util.ConfigProperty;
 import io.cattle.platform.core.constants.AgentConstants;
 import io.cattle.platform.core.constants.CommonStatesConstants;
 import io.cattle.platform.core.constants.InstanceConstants;
@@ -41,16 +42,13 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.Callable;
 
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 
 import org.apache.commons.lang3.BooleanUtils;
-import org.apache.commons.lang3.ObjectUtils;
 import org.apache.commons.lang3.tuple.Pair;
 
-import com.netflix.config.DynamicStringProperty;
-
 public class AgentInstanceFactoryImpl implements AgentInstanceFactory {
-    private static final DynamicStringProperty LB_IMAGE_UUID = ArchaiusUtil.getString("lb.instance.image.uuid");
+    private static final ConfigProperty<String> LB_IMAGE_UUID = ArchaiusUtil.getStringProperty("lb.instance.image.uuid");
 
     @Inject
     AccountDao accountDao;
@@ -132,14 +130,13 @@ public class AgentInstanceFactoryImpl implements AgentInstanceFactory {
         return null;
     }
 
-    @SuppressWarnings("unchecked")
     protected boolean isLBSystemService(Service service) {
         if (!service.getKind().equalsIgnoreCase(ServiceConstants.KIND_LOAD_BALANCER_SERVICE)) {
             return false;
         }
-        Map<String, Object> data = DataAccessor.fields(service)
-                .withKey("launchConfig").withDefault(Collections.EMPTY_MAP)
-                .as(Map.class);
+        Map<?, ?> data = launchConfigMap(DataAccessor.fields(service)
+                .withKey("launchConfig").withDefault(Collections.emptyMap())
+                .get());
 
         Object imageObj = data.get(InstanceConstants.FIELD_IMAGE_UUID);
         if (imageObj == null) {
@@ -150,6 +147,10 @@ public class AgentInstanceFactoryImpl implements AgentInstanceFactory {
         Pair<String, String> instanceImage = getImageAndRepo(imageObj.toString().toLowerCase());
         return defaultImage.getRight().equalsIgnoreCase(instanceImage.getRight())
                 && defaultImage.getLeft().equalsIgnoreCase(instanceImage.getLeft());
+    }
+
+    static Map<?, ?> launchConfigMap(Object value) {
+        return Map.class.cast(value == null ? Collections.emptyMap() : value);
     }
 
     private Pair<String, String> getImageAndRepo(String imageUUID) {
@@ -203,7 +204,7 @@ public class AgentInstanceFactoryImpl implements AgentInstanceFactory {
 
     protected boolean shouldCreateAgent(Instance instance) {
         Map<String, Object> labels = DataAccessor.fieldMap(instance, InstanceConstants.FIELD_LABELS);
-        return BooleanUtils.toBoolean(ObjectUtils.toString(labels.get(SystemLabels.LABEL_AGENT_CREATE), null));
+        return BooleanUtils.toBoolean(java.util.Objects.toString(labels.get(SystemLabels.LABEL_AGENT_CREATE), (String)null));
     }
 
     protected Agent getAgent(AgentInstanceBuilderImpl builder) {
@@ -293,13 +294,21 @@ public class AgentInstanceFactoryImpl implements AgentInstanceFactory {
         return builder.getUri();
     }
 
-    @SuppressWarnings("unchecked")
     protected List<Long> getNetworkIds(Agent agent, AgentInstanceBuilderImpl builder) {
-        List<Long> networkIds = new ArrayList<>();
-        if (builder.getParams().get(InstanceConstants.FIELD_NETWORK_IDS) != null) {
-            networkIds = (List<Long>) builder.getParams().get(InstanceConstants.FIELD_NETWORK_IDS);
+        return networkIds(builder.getParams().get(InstanceConstants.FIELD_NETWORK_IDS));
+    }
+
+    static List<Long> networkIds(Object value) {
+        if (value == null) {
+            return new ArrayList<Long>();
         }
-        return networkIds;
+
+        List<?> source = List.class.cast(value);
+        List<Long> result = new ArrayList<Long>(source.size());
+        for (Object item : source) {
+            result.add(Long.class.cast(item));
+        }
+        return result;
     }
 
 }

@@ -13,14 +13,18 @@ public class ExtensionList<T> implements List<T> {
     ExtensionManager extensionManager;
     String key;
     List<T> list;
-    List<Object> inner;
+    List<T> inner;
 
-    @SuppressWarnings("unchecked")
-    public ExtensionList(ExtensionManager extensionManager, String key, List<T> list) {
+    public ExtensionList(ExtensionManager extensionManager, String key, List<? extends T> list) {
         this.extensionManager = extensionManager;
         this.key = key;
-        this.inner = list == null ? new CopyOnWriteArrayList<Object>() : new CopyOnWriteArrayList<Object>(list);
-        this.list = (List<T>) Collections.unmodifiableList(inner);
+        this.inner = list == null ? new CopyOnWriteArrayList<T>() : new CopyOnWriteArrayList<T>(list);
+        this.list = Collections.unmodifiableList(inner);
+    }
+
+    void replaceWith(Collection<? extends T> items) {
+        inner.clear();
+        inner.addAll(items);
     }
 
     @Override

@@ -10,7 +10,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import org.apache.commons.beanutils.BeanUtils;
+import org.apache.commons.beanutils2.BeanUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -22,7 +22,7 @@ public class ObjectDefaultsPostInstantiationHandler implements ObjectPostInstant
     Map<Class<?>, Map<String, Object>> defaults = new HashMap<Class<?>, Map<String, Object>>();
 
     @Override
-    public <T> T postProcess(T obj, Class<T> clz, Map<String, Object> properties) {
+    public <T> T postProcess(T obj, Class<?> clz, Map<String, Object> properties) {
         try {
             applyDefaults(clz, obj);
         } catch (IllegalAccessException e) {

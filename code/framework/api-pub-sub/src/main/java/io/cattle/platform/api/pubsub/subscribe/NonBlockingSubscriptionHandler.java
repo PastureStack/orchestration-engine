@@ -1,7 +1,6 @@
 package io.cattle.platform.api.pubsub.subscribe;
 
 import io.cattle.platform.api.pubsub.manager.SubscribeManager;
-import io.cattle.platform.archaius.util.ArchaiusUtil;
 import io.cattle.platform.async.retry.CancelRetryException;
 import io.cattle.platform.async.retry.Retry;
 import io.cattle.platform.async.retry.RetryTimeoutService;
@@ -27,26 +26,36 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.google.common.util.concurrent.SettableFuture;
-import com.netflix.config.DynamicIntProperty;
-import com.netflix.config.DynamicLongProperty;
 
 public abstract class NonBlockingSubscriptionHandler implements SubscriptionHandler {
 
     private static final Logger log = LoggerFactory.getLogger(NonBlockingSubscriptionHandler.class);
 
-    public static final DynamicLongProperty API_SUB_PING_INVERVAL = ArchaiusUtil.getLong("api.sub.ping.interval.millis");
-    public static final DynamicIntProperty API_MAX_PINGS = ArchaiusUtil.getInt("api.sub.max.pings");
+    private static final SubscriptionSettings DEFAULT_SETTINGS = ArchaiusSubscriptionSettings.create();
     private static final Map<String, Object> LOGOUT_MESSAGE = new HashMap<>();
+
+    private final SubscriptionSettings settings;
     
     static {
         LOGOUT_MESSAGE.put("name", "logout");
+    }
+
+    protected NonBlockingSubscriptionHandler() {
+        this(DEFAULT_SETTINGS);
+    }
+
+    NonBlockingSubscriptionHandler(SubscriptionSettings settings) {
+        if (settings == null) {
+            throw new IllegalArgumentException("Subscription settings are required");
+        }
+        this.settings = settings;
     }
     @Inject
     JsonMapper jsonMapper;
@@ -153,7 +162,7 @@ public abstract class NonBlockingSubscriptionHandler implements SubscriptionHand
         boolean unsubscribe = false;
         try {
             for (String eventName : eventNames) {
-                eventService.subscribe(eventName, listener).get(API_SUB_PING_INVERVAL.get(), TimeUnit.MILLISECONDS);
+                eventService.subscribe(eventName, listener).get(settings.pingIntervalMillis(), TimeUnit.MILLISECONDS);
             }
             write(new Ping(), writer, writeLock, strip, listener, disconnect);
             return schedulePing(listener, writer, disconnect);
@@ -170,7 +179,7 @@ public abstract class NonBlockingSubscriptionHandler implements SubscriptionHand
 
     protected Future<?> schedulePing(final EventListener listener, final MessageWriter writer, final AtomicBoolean disconnect) {
         final SettableFuture<?> future = SettableFuture.create();
-        retryTimeout.submit(new Retry(API_MAX_PINGS.get(), API_SUB_PING_INVERVAL.get(), future, new Runnable() {
+        retryTimeout.submit(new Retry(settings.maxPings(), settings.pingIntervalMillis(), future, new Runnable() {
             @Override
             public void run() {
                 if (disconnect.get()) {

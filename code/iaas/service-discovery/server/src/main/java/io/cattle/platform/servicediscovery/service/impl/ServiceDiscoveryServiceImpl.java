@@ -70,12 +70,13 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.Callable;
 
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 
 import org.apache.commons.lang3.StringUtils;
 
@@ -255,21 +256,18 @@ public class ServiceDiscoveryServiceImpl implements ServiceDiscoveryService {
         }
     }
 
-    @SuppressWarnings("unchecked")
     protected List<PortSpec> getLaunchConfigPorts(Map<String, Object> launchConfigData) {
         if (launchConfigData.get(InstanceConstants.FIELD_PORTS) == null) {
             return new ArrayList<>();
         }
-        List<String> specs = (List<String>) launchConfigData.get(InstanceConstants.FIELD_PORTS);
         List<PortSpec> ports = new ArrayList<>();
-        for (String spec : specs) {
+        for (String spec : stringList(launchConfigData.get(InstanceConstants.FIELD_PORTS))) {
             ports.add(new PortSpec(spec));
         }
         return ports;
     }
 
     @Override
-    @SuppressWarnings("unchecked")
     public void setPorts(Service service) {
         boolean allocatePorts = !service.getKind().equalsIgnoreCase(ServiceConstants.KIND_LOAD_BALANCER_SERVICE);
         Account env = objectManager.loadResource(Account.class, service.getAccountId());
@@ -279,21 +277,23 @@ public class ServiceDiscoveryServiceImpl implements ServiceDiscoveryService {
         }
 
         // update primary launchConfig
-        Map<String, Object> launchConfig = DataAccessor.fields(service)
-                .withKey(ServiceConstants.FIELD_LAUNCH_CONFIG).withDefault(Collections.EMPTY_MAP)
-                .as(Map.class);
+        Map<String, Object> launchConfig = stringObjectMap(DataAccessor.fields(service)
+                .withKey(ServiceConstants.FIELD_LAUNCH_CONFIG).withDefault(Collections.emptyMap())
+                .get());
 
         setRandomPublicPorts(env, service, launchConfig, allocatedPorts, allocatePorts);
 
         // update secondary launch configs
-        List<Object> secondaryLaunchConfigs = DataAccessor.fields(service)
+        List<Object> secondaryLaunchConfigs = new ArrayList<>();
+        List<?> secondaryLaunchConfigValues = objectList(DataAccessor.fields(service)
                 .withKey(ServiceConstants.FIELD_SECONDARY_LAUNCH_CONFIGS)
-                .withDefault(Collections.EMPTY_LIST).as(
-                        List.class);
-        for (Object secondaryLaunchConfig : secondaryLaunchConfigs) {
-            setRandomPublicPorts(env, service, (Map<String, Object>) secondaryLaunchConfig,
+                .withDefault(Collections.emptyList()).get());
+        for (Object secondaryLaunchConfig : secondaryLaunchConfigValues) {
+            Map<String, Object> secondaryLaunchConfigData = stringObjectMap(secondaryLaunchConfig);
+            setRandomPublicPorts(env, service, secondaryLaunchConfigData,
                     allocatedPorts,
                     allocatePorts);
+            secondaryLaunchConfigs.add(secondaryLaunchConfigData);
         }
 
         DataAccessor.fields(service).withKey(ServiceConstants.FIELD_LAUNCH_CONFIG).set(launchConfig);
@@ -302,14 +302,13 @@ public class ServiceDiscoveryServiceImpl implements ServiceDiscoveryService {
         objectManager.persist(service);
     }
 
-    @SuppressWarnings("unchecked")
     protected List<PooledResource> allocatePorts(Account env, Service service) {
         int toAllocate = 0;
         for (String launchConfigName : ServiceDiscoveryUtil.getServiceLaunchConfigNames(service)) {
             Object ports = ServiceDiscoveryUtil.getLaunchConfigObject(service, launchConfigName,
                     InstanceConstants.FIELD_PORTS);
             if (ports != null) {
-                for (String port : (List<String>) ports) {
+                for (String port : stringList(ports)) {
                     if (new PortSpec(port).getPublicPort() == null) {
                         toAllocate++;
                     }
@@ -355,7 +354,7 @@ public class ServiceDiscoveryServiceImpl implements ServiceDiscoveryService {
 
         for (PortSpec port : toAllocate) {
             if (!allocatedPorts.isEmpty()) {
-                port.setPublicPort(new Integer(allocatedPorts.get(0).getName()));
+                port.setPublicPort(Integer.valueOf(allocatedPorts.get(0).getName()));
                 allocatedPorts.remove(0);
             }
             newPorts.add(port.toSpec());
@@ -426,23 +425,66 @@ public class ServiceDiscoveryServiceImpl implements ServiceDiscoveryService {
 
     }
 
-    @SuppressWarnings("unchecked")
     @Override
     public boolean isSelectorContainerMatch(String selector, Instance instance) {
         if (StringUtils.isBlank(selector)) {
             return false;
         }
 
-        Map<String, String> labels = DataAccessor.fields(instance).withKey(InstanceConstants.FIELD_LABELS).as(Map.class);
+        Map<?, ?> labels = DataAccessor.fields(instance).withKey(InstanceConstants.FIELD_LABELS).as(Map.class);
         if (labels == null || labels.isEmpty()) {
             return false;
         }
-        Map<String, String> instanceLabels = new HashMap<>();
-        for (Map.Entry<String, String> label : labels.entrySet()) {
-            instanceLabels.put(label.getKey(), label.getValue());
-        }
+        Map<String, String> instanceLabels = stringMap(labels);
 
         return SelectorUtils.isSelectorMatch(selector, instanceLabels);
+    }
+
+    static List<String> stringList(Object value) {
+        List<String> result = new ArrayList<>();
+        if (value == null) {
+            return result;
+        }
+
+        List<?> values = List.class.cast(value);
+        for (Object item : values) {
+            result.add(String.class.cast(item));
+        }
+        return result;
+    }
+
+    static Map<String, String> stringMap(Object value) {
+        Map<String, String> result = new LinkedHashMap<>();
+        if (value == null) {
+            return result;
+        }
+
+        Map<?, ?> values = Map.class.cast(value);
+        for (Map.Entry<?, ?> entry : values.entrySet()) {
+            result.put(String.class.cast(entry.getKey()), String.class.cast(entry.getValue()));
+        }
+        return result;
+    }
+
+    static List<?> objectList(Object value) {
+        if (value == null) {
+            return new ArrayList<Object>();
+        }
+
+        return List.class.cast(value);
+    }
+
+    static Map<String, Object> stringObjectMap(Object value) {
+        Map<String, Object> result = new LinkedHashMap<>();
+        if (value == null) {
+            return result;
+        }
+
+        Map<?, ?> values = Map.class.cast(value);
+        for (Map.Entry<?, ?> entry : values.entrySet()) {
+            result.put(String.class.cast(entry.getKey()), entry.getValue());
+        }
+        return result;
     }
 
     @Override
@@ -839,7 +881,7 @@ public class ServiceDiscoveryServiceImpl implements ServiceDiscoveryService {
             return;
         }
 
-        final Client client = new Client(Service.class, new Long(update.getResourceId()));
+        final Client client = new Client(Service.class, Long.valueOf(update.getResourceId()));
         itemManager.runUpdateForEvent(SERVICE_ENDPOINTS_UPDATE, update, client, new Runnable() {
             @Override
             public void run() {
@@ -856,7 +898,7 @@ public class ServiceDiscoveryServiceImpl implements ServiceDiscoveryService {
         if (update.getResourceId() == null) {
             return;
         }
-        final Client client = new Client(Host.class, new Long(update.getResourceId()));
+        final Client client = new Client(Host.class, Long.valueOf(update.getResourceId()));
         itemManager.runUpdateForEvent(HOST_ENDPOINTS_UPDATE, update, client, new Runnable() {
             @Override
             public void run() {

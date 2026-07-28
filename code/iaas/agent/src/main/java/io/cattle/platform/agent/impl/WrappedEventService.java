@@ -74,16 +74,16 @@ public class WrappedEventService implements EventService {
         }
 
         return EventCallProgressHelper.call(eventService, unwrappedEvent, Event.class, callOptions, new EventResponseMarshaller() {
-            @SuppressWarnings("unchecked")
             @Override
             public <T> T convert(Event resultEvent, Class<T> reply) {
-                Object payload = resultEvent;
-                if (delegate) {
-                    payload = resultEvent.getData();
-                }
-                return (T) new EventVO<>().withName(request.getReplyTo()).withData(payload);
+                return response(resultEvent, request, delegate, reply);
             }
         });
+    }
+
+    static <T> T response(Event resultEvent, Event request, boolean delegate, Class<T> reply) {
+        Object payload = delegate ? resultEvent.getData() : resultEvent;
+        return reply.cast(new EventVO<>().withName(request.getReplyTo()).withData(payload));
     }
 
     /* Boilerplate to implement interface */

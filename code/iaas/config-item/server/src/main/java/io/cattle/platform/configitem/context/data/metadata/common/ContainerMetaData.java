@@ -13,7 +13,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import org.apache.commons.collections.IteratorUtils;
+import org.apache.commons.collections4.IteratorUtils;
 import org.apache.commons.lang3.StringUtils;
 
 import com.google.common.base.Splitter;
@@ -86,20 +86,18 @@ public class ContainerMetaData {
         }
     }
 
-    @SuppressWarnings("unchecked")
     public void setInstanceAndHostMetadata(Instance instance, HostMetaData host, List<String> healthcheckHosts,
             Account account, InstanceHealthCheck healthCheck) {
         this.name = instance.getName();
         this.uuid = instance.getUuid();
         this.external_id = instance.getExternalId();
         this.system = instance.getSystem();
-        Map<String, String> labels = DataAccessor.fields(instance).withKey(InstanceConstants.FIELD_LABELS)
-                .withDefault(Collections.EMPTY_MAP).as(Map.class);
-        this.labels = labels;
+        this.labels = MetadataTypeUtils.stringMap(DataAccessor.fields(instance).withKey(InstanceConstants.FIELD_LABELS)
+                .withDefault(Collections.emptyMap()).get());
         this.hostname = instance.getHostname();
-        this.ports = DataAccessor.fields(instance)
-                .withKey(InstanceConstants.FIELD_PORTS).withDefault(Collections.EMPTY_LIST)
-                .as(List.class);
+        this.ports = MetadataTypeUtils.stringList(DataAccessor.fields(instance)
+                .withKey(InstanceConstants.FIELD_PORTS).withDefault(Collections.emptyList())
+                .get());
         if (host != null) {
             this.host_uuid = host.uuid;
             this.host_ip = host.agent_ip;

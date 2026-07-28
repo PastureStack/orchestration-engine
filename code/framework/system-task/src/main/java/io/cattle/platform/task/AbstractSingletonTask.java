@@ -3,7 +3,7 @@ package io.cattle.platform.task;
 import io.cattle.platform.lock.LockDelegator;
 import io.cattle.platform.lock.definition.LockDefinition;
 
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 
 public abstract class AbstractSingletonTask implements LockDefinition, Task {
 

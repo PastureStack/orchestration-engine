@@ -1,6 +1,7 @@
 package io.cattle.platform.core.dao;
 
 import io.cattle.platform.archaius.util.ArchaiusUtil;
+import io.cattle.platform.archaius.util.ConfigProperty;
 import io.cattle.platform.core.model.Host;
 import io.cattle.platform.core.model.IpAddress;
 import io.cattle.platform.core.model.PhysicalHost;
@@ -9,12 +10,10 @@ import io.github.ibuildthecloud.gdapi.id.IdFormatter;
 import java.util.List;
 import java.util.Map;
 
-import com.netflix.config.DynamicLongProperty;
-
 public interface HostDao {
 
-    public final static DynamicLongProperty HOST_REMOVE_DELAY = ArchaiusUtil.getLong("host.remove.delay.seconds");
-    public static final DynamicLongProperty HOST_REMOVE_START_DELAY = ArchaiusUtil.getLong("host.remove.delay.startup.seconds");
+    public final static ConfigProperty<Long> HOST_REMOVE_DELAY = ArchaiusUtil.getLongProperty("host.remove.delay.seconds");
+    public static final ConfigProperty<Long> HOST_REMOVE_START_DELAY = ArchaiusUtil.getLongProperty("host.remove.delay.startup.seconds");
 
     List<? extends Host> getHosts(Long accountId, List<String> uuids);
 

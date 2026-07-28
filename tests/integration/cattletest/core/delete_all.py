@@ -9,10 +9,10 @@ while l is not None:
     for c in l:
         try:
             if c.state == 'stopped':
-                print 'Deleting', c.id
+                print('Deleting', c.id)
                 client.delete(c)
             else:
-                print 'Stopping', c.id
+                print('Stopping', c.id)
                 c.stop(remove=True)
         except:
             pass

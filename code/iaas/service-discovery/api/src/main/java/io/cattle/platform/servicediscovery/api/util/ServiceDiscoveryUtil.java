@@ -2,6 +2,7 @@ package io.cattle.platform.servicediscovery.api.util;
 
 import io.cattle.platform.allocator.service.AllocationHelper;
 import io.cattle.platform.archaius.util.ArchaiusUtil;
+import io.cattle.platform.archaius.util.ConfigProperty;
 import io.cattle.platform.core.addon.InServiceUpgradeStrategy;
 import io.cattle.platform.core.addon.InstanceHealthCheck;
 import io.cattle.platform.core.constants.AgentConstants;
@@ -31,14 +32,13 @@ import java.util.Map;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
 
-import com.netflix.config.DynamicStringProperty;
 
 public class ServiceDiscoveryUtil {
 
     public static final List<String> SERVICE_INSTANCE_NAME_DIVIDORS = Arrays.asList("-", "_");
     private static final int LB_HEALTH_CHECK_PORT = 42;
-    private static final DynamicStringProperty LB_DRAIN_IMAGE_VERSION = ArchaiusUtil.getString("loadbalancher.drain.image.version");
-    private static final DynamicStringProperty LB_IMAGE_UUID = ArchaiusUtil.getString("lb.instance.image.uuid");
+    private static final ConfigProperty<String> LB_DRAIN_IMAGE_VERSION = ArchaiusUtil.getStringProperty("loadbalancher.drain.image.version");
+    private static final ConfigProperty<String> LB_IMAGE_UUID = ArchaiusUtil.getStringProperty("lb.instance.image.uuid");
 
     public static String getInstanceName(Instance instance) {
         if (instance != null && instance.getRemoved() == null) {
@@ -61,7 +61,6 @@ public class ServiceDiscoveryUtil {
         return "";
     }
 
-    @SuppressWarnings("unchecked")
     public static List<String> getServiceLaunchConfigNames(Service service) {
         Map<String, Object> originalData = new HashMap<>();
         originalData.putAll(DataUtils.getFields(service));
@@ -74,7 +73,7 @@ public class ServiceDiscoveryUtil {
         Object secondaryLaunchConfigs = originalData
                 .get(ServiceConstants.FIELD_SECONDARY_LAUNCH_CONFIGS);
         if (secondaryLaunchConfigs != null) {
-            for (Map<String, Object> secondaryLaunchConfig : (List<Map<String, Object>>) secondaryLaunchConfigs) {
+            for (Map<Object, Object> secondaryLaunchConfig : secondaryLaunchConfigs(secondaryLaunchConfigs)) {
                 launchConfigNames.add(String.valueOf(secondaryLaunchConfig.get("name")));
             }
         }
@@ -105,7 +104,6 @@ public class ServiceDiscoveryUtil {
         return data;
     }
 
-    @SuppressWarnings("unchecked")
     public static Map<String, Map<Object, Object>> getServiceLaunchConfigsWithNames(Service service) {
         Map<String, Object> originalData = new HashMap<>();
         originalData.putAll(DataUtils.getFields(service));
@@ -120,16 +118,28 @@ public class ServiceDiscoveryUtil {
         Object secondaryLaunchConfigs = originalData
                 .get(ServiceConstants.FIELD_SECONDARY_LAUNCH_CONFIGS);
         if (secondaryLaunchConfigs != null) {
-            for (Map<String, Object> secondaryLaunchConfig : (List<Map<String, Object>>) secondaryLaunchConfigs) {
+            for (Map<Object, Object> secondaryLaunchConfig : secondaryLaunchConfigs(secondaryLaunchConfigs)) {
                 launchConfigsWithNames.put(String.valueOf(secondaryLaunchConfig.get("name")),
-                        CollectionUtils.toMap(secondaryLaunchConfig));
+                        secondaryLaunchConfig);
             }
         }
 
         return launchConfigsWithNames;
     }
 
-    @SuppressWarnings("unchecked")
+    static List<Map<Object, Object>> secondaryLaunchConfigs(Object secondaryLaunchConfigs) {
+        if (secondaryLaunchConfigs == null) {
+            return Collections.emptyList();
+        }
+
+        List<Map<Object, Object>> configs = new ArrayList<>();
+        for (Object secondaryLaunchConfig : List.class.cast(secondaryLaunchConfigs)) {
+            Map.class.cast(secondaryLaunchConfig);
+            configs.add(CollectionUtils.toMap(secondaryLaunchConfig));
+        }
+        return configs;
+    }
+
     public static Map<String, String> getMergedServiceLabels(Service service, AllocationHelper allocationHelper) {
         List<String> launchConfigNames = getServiceLaunchConfigNames(service);
         Map<String, String> labelsStr = new HashMap<>();
@@ -137,36 +147,38 @@ public class ServiceDiscoveryUtil {
             Map<String, Object> data = getLaunchConfigDataAsMap(service, currentLaunchConfigName);
             Object l = data.get(ServiceDiscoveryConfigItem.LABELS.getCattleName());
             if (l != null) {
-                Map<String, String> labels = (HashMap<String, String>) l;
-                    allocationHelper.mergeLabels(labels, labelsStr);
+                allocationHelper.mergeLabels(launchConfigLabels(l), labelsStr);
             }
         }
         return labelsStr;
     }
 
-    @SuppressWarnings("unchecked")
     public static Map<String, String> getLaunchConfigLabels(Service service, String launchConfigName) {
         if (launchConfigName == null) {
             launchConfigName = ServiceConstants.PRIMARY_LAUNCH_CONFIG_NAME;
         }
         Map<String, Object> data = getLaunchConfigDataAsMap(service, launchConfigName);
-        Object labels = data.get(InstanceConstants.FIELD_LABELS);
+        return launchConfigLabels(data.get(InstanceConstants.FIELD_LABELS));
+    }
+
+    static Map<String, String> launchConfigLabels(Object labels) {
         if (labels == null) {
             return new HashMap<String, String>();
         }
-        return (Map<String, String>) labels;
+
+        Map.class.cast(labels);
+        return CollectionUtils.toMap(labels);
     }
 
-    @SuppressWarnings("unchecked")
     public static Map<String, Object> getLaunchConfigDataAsMap(Service service, String launchConfigName) {
         if (launchConfigName == null) {
             launchConfigName = ServiceConstants.PRIMARY_LAUNCH_CONFIG_NAME;
         }
         Map<String, Object> launchConfigData = new HashMap<>();
         if (launchConfigName.equalsIgnoreCase(ServiceConstants.PRIMARY_LAUNCH_CONFIG_NAME)) {
-            launchConfigData = DataAccessor.fields(service)
-                    .withKey(ServiceConstants.FIELD_LAUNCH_CONFIG).withDefault(Collections.EMPTY_MAP)
-                    .as(Map.class);
+            launchConfigData = launchConfigDataMap(DataAccessor.fields(service)
+                    .withKey(ServiceConstants.FIELD_LAUNCH_CONFIG).withDefault(Collections.emptyMap())
+                    .get());
             // if the value is empty, do not export
             ArrayList<String> deletedKeys = new ArrayList<>();
             for (String key: launchConfigData.keySet()) {
@@ -178,13 +190,12 @@ public class ServiceDiscoveryUtil {
                 launchConfigData.remove(key);
             }
         } else {
-            List<Map<String, Object>> secondaryLaunchConfigs = DataAccessor.fields(service)
+            Object secondaryLaunchConfigs = DataAccessor.fields(service)
                     .withKey(ServiceConstants.FIELD_SECONDARY_LAUNCH_CONFIGS)
-                    .withDefault(Collections.EMPTY_LIST).as(
-                            List.class);
-            for (Map<String, Object> secondaryLaunchConfig : secondaryLaunchConfigs) {
+                    .withDefault(Collections.emptyList()).get();
+            for (Map<Object, Object> secondaryLaunchConfig : secondaryLaunchConfigs(secondaryLaunchConfigs)) {
                 if (secondaryLaunchConfig.get("name").toString().equalsIgnoreCase(launchConfigName)) {
-                    launchConfigData = secondaryLaunchConfig;
+                    launchConfigData = launchConfigDataMap(secondaryLaunchConfig);
                     break;
                 }
             }
@@ -195,12 +206,33 @@ public class ServiceDiscoveryUtil {
         Object labels = data.get(ServiceDiscoveryConfigItem.LABELS.getCattleName());
         if (labels != null) {
             Map<String, String> labelsMap = new HashMap<String, String>();
-            labelsMap.putAll((Map<String, String>) labels);
+            labelsMap.putAll(launchConfigLabels(labels));
 
             // overwrite with a copy of the map
             data.put(ServiceDiscoveryConfigItem.LABELS.getCattleName(), labelsMap);
         }
         return data;
+    }
+
+    static Map<String, Object> launchConfigDataMap(Object launchConfigData) {
+        Map.class.cast(launchConfigData);
+        return CollectionUtils.toMap(launchConfigData);
+    }
+
+    static Map<String, Object> nullableLaunchConfigDataMap(Object launchConfigData) {
+        if (launchConfigData == null) {
+            return null;
+        }
+        return launchConfigDataMap(launchConfigData);
+    }
+
+    static List<Map<String, Object>> requiredSecondaryLaunchConfigDataMaps(Object secondaryLaunchConfigs) {
+        List<?> values = List.class.cast(secondaryLaunchConfigs);
+        List<Map<String, Object>> configs = new ArrayList<>();
+        for (Object secondaryLaunchConfig : values) {
+            configs.add(launchConfigDataMap(secondaryLaunchConfig));
+        }
+        return configs;
     }
 
     public static Object getLaunchConfigObject(Service service, String launchConfigName, String objectName) {
@@ -242,7 +274,6 @@ public class ServiceDiscoveryUtil {
         return instanceName.substring(charAt, instanceName.length());
     }
 
-    @SuppressWarnings("unchecked")
     public static Map<String, Object> buildServiceInstanceLaunchData(Service service, Map<String, Object> deployParams,
             String launchConfigName, AllocationHelper allocationHelper) {
         Map<String, Object> serviceData = getLaunchConfigDataAsMap(service, launchConfigName);
@@ -260,21 +291,25 @@ public class ServiceDiscoveryUtil {
                 if (dataObj instanceof Map) {
                     // unfortunately, need to make an except for labels due to the merging aspect of the values
                     if (key.equalsIgnoreCase(InstanceConstants.FIELD_LABELS)) {
+                        Map<String, String> launchLabels = launchConfigLabels(launchConfigItems.get(key));
+                        Map<String, String> serviceLabels = launchConfigLabels(dataObj);
                         allocationHelper.normalizeLabels(
                                 service.getStackId(),
-                                (Map<String, String>) launchConfigItems.get(key),
-                                (Map<String, String>) dataObj);
-                        allocationHelper.mergeLabels((Map<String, String>) launchConfigItems.get(key),
-                                (Map<String, String>) dataObj);
+                                launchLabels,
+                                serviceLabels);
+                        allocationHelper.mergeLabels(launchLabels, serviceLabels);
+                        dataObj = serviceLabels;
                     } else {
-                        ((Map<Object, Object>) dataObj).putAll((Map<Object, Object>) launchConfigItems.get(key));
+                        launchConfigObjectMap(dataObj).putAll(launchConfigObjectMap(launchConfigItems.get(key)));
                     }
                 } else if (dataObj instanceof List) {
-                    for (Object existing : (List<Object>) launchConfigItems.get(key)) {
-                        if (!((List<Object>) dataObj).contains(existing)) {
-                            ((List<Object>) dataObj).add(existing);
+                    List<Object> dataList = launchConfigObjectListCopy(dataObj);
+                    for (Object existing : launchConfigObjectListCopy(launchConfigItems.get(key))) {
+                        if (!dataList.contains(existing)) {
+                            dataList.add(existing);
                         }
                     }
+                    dataObj = dataList;
                 }
             }
             if (dataObj != null) {
@@ -289,6 +324,16 @@ public class ServiceDiscoveryUtil {
         }
 
         return launchConfigItems;
+    }
+
+    static Map<Object, Object> launchConfigObjectMap(Object value) {
+        Map.class.cast(value);
+        return CollectionUtils.toMap(value);
+    }
+
+    static List<Object> launchConfigObjectListCopy(Object value) {
+        List<?> values = List.class.cast(value);
+        return new ArrayList<Object>(values);
     }
 
     public static boolean isNoopService(Service service) {
@@ -314,7 +359,6 @@ public class ServiceDiscoveryUtil {
         updateSecondaryLaunchConfigs(strategy, service, rollback);
     }
 
-    @SuppressWarnings("unchecked")
     protected static void updateSecondaryLaunchConfigs(InServiceUpgradeStrategy strategy, Service service,
             boolean rollback) {
         Object newLaunchConfigs = null;
@@ -324,12 +368,12 @@ public class ServiceDiscoveryUtil {
             newLaunchConfigs = strategy.getSecondaryLaunchConfigs();
             Map<String, Map<String, Object>> newLaunchConfigNames = new HashMap<>();
             if (newLaunchConfigs != null) {
-                for (Map<String, Object> newLaunchConfig : (List<Map<String, Object>>) newLaunchConfigs) {
+                for (Map<String, Object> newLaunchConfig : requiredSecondaryLaunchConfigDataMaps(newLaunchConfigs)) {
                     newLaunchConfigNames.put(newLaunchConfig.get("name").toString(),
                             newLaunchConfig);
                 }
                 Object oldLaunchConfigs = strategy.getPreviousSecondaryLaunchConfigs();
-                for (Map<String, Object> oldLaunchConfig : (List<Map<String, Object>>)oldLaunchConfigs) {
+                for (Map<String, Object> oldLaunchConfig : requiredSecondaryLaunchConfigDataMaps(oldLaunchConfigs)) {
                     Map<String, Object> newLaunchConfig = newLaunchConfigNames
                             .get(oldLaunchConfig.get("name"));
                     if (newLaunchConfig != null) {
@@ -343,14 +387,13 @@ public class ServiceDiscoveryUtil {
                 .set(newLaunchConfigs);
     }
 
-    @SuppressWarnings("unchecked")
     protected static void updatePrimaryLaunchConfig(InServiceUpgradeStrategy strategy, Service service, boolean rollback) {
         Map<String, Object> newLaunchConfig = null;
         if (rollback) {
-            newLaunchConfig = (Map<String, Object>) strategy.getPreviousLaunchConfig();
+            newLaunchConfig = nullableLaunchConfigDataMap(strategy.getPreviousLaunchConfig());
         } else {
-            newLaunchConfig = (Map<String, Object>) strategy.getLaunchConfig();
-            Map<String, Object> oldLaunchConfig = (Map<String, Object>) strategy.getPreviousLaunchConfig();
+            newLaunchConfig = nullableLaunchConfigDataMap(strategy.getLaunchConfig());
+            Map<String, Object> oldLaunchConfig = nullableLaunchConfigDataMap(strategy.getPreviousLaunchConfig());
             preserveOldRandomPorts(service, newLaunchConfig, oldLaunchConfig);
         }
         DataAccessor.fields(service).withKey(ServiceConstants.FIELD_LAUNCH_CONFIG)
@@ -383,29 +426,32 @@ public class ServiceDiscoveryUtil {
         }
     }
 
-    @SuppressWarnings("unchecked")
     protected static Map<Integer, PortSpec> getServicePortsMap(Service service, Map<String, Object> launchConfigData) {
         if (launchConfigData.get(InstanceConstants.FIELD_PORTS) == null) {
             return new LinkedHashMap<Integer, PortSpec>();
         }
-        List<String> specs = (List<String>) launchConfigData.get(InstanceConstants.FIELD_PORTS);
+        List<String> specs = portSpecs(launchConfigData.get(InstanceConstants.FIELD_PORTS));
         Map<Integer, PortSpec> portMap = new LinkedHashMap<Integer, PortSpec>();
         for (String spec : specs) {
             PortSpec portSpec = new PortSpec(spec);
-            portMap.put(new Integer(portSpec.getPrivatePort()), portSpec);
+            portMap.put(Integer.valueOf(portSpec.getPrivatePort()), portSpec);
 
         }
         return portMap;
     }
 
-    @SuppressWarnings("unchecked")
-    public static void injectBalancerLabelsAndHealthcheck(Map<Object, Object> launchConfig) {
-        Map<String, String> labels = new HashMap<>();
-        // set labels
-        Object labelsObj = launchConfig.get(InstanceConstants.FIELD_LABELS);
-        if (labelsObj != null) {
-            labels = (Map<String, String>) labelsObj;
+    static List<String> portSpecs(Object ports) {
+        List<?> values = List.class.cast(ports);
+        List<String> specs = new ArrayList<>();
+        for (Object value : values) {
+            specs.add(String.class.cast(value));
         }
+        return specs;
+    }
+
+    public static void injectBalancerLabelsAndHealthcheck(Map<Object, Object> launchConfig) {
+        Map<Object, Object> labels = balancerLabels(launchConfig.get(InstanceConstants.FIELD_LABELS));
+        // set labels
         if (!labels.containsKey(SystemLabels.LABEL_AGENT_ROLE)) {
             labels.put(SystemLabels.LABEL_AGENT_ROLE, AgentConstants.ENVIRONMENT_ADMIN_ROLE);
             labels.put(SystemLabels.LABEL_AGENT_CREATE, "true");
@@ -433,6 +479,14 @@ public class ServiceDiscoveryUtil {
             healthCheck.setReinitializingTimeout(60000);
             launchConfig.put(InstanceConstants.FIELD_HEALTH_CHECK, healthCheck);
         }
+    }
+
+    static Map<Object, Object> balancerLabels(Object labelsObj) {
+        if (labelsObj == null) {
+            return new HashMap<>();
+        }
+        Map.class.cast(labelsObj);
+        return CollectionUtils.toMap(labelsObj);
     }
 
     private static boolean doesLBHaveDrainSupport(Map<Object, Object> launchConfig) {
@@ -512,24 +566,30 @@ public class ServiceDiscoveryUtil {
     }
 
 
-    @SuppressWarnings("unchecked")
     public static void validateScaleSwitch(Object newLaunchConfig, Object currentLaunchConfig) {
-        if (isGlobalService((Map<Object, Object>) currentLaunchConfig) != isGlobalService((Map<Object, Object>) newLaunchConfig)) {
+        if (isGlobalServiceData(launchConfig(currentLaunchConfig)) !=
+                isGlobalServiceData(launchConfig(newLaunchConfig))) {
             ValidationErrorCodes.throwValidationError(ValidationErrorCodes.INVALID_OPTION,
                     "Switching from global scale to fixed (and vice versa)");
         }
     }
 
-    @SuppressWarnings("unchecked")
     protected static boolean isGlobalService(Map<Object, Object> launchConfig) {
+        return isGlobalServiceData(launchConfig);
+    }
+
+    static Map<?, ?> launchConfig(Object launchConfig) {
+        return Map.class.cast(launchConfig);
+    }
+
+    static boolean isGlobalServiceData(Map<?, ?> launchConfig) {
         // set labels
         Object labelsObj = launchConfig.get(InstanceConstants.FIELD_LABELS);
         if (labelsObj == null) {
             return false;
-
         }
-        Map<String, String> labels = (Map<String, String>) labelsObj;
-        String globalService = labels.get(ServiceConstants.LABEL_SERVICE_GLOBAL);
+        Map<?, ?> labels = Map.class.cast(labelsObj);
+        String globalService = String.class.cast(labels.get(ServiceConstants.LABEL_SERVICE_GLOBAL));
         return Boolean.valueOf(globalService);
     }
 }

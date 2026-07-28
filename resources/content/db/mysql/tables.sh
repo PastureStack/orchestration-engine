@@ -15,7 +15,7 @@ end agent
 
 start credential
 string public_value 4096
-string secret_value 4096
+mediumtext secret_value
 end credential
 
 start host

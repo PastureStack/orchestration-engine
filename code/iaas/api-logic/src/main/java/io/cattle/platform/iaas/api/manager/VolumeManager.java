@@ -13,9 +13,9 @@ import io.cattle.platform.object.util.ObjectUtils;
 import java.util.List;
 import java.util.Map;
 
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 
 public class VolumeManager extends AbstractJooqResourceManager {
 
@@ -35,7 +35,7 @@ public class VolumeManager extends AbstractJooqResourceManager {
     }
 
     @Override
-    protected <T> T createAndScheduleObject(Class<T> clz, Map<String, Object> properties) {
+    protected Object createAndScheduleObject(Class<?> clz, Map<String, Object> properties) {
         String driver = (String)properties.get(VolumeConstants.FIELD_VOLUME_DRIVER);
         String name = (String)properties.get(ObjectMetaDataManager.NAME_FIELD);
         if (StringUtils.isNotEmpty(driver) && StringUtils.isNotEmpty(name)) {
@@ -44,7 +44,7 @@ public class VolumeManager extends AbstractJooqResourceManager {
             properties.put(VolumeConstants.FIELD_DEVICE_NUM, -1);
         }
 
-        T v = super.createAndScheduleObject(clz, properties);
+        Object v = super.createAndScheduleObject(clz, properties);
 
         if (!VolumeConstants.LOCAL_DRIVER.equals(driver)) {
             Object aId = ObjectUtils.getAccountId(v);

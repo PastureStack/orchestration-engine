@@ -73,17 +73,12 @@ import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
 
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 
 import org.apache.commons.lang3.StringUtils;
 import org.jooq.Condition;
 import org.jooq.JoinType;
-import org.jooq.Record10;
-import org.jooq.Record20;
-import org.jooq.Record3;
-import org.jooq.Record4;
 import org.jooq.Record5;
-import org.jooq.RecordHandler;
 
 public class MetaDataInfoDaoImpl extends AbstractJooqDao implements MetaDataInfoDao {
 
@@ -145,11 +140,7 @@ public class MetaDataInfoDaoImpl extends AbstractJooqDao implements MetaDataInfo
                 .and(SERVICE_EXPOSE_MAP.STATE.isNull().or(
                         SERVICE_EXPOSE_MAP.STATE.notIn(CommonStatesConstants.REMOVING, CommonStatesConstants.REMOVED)))
                 .and(condition)
-                .fetchInto(
-                        new RecordHandler<Record20<Long, Long, String, String, Long, String, Long, String, String, String, String, Long, Long, Boolean, String, String, String, String, Long, String>>() {
-                            @Override
-                            public void next(
-                                    Record20<Long, Long, String, String, Long, String, Long, String, String, String, String, Long, Long, Boolean, String, String, String, String, Long, String> record) {
+                .forEach(record -> {
                                 InstanceRecord instance = new InstanceRecord();
                                 instance.setId(record.getValue(INSTANCE.ID));
                                 instance.setName(record.getValue(INSTANCE.NAME));
@@ -209,7 +200,6 @@ public class MetaDataInfoDaoImpl extends AbstractJooqDao implements MetaDataInfo
                                 data.setPrimary_mac_address(macAddress);
 
                                 writeToJson(os, data);
-                            }
                         });
     }
 
@@ -240,11 +230,13 @@ public class MetaDataInfoDaoImpl extends AbstractJooqDao implements MetaDataInfo
             }
         };
 
-        HostTable host = mapper.add(HOST);
-        IpAddressTable hostIpAddress = mapper.add(IP_ADDRESS);
-        InstanceHostMapTable instanceHostMap = mapper.add(INSTANCE_HOST_MAP, INSTANCE_HOST_MAP.INSTANCE_ID,
+        HostTable host = mapper.add(HOST, HostTable.class);
+        IpAddressTable hostIpAddress = mapper.add(IP_ADDRESS, IpAddressTable.class);
+        InstanceHostMapTable instanceHostMap = mapper.add(INSTANCE_HOST_MAP, InstanceHostMapTable.class,
+                INSTANCE_HOST_MAP.INSTANCE_ID,
                 INSTANCE_HOST_MAP.HOST_ID);
-        ServiceExposeMapTable exposeMap = mapper.add(SERVICE_EXPOSE_MAP, SERVICE_EXPOSE_MAP.INSTANCE_ID,
+        ServiceExposeMapTable exposeMap = mapper.add(SERVICE_EXPOSE_MAP, ServiceExposeMapTable.class,
+                SERVICE_EXPOSE_MAP.INSTANCE_ID,
                 SERVICE_EXPOSE_MAP.SERVICE_ID);
         return create()
                 .select(mapper.fields())
@@ -277,8 +269,8 @@ public class MetaDataInfoDaoImpl extends AbstractJooqDao implements MetaDataInfo
             }
         };
 
-        HostTable host = mapper.add(HOST);
-        IpAddressTable hostIpAddress = mapper.add(IP_ADDRESS);
+        HostTable host = mapper.add(HOST, HostTable.class);
+        IpAddressTable hostIpAddress = mapper.add(IP_ADDRESS, IpAddressTable.class);
 
         return create()
                 .select(mapper.fields())
@@ -321,12 +313,7 @@ public class MetaDataInfoDaoImpl extends AbstractJooqDao implements MetaDataInfo
                 .from(NETWORK)
                 .where(NETWORK.REMOVED.isNull())
                 .and(NETWORK.ACCOUNT_ID.eq(helperInfo.getAccount().getId()))
-                .fetchInto(new RecordHandler<Record5<String, String, Long, Long, Map<String, Object>>>() {
-                    @Override
-                    public void next(Record5<String, String, Long, Long, Map<String, Object>> record) {
-                        fetchNetwork(helperInfo, os, record);
-                    }
-                });
+                .forEach(record -> fetchNetwork(helperInfo, os, record));
 
         if (!helperInfo.getOtherAccountsServicesIds().isEmpty()) {
             create()
@@ -339,12 +326,7 @@ public class MetaDataInfoDaoImpl extends AbstractJooqDao implements MetaDataInfo
                     .where(NETWORK.REMOVED.isNull())
                     .and(SERVICE_EXPOSE_MAP.REMOVED.isNull())
                     .and(SERVICE_EXPOSE_MAP.SERVICE_ID.in(helperInfo.getOtherAccountsServicesIds()))
-                    .fetchInto(new RecordHandler<Record5<String, String, Long, Long, Map<String, Object>>>() {
-                        @Override
-                        public void next(Record5<String, String, Long, Long, Map<String, Object>> record) {
-                            fetchNetwork(helperInfo, os, record);
-                        }
-                    });
+                    .forEach(record -> fetchNetwork(helperInfo, os, record));
         }
 
     }
@@ -383,9 +365,7 @@ public class MetaDataInfoDaoImpl extends AbstractJooqDao implements MetaDataInfo
                 .and(INSTANCE_LINK.REMOVED.isNull())
                 .and(targetInstance.REMOVED.isNull())
                 .and(INSTANCE_LINK.ACCOUNT_ID.eq(helperInfo.getAccount().getId()))
-                .fetchInto(new RecordHandler<Record3<String, String, String>>() {
-                    @Override
-                    public void next(Record3<String, String, String> record) {
+                .forEach(record -> {
                         String linkName = record.getValue(INSTANCE_LINK.LINK_NAME);
                         String instanceUUID = record.getValue(INSTANCE.UUID);
                         String targetInstanceUUID = record.getValue(targetInstance.UUID);
@@ -393,7 +373,6 @@ public class MetaDataInfoDaoImpl extends AbstractJooqDao implements MetaDataInfo
                                 targetInstanceUUID,
                                 linkName);
                         writeToJson(os, data);
-                    }
                 });
 }
 
@@ -481,11 +460,7 @@ public class MetaDataInfoDaoImpl extends AbstractJooqDao implements MetaDataInfo
                 .where(STACK.REMOVED.isNull())
                 .and(SERVICE.REMOVED.isNull())
                 .and(condition)
-                .fetchInto(
-                        new RecordHandler<Record10<String, String, String, Long, String, Boolean, Map<String, Object>, Long, String, String>>() {
-                    @Override
-                            public void next(
-                                    Record10<String, String, String, Long, String, Boolean, Map<String, Object>, Long, String, String> record) {
+                .forEach(record -> {
                                 ServiceRecord service = new ServiceRecord();
                                 service.setName(record.getValue(SERVICE.NAME));
                                 service.setUuid(record.getValue(SERVICE.UUID));
@@ -509,7 +484,6 @@ public class MetaDataInfoDaoImpl extends AbstractJooqDao implements MetaDataInfo
                                             launchConfigName,
                                             launchConfigNames);
                                 }
-                    }
                 });
     }
 
@@ -532,15 +506,12 @@ public class MetaDataInfoDaoImpl extends AbstractJooqDao implements MetaDataInfo
                 .from(STACK)
                 .where(STACK.REMOVED.isNull())
                 .and(condition)
-                .fetchInto(new RecordHandler<Record3<String, String, Boolean>>() {
-                    @Override
-                    public void next(Record3<String, String, Boolean> record) {
+                .forEach(record -> {
                         String name = record.getValue(STACK.NAME);
                         String uuid = record.getValue(STACK.UUID);
                         Boolean system = record.getValue(STACK.SYSTEM);
                         StackMetaData data = new StackMetaData(name, uuid, system, helperInfo.getAccount());
                         writeToJson(os, data);
-                    }
                 });
     }
 
@@ -572,9 +543,7 @@ public class MetaDataInfoDaoImpl extends AbstractJooqDao implements MetaDataInfo
                 .and(STACK.REMOVED.isNull())
                 .and(SERVICE_CONSUME_MAP.CONSUMED_SERVICE_ID.isNotNull())
                 .and(condition)
-                .fetchInto(new RecordHandler<Record4<String, String, String, String>>() {
-                    @Override
-                    public void next(Record4<String, String, String, String> record) {
+                .forEach(record -> {
                         String consumeMapName = record.getValue(SERVICE_CONSUME_MAP.NAME);
                         String serviceUUID = record.getValue(SERVICE.UUID);
                         String consumedStackName = record.getValue(STACK.NAME);
@@ -583,7 +552,6 @@ public class MetaDataInfoDaoImpl extends AbstractJooqDao implements MetaDataInfo
                         ServiceLinkMetaData data = new ServiceLinkMetaData(serviceUUID,
                                 consumedStackName + "/" + consumedServiceName, linkAlias);
                         writeToJson(os, data);
-                    }
                 });
     }
 
@@ -602,16 +570,13 @@ public class MetaDataInfoDaoImpl extends AbstractJooqDao implements MetaDataInfo
                 .and(SERVICE.REMOVED.isNull())
                 .and(SERVICE_CONSUME_MAP.CONSUMED_SERVICE.isNotNull())
                 .and(condition)
-                .fetchInto(new RecordHandler<Record3<String, String, String>>() {
-                    @Override
-                    public void next(Record3<String, String, String> record) {
+                .forEach(record -> {
                         String serviceUUID = record.getValue(SERVICE.UUID);
                         String linkAlias = record.getValue(SERVICE_CONSUME_MAP.NAME);
                         String consumedService = record.getValue(SERVICE_CONSUME_MAP.CONSUMED_SERVICE);
                         ServiceLinkMetaData data = new ServiceLinkMetaData(serviceUUID,
                                 consumedService, linkAlias);
                         writeToJson(os, data);
-                    }
                 });
     }
 
@@ -633,9 +598,7 @@ public class MetaDataInfoDaoImpl extends AbstractJooqDao implements MetaDataInfo
                 .and(SERVICE.REMOVED.isNull())
                 .and(INSTANCE.REMOVED.isNull())
                 .and(condition)
-                .fetchInto(new RecordHandler<Record4<String, String, String, String>>() {
-                    @Override
-                    public void next(Record4<String, String, String, String> record) {
+                .forEach(record -> {
                         String dnsPrefix = record.getValue(SERVICE_EXPOSE_MAP.DNS_PREFIX);
                         String instanceUUID = record.getValue(INSTANCE.UUID);
                         String serviceName = record.getValue(SERVICE.NAME);
@@ -644,7 +607,6 @@ public class MetaDataInfoDaoImpl extends AbstractJooqDao implements MetaDataInfo
                         ServiceContainerLinkMetaData data = new ServiceContainerLinkMetaData(serviceUUID, svcName,
                                 instanceUUID);
                         writeToJson(os, data);
-                    }
                 });
     }
 

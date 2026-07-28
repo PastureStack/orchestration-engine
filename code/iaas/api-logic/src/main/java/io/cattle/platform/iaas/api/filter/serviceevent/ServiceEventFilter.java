@@ -4,6 +4,7 @@ package io.cattle.platform.iaas.api.filter.serviceevent;
 import io.cattle.platform.api.auth.Policy;
 import io.cattle.platform.api.utils.ApiUtils;
 import io.cattle.platform.archaius.util.ArchaiusUtil;
+import io.cattle.platform.archaius.util.ConfigProperty;
 import io.cattle.platform.core.constants.AgentConstants;
 import io.cattle.platform.core.constants.CommonStatesConstants;
 import io.cattle.platform.core.constants.ServiceConstants;
@@ -28,14 +29,21 @@ import static io.cattle.platform.core.model.tables.ServiceTable.SERVICE;
 
 import java.util.Arrays;
 import java.util.List;
-import javax.inject.Inject;
 
-import com.netflix.config.DynamicBooleanProperty;
+import jakarta.inject.Inject;
+
+import org.jooq.exception.DataAccessException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 
 public class ServiceEventFilter extends AbstractDefaultResourceManagerFilter {
 
+    private static final Logger log = LoggerFactory.getLogger(ServiceEventFilter.class);
     private static List<String> invalidStates = Arrays.asList(CommonStatesConstants.REMOVED, CommonStatesConstants.REMOVING);
-    private static final DynamicBooleanProperty ENABLE_HEALTHCHECK = ArchaiusUtil.getBoolean("ipsec.service.enable.healthcheck");
+    private static final ConfigProperty<Boolean> ENABLE_HEALTHCHECK = ArchaiusUtil.getBooleanProperty("ipsec.service.enable.healthcheck");
+    private static final ConfigProperty<Integer> SERVICE_EVENT_CREATE_RETRIES = ArchaiusUtil.getIntProperty("service.event.create.retry.count", 1);
+    private static final ConfigProperty<Long> SERVICE_EVENT_CREATE_RETRY_DELAY = ArchaiusUtil.getLongProperty("service.event.create.retry.delay.millis", 25L);
     private static List<String> upgradingStates = Arrays.asList(
             ServiceConstants.STATE_UPGRADING,
             ServiceConstants.STATE_UPGRADED,
@@ -122,7 +130,47 @@ public class ServiceEventFilter extends AbstractDefaultResourceManagerFilter {
         event.setHealthcheckInstanceId(healthcheckInstance.getId());
         event.setHostId(healthcheckInstanceHostMap.getHostId());
 
-        return super.create(type, request, next);
+        int retries = Math.max(0, SERVICE_EVENT_CREATE_RETRIES.get());
+        for (int attempt = 0;; attempt++) {
+            try {
+                return super.create(type, request, next);
+            } catch (DataAccessException e) {
+                if (attempt >= retries || !isTransientServiceEventWrite(e)) {
+                    throw e;
+                }
+
+                log.info("Retrying service event create after transient database conflict, attempt {}/{}: {}",
+                        attempt + 1, retries, e.getMessage());
+                pauseBeforeServiceEventRetry(e);
+            }
+        }
+    }
+
+    protected boolean isTransientServiceEventWrite(Throwable t) {
+        for (Throwable current = t; current != null; current = current.getCause()) {
+            String message = current.getMessage();
+            if (message != null
+                    && message.contains("Record has changed since last read")
+                    && message.contains("service_event")) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private void pauseBeforeServiceEventRetry(DataAccessException e) {
+        long delay = SERVICE_EVENT_CREATE_RETRY_DELAY.get();
+        if (delay <= 0) {
+            return;
+        }
+
+        try {
+            Thread.sleep(delay);
+        } catch (InterruptedException interrupted) {
+            Thread.currentThread().interrupt();
+            throw e;
+        }
     }
 
     private boolean isNetworkUpgrading(long accountId) {

@@ -39,8 +39,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import javax.inject.Inject;
-import javax.inject.Named;
+import jakarta.inject.Inject;
+import jakarta.inject.Named;
 
 import org.apache.commons.lang3.StringUtils;
 
@@ -110,17 +110,14 @@ public class ServiceValidationFilter extends AbstractDefaultResourceManagerFilte
         return super.create(type, request, next);
     }
 
-    @SuppressWarnings("unchecked")
     public void validateLbConfig(ApiRequest request, String type) {
         // add lb information to the metadata
         if (!type.equalsIgnoreCase(ServiceConstants.KIND_LOAD_BALANCER_SERVICE)) {
             return;
         }
-        Map<String, Object> lbConfig = DataUtils.getFieldFromRequest(request, ServiceConstants.FIELD_LB_CONFIG,
-                Map.class);
+        Map<?, ?> lbConfig = requestMapField(request, ServiceConstants.FIELD_LB_CONFIG);
         if (lbConfig != null && lbConfig.containsKey(ServiceConstants.FIELD_PORT_RULES)) {
-            List<PortRule> portRules = jsonMapper.convertCollectionValue(
-                    lbConfig.get(ServiceConstants.FIELD_PORT_RULES), List.class, PortRule.class);
+            List<PortRule> portRules = portRules(jsonMapper, lbConfig.get(ServiceConstants.FIELD_PORT_RULES));
             for (PortRule rule : portRules) {
                 // either serviceId or selector are required
                 boolean emptySelector = StringUtils.isEmpty(rule.getSelector());
@@ -156,7 +153,6 @@ public class ServiceValidationFilter extends AbstractDefaultResourceManagerFilte
         return request;
     }
 
-    @SuppressWarnings("unchecked")
     public ApiRequest setLBServiceEnvVarsAndHealthcheck(String type, Service lbService, ApiRequest request) {
         if (!ServiceConstants.KIND_LOAD_BALANCER_SERVICE.equalsIgnoreCase(type)) {
             return request;
@@ -167,7 +163,7 @@ public class ServiceValidationFilter extends AbstractDefaultResourceManagerFilte
             return request;
         }
 
-        Map<Object, Object> launchConfig = (Map<Object, Object>) data.get(ServiceConstants.FIELD_LAUNCH_CONFIG);
+        Map<Object, Object> launchConfig = launchConfigMap(data.get(ServiceConstants.FIELD_LAUNCH_CONFIG));
 
         ServiceDiscoveryUtil.injectBalancerLabelsAndHealthcheck(launchConfig);
         data.put(ServiceConstants.FIELD_LAUNCH_CONFIG, launchConfig);
@@ -175,20 +171,26 @@ public class ServiceValidationFilter extends AbstractDefaultResourceManagerFilte
         return request;
     }
 
+    static Map<Object, Object> launchConfigMap(Object launchConfigObj) {
+        Map.class.cast(launchConfigObj);
+        if (launchConfigObj == null) {
+            throw new NullPointerException();
+        }
+        return CollectionUtils.toMap(launchConfigObj);
+    }
+
     public void validatePorts(Service service, String type, ApiRequest request) {
         validateLBPortRules(type, request);
         validatePorts(request);
     }
 
-    @SuppressWarnings("unchecked")
     private void validatePorts(ApiRequest request) {
         Map<String, Object> data = CollectionUtils.toMap(request.getRequestObject());
         if (data.get(ServiceConstants.FIELD_LAUNCH_CONFIG) == null) {
             return;
         }
-        Map<String, Object> lc = (Map<String, Object>) data.get(ServiceConstants.FIELD_LAUNCH_CONFIG);
-        List<String> ports = jsonMapper.convertCollectionValue(
-                lc.get(InstanceConstants.FIELD_PORTS), List.class, String.class);
+        Map<Object, Object> lc = launchConfigMap(data.get(ServiceConstants.FIELD_LAUNCH_CONFIG));
+        List<String> ports = convertedStringList(jsonMapper, lc.get(InstanceConstants.FIELD_PORTS));
         if (ports != null) {
             for (Object port : ports) {
                 if (port == null) {
@@ -201,20 +203,25 @@ public class ServiceValidationFilter extends AbstractDefaultResourceManagerFilte
         }
     }
 
-    @SuppressWarnings("unchecked")
+    static List<String> convertedStringList(JsonMapper jsonMapper, Object listObj) {
+        List<String> converted = jsonMapper.convertListValue(listObj, String.class);
+        if (converted == null) {
+            return null;
+        }
+        return new ArrayList<>(converted);
+    }
+
     private void validateLBPortRules(String type, ApiRequest request) {
         if (!type.equalsIgnoreCase(ServiceConstants.KIND_LOAD_BALANCER_SERVICE)) {
             return;
         }
-        Map<String, Object> lbConfig = DataUtils.getFieldFromRequest(request, ServiceConstants.FIELD_LB_CONFIG,
-                Map.class);
+        Map<?, ?> lbConfig = requestMapField(request, ServiceConstants.FIELD_LB_CONFIG);
         if (lbConfig == null) {
             return;
         }
 
         if (lbConfig != null && lbConfig.containsKey(ServiceConstants.FIELD_PORT_RULES)) {
-            List<PortRule> portRules = jsonMapper.convertCollectionValue(
-                    lbConfig.get(ServiceConstants.FIELD_PORT_RULES), List.class, PortRule.class);
+            List<PortRule> portRules = portRules(jsonMapper, lbConfig.get(ServiceConstants.FIELD_PORT_RULES));
             for (PortRule portRule : portRules) {
                 if (portRule.getSourcePort() != null && portRule.getSourcePort().equals(LB_HEALTH_CHECK_PORT)) {
                     throw new ValidationErrorException(ValidationErrorCodes.INVALID_OPTION,
@@ -222,6 +229,19 @@ public class ServiceValidationFilter extends AbstractDefaultResourceManagerFilte
                 }
             }
         }
+    }
+
+    static Map<?, ?> requestMapField(ApiRequest request, String fieldName) {
+        Object value = DataUtils.getFieldFromRequest(request, fieldName, Object.class);
+        if (value == null) {
+            return null;
+        }
+        return Map.class.cast(value);
+    }
+
+    static List<PortRule> portRules(JsonMapper jsonMapper, Object portRulesObj) {
+        List<PortRule> values = jsonMapper.convertListValue(portRulesObj, PortRule.class);
+        return new ArrayList<>(values);
     }
 
     protected void validateScalePolicy(Service service, ApiRequest request, boolean forUpdate) {
@@ -300,11 +320,10 @@ public class ServiceValidationFilter extends AbstractDefaultResourceManagerFilte
         }
     }
 
-    @SuppressWarnings("unchecked")
     protected ApiRequest validateAndSetImage(ApiRequest request, Service service, String type) {
         Map<String, Object> data = CollectionUtils.toMap(request.getRequestObject());
         if (data.get(ServiceConstants.FIELD_LAUNCH_CONFIG) != null) {
-            Map<String, Object> launchConfig = (Map<String, Object>)data.get(ServiceConstants.FIELD_LAUNCH_CONFIG);
+            Map<Object, Object> launchConfig = launchConfigMap(data.get(ServiceConstants.FIELD_LAUNCH_CONFIG));
             if (launchConfig.get(InstanceConstants.FIELD_IMAGE_UUID) != null) {
                 Object imageUuid = launchConfig.get(InstanceConstants.FIELD_IMAGE_UUID);
                 if (imageUuid != null && !imageUuid.toString().equalsIgnoreCase(ServiceConstants.IMAGE_NONE)) {
@@ -317,9 +336,9 @@ public class ServiceValidationFilter extends AbstractDefaultResourceManagerFilte
 
         List<Object> modifiedSlcs = new ArrayList<>();
         if (data.get(ServiceConstants.FIELD_SECONDARY_LAUNCH_CONFIGS) != null) {
-           List<Object> slcs = (List<Object>)data.get(ServiceConstants.FIELD_SECONDARY_LAUNCH_CONFIGS);
-           for (Object slcObj : slcs) {
-                Map<String, Object> slc = (Map<String, Object>) slcObj;
+            List<?> slcs = List.class.cast(data.get(ServiceConstants.FIELD_SECONDARY_LAUNCH_CONFIGS));
+            for (Object slcObj : slcs) {
+                Map<Object, Object> slc = launchConfigMap(slcObj);
                 if (slc.get(InstanceConstants.FIELD_IMAGE_UUID) != null) {
                     Object imageUuid = slc.get(InstanceConstants.FIELD_IMAGE_UUID);
                     if (imageUuid != null && !imageUuid.toString().equalsIgnoreCase(ServiceConstants.IMAGE_NONE)) {
@@ -382,7 +401,7 @@ public class ServiceValidationFilter extends AbstractDefaultResourceManagerFilte
         Map<String, Object> data = CollectionUtils.toMap(request.getRequestObject());
         Object newName = data.get("name");
         String serviceName = newName != null ? newName.toString() : service.getName();
-        List<Map<String, Object>> launchConfigs = populateLaunchConfigs(service, request);
+        List<?> launchConfigs = populateLaunchConfigs(service, request);
         validateLaunchConfigNames(service, serviceName, launchConfigs);
         validateLaunchConfigsCircularRefs(service, serviceName, launchConfigs);
         validateLaunchConfigScale(service, request);
@@ -406,26 +425,26 @@ public class ServiceValidationFilter extends AbstractDefaultResourceManagerFilte
     }
 
 
-    @SuppressWarnings("unchecked")
-    protected List<Map<String, Object>> populateLaunchConfigs(Service service, ApiRequest request) {
+    protected List<?> populateLaunchConfigs(Service service, ApiRequest request) {
         Map<String, Object> data = CollectionUtils.toMap(request.getRequestObject());
-        List<Map<String, Object>> allLaunchConfigs = new ArrayList<>();
+        List<Object> allLaunchConfigs = new ArrayList<>();
         Object primaryLaunchConfig = data.get(ServiceConstants.FIELD_LAUNCH_CONFIG);
 
         if (primaryLaunchConfig != null) {
             // remove the name from launchConfig
-            String primaryName = ((Map<String, String>) primaryLaunchConfig).get("name");
+            Map<?, ?> primary = Map.class.cast(primaryLaunchConfig);
+            String primaryName = String.class.cast(primary.get("name"));
             if (primaryName != null) {
-                ((Map<String, String>) primaryLaunchConfig).remove("name");
+                primary.remove("name");
             }
-            allLaunchConfigs.add((Map<String, Object>) primaryLaunchConfig);
+            allLaunchConfigs.add(primaryLaunchConfig);
         }
 
         Object secondaryLaunchConfigs = data
                 .get(ServiceConstants.FIELD_SECONDARY_LAUNCH_CONFIGS);
 
         if (secondaryLaunchConfigs != null) {
-            allLaunchConfigs.addAll((List<Map<String, Object>>) secondaryLaunchConfigs);
+            allLaunchConfigs.addAll(List.class.cast(secondaryLaunchConfigs));
         }
 
         return allLaunchConfigs;
@@ -433,7 +452,7 @@ public class ServiceValidationFilter extends AbstractDefaultResourceManagerFilte
 
 
     protected void validateLaunchConfigsCircularRefs(Service service, String serviceName,
-            List<Map<String, Object>> launchConfigs) {
+            List<?> launchConfigs) {
         Map<String, Map<String, String>> launchConfigRefs = populateLaunchConfigRefs(service, serviceName,
                 launchConfigs);
         for (String launchConfigName : launchConfigRefs.keySet()) {
@@ -466,11 +485,11 @@ public class ServiceValidationFilter extends AbstractDefaultResourceManagerFilte
         }
     }
 
-    @SuppressWarnings("unchecked")
     protected Map<String, Map<String, String>> populateLaunchConfigRefs(Service service, String serviceName,
-            List<Map<String, Object>> launchConfigs) {
+            List<?> launchConfigs) {
         Map<String, Map<String, String>> launchConfigRefs = new HashMap<>();
-        for (Map<String, Object> launchConfig : launchConfigs) {
+        for (Object launchConfigObj : launchConfigs) {
+            Map<?, ?> launchConfig = Map.class.cast(launchConfigObj);
             Object launchConfigName = launchConfig.get("name");
             if (launchConfigName == null) {
                 launchConfigName = serviceName;
@@ -479,14 +498,15 @@ public class ServiceValidationFilter extends AbstractDefaultResourceManagerFilte
             Object networkFromLaunchConfig = launchConfig
                     .get(ServiceConstants.FIELD_NETWORK_LAUNCH_CONFIG);
             if (networkFromLaunchConfig != null) {
-                if (!refs.containsKey((String) networkFromLaunchConfig)) {
-                    refs.put((String) networkFromLaunchConfig, NETWORK_FROM);
+                String networkFrom = String.class.cast(networkFromLaunchConfig);
+                if (!refs.containsKey(networkFrom)) {
+                    refs.put(networkFrom, NETWORK_FROM);
                 }
             }
             Object volumesFromLaunchConfigs = launchConfig
                     .get(ServiceConstants.FIELD_DATA_VOLUMES_LAUNCH_CONFIG);
             if (volumesFromLaunchConfigs != null) {
-                for (String volumesFromLaunchConfig : (List<String>) volumesFromLaunchConfigs) {
+                for (String volumesFromLaunchConfig : stringList(volumesFromLaunchConfigs)) {
                     if (!refs.containsKey(volumesFromLaunchConfig)) {
                         refs.put(volumesFromLaunchConfig, VOLUMES_FROM);
                     }
@@ -497,9 +517,18 @@ public class ServiceValidationFilter extends AbstractDefaultResourceManagerFilte
         return launchConfigRefs;
     }
 
+    static List<String> stringList(Object listObj) {
+        List<?> values = List.class.cast(listObj);
+        List<String> result = new ArrayList<>(values.size());
+        for (Object value : values) {
+            result.add(String.class.cast(value));
+        }
+        return result;
+    }
+
 
     protected void validateLaunchConfigNames(Service service, String serviceName,
-            List<Map<String, Object>> launchConfigs) {
+            List<?> launchConfigs) {
         List<String> usedNames = new ArrayList<>();
         List<? extends Service> existingSvcs = objectManager.find(Service.class, SERVICE.STACK_ID,
                 service.getStackId(), SERVICE.REMOVED, null);
@@ -515,7 +544,8 @@ public class ServiceValidationFilter extends AbstractDefaultResourceManagerFilte
 
         List<String> namesToValidate = new ArrayList<>();
         namesToValidate.add(serviceName.toLowerCase());
-        for (Map<String, Object> launchConfig : launchConfigs) {
+        for (Object launchConfigObj : launchConfigs) {
+            Map<?, ?> launchConfig = Map.class.cast(launchConfigObj);
             Object name = launchConfig.get("name");
             if (name != null) {
                 namesToValidate.add(name.toString().toLowerCase());

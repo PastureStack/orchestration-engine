@@ -3,7 +3,7 @@ package io.github.ibuildthecloud.gdapi.model;
 import java.util.List;
 import java.util.Map;
 
-import javax.xml.bind.annotation.XmlTransient;
+import jakarta.xml.bind.annotation.XmlTransient;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 

@@ -1,0 +1,72 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+repo_root=$(cd "$(dirname "$0")/.." && pwd)
+cd "$repo_root"
+
+python_cmd=${PYTHON:-}
+if [ -z "$python_cmd" ]; then
+    for candidate in python3 python; do
+        if command -v "$candidate" >/dev/null 2>&1 && "$candidate" -c 'import sys' >/dev/null 2>&1; then
+            python_cmd=$candidate
+            break
+        fi
+    done
+fi
+
+if [ -z "$python_cmd" ]; then
+    echo "python3 or python is required for the cattle metrics servlet boundary audit" >&2
+    exit 2
+fi
+
+source_root=${RC16_CATTLE_SOURCE_ROOT:-.}
+
+"$python_cmd" - "$source_root" <<'PY'
+import sys
+import xml.etree.ElementTree as ET
+from pathlib import Path
+
+NS = {"m": "http://maven.apache.org/POM/4.0.0"}
+root = Path(sys.argv[1])
+blocked = {"metrics-servlets", "metrics-servlet"}
+allowed = "metrics-jakarta-servlets"
+
+failures = []
+pom_count = 0
+allowed_count = 0
+
+for pom in sorted(root.rglob("pom.xml")):
+    if "target" in pom.parts or ".git" in pom.parts:
+        continue
+    pom_count += 1
+    try:
+        parsed = ET.parse(pom).getroot()
+    except ET.ParseError as exc:
+        failures.append(f"CATTLE_METRICS_SERVLET_POM_PARSE_FAIL file={pom} error={exc}")
+        continue
+    for dep in parsed.findall(".//m:dependencies/m:dependency", NS):
+        group = (dep.findtext("m:groupId", default="", namespaces=NS) or "").strip()
+        artifact = (dep.findtext("m:artifactId", default="", namespaces=NS) or "").strip()
+        if group != "io.dropwizard.metrics":
+            continue
+        if artifact == allowed:
+            allowed_count += 1
+        elif artifact in blocked:
+            failures.append(
+                f"CATTLE_METRICS_SERVLET_LEGACY_DEPENDENCY file={pom} groupId={group} artifactId={artifact}"
+            )
+
+for failure in failures[:100]:
+    print(failure)
+if len(failures) > 100:
+    print(f"CATTLE_METRICS_SERVLET_BOUNDARY_FAIL_MORE count={len(failures) - 100}")
+
+print(
+    "CATTLE_METRICS_SERVLET_BOUNDARY_OK "
+    f"pom_count={pom_count} allowed_jakarta_servlets_count={allowed_count}"
+)
+print("Dropwizard metrics-servlets is the legacy servlet artifact; metrics-jakarta-servlets owns the Jakarta Servlet 6 runtime path.")
+print(f"failure_count={len(failures)}")
+if failures:
+    sys.exit(1)
+PY

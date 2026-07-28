@@ -11,7 +11,7 @@ import io.cattle.platform.servicediscovery.service.ServiceLookup;
 
 import java.util.Collection;
 
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 
 public class SkipServiceLookup implements ServiceLookup {
 

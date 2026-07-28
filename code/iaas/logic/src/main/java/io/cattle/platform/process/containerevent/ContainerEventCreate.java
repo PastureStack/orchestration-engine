@@ -10,6 +10,7 @@ import static io.cattle.platform.docker.constants.DockerInstanceConstants.*;
 import io.cattle.platform.agent.AgentLocator;
 import io.cattle.platform.agent.RemoteAgent;
 import io.cattle.platform.archaius.util.ArchaiusUtil;
+import io.cattle.platform.archaius.util.ConfigProperty;
 import io.cattle.platform.async.utils.TimeoutException;
 import io.cattle.platform.core.constants.CommonStatesConstants;
 import io.cattle.platform.core.constants.InstanceConstants;
@@ -41,24 +42,23 @@ import io.cattle.platform.util.type.CollectionUtils;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.TimeUnit;
 
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 
+import org.apache.commons.lang3.Strings;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
-import com.netflix.config.DynamicBooleanProperty;
 
 public class ContainerEventCreate extends AbstractDefaultProcessHandler {
 
     public static final String AGENT_ID = "agentId";
     public static final String INSTANCE_INSPECT_EVENT_NAME = "compute.instance.inspect";
     private static final String INSTANCE_INSPECT_DATA_NAME = "instanceInspect";
-    private static final DynamicBooleanProperty MANAGE_NONRANCHER_CONTAINERS = ArchaiusUtil.getBoolean("manage.nonrancher.containers");
+    private static final ConfigProperty<Boolean> MANAGE_NONRANCHER_CONTAINERS = ArchaiusUtil.getBooleanProperty("manage.nonrancher.containers");
     private static final String INSPECT_ENV = "Env";
     private static final String INSPECT_LABELS = "Labels";
     private static final String INSPECT_NAME = "Name";
@@ -95,7 +95,7 @@ public class ContainerEventCreate extends AbstractDefaultProcessHandler {
     GenericResourceDao resourceDao;
 
     Cache<String, String> scheduled = CacheBuilder.newBuilder()
-            .expireAfterWrite(15, TimeUnit.MINUTES)
+            .expireAfterWrite(java.time.Duration.ofMinutes(15))
             .build();
 
     public boolean checkOrRecordScheduled(String id, String event) {
@@ -343,7 +343,7 @@ public class ContainerEventCreate extends AbstractDefaultProcessHandler {
      * networkContainerId on the instance.
      */
     private String checkContainerNetwork(String inspectNetMode, Instance instance, Map<String, Object> data) {
-        if (!StringUtils.startsWith(inspectNetMode, NetworkConstants.NETWORK_MODE_CONTAINER))
+        if (!Strings.CS.startsWith(inspectNetMode, NetworkConstants.NETWORK_MODE_CONTAINER))
             return null;
 
         String[] parts = StringUtils.split(inspectNetMode, ":", 2);
@@ -411,7 +411,6 @@ public class ContainerEventCreate extends AbstractDefaultProcessHandler {
         return labels;
     }
 
-    @SuppressWarnings("unchecked")
     String getLabel(String labelKey, String envVarPrefix, Map<String, Object> inspect, Map<String, Object> data) {
         Map<String, Object> labelsFromData = CollectionUtils.toMap(DataAccessor.fromMap(data).withKey(CONTAINER_EVENT_SYNC_LABELS).get());
         String label = labelsFromData.containsKey(labelKey) ? labelsFromData.get(labelKey).toString() : null;
@@ -421,8 +420,9 @@ public class ContainerEventCreate extends AbstractDefaultProcessHandler {
         Map<String, Object> config = CollectionUtils.toMap(inspect.get(INSPECT_CONFIG));
 
         if (config != null) {
-            Map<String, String> labels = CollectionUtils.toMap(config.get(INSPECT_LABELS));
-            label = labels.get(labelKey);
+            Map<String, Object> labels = CollectionUtils.toMap(config.get(INSPECT_LABELS));
+            Object labelValue = labels.get(labelKey);
+            label = labelValue == null ? null : String.class.cast(labelValue);
             if (StringUtils.isNotEmpty(label))
                 return label;
         }
@@ -431,8 +431,8 @@ public class ContainerEventCreate extends AbstractDefaultProcessHandler {
             return null;
 
         if (config != null) {
-            List<String> envVars = (List<String>)CollectionUtils.toList(config.get(INSPECT_ENV));
-            for (String envVar : envVars) {
+            for (Object envVarObj : CollectionUtils.toList(config.get(INSPECT_ENV))) {
+                String envVar = String.class.cast(envVarObj);
                 if (envVar.startsWith(envVarPrefix))
                     return envVar.substring(envVarPrefix.length());
             }

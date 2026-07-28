@@ -11,7 +11,7 @@ import io.cattle.platform.object.ObjectManager;
 import io.cattle.platform.object.process.ObjectProcessManager;
 import io.github.ibuildthecloud.gdapi.request.ApiRequest;
 
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 
 public class HostEvacuateActionHandler implements ActionHandler {
 

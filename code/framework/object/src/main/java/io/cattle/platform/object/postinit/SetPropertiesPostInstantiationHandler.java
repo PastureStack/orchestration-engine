@@ -3,12 +3,12 @@ package io.cattle.platform.object.postinit;
 import java.lang.reflect.InvocationTargetException;
 import java.util.Map;
 
-import org.apache.commons.beanutils.BeanUtils;
+import org.apache.commons.beanutils2.BeanUtils;
 
 public class SetPropertiesPostInstantiationHandler implements ObjectPostInstantiationHandler {
 
     @Override
-    public <T> T postProcess(T obj, Class<T> clz, Map<String, Object> properties) {
+    public <T> T postProcess(T obj, Class<?> clz, Map<String, Object> properties) {
         try {
             BeanUtils.copyProperties(obj, properties);
         } catch (IllegalAccessException e) {

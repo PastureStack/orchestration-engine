@@ -10,8 +10,8 @@ import io.cattle.platform.process.common.handler.AbstractObjectProcessLogic;
 import io.cattle.platform.servicediscovery.service.RegionService;
 import io.cattle.platform.util.type.Priority;
 
-import javax.inject.Inject;
-import javax.inject.Named;
+import jakarta.inject.Inject;
+import jakarta.inject.Named;
 
 @Named
 public class RegionsAgentRemove extends AbstractObjectProcessLogic implements ProcessPostListener, Priority {

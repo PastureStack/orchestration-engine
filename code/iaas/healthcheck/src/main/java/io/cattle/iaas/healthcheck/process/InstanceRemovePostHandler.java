@@ -19,8 +19,8 @@ import io.cattle.platform.util.type.Priority;
 
 import java.util.List;
 
-import javax.inject.Inject;
-import javax.inject.Named;
+import jakarta.inject.Inject;
+import jakarta.inject.Named;
 
 @Named
 public class InstanceRemovePostHandler extends AbstractObjectProcessLogic implements ProcessPostListener, Priority {

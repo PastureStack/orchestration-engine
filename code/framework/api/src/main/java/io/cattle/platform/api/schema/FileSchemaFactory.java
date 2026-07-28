@@ -19,9 +19,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 
-import javax.annotation.PostConstruct;
-import javax.inject.Inject;
-import javax.inject.Named;
+import jakarta.annotation.PostConstruct;
+import jakarta.inject.Inject;
+import jakarta.inject.Named;
 
 import org.apache.commons.lang3.StringUtils;
 
@@ -50,10 +50,8 @@ public class FileSchemaFactory extends AbstractSchemaFactory implements Initiali
         ClassLoader cl = Thread.currentThread().getContextClassLoader();
         try(InputStream is = cl.getResourceAsStream(file)) {
             ObjectInputStream ois = new ObjectInputStream(is);
-            @SuppressWarnings("unchecked")
-            List<Schema> serializedSchemas = (List<Schema>) ois.readObject();
-            for (Schema schema : serializedSchemas) {
-                ((SchemaImpl) schema).setType("schema");
+            for (Schema schema : readSchemas(ois)) {
+                SchemaImpl.class.cast(schema).setType("schema");
                 schema.getActions().clear();
                 schema.getLinks().clear();
                 copyAccessors(schema);
@@ -70,6 +68,15 @@ public class FileSchemaFactory extends AbstractSchemaFactory implements Initiali
         }
 
         init = true;
+    }
+
+    private List<Schema> readSchemas(ObjectInputStream ois) throws ClassNotFoundException, IOException {
+        List<?> serializedSchemas = List.class.cast(ois.readObject());
+        List<Schema> result = new ArrayList<Schema>(serializedSchemas.size());
+        for (Object schema : serializedSchemas) {
+            result.add(Schema.class.cast(schema));
+        }
+        return result;
     }
 
     @PostConstruct

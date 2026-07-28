@@ -1,6 +1,7 @@
 package io.cattle.platform.framework.secret;
 
 import io.cattle.platform.archaius.util.ArchaiusUtil;
+import io.cattle.platform.archaius.util.ConfigProperty;
 import io.cattle.platform.core.addon.SecretReference;
 import io.cattle.platform.core.constants.HostConstants;
 import io.cattle.platform.core.dao.SecretDao;
@@ -25,17 +26,10 @@ import java.util.Map;
 import javax.crypto.Cipher;
 import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 
 import org.apache.commons.codec.binary.Base64;
-import org.apache.commons.io.IOUtils;
-import org.apache.http.HttpResponse;
-import org.apache.http.client.ClientProtocolException;
-import org.apache.http.client.ResponseHandler;
-import org.apache.http.client.fluent.Request;
-import org.apache.http.entity.ContentType;
 
-import com.netflix.config.DynamicStringProperty;
 
 public class SecretsServiceImpl implements SecretsService {
 
@@ -43,8 +37,8 @@ public class SecretsServiceImpl implements SecretsService {
     private static final String PURGE_PATH = "/v1-secrets/secrets/purge";
     private static final String REWRAP = "/v1-secrets/secrets/rewrap";
     private static final String BULK_PATH = "/v1-secrets/secrets/rewrap?action=bulk";
-    private static final DynamicStringProperty SECRETS_URL = ArchaiusUtil.getString("secrets.url");
-    private static final DynamicStringProperty SECRETS_BACKEND = ArchaiusUtil.getString("secrets.backend");
+    private static final ConfigProperty<String> SECRETS_URL = ArchaiusUtil.getStringProperty("secrets.url");
+    private static final ConfigProperty<String> SECRETS_BACKEND = ArchaiusUtil.getStringProperty("secrets.backend");
 
     @Inject
     SecretDao secretDao;
@@ -60,29 +54,14 @@ public class SecretsServiceImpl implements SecretsService {
         input.put("clearText", value);
         input.put("keyName", SECRETS_KEY_NAME.get());
 
-        return Request.Post(SECRETS_URL.get() + CREATE_PATH)
-            .bodyString(jsonMapper.writeValueAsString(input), ContentType.APPLICATION_JSON)
-            .execute().handleResponse(new ResponseHandler<String>() {
-                @Override
-                public String handleResponse(HttpResponse response) throws ClientProtocolException, IOException {
-                    int statusCode = response.getStatusLine().getStatusCode();
-                    if (statusCode >= 300) {
-                        throw new IOException("Failed to encrypt secret :" + response.getStatusLine().getReasonPhrase());
-                    }
-                    return IOUtils.toString(response.getEntity().getContent());
-                }
-            });
+        return SecretHttpClient.postJsonForString(SECRETS_URL.get() + CREATE_PATH,
+                jsonMapper.writeValueAsString(input), "Failed to encrypt secret :HTTP ");
     }
 
     @Override
     public void delete(long accountId, String value) throws IOException {
-        Request.Post(SECRETS_URL.get() + PURGE_PATH).bodyString(value, ContentType.APPLICATION_JSON).execute().handleResponse((response) -> {
-            int statusCode = response.getStatusLine().getStatusCode();
-            if (statusCode >= 300 && statusCode != 404) {
-                throw new IOException("Failed to delete secret :" + response.getStatusLine().getReasonPhrase());
-            }
-            return IOUtils.toString(response.getEntity().getContent());
-        });
+        SecretHttpClient.postJsonAllowingNotFound(SECRETS_URL.get() + PURGE_PATH, value,
+                "Failed to delete secret :HTTP ");
     }
 
     protected Map<Long, String> getValues(Collection<Secret> secrets, Host host) throws IOException {
@@ -94,18 +73,8 @@ public class SecretsServiceImpl implements SecretsService {
         Map<String, Object> input = new HashMap<>();
         input.put("data", toData(secretsList));
         input.put("rewrapKey", rewrapKey);
-        Map<String, Object> response = Request.Post(SECRETS_URL.get() + BULK_PATH).
-                bodyString(jsonMapper.writeValueAsString(input), ContentType.APPLICATION_JSON)
-                .execute().handleResponse(new ResponseHandler<Map<String, Object>>() {
-                    @Override
-                    public Map<String, Object> handleResponse(HttpResponse response) throws ClientProtocolException, IOException {
-                        int statusCode = response.getStatusLine().getStatusCode();
-                        if (statusCode >= 300) {
-                            throw new IOException("Failed to rewrap secret :" + response.getStatusLine().getReasonPhrase());
-                        }
-                        return jsonMapper.readValue(response.getEntity().getContent());
-                    }
-                });
+        Map<String, Object> response = SecretHttpClient.postJsonForMap(SECRETS_URL.get() + BULK_PATH,
+                jsonMapper.writeValueAsString(input), jsonMapper, "Failed to rewrap secret :HTTP ");
 
         List<?> wrapped = CollectionUtils.toList(response.get("data"));
         for (int i = 0; i < secretsList.size(); i++) {
@@ -152,18 +121,8 @@ public class SecretsServiceImpl implements SecretsService {
         Map<String, Object> input = jsonMapper.readValue(value);
         input.put("rewrapKey", encoded);
 
-        String encrypted = Request.Post(SECRETS_URL.get() + REWRAP)
-            .bodyString(jsonMapper.writeValueAsString(input), ContentType.APPLICATION_JSON)
-            .execute().handleResponse(new ResponseHandler<String>() {
-                @Override
-                public String handleResponse(HttpResponse response) throws ClientProtocolException, IOException {
-                    int statusCode = response.getStatusLine().getStatusCode();
-                    if (statusCode >= 300) {
-                        throw new IOException("Failed to rewrap secret :" + response.getStatusLine().getReasonPhrase());
-                    }
-                    return IOUtils.toString(response.getEntity().getContent());
-                }
-            });
+        String encrypted = SecretHttpClient.postJsonForString(SECRETS_URL.get() + REWRAP,
+                jsonMapper.writeValueAsString(input), "Failed to rewrap secret :HTTP ");
 
         return unwrap(holder.getKey(), encrypted);
     }
@@ -172,8 +131,7 @@ public class SecretsServiceImpl implements SecretsService {
         Map<String, Object> rewrappedSecrect = jsonMapper.readValue(encrypted);
         Map<String, Object> encryptedObject = jsonMapper.readValue(Base64.decodeBase64((String) rewrappedSecrect.get("rewrapText")));
         Map<String, Object> encryptedText = jsonMapper.readValue((String)encryptedObject.get("encryptedText"));
-        @SuppressWarnings("unchecked")
-        Map<String, Object> encryptedKey = (Map<String, Object>)encryptedObject.get("encryptedKey");
+        Map<String, Object> encryptedKey = stringObjectMap(encryptedObject.get("encryptedKey"));
 
         byte[] encryptionKey = getEncryptionKey(privateKey, encryptedKey);
         byte[] nonce = Base64.decodeBase64((String)encryptedText.get("Nonce"));
@@ -182,6 +140,15 @@ public class SecretsServiceImpl implements SecretsService {
         byte[] decrypted = decrypt(cipherText, encryptionKey, nonce);
 
         return new String(decrypted);
+    }
+
+    protected Map<String, Object> stringObjectMap(Object value) {
+        Map<?, ?> source = Map.class.cast(value);
+        Map<String, Object> result = new HashMap<String, Object>(source.size());
+        for (Map.Entry<?, ?> entry : source.entrySet()) {
+            result.put(String.class.cast(entry.getKey()), entry.getValue());
+        }
+        return result;
     }
 
     protected byte[] getEncryptionKey(PrivateKey key, Map<String, Object> encryptedKey) throws Exception {

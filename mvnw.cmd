@@ -48,6 +48,22 @@ if exist "%HOME%\mavenrc_pre.bat" call "%HOME%\mavenrc_pre.bat"
 if exist "%HOME%\mavenrc_pre.cmd" call "%HOME%\mavenrc_pre.cmd"
 :skipRcPre
 
+@REM RC16: prefer the maintained local Maven toolchain and require explicit opt-in
+@REM before the wrapper is allowed to download Maven on Windows.
+if /I not "%RC16_MAVEN_WRAPPER_FORCE%" == "true" (
+  where mvn.cmd >NUL 2>NUL
+  if not ERRORLEVEL 1 (
+    call mvn.cmd %*
+    exit /B
+  )
+)
+
+if /I not "%RC16_ALLOW_MAVEN_WRAPPER_DOWNLOAD%" == "true" (
+  echo RC16 Maven wrapper download is disabled by default. >&2
+  echo Install the maintained Maven toolchain, use the Ubuntu 26.04 dapper image, or set RC16_ALLOW_MAVEN_WRAPPER_DOWNLOAD=true to opt in explicitly. >&2
+  exit /B 1
+)
+
 @setlocal
 
 set ERROR_CODE=0

@@ -6,7 +6,7 @@ import io.cattle.platform.engine.server.ProcessInstanceDispatcher;
 import io.cattle.platform.engine.server.ProcessInstanceReference;
 import io.cattle.platform.engine.server.ProcessServer;
 
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 
 public class ProcessServerImpl implements ProcessServer {
 

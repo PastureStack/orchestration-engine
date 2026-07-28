@@ -7,10 +7,9 @@ import io.github.ibuildthecloud.gdapi.exception.ClientVisibleException;
 import io.github.ibuildthecloud.gdapi.request.ApiRequest;
 import io.github.ibuildthecloud.gdapi.util.ResponseCodes;
 
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 
 public class SetProjectMembersActionHandler implements ActionHandler {
 
@@ -20,7 +19,6 @@ public class SetProjectMembersActionHandler implements ActionHandler {
     @Inject
     ProjectMemberResourceManager projectMemberResourceManager;
 
-    @SuppressWarnings("unchecked")
     @Override
     public Object perform(String name, Object obj, ApiRequest request) {
         Account project = (Account) obj;
@@ -28,8 +26,8 @@ public class SetProjectMembersActionHandler implements ActionHandler {
         if (project == null) {
             throw new ClientVisibleException(ResponseCodes.NOT_FOUND);
         }
-        LinkedHashMap<String, Object> reqObj = (LinkedHashMap<String, Object>) request.getRequestObject();
-        List<Map<String, String>> members = (List<Map<String, String>>) reqObj.get("members");
+        List<Map<String, String>> members = ProjectMemberInput.memberMapList(
+                ProjectMemberInput.requestField(request.getRequestObject(), ProjectMemberInput.MEMBERS));
         return projectMemberResourceManager.setMembers(project, members, false);
     }
 

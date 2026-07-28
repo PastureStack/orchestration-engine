@@ -9,8 +9,8 @@ import io.cattle.platform.engine.process.ProcessInstance;
 import io.cattle.platform.engine.process.ProcessState;
 import io.cattle.platform.process.common.handler.AbstractObjectProcessLogic;
 
-import javax.inject.Inject;
-import javax.inject.Named;
+import jakarta.inject.Inject;
+import jakarta.inject.Named;
 
 @Named
 public class AgentInstanceInstanceRemove extends AbstractObjectProcessLogic implements ProcessPreListener {

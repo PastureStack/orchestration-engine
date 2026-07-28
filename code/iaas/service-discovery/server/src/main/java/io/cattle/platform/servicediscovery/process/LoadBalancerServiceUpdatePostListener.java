@@ -26,13 +26,14 @@ import io.cattle.platform.servicediscovery.api.util.ServiceDiscoveryUtil;
 import io.cattle.platform.servicediscovery.service.ServiceDiscoveryService;
 import io.cattle.platform.util.type.Priority;
 
+import java.util.AbstractList;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import javax.inject.Inject;
-import javax.inject.Named;
+import jakarta.inject.Inject;
+import jakarta.inject.Named;
 
 @Named
 public class LoadBalancerServiceUpdatePostListener extends AbstractObjectProcessLogic implements ProcessPostListener,
@@ -68,7 +69,6 @@ public class LoadBalancerServiceUpdatePostListener extends AbstractObjectProcess
         return null;
     }
 
-    @SuppressWarnings("unchecked")
     private void updateServicePorts(Service service, ProcessState state) {
         sdService.setPorts(service);
 
@@ -76,21 +76,16 @@ public class LoadBalancerServiceUpdatePostListener extends AbstractObjectProcess
         Object oldObj = state.getData().get("old");
         List<String> oldPortDefs = new ArrayList<>();
         if (oldObj != null) {
-            Map<String, Object> old = (Map<String, Object>) oldObj;
+            Map<?, ?> old = Map.class.cast(oldObj);
             if (old.containsKey(ServiceConstants.FIELD_LAUNCH_CONFIG)) {
-                Map<String, Object> oldLC = (Map<String, Object>) old.get(ServiceConstants.FIELD_LAUNCH_CONFIG);
-                if (oldLC.get(InstanceConstants.FIELD_PORTS) != null) {
-                    oldPortDefs = (List<String>) oldLC.get(InstanceConstants.FIELD_PORTS);
-                }
+                Map<?, ?> oldLC = Map.class.cast(old.get(ServiceConstants.FIELD_LAUNCH_CONFIG));
+                oldPortDefs = portDefinitions(oldLC.get(InstanceConstants.FIELD_PORTS));
             }
         }
 
         Map<String, Object> launchConfigData = ServiceDiscoveryUtil.getLaunchConfigDataAsMap(service,
                 ServiceConstants.PRIMARY_LAUNCH_CONFIG_NAME);
-        List<String> newPortDefs = new ArrayList<>();
-        if (launchConfigData.get(InstanceConstants.FIELD_PORTS) != null) {
-            newPortDefs = (List<String>) launchConfigData.get(InstanceConstants.FIELD_PORTS);
-        }
+        List<String> newPortDefs = portDefinitions(launchConfigData.get(InstanceConstants.FIELD_PORTS));
 
         List<? extends Instance> serviceContainers = expMapDao.listServiceManagedInstancesAll(service);
         for (Instance instance : serviceContainers) {
@@ -123,6 +118,25 @@ public class LoadBalancerServiceUpdatePostListener extends AbstractObjectProcess
             allocatorService.releasePortsForInstanceUpdate(instance, toRemove);
             updateInstanceWithNewPorts(instance);
         }
+    }
+
+    static List<String> portDefinitions(Object value) {
+        if (value == null) {
+            return new ArrayList<String>();
+        }
+
+        final List<?> ports = List.class.cast(value);
+        return new AbstractList<String>() {
+            @Override
+            public String get(int index) {
+                return String.class.cast(ports.get(index));
+            }
+
+            @Override
+            public int size() {
+                return ports.size();
+            }
+        };
     }
     
     private void updateInstanceWithNewPorts(Instance instance) {

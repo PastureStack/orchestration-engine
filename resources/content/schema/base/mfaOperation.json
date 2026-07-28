@@ -1,0 +1,47 @@
+{
+    "collectionMethods": [ "POST" ],
+    "resourceMethods": [],
+    "resourceFields": {
+        "operation": {
+            "type": "enum",
+            "options": [
+                "beginTotpEnrollment",
+                "confirmTotpEnrollment",
+                "beginPasskeyEnrollment",
+                "confirmPasskeyEnrollment",
+                "regenerateRecoveryCodes",
+                "beginRecoveryEmailEnrollment",
+                "confirmRecoveryEmailEnrollment",
+                "revokeRecoveryEmail",
+                "revokeFactor",
+                "revokeAllFactors",
+                "beginSecurityConfirmation",
+                "confirmSecurityConfirmation"
+            ],
+            "required": true,
+            "nullable": false
+        },
+        "accountId": { "type": "reference[account]", "nullable": true },
+        "factorId": { "type": "string", "nullable": true },
+        "label": { "type": "string", "nullable": true, "maxLength": 64 },
+        "challengeId": { "type": "password", "nullable": true },
+        "method": { "type": "enum", "options": [ "totp", "webauthn", "recoveryCode" ], "nullable": true },
+        "verificationCode": { "type": "password", "nullable": true },
+        "recoveryCode": { "type": "password", "nullable": true },
+        "securityConfirmation": { "type": "password", "nullable": true },
+        "email": { "type": "string", "nullable": true },
+        "emailCode": { "type": "password", "nullable": true },
+        "webAuthnResponse": { "type": "password", "nullable": true },
+        "status": { "type": "string", "create": false, "update": false, "nullable": true },
+        "expiresAt": { "type": "date", "create": false, "update": false, "nullable": true },
+        "totpSecret": { "type": "password", "create": false, "update": false, "nullable": true },
+        "totpProvisioningUri": { "type": "string", "create": false, "update": false, "nullable": true },
+        "publicKey": { "type": "map[json]", "create": false, "update": false, "nullable": true },
+        "methods": { "type": "array[string]", "create": false, "update": false, "nullable": true },
+        "webAuthnOptions": { "type": "map[json]", "create": false, "update": false, "nullable": true },
+        "factor": { "type": "mfaFactor", "create": false, "update": false, "nullable": true },
+        "recoveryCodes": { "type": "array[string]", "create": false, "update": false, "nullable": true },
+        "recoveryEmailMasked": { "type": "string", "create": false, "update": false, "nullable": true },
+        "emailCodeSent": { "type": "boolean", "create": false, "update": false, "nullable": true }
+    }
+}

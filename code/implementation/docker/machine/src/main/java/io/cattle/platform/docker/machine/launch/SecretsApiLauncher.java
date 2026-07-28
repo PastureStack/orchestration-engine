@@ -1,6 +1,7 @@
 package io.cattle.platform.docker.machine.launch;
 
 import io.cattle.platform.archaius.util.ArchaiusUtil;
+import io.cattle.platform.archaius.util.ConfigProperty;
 import io.cattle.platform.core.dao.DataDao;
 import io.cattle.platform.framework.secret.SecretsService;
 import io.cattle.platform.json.JsonMapper;
@@ -16,20 +17,17 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Callable;
 
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 
 import org.apache.commons.codec.DecoderException;
 import org.apache.commons.codec.binary.Hex;
 import org.apache.commons.io.IOUtils;
 
-import com.netflix.config.DynamicBooleanProperty;
-import com.netflix.config.DynamicStringProperty;
-
 public class SecretsApiLauncher extends GenericServiceLauncher implements InitializationTask {
 
-    private static final DynamicStringProperty SECRETS_BINARY = ArchaiusUtil.getString("secrets.api.service.executable");
-    private static final DynamicBooleanProperty LAUNCH_SECRETS = ArchaiusUtil.getBoolean("secrets.api.execute");
-    private static final DynamicStringProperty SECRETS_PATH = ArchaiusUtil.getString("secrets.api.local.key.path");
+    private static final ConfigProperty<String> SECRETS_BINARY = ArchaiusUtil.getStringProperty("secrets.api.service.executable");
+    private static final ConfigProperty<Boolean> LAUNCH_SECRETS = ArchaiusUtil.getBooleanProperty("secrets.api.execute");
+    private static final ConfigProperty<String> SECRETS_PATH = ArchaiusUtil.getStringProperty("secrets.api.local.key.path");
 
     @Inject
     JsonMapper jsonMapper;

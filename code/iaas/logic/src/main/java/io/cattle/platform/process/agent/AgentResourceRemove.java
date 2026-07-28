@@ -15,7 +15,7 @@ import io.cattle.platform.process.common.util.ProcessUtils;
 
 import java.util.ArrayList;
 import java.util.List;
-import javax.inject.Named;
+import jakarta.inject.Named;
 
 @Named
 public class AgentResourceRemove extends AbstractObjectProcessLogic implements ProcessPostListener {

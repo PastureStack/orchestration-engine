@@ -9,12 +9,10 @@ import org.apache.commons.lang3.StringUtils;
 
 public class ProxyUtils {
 
-    @SuppressWarnings("unchecked")
     public static <T> T proxy(final Map<String, Object> map, Class<T> typeClz) {
         final Object obj = new Object();
 
-        return (T)Proxy.newProxyInstance(typeClz.getClassLoader(), new Class<?>[] { typeClz }, new InvocationHandler() {
-            @SuppressWarnings("rawtypes")
+        return typeClz.cast(Proxy.newProxyInstance(typeClz.getClassLoader(), new Class<?>[] { typeClz }, new InvocationHandler() {
             @Override
             public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
                 if (method.getDeclaringClass() == Object.class) {
@@ -28,7 +26,7 @@ public class ProxyUtils {
                         return ((Long)val).intValue();
                     }
                     if (val instanceof String && method.getReturnType().isEnum()) {
-                        return Enum.valueOf((Class<? extends Enum>)method.getReturnType(), val.toString());
+                        return enumValue(method.getReturnType(), val.toString());
                     }
                     return val;
                 }
@@ -40,6 +38,20 @@ public class ProxyUtils {
 
                 return null;
             }
-        });
+        }));
+    }
+
+    private static Object enumValue(Class<?> enumType, String name) {
+        Object[] constants = enumType.getEnumConstants();
+        if (constants != null) {
+            for (Object constant : constants) {
+                Enum<?> enumConstant = (Enum<?>)constant;
+                if (enumConstant.name().equals(name)) {
+                    return enumConstant;
+                }
+            }
+        }
+
+        throw new IllegalArgumentException("No enum constant " + enumType.getName() + "." + name);
     }
 }

@@ -12,10 +12,10 @@ import io.github.ibuildthecloud.gdapi.util.TypeUtils;
 import java.beans.PropertyDescriptor;
 import java.lang.reflect.Method;
 
-import javax.persistence.Column;
-import javax.persistence.Entity;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
 
-import org.apache.commons.beanutils.PropertyUtils;
+import org.apache.commons.beanutils2.PropertyUtils;
 
 public class JpaWritablePostProcessor extends AbstractSchemaPostProcessor implements SchemaPostProcessor {
 

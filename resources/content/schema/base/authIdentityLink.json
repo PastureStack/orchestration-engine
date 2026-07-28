@@ -1,0 +1,47 @@
+{
+    "collectionMethods": [ "GET" ],
+    "resourceMethods": [ "GET" ],
+    "collectionFilters": {
+        "accountId": {
+            "modifiers": [ "eq" ]
+        }
+    },
+    "resourceFields": {
+        "accountId": {
+            "type": "reference[account]",
+            "nullable": false
+        },
+        "provider": {
+            "type": "string",
+            "nullable": false
+        },
+        "externalIdType": {
+            "type": "string",
+            "nullable": false
+        },
+        "externalId": {
+            "type": "string",
+            "nullable": false
+        },
+        "name": {
+            "type": "string",
+            "nullable": true
+        },
+        "login": {
+            "type": "string",
+            "nullable": true
+        },
+        "linkedAt": {
+            "type": "date",
+            "nullable": true
+        },
+        "lastLoginAt": {
+            "type": "date",
+            "nullable": true
+        },
+        "state": {
+            "type": "string",
+            "nullable": false
+        }
+    }
+}

@@ -47,7 +47,7 @@ def collect_events(client, array):
 
 
 def events_by_type(collected, type):
-    return filter(lambda x: x.resourceType == type, collected)
+    return [x for x in collected if x.resourceType == type]
 
 
 @pytest.mark.skipif('True')

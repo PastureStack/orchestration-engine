@@ -18,8 +18,8 @@
  */
 package org.apache.cloudstack.managed.threadlocal;
 
-import java.util.HashMap;
-import java.util.Map;
+import java.util.HashSet;
+import java.util.Set;
 
 import org.apache.cloudstack.managed.context.ManagedContextUtils;
 import org.slf4j.Logger;
@@ -27,45 +27,52 @@ import org.slf4j.LoggerFactory;
 
 public class ManagedThreadLocal<T> extends ThreadLocal<T> {
 
-    private static final ThreadLocal<Map<Object, Object>> MANAGED_THREAD_LOCAL = new ThreadLocal<Map<Object, Object>>() {
+    private static final ThreadLocal<Set<ManagedThreadLocal<?>>> MANAGED_THREAD_LOCALS = new ThreadLocal<Set<ManagedThreadLocal<?>>>() {
         @Override
-        protected Map<Object, Object> initialValue() {
-            return new HashMap<Object, Object>();
+        protected Set<ManagedThreadLocal<?>> initialValue() {
+            return new HashSet<ManagedThreadLocal<?>>();
         }
     };
 
     private static boolean VALIDATE_CONTEXT = false;
     private static final Logger log = LoggerFactory.getLogger(ManagedThreadLocal.class);
+    private final ThreadLocal<LocalValue<T>> value = new ThreadLocal<LocalValue<T>>();
 
-    @SuppressWarnings("unchecked")
     @Override
     public T get() {
         validateInContext(this);
-        Map<Object, Object> map = MANAGED_THREAD_LOCAL.get();
-        Object result = map.get(this);
-        if (result == null) {
-            result = initialValue();
-            map.put(this, result);
+        MANAGED_THREAD_LOCALS.get().add(this);
+        LocalValue<T> result = value.get();
+        if (result == null || result.value == null) {
+            result = new LocalValue<T>(initialValue());
+            value.set(result);
         }
-        return (T) result;
+        return result.value;
     }
 
     @Override
     public void set(T value) {
         validateInContext(this);
-        Map<Object, Object> map = MANAGED_THREAD_LOCAL.get();
-        map.put(this, value);
+        MANAGED_THREAD_LOCALS.get().add(this);
+        this.value.set(new LocalValue<T>(value));
     }
 
     public static void reset() {
         validateInContext(null);
-        MANAGED_THREAD_LOCAL.remove();
+        for (ManagedThreadLocal<?> local : new HashSet<ManagedThreadLocal<?>>(MANAGED_THREAD_LOCALS.get())) {
+            local.clear();
+        }
+        MANAGED_THREAD_LOCALS.remove();
     }
 
     @Override
     public void remove() {
-        Map<Object, Object> map = MANAGED_THREAD_LOCAL.get();
-        map.remove(this);
+        clear();
+        MANAGED_THREAD_LOCALS.get().remove(this);
+    }
+
+    private void clear() {
+        value.remove();
     }
 
     private static void validateInContext(Object tl) {
@@ -77,5 +84,13 @@ public class ManagedThreadLocal<T> extends ThreadLocal<T> {
 
     public static void setValidateInContext(boolean validate) {
         VALIDATE_CONTEXT = validate;
+    }
+
+    private static class LocalValue<T> {
+        T value;
+
+        LocalValue(T value) {
+            this.value = value;
+        }
     }
 }

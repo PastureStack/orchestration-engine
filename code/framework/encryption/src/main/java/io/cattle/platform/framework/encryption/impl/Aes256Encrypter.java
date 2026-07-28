@@ -5,11 +5,13 @@ import io.cattle.platform.framework.encryption.EncryptionUtils;
 
 import java.security.Key;
 import java.security.SecureRandom;
-import javax.annotation.PostConstruct;
+
 import javax.crypto.Cipher;
 import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
-import javax.inject.Inject;
+
+import jakarta.annotation.PostConstruct;
+import jakarta.inject.Inject;
 
 import org.apache.commons.codec.binary.Hex;
 

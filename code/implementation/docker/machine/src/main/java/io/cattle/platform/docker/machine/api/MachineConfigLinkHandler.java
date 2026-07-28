@@ -17,11 +17,11 @@ import io.github.ibuildthecloud.gdapi.util.ResponseCodes;
 
 import java.io.IOException;
 
-import javax.inject.Inject;
-import javax.servlet.http.HttpServletResponse;
+import jakarta.inject.Inject;
+import jakarta.servlet.http.HttpServletResponse;
 
 import org.apache.commons.codec.binary.Base64;
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 
 public class MachineConfigLinkHandler implements LinkHandler {
 

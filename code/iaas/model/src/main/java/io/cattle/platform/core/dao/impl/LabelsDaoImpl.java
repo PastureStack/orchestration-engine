@@ -9,7 +9,7 @@ import io.cattle.platform.db.jooq.dao.impl.AbstractJooqDao;
 
 import java.util.List;
 
-import javax.inject.Named;
+import jakarta.inject.Named;
 
 @Named
 public class LabelsDaoImpl extends AbstractJooqDao implements LabelsDao {

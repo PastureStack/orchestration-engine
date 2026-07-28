@@ -18,7 +18,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import javax.inject.Named;
+import jakarta.inject.Named;
 
 @Named
 public class VolumePostRevertRestore extends AbstractObjectProcessLogic implements ProcessPostListener, Priority {

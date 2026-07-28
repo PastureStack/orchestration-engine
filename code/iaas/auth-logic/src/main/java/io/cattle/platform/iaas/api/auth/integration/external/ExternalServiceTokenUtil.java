@@ -9,6 +9,7 @@ import io.github.ibuildthecloud.gdapi.request.ApiRequest;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.apache.commons.lang3.Strings;
 import org.apache.commons.lang3.StringUtils;
 
 public class ExternalServiceTokenUtil extends AbstractTokenUtil {
@@ -56,7 +57,7 @@ public class ExternalServiceTokenUtil extends AbstractTokenUtil {
 
         for (String id : idList) {
             for (String whiteId: whitelistedValues){
-                if (StringUtils.equals(id, whiteId)){
+                if (Strings.CS.equals(id, whiteId)){
                     return true;
                 }
             }

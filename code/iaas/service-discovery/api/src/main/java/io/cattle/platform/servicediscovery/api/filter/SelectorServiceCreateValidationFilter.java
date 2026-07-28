@@ -13,8 +13,8 @@ import io.github.ibuildthecloud.gdapi.validation.ValidationErrorCodes;
 
 import java.util.Map;
 
-import javax.inject.Inject;
-import javax.inject.Named;
+import jakarta.inject.Inject;
+import jakarta.inject.Named;
 
 @Named
 public class SelectorServiceCreateValidationFilter extends AbstractDefaultResourceManagerFilter {
@@ -39,16 +39,26 @@ public class SelectorServiceCreateValidationFilter extends AbstractDefaultResour
         return super.create(type, request, next);
     }
 
-    @SuppressWarnings("unchecked")
     protected void validateSelectorOnlyService(ApiRequest request, Service service) {
         Map<String, Object> data = CollectionUtils.toMap(request.getRequestObject());
-        Map<String, Object> primaryLaunchConfig = (Map<String, Object>)data.get(ServiceConstants.FIELD_LAUNCH_CONFIG);
+        Map<?, ?> primaryLaunchConfig = launchConfig(data.get(ServiceConstants.FIELD_LAUNCH_CONFIG));
         Object selector = data.get(ServiceConstants.FIELD_SELECTOR_CONTAINER);
         boolean isSelector = selector != null && !selector.toString().isEmpty();
-        validateImage(primaryLaunchConfig, isSelector);
+        validateImageData(primaryLaunchConfig, isSelector);
     }
 
     protected void validateImage(Map<String, Object> primaryLaunchConfig, boolean isSelector) {
+        validateImageData(primaryLaunchConfig, isSelector);
+    }
+
+    static Map<?, ?> launchConfig(Object primaryLaunchConfig) {
+        if (primaryLaunchConfig == null) {
+            return null;
+        }
+        return Map.class.cast(primaryLaunchConfig);
+    }
+
+    static void validateImageData(Map<?, ?> primaryLaunchConfig, boolean isSelector) {
         if (!isSelector && primaryLaunchConfig != null) {
             Object image = primaryLaunchConfig.get(InstanceConstants.FIELD_IMAGE_UUID);
             if (image == null || image.toString().equalsIgnoreCase(ServiceConstants.IMAGE_NONE)) {

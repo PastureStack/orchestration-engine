@@ -34,9 +34,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import javax.inject.Inject;
-import javax.inject.Named;
+import jakarta.inject.Inject;
+import jakarta.inject.Named;
 
+import org.apache.commons.lang3.Strings;
 import org.apache.commons.lang3.StringUtils;
 
 @Named
@@ -113,7 +114,7 @@ public class InstanceRemove extends AbstractDefaultProcessHandler {
             }
 
             if (VOLUME_CLEANUP_STRATEGY_UNNAMED.equals(volumeBehavior) &&
-                    ((StringUtils.length(v.getName()) != 64 || !StringUtils.isAlphanumeric(v.getName()))) && !StringUtils.startsWith(v.getName(), "/")) {
+                    ((StringUtils.length(v.getName()) != 64 || !StringUtils.isAlphanumeric(v.getName()))) && !Strings.CS.startsWith(v.getName(), "/")) {
                 continue;
             }
             if (CommonStatesConstants.ACTIVE.equals(v.getState()) || CommonStatesConstants.ACTIVATING.equals(v.getState())) {

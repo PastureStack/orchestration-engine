@@ -13,12 +13,14 @@ import io.github.ibuildthecloud.gdapi.model.ListOptions;
 import io.github.ibuildthecloud.gdapi.request.ApiRequest;
 import io.github.ibuildthecloud.gdapi.request.resource.impl.AbstractNoOpResourceManager;
 
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 
-import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.Strings;
 
 public class OpenLDAPConfigManager extends AbstractNoOpResourceManager {
 
@@ -39,7 +41,7 @@ public class OpenLDAPConfigManager extends AbstractNoOpResourceManager {
 
     @Override
     protected Object createInternal(String type, ApiRequest request) {
-        if (!StringUtils.equals(OpenLDAPConstants.CONFIG, request.getType())) {
+        if (!Strings.CS.equals(OpenLDAPConstants.CONFIG, request.getType())) {
             return null;
         }
         LDAPConstants config = request.proxyRequestObject(LDAPConstants.class);
@@ -48,7 +50,6 @@ public class OpenLDAPConfigManager extends AbstractNoOpResourceManager {
         return updateCurrentConfig(configMap);
     }
 
-    @SuppressWarnings("unchecked")
     private OpenLDAPConfig currentLdapConfig(Map<String, Object> config) {
         OpenLDAPConfig currentConfig = (OpenLDAPConfig) listInternal(null, null, null, null);
         String domain = currentConfig.getDomain();
@@ -149,7 +150,7 @@ public class OpenLDAPConfigManager extends AbstractNoOpResourceManager {
         String accessModeInConfig = (String)config.get(AbstractTokenUtil.ACCESSMODE);
         if (config.get(OpenLDAPConstants.CONFIG_ALLOWED_IDENTITIES) != null && accessModeInConfig != null
                 && (AbstractTokenUtil.isRestrictedAccess(accessModeInConfig) || AbstractTokenUtil.isRequiredAccess(accessModeInConfig))) {
-            identities = openLDAPIdentityProvider.getIdentities((List<Map<String, String>>) config.get(OpenLDAPConstants.CONFIG_ALLOWED_IDENTITIES));
+            identities = openLDAPIdentityProvider.getIdentities(identityMapList(config.get(OpenLDAPConstants.CONFIG_ALLOWED_IDENTITIES)));
         }
 
         return new OpenLDAPConfig(server, port, userEnabledMaskBit, loginDomain, domain, groupSearchDomain, enabled, accessMode,
@@ -227,14 +228,31 @@ public class OpenLDAPConfigManager extends AbstractNoOpResourceManager {
         String accessModeInConfig = (String)config.get(AbstractTokenUtil.ACCESSMODE);
         if (AbstractTokenUtil.isRestrictedAccess(accessModeInConfig) || AbstractTokenUtil.isRequiredAccess(accessModeInConfig)) {
             //validate the allowedIdentities
-            @SuppressWarnings("unchecked")
-            String ids = openLDAPIdentityProvider.validateIdentities((List<Map<String, String>>) config.get(OpenLDAPConstants.CONFIG_ALLOWED_IDENTITIES));
+            String ids = openLDAPIdentityProvider.validateIdentities(identityMapList(config.get(OpenLDAPConstants.CONFIG_ALLOWED_IDENTITIES)));
             settingsUtils.changeSetting(OpenLDAPConstants.ALLOWED_IDENTITIES_SETTING, ids);
         } else if (AbstractTokenUtil.isUnrestrictedAccess(accessModeInConfig)) {
             //clear out the allowedIdentities Set
             settingsUtils.changeSetting(OpenLDAPConstants.ALLOWED_IDENTITIES_SETTING, null);
         }
         return currentLdapConfig(config);
+    }
+
+    static List<Map<String, String>> identityMapList(Object value) {
+        if (value == null) {
+            return null;
+        }
+
+        List<?> values = List.class.cast(value);
+        List<Map<String, String>> result = new ArrayList<>(values.size());
+        for (Object item : values) {
+            Map<?, ?> map = Map.class.cast(item);
+            Map<String, String> typed = new LinkedHashMap<String, String>();
+            for (Map.Entry<?, ?> entry : map.entrySet()) {
+                typed.put(String.class.cast(entry.getKey()), String.class.cast(entry.getValue()));
+            }
+            result.add(typed);
+        }
+        return result;
     }
 
     public String getName() {

@@ -1,6 +1,7 @@
 package io.cattle.platform.engine.server.impl;
 
 import io.cattle.platform.archaius.util.ArchaiusUtil;
+import io.cattle.platform.archaius.util.ConfigProperty;
 import io.cattle.platform.async.utils.TimeoutException;
 import io.cattle.platform.engine.manager.ProcessManager;
 import io.cattle.platform.engine.manager.ProcessNotFoundException;
@@ -22,12 +23,13 @@ import io.cattle.platform.util.exception.LoggableException;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.RejectedExecutionException;
 
-import javax.annotation.PostConstruct;
-import javax.inject.Inject;
-import javax.inject.Named;
+import jakarta.annotation.PostConstruct;
+import jakarta.inject.Inject;
+import jakarta.inject.Named;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -43,6 +45,7 @@ public class ProcessInstanceDispatcherImpl implements ProcessInstanceDispatcher,
     private static Counter NOT_FOUND = MetricsUtil.getRegistry().counter("process_execution.not_found");
     private static Counter EXCEPTION = MetricsUtil.getRegistry().counter("process_execution.unknown_exception");
     private static Counter TIMEOUT = MetricsUtil.getRegistry().counter("process_execution.timeout");
+    private static final Map<String, ConfigProperty<Boolean>> PROCESS_FLAGS = new ConcurrentHashMap<String, ConfigProperty<Boolean>>();
 
     @Inject @Named("ProcessEventExecutorService")
     ExecutorService eventExecutor;
@@ -99,17 +102,29 @@ public class ProcessInstanceDispatcherImpl implements ProcessInstanceDispatcher,
     }
 
     protected boolean isBlockingExtra(ProcessInstanceReference ref) {
-        if (ArchaiusUtil.getBoolean("process." + ref.getName().split("[.]")[0] + ".blockingextra").get()) {
+        if (processFlag("process." + ref.getName().split("[.]")[0] + ".blockingextra").get()) {
             return true;
         }
-        return ArchaiusUtil.getBoolean("process." + ref.getName() + ".blockingextra").get();
+        return processFlag("process." + ref.getName() + ".blockingextra").get();
     }
 
     protected boolean isBlocking(ProcessInstanceReference ref) {
-        if (ArchaiusUtil.getBoolean("process." + ref.getName().split("[.]")[0] + ".blocking").get()) {
+        if (processFlag("process." + ref.getName().split("[.]")[0] + ".blocking").get()) {
             return true;
         }
-        return ArchaiusUtil.getBoolean("process." + ref.getName() + ".blocking").get();
+        return processFlag("process." + ref.getName() + ".blocking").get();
+    }
+
+    protected ConfigProperty<Boolean> processFlag(String key) {
+        ConfigProperty<Boolean> property = PROCESS_FLAGS.get(key);
+        if (property == null) {
+            property = ArchaiusUtil.getBooleanProperty(key);
+            ConfigProperty<Boolean> existing = PROCESS_FLAGS.putIfAbsent(key, property);
+            if (existing != null) {
+                property = existing;
+            }
+        }
+        return property;
     }
 
     @Override

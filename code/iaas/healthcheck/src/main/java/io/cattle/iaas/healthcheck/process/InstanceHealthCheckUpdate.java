@@ -11,7 +11,7 @@ import io.cattle.platform.process.common.handler.AbstractObjectProcessLogic;
 
 import java.util.Date;
 
-import javax.inject.Named;
+import jakarta.inject.Named;
 
 @Named
 public class InstanceHealthCheckUpdate extends AbstractObjectProcessLogic implements ProcessPostListener {

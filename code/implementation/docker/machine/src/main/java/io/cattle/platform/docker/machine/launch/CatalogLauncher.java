@@ -1,13 +1,10 @@
 package io.cattle.platform.docker.machine.launch;
 
-import io.cattle.platform.archaius.util.ArchaiusUtil;
+import io.cattle.platform.archaius.util.ConfigProperty;
 import io.cattle.platform.core.constants.ProjectConstants;
 import io.cattle.platform.core.model.Credential;
-import io.cattle.platform.iaas.api.manager.HaConfigManager;
 import io.cattle.platform.json.JsonMapper;
 import io.cattle.platform.lock.definition.LockDefinition;
-import io.cattle.platform.server.context.ServerContext;
-import io.cattle.platform.server.context.ServerContext.BaseProtocol;
 import io.cattle.platform.service.launcher.GenericServiceLauncher;
 import io.cattle.platform.util.type.InitializationTask;
 
@@ -19,27 +16,21 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 
 import org.apache.commons.lang3.StringUtils;
-import org.apache.http.client.fluent.Request;
-
-import com.netflix.config.DynamicBooleanProperty;
-import com.netflix.config.DynamicStringProperty;
 
 public class CatalogLauncher extends GenericServiceLauncher implements InitializationTask {
 
-    private static final DynamicStringProperty CATALOG_URL = ArchaiusUtil.getString("catalog.url");
-    private static final DynamicStringProperty CATALOG_REFRESH_INTERVAL = ArchaiusUtil.getString("catalog.refresh.interval.seconds");
-    private static final DynamicStringProperty CATALOG_BINARY = ArchaiusUtil.getString("catalog.service.executable");
-    private static final DynamicStringProperty DB_PARAMS = ArchaiusUtil.getString("db.cattle.go.params");
-    private static final DynamicBooleanProperty LAUNCH_CATALOG = ArchaiusUtil.getBoolean("catalog.execute");
-    private static final DynamicStringProperty RANCHER_SERVER_VERSION = ArchaiusUtil.getString("rancher.server.version");
+    private static final CatalogLauncherSettings DEFAULT_SETTINGS = ArchaiusCatalogLauncherSettings.create();
+    private CatalogLauncherSettings settings;
 
     public static class CatalogEntry {
         String url;
         String branch;
+        String pinnedCommit;
 
         public String getUrl() {
             return url;
@@ -55,6 +46,14 @@ public class CatalogLauncher extends GenericServiceLauncher implements Initializ
 
         public void setBranch(String branch) {
             this.branch = branch;
+        }
+
+        public String getPinnedCommit() {
+            return pinnedCommit;
+        }
+
+        public void setPinnedCommit(String pinnedCommit) {
+            this.pinnedCommit = pinnedCommit;
         }
 
         public CatalogEntry() {
@@ -80,22 +79,34 @@ public class CatalogLauncher extends GenericServiceLauncher implements Initializ
     @Inject
     JsonMapper jsonMapper;
 
+    public CatalogLauncher() {
+        this(DEFAULT_SETTINGS);
+    }
+
+    CatalogLauncher(CatalogLauncherSettings settings) {
+        this.settings = Objects.requireNonNull(settings, "settings");
+    }
+
+    public void setSettings(CatalogLauncherSettings settings) {
+        this.settings = Objects.requireNonNull(settings, "settings");
+    }
+
     @Override
     protected boolean shouldRun() {
-        return LAUNCH_CATALOG.get();
+        return settings.launchCatalog();
     }
 
     @Override
     protected String binaryPath() {
-        return CATALOG_BINARY.get();
+        return settings.catalogExecutable();
     }
 
     @Override
-    protected List<DynamicStringProperty> getReloadSettings() {
-        List<DynamicStringProperty> list = new ArrayList<>();
-        list.add(CATALOG_URL);
-        list.add(CATALOG_REFRESH_INTERVAL);
-        list.add(RANCHER_SERVER_VERSION);
+    protected List<ConfigProperty<String>> getReloadSettings() {
+        List<ConfigProperty<String>> list = new ArrayList<>();
+        list.add(settings.catalogUrlProperty());
+        list.add(settings.catalogRefreshIntervalProperty());
+        list.add(settings.rancherServerVersionProperty());
         return list;
     }
 
@@ -106,7 +117,10 @@ public class CatalogLauncher extends GenericServiceLauncher implements Initializ
         prepareConfigFile();
         args.add("repo.json");
         args.add("--refresh-interval");
-        args.add(CATALOG_REFRESH_INTERVAL.get());
+        args.add(settings.catalogRefreshIntervalSeconds());
+        if (usesSqliteCatalogStore()) {
+            args.add("--sqlite");
+        }
     }
 
     protected void prepareConfigFile() throws IOException {
@@ -118,7 +132,11 @@ public class CatalogLauncher extends GenericServiceLauncher implements Initializ
     }
 
     public static void prepareConfigFile(OutputStream fos, JsonMapper jsonMapper) throws IOException {
-        String catUrl = CATALOG_URL.get();
+        prepareConfigFile(fos, jsonMapper, DEFAULT_SETTINGS);
+    }
+
+    static void prepareConfigFile(OutputStream fos, JsonMapper jsonMapper, CatalogLauncherSettings settings) throws IOException {
+        String catUrl = settings.catalogUrl();
         ConfigFileFields configCatalogEntries = new ConfigFileFields();
         if (catUrl.startsWith("{")) {
             configCatalogEntries = jsonMapper.readValue(catUrl, ConfigFileFields.class);
@@ -126,21 +144,41 @@ public class CatalogLauncher extends GenericServiceLauncher implements Initializ
             String[] catalogs = catUrl.split(",");
             Map<String, CatalogEntry> catalogEntryMap = new HashMap<>();
             for (String catalog : catalogs) {
+                catalog = catalog.trim();
+                if (StringUtils.isBlank(catalog)) {
+                    continue;
+                }
+
                 CatalogEntry entry = new CatalogEntry();
-                String[] splitted = catalog.split("=");
-                entry.setUrl(splitted[1]);
+                String[] splitted = catalog.split("=", 2);
+                String name = "library";
+                String url = catalog;
+                if (splitted.length == 2) {
+                    name = splitted[0].trim();
+                    url = splitted[1].trim();
+                }
+
+                if (StringUtils.isBlank(name) || StringUtils.isBlank(url)) {
+                    continue;
+                }
+
+                entry.setUrl(url);
                 entry.setBranch("master");
-                catalogEntryMap.put(splitted[0], entry);
+                catalogEntryMap.put(name, entry);
             }
             configCatalogEntries.setCatalogs(catalogEntryMap);
         }
 
-        setReleaseBranch(configCatalogEntries);
+        setReleaseBranch(configCatalogEntries, settings);
         jsonMapper.writeValue(fos, configCatalogEntries);
     }
 
     protected static void setReleaseBranch(ConfigFileFields fields) {
-        String branch = RANCHER_SERVER_VERSION.get();
+        setReleaseBranch(fields, DEFAULT_SETTINGS);
+    }
+
+    static void setReleaseBranch(ConfigFileFields fields, CatalogLauncherSettings settings) {
+        String branch = settings.rancherServerVersion();
         if (StringUtils.isBlank(branch)) {
             branch = "master";
         } else {
@@ -159,16 +197,21 @@ public class CatalogLauncher extends GenericServiceLauncher implements Initializ
 
     @Override
     protected void setEnvironment(Map<String, String> env) {
-        env.put("CATALOG_SERVICE_MYSQL_ADDRESS", String.format("%s:%s", HaConfigManager.DB_HOST.get(),
-                HaConfigManager.DB_PORT.get()));
-        env.put("CATALOG_SERVICE_MYSQL_DBNAME", HaConfigManager.DB_NAME.get());
-        env.put("CATALOG_SERVICE_MYSQL_USER", HaConfigManager.DB_USER.get());
-        env.put("CATALOG_SERVICE_MYSQL_PASSWORD", HaConfigManager.DB_PASS.get());
-        env.put("CATALOG_SERVICE_MYSQL_PARAMS", DB_PARAMS.get() == null ? "" : DB_PARAMS.get());
+        if (!usesSqliteCatalogStore()) {
+            env.put("CATALOG_SERVICE_MYSQL_ADDRESS", String.format("%s:%s", settings.dbHost(), settings.dbPort()));
+            env.put("CATALOG_SERVICE_MYSQL_DBNAME", settings.dbName());
+            env.put("CATALOG_SERVICE_MYSQL_USER", settings.dbUser());
+            env.put("CATALOG_SERVICE_MYSQL_PASSWORD", settings.dbPassword());
+            env.put("CATALOG_SERVICE_MYSQL_PARAMS", settings.dbParams() == null ? "" : settings.dbParams());
+        }
         Credential cred = getCredential();
         env.put("CATALOG_SERVICE_CATTLE_ACCESS_KEY", cred.getPublicValue());
         env.put("CATALOG_SERVICE_CATTLE_SECRET_KEY", cred.getSecretValue());
-        env.put("CATALOG_SERVICE_CATTLE_URL", ServerContext.getLocalhostUrl(BaseProtocol.HTTP));
+        env.put("CATALOG_SERVICE_CATTLE_URL", LocalCattleApi.url());
+    }
+
+    protected boolean usesSqliteCatalogStore() {
+        return !"mysql".equalsIgnoreCase(settings.dbType());
     }
 
     @Override
@@ -178,7 +221,7 @@ public class CatalogLauncher extends GenericServiceLauncher implements Initializ
 
     @Override
     protected boolean isReady() {
-        return true;
+        return LocalCattleApi.isReady();
     }
 
     @Override
@@ -189,8 +232,8 @@ public class CatalogLauncher extends GenericServiceLauncher implements Initializ
 
         try {
             prepareConfigFile();
-            Request.Post("http://localhost:8088/v1-catalog/templates?action=refresh")
-                .addHeader(ProjectConstants.PROJECT_HEADER, "global").execute();
+            LocalReloadRequest.post("http://localhost:8088/v1-catalog/templates?action=refresh",
+                    ProjectConstants.PROJECT_HEADER, "global");
         } catch (IOException e) {
             throw new RuntimeException(e);
         }

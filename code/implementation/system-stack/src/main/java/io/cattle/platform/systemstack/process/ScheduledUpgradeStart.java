@@ -18,8 +18,8 @@ import io.cattle.platform.systemstack.service.UpgradeManager;
 import java.io.IOException;
 import java.util.Date;
 
-import javax.inject.Inject;
-import javax.inject.Named;
+import jakarta.inject.Inject;
+import jakarta.inject.Named;
 
 import org.apache.commons.lang3.StringUtils;
 

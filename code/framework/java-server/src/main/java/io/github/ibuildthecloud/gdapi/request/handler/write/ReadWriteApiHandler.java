@@ -7,7 +7,7 @@ import io.github.ibuildthecloud.gdapi.util.RequestUtils;
 
 import java.io.IOException;
 
-import javax.servlet.ServletException;
+import jakarta.servlet.ServletException;
 
 public class ReadWriteApiHandler extends AbstractApiRequestHandler implements ApiRequestHandler {
 
