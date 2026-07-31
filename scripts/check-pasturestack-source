@@ -28,7 +28,7 @@ if grep -RIn --include='pom.xml' --exclude-dir=target --exclude-dir=.git \
     fail snapshot_project_version
 fi
 
-require_line code/meta-parent/pom.xml '    <version>0.183.272</version>'
+require_line code/meta-parent/pom.xml '    <version>0.183.273</version>'
 require_line code/meta-parent/pom.xml '    <url>https://github.com/PastureStack/orchestration-engine</url>'
 require_line Dockerfile 'FROM ubuntu:26.04'
 require_line Dockerfile.dapper 'FROM ubuntu:26.04'
@@ -166,4 +166,4 @@ fi
 require_line README.md 'PastureStack is an independent community effort to preserve, audit, and modernize the Rancher 1.6 ecosystem. It is not affiliated with or endorsed by Rancher Labs or SUSE.'
 require_line ORIGIN.md '- Preserved upstream boundary: `82d154a53f4089fecfb9f320caad826bb4f6055f`'
 
-printf 'PASTURESTACK_SOURCE_GATE_OK version=0.183.272 runtime_sources=github_release images=ghcr_digest_pinned ubuntu=26.04 maven=3.9.14 patched_hazelcast=5.7.0-pasturestack.2 docker=29.6.2 credential_secret_capacity=mediumtext\n'
+printf 'PASTURESTACK_SOURCE_GATE_OK version=0.183.273 runtime_sources=github_release images=ghcr_digest_pinned ubuntu=26.04 maven=3.9.14 patched_hazelcast=5.7.0-pasturestack.2 docker=29.6.2 credential_secret_capacity=mediumtext\n'

@@ -1298,8 +1298,8 @@ from pathlib import Path
 import os
 
 NS = {"m": "http://maven.apache.org/POM/4.0.0"}
-SPRING_FLOOR = (6, 2, 18)
-SPRING_FLOOR_TEXT = "6.2.18"
+SPRING_FLOOR = (6, 2, 19)
+SPRING_FLOOR_TEXT = "6.2.19"
 SPRING_LINE = (6, 2)
 SPRING7_EVALUATION_FLOOR = (7, 0, 7)
 SPRING7_EVALUATION_FLOOR_TEXT = "7.0.7"
@@ -1415,7 +1415,7 @@ sys.exit(0)
 PY
 )
 if [ -n "$runtime_framework_floor_versions" ]; then
-    echo "Blocked Spring/Jetty runtime version outside reviewed stable JDK25 lines found in Maven POMs; keep Spring on stable 6.2.x at 6.2.18+ by default, use RC16_ALLOW_SPRING7_EVALUATION=1 only for the reviewed Spring 7.0.x evaluation line at 7.0.7+, and keep Jetty on stable 12.1.x at 12.1.10+" >&2
+    echo "Blocked Spring/Jetty runtime version outside reviewed stable JDK25 lines found in Maven POMs; keep Spring on stable 6.2.x at 6.2.19+ by default, use RC16_ALLOW_SPRING7_EVALUATION=1 only for the reviewed Spring 7.0.x evaluation line at 7.0.7+, and keep Jetty on stable 12.1.x at 12.1.10+" >&2
     echo "$runtime_framework_floor_versions" >&2
     fail=1
 fi
@@ -4653,7 +4653,7 @@ import sys
 from pathlib import Path
 import os
 
-SPRING_FLOOR = (6, 2, 18)
+SPRING_FLOOR = (6, 2, 19)
 SPRING_LINE = (6, 2)
 SPRING7_EVALUATION_FLOOR = (7, 0, 7)
 SPRING7_EVALUATION_LINE = (7, 0)
@@ -4701,7 +4701,7 @@ if root.exists():
             elif spring_version[:len(SPRING_LINE)] != SPRING_LINE:
                 failures.append(f"{path}: Spring jar is outside the reviewed 6.2.x compatibility line")
             elif spring_version < SPRING_FLOOR:
-                failures.append(f"{path}: Spring jar < 6.2.18")
+                failures.append(f"{path}: Spring jar < 6.2.19")
             elif UNREVIEWED_QUALIFIER.search(qualifier):
                 failures.append(f"{path}: Spring jar uses an unreviewed qualifier")
             continue
@@ -4728,7 +4728,7 @@ sys.exit(0)
 PY
 )
 if [ -n "$runtime_framework_floor_jars" ]; then
-    echo "Blocked Spring/Jetty runtime jar outside reviewed stable JDK25 lines packaged in app; keep Spring on stable 6.2.x at 6.2.18+ by default, use RC16_ALLOW_SPRING7_EVALUATION=1 only for the reviewed Spring 7.0.x evaluation line at 7.0.7+, and keep Jetty on stable 12.1.x at 12.1.10+" >&2
+    echo "Blocked Spring/Jetty runtime jar outside reviewed stable JDK25 lines packaged in app; keep Spring on stable 6.2.x at 6.2.19+ by default, use RC16_ALLOW_SPRING7_EVALUATION=1 only for the reviewed Spring 7.0.x evaluation line at 7.0.7+, and keep Jetty on stable 12.1.x at 12.1.10+" >&2
     echo "$runtime_framework_floor_jars" >&2
     fail=1
 fi
@@ -6910,7 +6910,7 @@ echo "- MariaDB Connector/J, PostgreSQL JDBC, H2, and HSQLDB drivers stay runtim
 echo "Resolved in the Guava compatibility slice:"
 echo "- Legacy Google Collections, guava-jdk5, and Guava 31-and-older dependencies and packaged jars are blocked; Guava stays on the reviewed stable 33.x JRE line at 33.6.0-jre+."
 echo "Resolved in the runtime framework compatibility slice:"
-echo "- Spring stays on the reviewed stable 6.2.x JDK25/Jakarta runtime line at 6.2.18+ by default; Spring 7 evaluation requires RC16_ALLOW_SPRING7_EVALUATION=1 and is limited to reviewed stable 7.0.x at 7.0.7+."
+echo "- Spring stays on the reviewed stable 6.2.x JDK25/Jakarta runtime line at 6.2.19+ by default; Spring 7 evaluation requires RC16_ALLOW_SPRING7_EVALUATION=1 and is limited to reviewed stable 7.0.x at 7.0.7+."
 echo "- Jetty stays on the reviewed stable 12.1.x EE10 runtime line at 12.1.10+; unreviewed qualifiers and line jumps require explicit compatibility review."
 echo "Resolved in the URL charset compatibility slice:"
 echo "- URL encoder/decoder call sites use StandardCharsets.UTF_8 instead of legacy string charset overloads."

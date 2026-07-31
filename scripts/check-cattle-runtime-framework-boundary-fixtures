@@ -38,12 +38,21 @@ XML
 }
 
 positive_spring6="$workdir/positive-spring6"
-write_pom "$positive_spring6/pom.xml" "6.2.18"
+write_pom "$positive_spring6/pom.xml" "6.2.19"
 mkdir -p "$positive_spring6/code/packaging/app/target/app/WEB-INF/lib"
-: >"$positive_spring6/code/packaging/app/target/app/WEB-INF/lib/spring-core-6.2.18.jar"
+: >"$positive_spring6/code/packaging/app/target/app/WEB-INF/lib/spring-core-6.2.19.jar"
 : >"$positive_spring6/code/packaging/app/target/app/WEB-INF/lib/jetty-server-12.1.10.jar"
 RC16_CATTLE_SOURCE_ROOT="$positive_spring6" scripts/check-cattle-runtime-framework-boundary >"$workdir/positive-spring6.out"
 grep -Fq 'CATTLE_RUNTIME_FRAMEWORK_BOUNDARY_OK spring7_evaluation=0' "$workdir/positive-spring6.out"
+
+spring618="$workdir/spring-6.2.18"
+write_pom "$spring618/pom.xml" "6.2.18"
+if RC16_CATTLE_SOURCE_ROOT="$spring618" scripts/check-cattle-runtime-framework-boundary >"$workdir/spring-6.2.18.out" 2>&1; then
+    echo "expected vulnerable Spring 6.2.18 fixture to fail" >&2
+    cat "$workdir/spring-6.2.18.out" >&2
+    exit 1
+fi
+grep -Fq 'spring.version=6.2.18 < 6.2.19' "$workdir/spring-6.2.18.out"
 
 spring7_default="$workdir/spring7-default"
 write_pom "$spring7_default/pom.xml" "7.0.7"

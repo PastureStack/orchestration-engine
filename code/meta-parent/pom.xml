@@ -9,7 +9,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>io.cattle</groupId>
     <artifactId>cattle-meta-parent</artifactId>
-    <version>0.183.272</version>
+    <version>0.183.273</version>
     <packaging>pom</packaging>
     <name>PastureStack Orchestration Engine</name>
     <description>Compatibility orchestration engine for the PastureStack server.</description>
@@ -45,7 +45,7 @@
         <jooq.version>3.21.5</jooq.version>
         <jackson.version>2.22.1</jackson.version>
         <jackson.annotations.version>2.22</jackson.annotations.version>
-        <spring.version>6.2.18</spring.version>
+        <spring.version>6.2.19</spring.version>
         <metrics.version>4.2.39</metrics.version>
         <hazelcast.version>5.7.0-pasturestack.2</hazelcast.version>
         <javassist.version>3.31.0-GA</javassist.version>

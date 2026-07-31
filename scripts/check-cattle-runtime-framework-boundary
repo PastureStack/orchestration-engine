@@ -28,7 +28,7 @@ from pathlib import Path
 
 ROOT = Path(os.environ.get("RC16_CATTLE_SOURCE_ROOT", "."))
 NS = {"m": "http://maven.apache.org/POM/4.0.0"}
-SPRING_FLOOR = (6, 2, 18)
+SPRING_FLOOR = (6, 2, 19)
 SPRING_LINE = (6, 2)
 SPRING7_EVALUATION_FLOOR = (7, 0, 7)
 SPRING7_EVALUATION_LINE = (7, 0)
@@ -75,7 +75,7 @@ def spring_failure(label, version):
     if parsed[:len(SPRING_LINE)] != SPRING_LINE:
         return f"{label}={version} is outside the reviewed Spring 6.2.x compatibility line"
     if parsed < SPRING_FLOOR:
-        return f"{label}={version} < 6.2.18"
+        return f"{label}={version} < 6.2.19"
     if UNREVIEWED_QUALIFIER.search(version):
         return f"{label}={version} uses an unreviewed qualifier"
     return None
@@ -124,7 +124,7 @@ def spring_jar_failure(path, version, qualifier):
     if version[:len(SPRING_LINE)] != SPRING_LINE:
         return f"{path}: Spring jar is outside the reviewed 6.2.x compatibility line"
     if version < SPRING_FLOOR:
-        return f"{path}: Spring jar < 6.2.18"
+        return f"{path}: Spring jar < 6.2.19"
     if UNREVIEWED_QUALIFIER.search(qualifier):
         return f"{path}: Spring jar uses an unreviewed qualifier"
     return None
