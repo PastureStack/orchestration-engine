@@ -1,6 +1,7 @@
 package io.cattle.platform.resources;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 import java.nio.charset.StandardCharsets;
@@ -19,8 +20,12 @@ public class CredentialSecretCapacityMigrationTest {
 
         String migration = read("content", "db", "core-125.xml");
         assertTrue(migration.contains(
-                "<changeSet author=\"PastureStack\" "
+                "<changeSet author=\"PastureStack\" dbms=\"mysql,mariadb,postgresql\" "
                         + "id=\"pasturestack-credential-secret-value-mediumtext\">"));
+        assertTrue(migration.contains(
+                "<validCheckSum>9:b637c459df9bda3afe28733bd3f6fb3f</validCheckSum>"));
+        assertFalse(migration.contains(
+                "<property name=\"mediumtext\" value=\"varchar\" dbms=\"H2\" />"));
         assertTrue(migration.contains("<preConditions onFail=\"HALT\">"));
         assertTrue(migration.contains("<tableExists tableName=\"credential\"/>"));
         assertTrue(migration.contains(

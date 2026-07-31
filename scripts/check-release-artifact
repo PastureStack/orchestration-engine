@@ -100,6 +100,10 @@ unzip -p "$workdir/$resources_entry" schema/base/mfaSettings.json |
 unzip -p "$workdir/$resources_entry" db/changelog.xml |
     grep -F '<include file="db/core-125.xml"/>' >/dev/null
 unzip -p "$workdir/$resources_entry" db/core-125.xml |
+    grep -F '<changeSet author="PastureStack" dbms="mysql,mariadb,postgresql" id="pasturestack-credential-secret-value-mediumtext">' >/dev/null
+unzip -p "$workdir/$resources_entry" db/core-125.xml |
+    grep -F '<validCheckSum>9:b637c459df9bda3afe28733bd3f6fb3f</validCheckSum>' >/dev/null
+unzip -p "$workdir/$resources_entry" db/core-125.xml |
     grep -F '<modifyDataType tableName="credential" columnName="secret_value" newDataType="${mediumtext}"/>' >/dev/null
 unzip -p "$workdir/$resources_entry" db/mysql/mysql-dump.sql |
     grep -F '`secret_value` mediumtext,' >/dev/null

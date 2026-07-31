@@ -92,6 +92,8 @@ require_line resources/content/schema/base/mfaStatus.json '        "recoveryEmai
 require_line scripts/check-release-artifact '    grep -aF MfaAccountHolderRequired >/dev/null'
 require_line scripts/check-release-artifact '    grep -F '"'"'"recoveryEmailEnrollmentAvailable"'"'"' >/dev/null'
 require_line resources/content/db/changelog.xml '    <include file="db/core-125.xml"/>'
+require_line resources/content/db/core-125.xml '    <changeSet author="PastureStack" dbms="mysql,mariadb,postgresql" id="pasturestack-credential-secret-value-mediumtext">'
+require_line resources/content/db/core-125.xml '        <validCheckSum>9:b637c459df9bda3afe28733bd3f6fb3f</validCheckSum>'
 require_line resources/content/db/core-125.xml '        <modifyDataType tableName="credential" columnName="secret_value" newDataType="${mediumtext}"/>'
 require_line resources/content/db/mysql/tables.sh 'mediumtext secret_value'
 require_line resources/content/db/mysql/mysql-dump.sql '  `secret_value` mediumtext,'
