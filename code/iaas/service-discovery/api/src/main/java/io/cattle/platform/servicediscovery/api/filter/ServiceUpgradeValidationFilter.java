@@ -1,11 +1,15 @@
 package io.cattle.platform.servicediscovery.api.filter;
 
 import io.cattle.platform.core.addon.InServiceUpgradeStrategy;
+import io.cattle.platform.core.addon.PortPreflightInput;
 import io.cattle.platform.core.addon.ServiceUpgrade;
 import io.cattle.platform.core.addon.ServiceUpgradeStrategy;
 import io.cattle.platform.core.constants.InstanceConstants;
 import io.cattle.platform.core.constants.ServiceConstants;
 import io.cattle.platform.core.model.Service;
+import io.cattle.platform.core.model.Account;
+import io.cattle.platform.iaas.api.port.PortPreflightInputs;
+import io.cattle.platform.iaas.api.port.PortPreflightService;
 import io.cattle.platform.iaas.api.filter.common.AbstractDefaultResourceManagerFilter;
 import io.cattle.platform.json.JsonMapper;
 import io.cattle.platform.object.ObjectManager;
@@ -42,6 +46,9 @@ public class ServiceUpgradeValidationFilter extends AbstractDefaultResourceManag
 
     @Inject
     StorageService storageService;
+
+    @Inject
+    PortPreflightService portPreflightService;
 
     @Override
     public Class<?>[] getTypeClasses() {
@@ -82,6 +89,8 @@ public class ServiceUpgradeValidationFilter extends AbstractDefaultResourceManag
             InServiceUpgradeStrategy inServiceStrategy = (InServiceUpgradeStrategy) strategy;
             inServiceStrategy = finalizeUpgradeStrategy(service, inServiceStrategy);
 
+            assertUpgradePortsAvailable(service, inServiceStrategy);
+
             Object launchConfig = DataAccessor.field(service, ServiceConstants.FIELD_LAUNCH_CONFIG,
                     Object.class);
             Object newLaunchConfig = inServiceStrategy.getLaunchConfig();
@@ -100,6 +109,20 @@ public class ServiceUpgradeValidationFilter extends AbstractDefaultResourceManag
             ServiceDiscoveryUtil.upgradeServiceConfigs(service, inServiceStrategy, false);
         }
         objectManager.persist(service);
+    }
+
+    protected void assertUpgradePortsAvailable(Service service, InServiceUpgradeStrategy strategy) {
+        Integer scale = DataAccessor.fieldInteger(service, ServiceConstants.FIELD_SCALE);
+        PortPreflightInput input = PortPreflightInputs.fromService(service, strategy.getLaunchConfig(),
+                strategy.getSecondaryLaunchConfigs(), scale, strategy.getStartFirst());
+        Long batchSize = strategy.getBatchSize();
+        input.setBatchSize(Integer.valueOf((int) Math.max(1L, Math.min(Integer.MAX_VALUE,
+                batchSize == null ? 1L : batchSize.longValue()))));
+        if (input.getPorts().isEmpty()) {
+            return;
+        }
+        Account account = objectManager.loadResource(Account.class, service.getAccountId());
+        portPreflightService.assertAvailable(account, input);
     }
 
     static List<Object> objectListCopy(List<?> values) {

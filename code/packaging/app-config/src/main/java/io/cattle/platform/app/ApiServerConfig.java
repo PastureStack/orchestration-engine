@@ -74,6 +74,9 @@ import io.cattle.platform.iaas.api.credential.SshKeyPemDownloadLinkHandler;
 import io.cattle.platform.iaas.api.host.HostEvacuateActionHandler;
 import io.cattle.platform.iaas.api.host.HostTemplateLinkHandler;
 import io.cattle.platform.iaas.api.host.HostTemplateOutputFilter;
+import io.cattle.platform.iaas.api.port.PortPreflightActionHandler;
+import io.cattle.platform.iaas.api.port.PortPreflightDaoImpl;
+import io.cattle.platform.iaas.api.port.PortPreflightService;
 import io.cattle.platform.iaas.api.snapshot.SnapshotBackupActionHandler;
 import io.cattle.platform.iaas.api.volume.VolumeSnapshotActionHandler;
 import io.cattle.platform.object.meta.TypeSet;
@@ -506,6 +509,21 @@ public class ApiServerConfig {
     @Bean
     AccountDeactivateActionHandler AccountDeactivateActionHandler() {
         return new AccountDeactivateActionHandler();
+    }
+
+    @Bean
+    PortPreflightDaoImpl PortPreflightDao() {
+        return new PortPreflightDaoImpl();
+    }
+
+    @Bean
+    PortPreflightService PortPreflightService() {
+        return new PortPreflightService();
+    }
+
+    @Bean
+    PortPreflightActionHandler PortPreflightActionHandler() {
+        return new PortPreflightActionHandler();
     }
 
     @Bean

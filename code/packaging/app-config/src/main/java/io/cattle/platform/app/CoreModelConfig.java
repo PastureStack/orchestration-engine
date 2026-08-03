@@ -16,6 +16,10 @@ import io.cattle.platform.core.addon.NetworkPolicyRule.NetworkPolicyRuleWithin;
 import io.cattle.platform.core.addon.NetworkPolicyRuleBetween;
 import io.cattle.platform.core.addon.NetworkPolicyRuleMember;
 import io.cattle.platform.core.addon.PortRule;
+import io.cattle.platform.core.addon.PortPreflightConflict;
+import io.cattle.platform.core.addon.PortPreflightInput;
+import io.cattle.platform.core.addon.PortPreflightPort;
+import io.cattle.platform.core.addon.PortPreflightResult;
 import io.cattle.platform.core.addon.ProcessPool;
 import io.cattle.platform.core.addon.ProcessSummary;
 import io.cattle.platform.core.addon.PublicEndpoint;
@@ -84,6 +88,10 @@ public class CoreModelConfig {
                 Ulimit.class,
                 CatalogTemplate.class,
                 PortRule.class,
+                PortPreflightPort.class,
+                PortPreflightInput.class,
+                PortPreflightConflict.class,
+                PortPreflightResult.class,
                 TargetPortRule.class,
                 MountEntry.class,
                 NetworkPolicyRule.class,

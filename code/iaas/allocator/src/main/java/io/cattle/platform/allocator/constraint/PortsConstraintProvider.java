@@ -45,6 +45,8 @@ public class PortsConstraintProvider implements AllocationConstraintsProvider {
 
     @Override
     public boolean isCritical() {
-        return false;
+        // Requested-host allocations retain only critical constraints. Host ports
+        // are still exclusive in that path and must never be skipped.
+        return true;
     }
 }

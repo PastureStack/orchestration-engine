@@ -4,7 +4,7 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 artifact=${1:-dist/artifacts/cattle.jar}
-expected_version=${EXPECTED_ENGINE_VERSION:-0.183.273}
+expected_version=${EXPECTED_ENGINE_VERSION:-0.183.274}
 
 test -f "$artifact"
 artifact=$(realpath "$artifact")
@@ -51,6 +51,8 @@ require_exact_entry io/cattle/platform/launcher/Main.class
 require_single_versioned_entry WEB-INF/lib/cattle-resources- .jar
 require_single_versioned_entry WEB-INF/lib/cattle-iaas-auth-logic- .jar
 require_single_versioned_entry WEB-INF/lib/cattle-app-config- .jar
+require_single_versioned_entry WEB-INF/lib/cattle-iaas-api-logic- .jar
+require_single_versioned_entry WEB-INF/lib/cattle-iaas-model- .jar
 
 resources_entry=$(printf '%s\n' "${entries[@]}" |
     grep -E '^WEB-INF/lib/cattle-resources-[^/]+\.jar$')
@@ -58,6 +60,10 @@ auth_logic_entry=$(printf '%s\n' "${entries[@]}" |
     grep -E '^WEB-INF/lib/cattle-iaas-auth-logic-[^/]+\.jar$')
 app_config_entry=$(printf '%s\n' "${entries[@]}" |
     grep -E '^WEB-INF/lib/cattle-app-config-[^/]+\.jar$')
+api_logic_entry=$(printf '%s\n' "${entries[@]}" |
+    grep -E '^WEB-INF/lib/cattle-iaas-api-logic-[^/]+\.jar$')
+model_entry=$(printf '%s\n' "${entries[@]}" |
+    grep -E '^WEB-INF/lib/cattle-iaas-model-[^/]+\.jar$')
 
 workdir=$(mktemp -d "${TMPDIR:-/tmp}/pasturestack-engine-release-gate.XXXXXX")
 cleanup()
@@ -72,10 +78,13 @@ trap cleanup EXIT
         META-INF/maven/io.cattle/cattle-app/pom.properties \
         "$resources_entry" \
         "$auth_logic_entry" \
-        "$app_config_entry"
+        "$app_config_entry" \
+        "$api_logic_entry" \
+        "$model_entry"
 )
 tr -d '\r' <"$workdir/META-INF/MANIFEST.MF" | grep -Fx "Implementation-Version: ${expected_version}" >/dev/null
-grep -Fx "version=${expected_version}" "$workdir/META-INF/maven/io.cattle/cattle-app/pom.properties" >/dev/null
+tr -d '\r' <"$workdir/META-INF/maven/io.cattle/cattle-app/pom.properties" \
+    | grep -Fx "version=${expected_version}" >/dev/null
 
 for class_name in \
     io/cattle/platform/iaas/api/auth/identity/AuthIdentityLink.class \
@@ -183,6 +192,9 @@ for marker in \
     unzip -p "$workdir/$resources_entry" schema/v1/token.ser |
         grep -aF "$marker" >/dev/null
 done
+unzip -p "$workdir/$model_entry" \
+    io/cattle/platform/core/addon/PortPreflightPort.class |
+    grep -aF networkMode >/dev/null
 unzip -p "$workdir/$app_config_entry" \
     io/cattle/platform/app/IaasApiConfig.class |
     grep -aF IdentitySecurityApiTypes >/dev/null
@@ -199,5 +211,31 @@ unzip -p "$workdir/$app_config_entry" \
     META-INF/cattle/legacy/spring-legacy-context.xml |
     grep -F 'MfaAttemptService.recordFailure(..)' >/dev/null
 
-printf 'ENGINE_RELEASE_ARTIFACT_OK artifact=%s version=%s webapp=1 resources=1 auth_logic=1 app_config=1 identity_security_v1_schemas=1 frozen_mfa_policy_schema=1 mfa_account_holder_boundary=1 mfa_attempt_transactions=requires-new-read-and-write recovery_email_enrollment_schema=1 credential_secret_capacity=mediumtext launcher=1\n' \
+for class_name in \
+    io/cattle/platform/iaas/api/port/PortPreflightActionHandler.class \
+    io/cattle/platform/iaas/api/port/PortPreflightDaoImpl.class \
+    io/cattle/platform/iaas/api/port/PortPreflightInputs.class \
+    io/cattle/platform/iaas/api/port/PortPreflightService.class; do
+    test "$(jar tf "$workdir/$api_logic_entry" |
+        tr -d '\r' |
+        grep -Fxc "$class_name")" -eq 1
+done
+unzip -p "$workdir/$api_logic_entry" \
+    schema/base/project.json.d/port-preflight.json |
+    grep -F '"portpreflight"' >/dev/null
+for class_name in \
+    io/cattle/platform/core/addon/PortPreflightConflict.class \
+    io/cattle/platform/core/addon/PortPreflightInput.class \
+    io/cattle/platform/core/addon/PortPreflightPort.class \
+    io/cattle/platform/core/addon/PortPreflightResult.class \
+    io/cattle/platform/core/util/PortBindingAddress.class; do
+    test "$(jar tf "$workdir/$model_entry" |
+        tr -d '\r' |
+        grep -Fxc "$class_name")" -eq 1
+done
+unzip -p "$workdir/$app_config_entry" \
+    io/cattle/platform/app/ApiServerConfig.class |
+    grep -aF PortPreflightActionHandler >/dev/null
+
+printf 'ENGINE_RELEASE_ARTIFACT_OK artifact=%s version=%s webapp=1 resources=1 auth_logic=1 app_config=1 api_logic=1 model=1 port_preflight=authoritative identity_security_v1_schemas=1 frozen_mfa_policy_schema=1 mfa_account_holder_boundary=1 mfa_attempt_transactions=requires-new-read-and-write recovery_email_enrollment_schema=1 credential_secret_capacity=mediumtext launcher=1\n' \
     "$artifact" "$expected_version"

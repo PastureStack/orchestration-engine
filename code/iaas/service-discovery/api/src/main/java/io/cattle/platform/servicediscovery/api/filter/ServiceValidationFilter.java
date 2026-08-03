@@ -4,15 +4,19 @@ import static io.cattle.platform.core.model.tables.ServiceTable.*;
 
 import io.cattle.platform.api.utils.ApiUtils;
 import io.cattle.platform.core.addon.PortRule;
+import io.cattle.platform.core.addon.PortPreflightInput;
 import io.cattle.platform.core.addon.ScalePolicy;
 import io.cattle.platform.core.constants.CommonStatesConstants;
 import io.cattle.platform.core.constants.InstanceConstants;
 import io.cattle.platform.core.constants.ServiceConstants;
 import io.cattle.platform.core.model.Service;
 import io.cattle.platform.core.model.Stack;
+import io.cattle.platform.core.model.Account;
 import io.cattle.platform.core.util.PortSpec;
 import io.cattle.platform.iaas.api.filter.common.AbstractDefaultResourceManagerFilter;
 import io.cattle.platform.iaas.api.infrastructure.InfrastructureAccessManager;
+import io.cattle.platform.iaas.api.port.PortPreflightInputs;
+import io.cattle.platform.iaas.api.port.PortPreflightService;
 import io.cattle.platform.json.JsonMapper;
 import io.cattle.platform.object.ObjectManager;
 import io.cattle.platform.object.util.DataAccessor;
@@ -59,6 +63,9 @@ public class ServiceValidationFilter extends AbstractDefaultResourceManagerFilte
     @Inject
     InfrastructureAccessManager infraAccess;
 
+    @Inject
+    PortPreflightService portPreflightService;
+
     private static final int LB_HEALTH_CHECK_PORT = 42;
 
     private static final String VOLUMES_FROM = "volumes_from";
@@ -98,6 +105,8 @@ public class ServiceValidationFilter extends AbstractDefaultResourceManagerFilte
         request = validateAndSetImage(request, service, type);
 
         validatePorts(service, type, request);
+
+        assertPortsAvailable(service, stack, request);
 
         validateScalePolicy(service, request, false);
 
@@ -386,7 +395,39 @@ public class ServiceValidationFilter extends AbstractDefaultResourceManagerFilte
         validateScalePolicy(service, request, true);
         validatePorts(service, type, request);
 
+        assertPortsAvailable(service, stack, request);
+
         return super.update(type, id, request, next);
+    }
+
+    protected void assertPortsAvailable(Service service, Stack stack, ApiRequest request) {
+        Map<String, Object> data = CollectionUtils.toMap(request.getRequestObject());
+        if (service.getId() != null
+                && !data.containsKey(ServiceConstants.FIELD_LAUNCH_CONFIG)
+                && !data.containsKey(ServiceConstants.FIELD_SECONDARY_LAUNCH_CONFIGS)
+                && !data.containsKey(ServiceConstants.FIELD_SCALE)) {
+            return;
+        }
+        Object launchConfig = DataUtils.getFieldFromRequest(request,
+                ServiceConstants.FIELD_LAUNCH_CONFIG, Object.class);
+        List<?> secondaryLaunchConfigs = DataUtils.getFieldFromRequest(request,
+                ServiceConstants.FIELD_SECONDARY_LAUNCH_CONFIGS, List.class);
+        if (secondaryLaunchConfigs == null) {
+            secondaryLaunchConfigs = DataAccessor.fields(service)
+                    .withKey(ServiceConstants.FIELD_SECONDARY_LAUNCH_CONFIGS)
+                    .withDefault(java.util.Collections.emptyList()).as(List.class);
+        }
+        Integer scale = DataUtils.getFieldFromRequest(request, ServiceConstants.FIELD_SCALE, Integer.class);
+        if (scale == null) {
+            scale = DataAccessor.fieldInteger(service, ServiceConstants.FIELD_SCALE);
+        }
+        PortPreflightInput input = PortPreflightInputs.fromService(service, launchConfig,
+                secondaryLaunchConfigs, scale, false);
+        if (input.getPorts().isEmpty()) {
+            return;
+        }
+        Account account = objectManager.loadResource(Account.class, stack.getAccountId());
+        portPreflightService.assertAvailable(account, input);
     }
 
     @Override

@@ -13,7 +13,7 @@ require_line()
 {
     local file=$1
     local line=$2
-    grep -Fx -- "$line" "$file" >/dev/null || fail "required_line_missing:${file}:${line}"
+    tr -d '\r' <"$file" | grep -Fx -- "$line" >/dev/null || fail "required_line_missing:${file}:${line}"
 }
 
 settings=resources/content/cattle-global.properties
@@ -28,7 +28,7 @@ if grep -RIn --include='pom.xml' --exclude-dir=target --exclude-dir=.git \
     fail snapshot_project_version
 fi
 
-require_line code/meta-parent/pom.xml '    <version>0.183.273</version>'
+require_line code/meta-parent/pom.xml '    <version>0.183.274</version>'
 require_line code/meta-parent/pom.xml '    <url>https://github.com/PastureStack/orchestration-engine</url>'
 require_line Dockerfile 'FROM ubuntu:26.04'
 require_line Dockerfile.dapper 'FROM ubuntu:26.04'
@@ -104,6 +104,14 @@ require_line scripts/check-release-artifact '    grep -F '"'"'`secret_value` med
 require_line resources/pom.xml '            <artifactId>cattle-framework-java-server</artifactId>'
 require_line resources/src/test/java/io/cattle/platform/resources/FrozenIdentitySecuritySchemaTest.java '    public void frozenSchemasExposeAccountScopedIdentitySecurityFilters() throws Exception {'
 require_line resources/src/test/java/io/cattle/platform/resources/FrozenIdentitySecuritySchemaTest.java '                    accountId.getModifiers().contains("eq"));'
+require_line code/iaas/api-logic/src/main/java/io/cattle/platform/iaas/api/port/PortPreflightService.java '    public static final String ACTION = "portpreflight";'
+require_line code/iaas/api-logic/src/main/java/io/cattle/platform/iaas/api/port/PortPreflightService.java '    public void assertAvailable(Account account, PortPreflightInput input) {'
+require_line code/iaas/api-logic/src/main/resources/schema/base/project.json.d/port-preflight.json '    "portpreflight": {'
+require_line code/iaas/api-logic/src/test/java/io/cattle/platform/iaas/api/port/PortPreflightServiceTest.java '    public void runtimeTimeoutIsUnknownInsteadOfAvailable() {'
+require_line code/iaas/api-logic/src/main/java/io/cattle/platform/iaas/api/port/PortPreflightInputs.java '            port.setNetworkMode(networkMode);'
+require_line code/iaas/api-logic/src/test/java/io/cattle/platform/iaas/api/port/PortPreflightServiceTest.java '    public void mixedSidekickContainerMappingIsRejectedUsingItsOwnNetworkMode() {'
+require_line code/iaas/allocator/src/main/java/io/cattle/platform/allocator/constraint/PortsConstraint.java '            return PortBindingAddress.overlaps(requestedIp, usedIp);'
+require_line code/iaas/allocator/src/test/java/io/cattle/platform/allocator/constraint/PortsConstraintProviderTest.java '    public void hostPortConstraintRemainsEnabledForRequestedHostAllocations() {'
 
 require_line "$settings" 'api.ui.index=local'
 require_line "$settings" 'api.ui.js.url='
@@ -168,4 +176,4 @@ fi
 require_line README.md 'PastureStack is an independent community effort to preserve, audit, and modernize the Rancher 1.6 ecosystem. It is not affiliated with or endorsed by Rancher Labs or SUSE.'
 require_line ORIGIN.md '- Preserved upstream boundary: `82d154a53f4089fecfb9f320caad826bb4f6055f`'
 
-printf 'PASTURESTACK_SOURCE_GATE_OK version=0.183.273 runtime_sources=github_release images=ghcr_digest_pinned ubuntu=26.04 maven=3.9.14 patched_hazelcast=5.7.0-pasturestack.2 docker=29.6.2 credential_secret_capacity=mediumtext\n'
+printf 'PASTURESTACK_SOURCE_GATE_OK version=0.183.274 runtime_sources=github_release images=ghcr_digest_pinned ubuntu=26.04 maven=3.9.14 patched_hazelcast=5.7.0-pasturestack.2 docker=29.6.2 credential_secret_capacity=mediumtext port_preflight=authoritative\n'

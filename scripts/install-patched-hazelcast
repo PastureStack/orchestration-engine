@@ -50,10 +50,10 @@ GIT_CEILING_DIRECTORIES="$work_root" git -C "$work_root/source" apply --ignore-w
 GIT_CEILING_DIRECTORIES="$work_root" git -C "$work_root/source" apply --ignore-whitespace "$patch_file"
 GIT_CEILING_DIRECTORIES="$work_root" git -C "$work_root/source" apply --ignore-whitespace --check "$archive_build_patch_file"
 GIT_CEILING_DIRECTORIES="$work_root" git -C "$work_root/source" apply --ignore-whitespace "$archive_build_patch_file"
-grep -Fx "        <jackson.version>${jackson3_version}</jackson.version>" \
-    "$work_root/source/hazelcast-parent/pom.xml" >/dev/null
-grep -Fx "        <jackson2.version>${jackson2_version}</jackson2.version>" \
-    "$work_root/source/hazelcast-parent/pom.xml" >/dev/null
+tr -d '\r' <"$work_root/source/hazelcast-parent/pom.xml" \
+    | grep -Fx "        <jackson.version>${jackson3_version}</jackson.version>" >/dev/null
+tr -d '\r' <"$work_root/source/hazelcast-parent/pom.xml" \
+    | grep -Fx "        <jackson2.version>${jackson2_version}</jackson2.version>" >/dev/null
 grep -A12 -F '<artifactId>git-commit-id-plugin</artifactId>' \
     "$work_root/source/hazelcast/pom.xml" | grep -F '<skip>true</skip>' >/dev/null
 

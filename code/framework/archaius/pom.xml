@@ -4,7 +4,7 @@
     <parent>
         <groupId>io.cattle</groupId>
         <artifactId>cattle-meta-parent</artifactId>
-        <version>0.183.273</version>
+        <version>0.183.274</version>
         <relativePath>../../meta-parent/pom.xml</relativePath>
     </parent>
 </project>
