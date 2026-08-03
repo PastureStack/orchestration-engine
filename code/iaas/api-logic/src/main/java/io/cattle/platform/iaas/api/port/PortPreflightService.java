@@ -73,6 +73,8 @@ public class PortPreflightService {
 
         List<PortPreflightConflict> conflicts = new ArrayList<PortPreflightConflict>();
         Set<Long> activeConflictHosts = new LinkedHashSet<Long>();
+        Set<Long> currentServiceReservationHosts = new LinkedHashSet<Long>();
+        Set<String> excludedRuntimeContainers = new LinkedHashSet<String>();
         PortPreflightConflict invalidNetworkMapping = invalidNetworkMapping(input.getPorts(), networkMode);
         if (invalidNetworkMapping != null) {
             conflicts.add(invalidNetworkMapping);
@@ -118,7 +120,27 @@ public class PortPreflightService {
             if (input.getRequestedHostId() != null && !input.getRequestedHostId().equals(owner.hostId)) {
                 continue;
             }
-            if (excludeCurrentOwner(input, owner)) {
+            boolean currentInstance = input.getInstanceId() != null
+                    && input.getInstanceId().equals(owner.instanceId);
+            boolean currentService = input.getServiceId() != null
+                    && input.getServiceId().equals(owner.serviceId);
+            if (currentInstance || currentService) {
+                if (owner.externalId != null && owner.externalId.trim().length() > 0) {
+                    excludedRuntimeContainers.add(owner.externalId.trim());
+                }
+            }
+            if (currentInstance || (currentService && !Boolean.TRUE.equals(input.getStartFirst()))) {
+                continue;
+            }
+            if (currentService && sameMappingAny(requestedPorts, owner)) {
+                if (isStoppedOwner(owner.state)) {
+                    PortPreflightConflict conflict = fromOwner(owner);
+                    conflict.setSeverity("warning");
+                    conflict.setReasonCode("stopped_port_owner");
+                    conflicts.add(conflict);
+                } else {
+                    currentServiceReservationHosts.add(owner.hostId);
+                }
                 continue;
             }
 
@@ -133,12 +155,14 @@ public class PortPreflightService {
         }
 
         if (Boolean.TRUE.equals(input.getRuntimeProbe()) && !requestedPorts.isEmpty()) {
-            mergeRuntimeConflicts(eligibleHosts, requestedPorts, conflicts, activeConflictHosts);
+            mergeRuntimeConflicts(eligibleHosts, requestedPorts, conflicts, activeConflictHosts,
+                    excludedRuntimeContainers);
         }
 
         int availableHosts = 0;
         for (Host host : eligibleHosts) {
-            if (!activeConflictHosts.contains(host.getId())) {
+            if (!activeConflictHosts.contains(host.getId())
+                    && !currentServiceReservationHosts.contains(host.getId())) {
                 availableHosts++;
             }
         }
@@ -152,19 +176,17 @@ public class PortPreflightService {
             requiredHosts = Math.min(scale, batchSize);
         }
         boolean needsPlacement = global || requiredHosts > 0;
-        boolean blocked = needsPlacement && (eligibleHosts.isEmpty()
+        boolean placementBlocked = needsPlacement && (eligibleHosts.isEmpty()
                 || (input.getRequestedHostId() != null && !activeConflictHosts.isEmpty())
                 || (global && !activeConflictHosts.isEmpty())
                 || availableHosts < requiredHosts);
+        boolean blocked = !activeConflictHosts.isEmpty() || placementBlocked;
 
         boolean unknown = hasSeverity(conflicts, "unknown");
         boolean warning = false;
         for (PortPreflightConflict conflict : conflicts) {
             if ("candidate".equals(conflict.getSeverity())) {
-                conflict.setSeverity(blocked ? "blocked" : "warning");
-                if (!blocked) {
-                    conflict.setReasonCode("active_port_conflict_on_other_host");
-                }
+                conflict.setSeverity("blocked");
             }
             warning |= "warning".equals(conflict.getSeverity());
         }
@@ -294,13 +316,21 @@ public class PortPreflightService {
         return false;
     }
 
-    private static boolean excludeCurrentOwner(PortPreflightInput input, PortOwner owner) {
-        if (input.getInstanceId() != null && input.getInstanceId().equals(owner.instanceId)) {
-            return true;
+    private static boolean sameMappingAny(List<PortPreflightPort> ports, PortOwner owner) {
+        for (PortPreflightPort port : ports) {
+            if (port.getPublicPort().equals(owner.publicPort)
+                    && port.getProtocol().equalsIgnoreCase(owner.protocol)
+                    && PortBindingAddress.normalize(port.getBindAddress())
+                            .equals(PortBindingAddress.normalize(owner.bindAddress))
+                    && equalInteger(port.getPrivatePort(), owner.privatePort)) {
+                return true;
+            }
         }
-        return input.getServiceId() != null
-                && input.getServiceId().equals(owner.serviceId)
-                && !Boolean.TRUE.equals(input.getStartFirst());
+        return false;
+    }
+
+    private static boolean equalInteger(Integer left, Integer right) {
+        return left == null ? right == null : left.equals(right);
     }
 
     private static boolean isStoppedOwner(String state) {
@@ -312,7 +342,8 @@ public class PortPreflightService {
     }
 
     private void mergeRuntimeConflicts(List<Host> hosts, List<PortPreflightPort> ports,
-            List<PortPreflightConflict> conflicts, Set<Long> activeConflictHosts) {
+            List<PortPreflightConflict> conflicts, Set<Long> activeConflictHosts,
+            Set<String> excludedRuntimeContainers) {
         Map<Long, Host> hostById = new LinkedHashMap<Long, Host>();
         Map<Long, ListenableFuture<? extends Event>> futures = new LinkedHashMap<Long, ListenableFuture<? extends Event>>();
         Map<String, Object> data = runtimeRequest(ports);
@@ -345,7 +376,7 @@ public class PortPreflightService {
                     continue;
                 }
                 Event reply = entry.getValue().get(remaining, TimeUnit.NANOSECONDS);
-                mergeRuntimeReply(host, reply, conflicts, activeConflictHosts);
+                mergeRuntimeReply(host, reply, conflicts, activeConflictHosts, excludedRuntimeContainers);
             } catch (Exception e) {
                 conflicts.add(unknownConflict(host, "agent_timeout"));
             }
@@ -367,7 +398,7 @@ public class PortPreflightService {
     }
 
     private static void mergeRuntimeReply(Host host, Event reply, List<PortPreflightConflict> conflicts,
-            Set<Long> activeConflictHosts) {
+            Set<Long> activeConflictHosts, Set<String> excludedRuntimeContainers) {
         Map<String, Object> data = asMap(reply == null ? null : reply.getData());
         if (reply == null || Event.TRANSITIONING_ERROR.equals(reply.getTransitioning())
                 || !Boolean.TRUE.equals(data.get("supported"))) {
@@ -384,6 +415,9 @@ public class PortPreflightService {
         }
         for (Object item : (List<?>) raw) {
             Map<String, Object> value = asMap(item);
+            if (isExcludedRuntimeContainer(stringValue(value.get("containerId")), excludedRuntimeContainers)) {
+                continue;
+            }
             Integer publicPort = integerValue(value.get("publicPort"));
             String protocol = stringValue(value.get("protocol"));
             String bindAddress = stringValue(value.get("bindAddress"));
@@ -416,6 +450,20 @@ public class PortPreflightService {
         if (!Boolean.TRUE.equals(data.get("hostSocketProbeSupported"))) {
             conflicts.add(unknownConflict(host, "agent_unsupported"));
         }
+    }
+
+    private static boolean isExcludedRuntimeContainer(String containerId, Set<String> excluded) {
+        if (containerId == null || excluded == null || excluded.isEmpty()) {
+            return false;
+        }
+        for (String value : excluded) {
+            if (containerId.equals(value)
+                    || (containerId.length() >= 12 && value.length() >= 12
+                            && (containerId.startsWith(value) || value.startsWith(containerId)))) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private static boolean alreadyCovered(List<PortPreflightConflict> conflicts, Long hostId,

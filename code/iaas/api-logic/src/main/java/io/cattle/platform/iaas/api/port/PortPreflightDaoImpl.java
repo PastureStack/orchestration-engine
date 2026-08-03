@@ -51,7 +51,7 @@ public class PortPreflightDaoImpl extends AbstractJooqDao implements PortPreflig
         for (Record record : create()
                 .select(PORT.fields())
                 .select(INSTANCE_HOST_MAP.HOST_ID, HOST.NAME,
-                        INSTANCE.ID, INSTANCE.NAME, INSTANCE.STATE, INSTANCE.STACK_ID, INSTANCE.DATA,
+                        INSTANCE.ID, INSTANCE.NAME, INSTANCE.EXTERNAL_ID, INSTANCE.STATE, INSTANCE.STACK_ID, INSTANCE.DATA,
                         SERVICE.ID, SERVICE.NAME, SERVICE.STACK_ID,
                         STACK.ID, STACK.NAME)
                 .from(PORT)
@@ -85,6 +85,7 @@ public class PortPreflightDaoImpl extends AbstractJooqDao implements PortPreflig
             owner.hostName = record.get(HOST.NAME);
             owner.instanceId = record.get(INSTANCE.ID);
             owner.instanceName = record.get(INSTANCE.NAME);
+            owner.externalId = record.get(INSTANCE.EXTERNAL_ID);
             owner.state = record.get(INSTANCE.STATE);
             owner.serviceId = record.get(SERVICE.ID);
             owner.serviceName = record.get(SERVICE.NAME);

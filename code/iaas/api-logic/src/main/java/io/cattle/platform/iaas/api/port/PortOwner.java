@@ -10,6 +10,7 @@ final class PortOwner {
     String serviceName;
     Long instanceId;
     String instanceName;
+    String externalId;
     String state;
     String bindAddress;
     Integer publicPort;

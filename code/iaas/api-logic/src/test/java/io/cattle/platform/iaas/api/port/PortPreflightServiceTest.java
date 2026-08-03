@@ -8,8 +8,10 @@ import io.cattle.platform.core.addon.PortPreflightInput;
 import io.cattle.platform.core.addon.PortPreflightPort;
 import io.cattle.platform.core.addon.PortPreflightResult;
 import io.cattle.platform.core.model.Host;
+import io.cattle.platform.core.model.Service;
 import io.cattle.platform.core.model.tables.records.AccountRecord;
 import io.cattle.platform.core.model.tables.records.HostRecord;
+import io.cattle.platform.core.model.tables.records.ServiceRecord;
 import io.cattle.platform.eventing.model.Event;
 import io.cattle.platform.eventing.model.EventVO;
 import io.cattle.platform.object.ObjectManager;
@@ -39,13 +41,14 @@ public class PortPreflightServiceTest {
     }
 
     @Test
-    public void conflictOnAnotherHostDoesNotPreventPlacement() {
+    public void conflictOnAnotherHostBlocksEnvironmentWideReuse() {
         PortPreflightResult result = service(hosts(1L, 2L), owners(owner(1L, "running", "0.0.0.0", "tcp")))
                 .check(account(), input(null, false, port("10.0.0.5", "tcp")));
 
-        assertEquals("warning", result.getStatus());
+        assertEquals("blocked", result.getStatus());
         assertEquals(Integer.valueOf(1), result.getAvailableHostCount());
-        assertEquals("active_port_conflict_on_other_host", result.getConflicts().get(0).getReasonCode());
+        assertEquals("active_port_conflict", result.getConflicts().get(0).getReasonCode());
+        assertEquals("blocked", result.getConflicts().get(0).getSeverity());
     }
 
     @Test
@@ -90,32 +93,101 @@ public class PortPreflightServiceTest {
     @Test
     public void startFirstUsesConcurrentBatchCapacityInsteadOfFullServiceScale() {
         PortPreflightInput input = input(null, false, port("0.0.0.0", "tcp"));
+        input.setServiceId(Long.valueOf(55L));
         input.setScale(Integer.valueOf(2));
         input.setBatchSize(Integer.valueOf(1));
         input.setStartFirst(Boolean.TRUE);
 
-        PortPreflightResult result = service(hosts(1L, 2L, 3L), owners(
-                owner(1L, "running", "0.0.0.0", "tcp"),
-                owner(2L, "running", "0.0.0.0", "tcp")))
+        PortOwner first = owner(1L, "running", "0.0.0.0", "tcp");
+        PortOwner second = owner(2L, "running", "0.0.0.0", "tcp");
+        first.serviceId = Long.valueOf(55L);
+        second.serviceId = Long.valueOf(55L);
+        PortPreflightResult result = service(hosts(1L, 2L, 3L), owners(first, second))
                 .check(account(), input);
 
-        assertEquals("warning", result.getStatus());
+        assertEquals("available", result.getStatus());
         assertEquals(Integer.valueOf(1), result.getAvailableHostCount());
     }
 
     @Test
     public void startFirstBlocksWhenConcurrentBatchCannotFit() {
         PortPreflightInput input = input(null, false, port("0.0.0.0", "tcp"));
+        input.setServiceId(Long.valueOf(55L));
         input.setScale(Integer.valueOf(2));
         input.setBatchSize(Integer.valueOf(2));
         input.setStartFirst(Boolean.TRUE);
 
-        PortPreflightResult result = service(hosts(1L, 2L, 3L), owners(
-                owner(1L, "running", "0.0.0.0", "tcp"),
-                owner(2L, "running", "0.0.0.0", "tcp")))
+        PortOwner first = owner(1L, "running", "0.0.0.0", "tcp");
+        PortOwner second = owner(2L, "running", "0.0.0.0", "tcp");
+        first.serviceId = Long.valueOf(55L);
+        second.serviceId = Long.valueOf(55L);
+        PortPreflightResult result = service(hosts(1L, 2L, 3L), owners(first, second))
                 .check(account(), input);
 
         assertEquals("blocked", result.getStatus());
+        assertEquals("insufficient_eligible_hosts", result.getConflicts().get(0).getReasonCode());
+    }
+
+    @Test
+    public void startFirstChangedBindingConflictsWithTheCurrentService() {
+        PortPreflightInput input = input(null, false, port("0.0.0.0", "tcp"));
+        input.setServiceId(Long.valueOf(55L));
+        input.setStartFirst(Boolean.TRUE);
+
+        PortOwner current = owner(1L, "running", "10.0.0.5", "tcp");
+        current.serviceId = Long.valueOf(55L);
+
+        PortPreflightResult result = service(hosts(1L, 2L), owners(current)).check(account(), input);
+
+        assertEquals("blocked", result.getStatus());
+        assertEquals("active_port_conflict", result.getConflicts().get(0).getReasonCode());
+        assertEquals("blocked", result.getConflicts().get(0).getSeverity());
+    }
+
+    @Test
+    public void startFirstStoppedCurrentContainerWarnsWithoutConsumingCapacity() {
+        PortPreflightInput input = input(null, false, port("0.0.0.0", "tcp"));
+        input.setServiceId(Long.valueOf(55L));
+        input.setStartFirst(Boolean.TRUE);
+
+        PortOwner current = owner(1L, "stopped", "0.0.0.0", "tcp");
+        current.serviceId = Long.valueOf(55L);
+
+        PortPreflightResult result = service(hosts(1L), owners(current)).check(account(), input);
+
+        assertEquals("warning", result.getStatus());
+        assertEquals(Integer.valueOf(1), result.getAvailableHostCount());
+        assertEquals("stopped_port_owner", result.getConflicts().get(0).getReasonCode());
+    }
+
+    @Test
+    public void upgradeRuntimeProbeIgnoresTheCurrentServiceContainer() {
+        PortOwner current = owner(1L, "running", "0.0.0.0", "tcp");
+        current.serviceId = Long.valueOf(55L);
+        current.externalId = "self-container-id-1234567890";
+
+        Map<String, Object> conflict = new HashMap<String, Object>();
+        conflict.put("source", "docker");
+        conflict.put("containerId", "self-container-id-1234567890");
+        conflict.put("containerName", "web-1");
+        conflict.put("state", "running");
+        conflict.put("bindAddress", "0.0.0.0");
+        conflict.put("publicPort", Integer.valueOf(2201));
+        conflict.put("protocol", "tcp");
+        Map<String, Object> data = new HashMap<String, Object>();
+        data.put("supported", Boolean.TRUE);
+        data.put("hostSocketProbeSupported", Boolean.TRUE);
+        data.put("conflicts", Collections.singletonList(conflict));
+        SettableFuture<Event> completed = SettableFuture.create();
+        completed.set(EventVO.<Map<String, Object>>newEvent("host.port.check.reply").withData(data));
+
+        PortPreflightInput input = input(1L, true, port("0.0.0.0", "tcp"));
+        input.setServiceId(Long.valueOf(55L));
+        PortPreflightResult result = service(hosts(1L), owners(current), completed).check(account(), input);
+
+        assertEquals("available", result.getStatus());
+        assertEquals(Integer.valueOf(1), result.getAvailableHostCount());
+        assertEquals(Integer.valueOf(0), Integer.valueOf(result.getConflicts().size()));
     }
 
     @Test
@@ -296,6 +368,16 @@ public class PortPreflightServiceTest {
                         host.setAccountId(Long.valueOf(10));
                         return host;
                     }
+                    if ("loadResource".equals(method.getName())
+                            && args != null
+                            && args.length == 2
+                            && Service.class.equals(args[0])
+                            && args[1] instanceof Long) {
+                        ServiceRecord service = new ServiceRecord();
+                        service.setId((Long) args[1]);
+                        service.setAccountId(Long.valueOf(10));
+                        return service;
+                    }
                     throw new UnsupportedOperationException(method.getName());
                 });
     }
@@ -327,9 +409,11 @@ public class PortPreflightServiceTest {
         owner.hostName = "host-" + hostId;
         owner.instanceId = Long.valueOf(100 + hostId.longValue());
         owner.instanceName = "container-" + hostId;
+        owner.externalId = "container-external-" + hostId;
         owner.state = state;
         owner.bindAddress = bindAddress;
         owner.publicPort = Integer.valueOf(2201);
+        owner.privatePort = Integer.valueOf(22);
         owner.protocol = protocol;
         return owner;
     }

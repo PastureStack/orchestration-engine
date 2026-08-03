@@ -9,7 +9,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>io.cattle</groupId>
     <artifactId>cattle-meta-parent</artifactId>
-    <version>0.183.275</version>
+    <version>0.183.276</version>
     <packaging>pom</packaging>
     <name>PastureStack Orchestration Engine</name>
     <description>Compatibility orchestration engine for the PastureStack server.</description>
