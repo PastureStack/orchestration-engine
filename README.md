@@ -8,7 +8,7 @@ PastureStack is an independent community effort to preserve, audit, and moderniz
 
 ## Project status
 
-This source tree produces engine version `0.183.274`. It retains the existing Java 25, Ubuntu 26.04, Maven, Liquibase, MariaDB/MySQL, WebSocket, dependency, concurrency, and runtime-hardening work from the maintained compatibility line. Release builds also compile a pinned Hazelcast `5.7.0` source revision with the tracked Jackson security patch described in [`third-party/HAZELCAST.md`](third-party/HAZELCAST.md); the patched artifact is never downloaded from an unverified binary source.
+This source tree produces engine version `0.183.275`. It retains the existing Java 25, Ubuntu 26.04, Maven, Liquibase, MariaDB/MySQL, WebSocket, dependency, concurrency, and runtime-hardening work from the maintained compatibility line. Release builds also compile a pinned Hazelcast `5.7.0` source revision with the tracked Jackson security patch described in [`third-party/HAZELCAST.md`](third-party/HAZELCAST.md); the patched artifact is never downloaded from an unverified binary source.
 
 WebAuthn verification uses WebAuthn4J's maintained `tools.jackson` 3.1
 dependency line. The existing platform JSON surface remains on
@@ -17,7 +17,7 @@ version-pinned pair and verify that their class namespaces are disjoint.
 
 Host compatibility is evidence-based. The default policy recognizes the preserved legacy ranges plus only the modern Docker Engine releases that have completed the PastureStack host matrix: `24.0.9`, `29.4.1`, and `29.6.2`. It does not imply support for untested intervening releases.
 
-Container and service port changes expose a read-only `portpreflight` project action. The action evaluates persisted workload ownership, eligible-host capacity, requested scheduling constraints, rolling-upgrade overlap, and live Node Agent socket observations before a change is saved. Primary and sidekick bindings retain their own network modes while sharing one physical-host collision check. Running owners block the request, stopped owners remain visible as warnings, and incomplete live inspection is reported as unknown rather than available. The allocator and final create/upgrade validation repeat the authoritative check so the browser result is never the only enforcement boundary.
+Container and service port changes expose a read-only `portpreflight` project action. The action evaluates persisted workload ownership, eligible-host capacity, requested scheduling constraints, rolling-upgrade overlap, and live Node Agent socket observations before a change is saved. Primary and sidekick bindings retain their own network modes while sharing one physical-host collision check. Running owners block the request, stopped owners remain visible as warnings, and incomplete live inspection is reported as unknown rather than available. The allocator and final create/upgrade validation repeat the authoritative check so the browser result is never the only enforcement boundary. Project authorization explicitly exposes the action's nested input and read-only result schemas; a regression test loads the shipped authorization overlays and verifies that contract.
 
 Product-facing names use PastureStack terminology. Established Java packages, Maven coordinates, database identifiers, settings, API schemas, event names, Docker labels, and executable aliases remain where changing them would break compatible installations.
 
@@ -52,7 +52,7 @@ The gate performs dependency-hygiene checks, builds every Maven module with JDK 
 To create the complete release archive after the gate passes:
 
 ```sh
-ENGINE_VERSION=0.183.274 bash scripts/build --release
+ENGINE_VERSION=0.183.275 bash scripts/build --release
 bash scripts/check-release-artifact dist/artifacts/cattle.jar
 ```
 
