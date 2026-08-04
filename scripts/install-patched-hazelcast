@@ -59,6 +59,7 @@ grep -A12 -F '<artifactId>git-commit-id-plugin</artifactId>' \
 
 "$maven_cmd" -f "$work_root/source/pom.xml" \
     ${MAVEN_ARGS:-} \
+    -Dassembly.skipAssembly=true \
     -Dmaven.compiler.failOnWarning=false \
     -Dmaven.test.skip=true \
     -DskipTests \
