@@ -22,6 +22,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import org.junit.Test;
 
@@ -41,14 +42,61 @@ public class PortPreflightServiceTest {
     }
 
     @Test
-    public void conflictOnAnotherHostBlocksEnvironmentWideReuse() {
+    public void managedRequestedHostStillBlocksEnvironmentWideReuse() {
         PortPreflightResult result = service(hosts(1L, 2L), owners(owner(1L, "running", "0.0.0.0", "tcp")))
-                .check(account(), input(null, false, port("10.0.0.5", "tcp")));
+                .check(account(), input(2L, false, port("10.0.0.5", "tcp")));
 
         assertEquals("blocked", result.getStatus());
-        assertEquals(Integer.valueOf(1), result.getAvailableHostCount());
-        assertEquals("active_port_conflict", result.getConflicts().get(0).getReasonCode());
+        assertEquals(Integer.valueOf(0), result.getAvailableHostCount());
+        assertEquals("active_port_conflict_on_other_host", result.getConflicts().get(0).getReasonCode());
         assertEquals("blocked", result.getConflicts().get(0).getSeverity());
+    }
+
+    @Test
+    public void managedRequestedHostProbesEveryEnvironmentHost() {
+        Map<String, Object> data = new HashMap<String, Object>();
+        data.put("supported", Boolean.TRUE);
+        data.put("hostSocketProbeSupported", Boolean.TRUE);
+        data.put("conflicts", Collections.emptyList());
+        SettableFuture<Event> completed = SettableFuture.create();
+        completed.set(EventVO.<Map<String, Object>>newEvent("host.port.check.reply").withData(data));
+        AtomicInteger calls = new AtomicInteger();
+
+        PortPreflightResult result = service(hosts(1L, 2L), Collections.<PortOwner>emptyList(),
+                completed, calls).check(account(), input(2L, true, port("0.0.0.0", "tcp")));
+
+        assertEquals("available", result.getStatus());
+        assertEquals(Integer.valueOf(1), result.getAvailableHostCount());
+        assertEquals(Integer.valueOf(2), Integer.valueOf(calls.get()));
+    }
+
+    @Test
+    public void bridgeRequestedHostDoesNotTreatAnotherHostAsOccupied() {
+        PortPreflightInput input = input(2L, false, port("0.0.0.0", "tcp"));
+        input.setNetworkMode("bridge");
+
+        PortPreflightResult result = service(hosts(1L, 2L), owners(owner(1L, "running", "0.0.0.0", "tcp")))
+                .check(account(), input);
+
+        assertEquals("available", result.getStatus());
+        assertEquals(Integer.valueOf(1), result.getAvailableHostCount());
+        assertEquals(Integer.valueOf(0), Integer.valueOf(result.getConflicts().size()));
+    }
+
+    @Test
+    public void hostNetworkRequestedHostDoesNotTreatAnotherHostAsOccupied() {
+        PortPreflightPort requested = port("0.0.0.0", "tcp");
+        requested.setPublicPort(null);
+        PortPreflightInput input = input(2L, false, requested);
+        input.setNetworkMode("host");
+        PortOwner owner = owner(1L, "running", "0.0.0.0", "tcp");
+        owner.publicPort = Integer.valueOf(22);
+
+        PortPreflightResult result = service(hosts(1L, 2L), owners(owner)).check(account(), input);
+
+        assertEquals("available", result.getStatus());
+        assertEquals(Integer.valueOf(1), result.getAvailableHostCount());
+        assertEquals(Integer.valueOf(0), Integer.valueOf(result.getConflicts().size()));
     }
 
     @Test
@@ -69,6 +117,17 @@ public class PortPreflightServiceTest {
         assertEquals("warning", result.getStatus());
         assertEquals(Integer.valueOf(1), result.getAvailableHostCount());
         assertEquals("stopped_port_owner", result.getConflicts().get(0).getReasonCode());
+    }
+
+    @Test
+    public void managedStoppedOwnerOnAnotherHostRemainsAWarning() {
+        PortPreflightResult result = service(hosts(1L, 2L), owners(owner(1L, "stopped", "0.0.0.0", "tcp")))
+                .check(account(), input(2L, false, port("0.0.0.0", "tcp")));
+
+        assertEquals("warning", result.getStatus());
+        assertEquals(Integer.valueOf(1), result.getAvailableHostCount());
+        assertEquals("stopped_port_owner", result.getConflicts().get(0).getReasonCode());
+        assertEquals("warning", result.getConflicts().get(0).getSeverity());
     }
 
     @Test
@@ -328,12 +387,20 @@ public class PortPreflightServiceTest {
 
     private static PortPreflightService service(final List<Host> hosts, final List<PortOwner> owners,
             final ListenableFuture<? extends Event> future) {
+        return service(hosts, owners, future, null);
+    }
+
+    private static PortPreflightService service(final List<Host> hosts, final List<PortOwner> owners,
+            final ListenableFuture<? extends Event> future, final AtomicInteger calls) {
         PortPreflightService service = service(hosts, owners);
         final RemoteAgent remoteAgent = (RemoteAgent) Proxy.newProxyInstance(
                 RemoteAgent.class.getClassLoader(),
                 new Class<?>[] { RemoteAgent.class },
                 (proxy, method, args) -> {
                     if ("call".equals(method.getName()) && args != null && args.length == 2) {
+                        if (calls != null) {
+                            calls.incrementAndGet();
+                        }
                         return future;
                     }
                     if ("getAgentId".equals(method.getName())) {

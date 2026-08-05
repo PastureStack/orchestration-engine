@@ -67,7 +67,9 @@ public class PortPreflightService {
         result.setCheckedAt(checkedAt);
         result.setExpiresAt(new Date(checkedAt.getTime() + RESULT_TTL_MILLIS));
 
-        List<Host> eligibleHosts = eligibleHosts(account.getId(), input.getRequestedHostId());
+        List<Host> environmentHosts = dao.getEligibleHosts(account.getId());
+        List<Host> eligibleHosts = eligibleHosts(environmentHosts, input.getRequestedHostId());
+        boolean environmentWide = "managed".equals(networkMode);
         List<PortOwner> owners = dao.getPortOwners(account.getId());
         result.setEligibleHostCount(Integer.valueOf(eligibleHosts.size()));
 
@@ -117,7 +119,8 @@ public class PortPreflightService {
             if (!matchesAny(requestedPorts, owner)) {
                 continue;
             }
-            if (input.getRequestedHostId() != null && !input.getRequestedHostId().equals(owner.hostId)) {
+            if (!environmentWide && input.getRequestedHostId() != null
+                    && !input.getRequestedHostId().equals(owner.hostId)) {
                 continue;
             }
             boolean currentInstance = input.getInstanceId() != null
@@ -147,7 +150,11 @@ public class PortPreflightService {
             boolean stopped = isStoppedOwner(owner.state);
             PortPreflightConflict conflict = fromOwner(owner);
             conflict.setSeverity(stopped ? "warning" : "candidate");
-            conflict.setReasonCode(stopped ? "stopped_port_owner" : "active_port_conflict");
+            boolean otherHost = input.getRequestedHostId() != null
+                    && !input.getRequestedHostId().equals(owner.hostId);
+            conflict.setReasonCode(stopped ? "stopped_port_owner"
+                    : (environmentWide && otherHost
+                            ? "active_port_conflict_on_other_host" : "active_port_conflict"));
             conflicts.add(conflict);
             if (!stopped) {
                 activeConflictHosts.add(owner.hostId);
@@ -155,7 +162,8 @@ public class PortPreflightService {
         }
 
         if (Boolean.TRUE.equals(input.getRuntimeProbe()) && !requestedPorts.isEmpty()) {
-            mergeRuntimeConflicts(eligibleHosts, requestedPorts, conflicts, activeConflictHosts,
+            mergeRuntimeConflicts(environmentWide ? environmentHosts : eligibleHosts,
+                    requestedPorts, conflicts, activeConflictHosts,
                     excludedRuntimeContainers);
         }
 
@@ -165,6 +173,9 @@ public class PortPreflightService {
                     && !currentServiceReservationHosts.contains(host.getId())) {
                 availableHosts++;
             }
+        }
+        if (environmentWide && !activeConflictHosts.isEmpty()) {
+            availableHosts = 0;
         }
         result.setAvailableHostCount(Integer.valueOf(availableHosts));
 
@@ -211,8 +222,7 @@ public class PortPreflightService {
         }
     }
 
-    private List<Host> eligibleHosts(long accountId, Long requestedHostId) {
-        List<Host> all = dao.getEligibleHosts(accountId);
+    private static List<Host> eligibleHosts(List<Host> all, Long requestedHostId) {
         if (requestedHostId == null) {
             return all;
         }
