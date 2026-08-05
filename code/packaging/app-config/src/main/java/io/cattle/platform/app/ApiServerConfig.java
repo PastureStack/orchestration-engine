@@ -79,6 +79,8 @@ import io.cattle.platform.iaas.api.port.PortPreflightDaoImpl;
 import io.cattle.platform.iaas.api.port.PortPreflightService;
 import io.cattle.platform.iaas.api.snapshot.SnapshotBackupActionHandler;
 import io.cattle.platform.iaas.api.volume.VolumeSnapshotActionHandler;
+import io.cattle.platform.iaas.api.volume.VolumePreflightActionHandler;
+import io.cattle.platform.iaas.api.volume.VolumePreflightService;
 import io.cattle.platform.object.meta.TypeSet;
 import io.cattle.platform.storage.api.filter.ExternalTemplateInstanceFilter;
 import io.cattle.platform.systemstack.service.UpgradeManager;
@@ -524,6 +526,16 @@ public class ApiServerConfig {
     @Bean
     PortPreflightActionHandler PortPreflightActionHandler() {
         return new PortPreflightActionHandler();
+    }
+
+    @Bean
+    VolumePreflightService VolumePreflightService() {
+        return new VolumePreflightService();
+    }
+
+    @Bean
+    VolumePreflightActionHandler VolumePreflightActionHandler() {
+        return new VolumePreflightActionHandler();
     }
 
     @Bean

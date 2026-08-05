@@ -8,7 +8,7 @@ PastureStack is an independent community effort to preserve, audit, and moderniz
 
 ## Project status
 
-This source tree produces engine version `0.183.277`. It retains the existing Java 25, Ubuntu 26.04, Maven, Liquibase, MariaDB/MySQL, WebSocket, dependency, concurrency, and runtime-hardening work from the maintained compatibility line. Release builds also compile a pinned Hazelcast `5.7.0` source revision with the tracked Jackson security patch described in [`third-party/HAZELCAST.md`](third-party/HAZELCAST.md); the patched artifact is never downloaded from an unverified binary source.
+This source tree produces engine version `0.183.278`. It retains the existing Java 25, Ubuntu 26.04, Maven, Liquibase, MariaDB/MySQL, WebSocket, dependency, concurrency, and runtime-hardening work from the maintained compatibility line. Release builds also compile a pinned Hazelcast `5.7.0` source revision with the tracked Jackson security patch described in [`third-party/HAZELCAST.md`](third-party/HAZELCAST.md); the patched artifact is never downloaded from an unverified binary source.
 
 WebAuthn verification uses WebAuthn4J's maintained `tools.jackson` 3.1
 dependency line. The existing platform JSON surface remains on
@@ -52,7 +52,7 @@ The gate performs dependency-hygiene checks, builds every Maven module with JDK 
 To create the complete release archive after the gate passes:
 
 ```sh
-ENGINE_VERSION=0.183.277 bash scripts/build --release
+ENGINE_VERSION=0.183.278 bash scripts/build --release
 bash scripts/check-release-artifact dist/artifacts/cattle.jar
 ```
 

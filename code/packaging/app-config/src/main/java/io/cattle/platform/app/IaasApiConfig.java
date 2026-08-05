@@ -92,6 +92,7 @@ import io.cattle.platform.iaas.api.filter.hosts.HostsFilter;
 import io.cattle.platform.iaas.api.filter.instance.InstanceImageValidationFilter;
 import io.cattle.platform.iaas.api.filter.instance.InstanceOutputFilter;
 import io.cattle.platform.iaas.api.filter.instance.InstancePortsValidationFilter;
+import io.cattle.platform.iaas.api.filter.instance.InstanceVolumesValidationFilter;
 import io.cattle.platform.iaas.api.filter.instance.InstanceValidationFilter;
 import io.cattle.platform.iaas.api.filter.instance.InstanceVolumeCleanupStrategyValidationFilter;
 import io.cattle.platform.iaas.api.filter.machinedriver.MachineDriverFilter;
@@ -356,6 +357,11 @@ public class IaasApiConfig {
     @Bean
     InstancePortsValidationFilter InstancePortsValidationFilter() {
         return new InstancePortsValidationFilter();
+    }
+
+    @Bean
+    InstanceVolumesValidationFilter InstanceVolumesValidationFilter() {
+        return new InstanceVolumesValidationFilter();
     }
 
     @Bean

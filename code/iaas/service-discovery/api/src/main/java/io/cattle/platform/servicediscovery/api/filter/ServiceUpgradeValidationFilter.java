@@ -2,6 +2,7 @@ package io.cattle.platform.servicediscovery.api.filter;
 
 import io.cattle.platform.core.addon.InServiceUpgradeStrategy;
 import io.cattle.platform.core.addon.PortPreflightInput;
+import io.cattle.platform.core.addon.VolumePreflightInput;
 import io.cattle.platform.core.addon.ServiceUpgrade;
 import io.cattle.platform.core.addon.ServiceUpgradeStrategy;
 import io.cattle.platform.core.constants.InstanceConstants;
@@ -10,6 +11,8 @@ import io.cattle.platform.core.model.Service;
 import io.cattle.platform.core.model.Account;
 import io.cattle.platform.iaas.api.port.PortPreflightInputs;
 import io.cattle.platform.iaas.api.port.PortPreflightService;
+import io.cattle.platform.iaas.api.volume.VolumePreflightInputs;
+import io.cattle.platform.iaas.api.volume.VolumePreflightService;
 import io.cattle.platform.iaas.api.filter.common.AbstractDefaultResourceManagerFilter;
 import io.cattle.platform.json.JsonMapper;
 import io.cattle.platform.object.ObjectManager;
@@ -49,6 +52,9 @@ public class ServiceUpgradeValidationFilter extends AbstractDefaultResourceManag
 
     @Inject
     PortPreflightService portPreflightService;
+
+    @Inject
+    VolumePreflightService volumePreflightService;
 
     @Override
     public Class<?>[] getTypeClasses() {
@@ -91,6 +97,8 @@ public class ServiceUpgradeValidationFilter extends AbstractDefaultResourceManag
 
             assertUpgradePortsAvailable(service, inServiceStrategy);
 
+            assertUpgradeVolumesAvailable(service, inServiceStrategy);
+
             Object launchConfig = DataAccessor.field(service, ServiceConstants.FIELD_LAUNCH_CONFIG,
                     Object.class);
             Object newLaunchConfig = inServiceStrategy.getLaunchConfig();
@@ -123,6 +131,31 @@ public class ServiceUpgradeValidationFilter extends AbstractDefaultResourceManag
         }
         Account account = objectManager.loadResource(Account.class, service.getAccountId());
         portPreflightService.assertAvailable(account, input);
+    }
+
+    protected void assertUpgradeVolumesAvailable(Service service, InServiceUpgradeStrategy strategy) {
+        Integer scale = DataAccessor.fieldInteger(service, ServiceConstants.FIELD_SCALE);
+        Long batchSize = strategy.getBatchSize();
+        int normalizedBatchSize = (int) Math.max(1L, Math.min(Integer.MAX_VALUE,
+                batchSize == null ? 1L : batchSize.longValue()));
+        Account account = objectManager.loadResource(Account.class, service.getAccountId());
+
+        VolumePreflightInput primary = VolumePreflightInputs.fromService(service,
+                strategy.getLaunchConfig(), scale, strategy.getStartFirst());
+        primary.setBatchSize(Integer.valueOf(normalizedBatchSize));
+        if (!primary.getDataVolumes().isEmpty()) {
+            volumePreflightService.assertAvailable(account, primary);
+        }
+        if (strategy.getSecondaryLaunchConfigs() != null) {
+            for (Object secondary : strategy.getSecondaryLaunchConfigs()) {
+                VolumePreflightInput input = VolumePreflightInputs.fromService(service,
+                        secondary, scale, strategy.getStartFirst());
+                input.setBatchSize(Integer.valueOf(normalizedBatchSize));
+                if (!input.getDataVolumes().isEmpty()) {
+                    volumePreflightService.assertAvailable(account, input);
+                }
+            }
+        }
     }
 
     static List<Object> objectListCopy(List<?> values) {
