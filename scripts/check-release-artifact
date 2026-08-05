@@ -4,7 +4,7 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 artifact=${1:-dist/artifacts/cattle.jar}
-expected_version=${EXPECTED_ENGINE_VERSION:-0.183.278}
+expected_version=${EXPECTED_ENGINE_VERSION:-0.183.279}
 
 test -f "$artifact"
 artifact=$(realpath "$artifact")
@@ -245,6 +245,14 @@ for class_name in \
         tr -d '\r' |
         grep -Fxc "$class_name")" -eq 1
 done
+for marker in \
+    nfs_requires_environment_scope \
+    nfs_requires_multi_host_rw \
+    nfs_incomplete_host_coverage; do
+    unzip -p "$workdir/$api_logic_entry" \
+        io/cattle/platform/iaas/api/volume/VolumePreflightService.class |
+        grep -aF "$marker" >/dev/null
+done
 unzip -p "$workdir/$api_logic_entry" \
     schema/base/project.json.d/volume-preflight.json |
     grep -F '"volumepreflight"' >/dev/null
@@ -260,5 +268,5 @@ unzip -p "$workdir/$app_config_entry" \
     io/cattle/platform/app/ApiServerConfig.class |
     grep -aF VolumePreflightActionHandler >/dev/null
 
-printf 'ENGINE_RELEASE_ARTIFACT_OK artifact=%s version=%s webapp=1 resources=1 auth_logic=1 app_config=1 api_logic=1 model=1 port_preflight=authoritative volume_preflight=authoritative identity_security_v1_schemas=1 frozen_mfa_policy_schema=1 mfa_account_holder_boundary=1 mfa_attempt_transactions=requires-new-read-and-write recovery_email_enrollment_schema=1 credential_secret_capacity=mediumtext launcher=1\n' \
+printf 'ENGINE_RELEASE_ARTIFACT_OK artifact=%s version=%s webapp=1 resources=1 auth_logic=1 app_config=1 api_logic=1 model=1 port_preflight=authoritative volume_preflight=authoritative nfs_contract=environment-multiHostRW-complete-coverage identity_security_v1_schemas=1 frozen_mfa_policy_schema=1 mfa_account_holder_boundary=1 mfa_attempt_transactions=requires-new-read-and-write recovery_email_enrollment_schema=1 credential_secret_capacity=mediumtext launcher=1\n' \
     "$artifact" "$expected_version"

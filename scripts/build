@@ -7,9 +7,16 @@ case "${MAVEN_CONFIG:-}" in
     /*) unset MAVEN_CONFIG ;;
 esac
 
+# Maven honors JAVA_HOME, but helper tools such as `jar` are resolved through
+# PATH. Keep every release step on the same reviewed JDK toolchain.
+if [ -n "${JAVA_HOME:-}" ] && [ -x "${JAVA_HOME}/bin/java" ]; then
+    PATH="${JAVA_HOME}/bin:${PATH}"
+    export PATH
+fi
+
 SOURCE_REVISION=${SOURCE_REVISION:-$(git rev-parse HEAD)}
 SOURCE_DATE_EPOCH=${SOURCE_DATE_EPOCH:-$(git show -s --format=%ct HEAD)}
-ENGINE_VERSION=${ENGINE_VERSION:-0.183.278}
+ENGINE_VERSION=${ENGINE_VERSION:-0.183.279}
 
 case "$SOURCE_REVISION" in
     ''|*[!0-9a-f]*)

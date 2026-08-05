@@ -178,22 +178,31 @@ public class VolumePreflightService {
             issues.add(issue("blocked", "no_eligible_hosts", null, null, driver.getName()));
         }
 
-        if ("pasturestack-nfs".equals(driver.getName())) {
-            if (!environmentScope) {
-                issues.add(issue("blocked", "nfs_requires_environment_scope",
-                        null, null, driver.getName()));
-            }
-            if (!"multiHostRW".equals(accessMode)) {
-                issues.add(issue("blocked", "nfs_requires_multi_host_rw",
-                        null, null, driver.getName()));
-            }
-            if (available != environmentHosts.size()) {
-                issues.add(issue("blocked", "nfs_incomplete_host_coverage",
-                        null, null, driver.getName()));
-            }
+        for (String reason : nfsContractReasons(driver.getName(), environmentScope,
+                accessMode, available, environmentHosts.size())) {
+            issues.add(issue("blocked", reason, null, null, driver.getName()));
         }
 
         return available;
+    }
+
+    static List<String> nfsContractReasons(String driverName, boolean environmentScope,
+            String accessMode, int availableHosts, int environmentHostCount) {
+        if (!"pasturestack-nfs".equals(driverName)) {
+            return Collections.emptyList();
+        }
+
+        List<String> reasons = new ArrayList<String>();
+        if (!environmentScope) {
+            reasons.add("nfs_requires_environment_scope");
+        }
+        if (!"multiHostRW".equals(accessMode)) {
+            reasons.add("nfs_requires_multi_host_rw");
+        }
+        if (availableHosts != environmentHostCount) {
+            reasons.add("nfs_incomplete_host_coverage");
+        }
+        return reasons;
     }
 
     private void validateSpecsAgainstDriver(Account account, List<VolumeSpec> specs,

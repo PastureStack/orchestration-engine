@@ -5,7 +5,7 @@
     <parent>
         <groupId>io.cattle</groupId>
         <artifactId>cattle-parent</artifactId>
-        <version>0.183.278</version>
+        <version>0.183.279</version>
         <relativePath>../../../parent/pom.xml</relativePath>
     </parent>
     <dependencies>

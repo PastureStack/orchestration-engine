@@ -70,4 +70,26 @@ public class VolumePreflightServiceTest {
                 VolumePreflightInputs.stringList(Arrays.asList(
                         " /data ", "", null, "named:/config")));
     }
+
+    @Test
+    public void acceptsTheCompletePastureStackNfsContract() {
+        assertTrue(VolumePreflightService.nfsContractReasons(
+                "pasturestack-nfs", true, "multiHostRW", 2, 2).isEmpty());
+    }
+
+    @Test
+    public void rejectsEveryIncompletePastureStackNfsContractDimension() {
+        assertEquals(Arrays.asList(
+                "nfs_requires_environment_scope",
+                "nfs_requires_multi_host_rw",
+                "nfs_incomplete_host_coverage"),
+                VolumePreflightService.nfsContractReasons(
+                        "pasturestack-nfs", false, "singleHostRW", 1, 2));
+    }
+
+    @Test
+    public void doesNotApplyTheNfsContractToOtherStorageDrivers() {
+        assertTrue(VolumePreflightService.nfsContractReasons(
+                "other-driver", false, "singleHostRW", 0, 2).isEmpty());
+    }
 }
