@@ -632,9 +632,18 @@ public class PortPreflightService {
         return value == null ? 0 : value.hashCode();
     }
 
-    @SuppressWarnings("unchecked")
     private static Map<String, Object> asMap(Object value) {
-        return value instanceof Map<?, ?> ? (Map<String, Object>) value : Collections.<String, Object>emptyMap();
+        if (!(value instanceof Map<?, ?>)) {
+            return Collections.emptyMap();
+        }
+
+        Map<String, Object> result = new LinkedHashMap<>();
+        for (Map.Entry<?, ?> entry : ((Map<?, ?>) value).entrySet()) {
+            if (entry.getKey() instanceof String) {
+                result.put((String) entry.getKey(), entry.getValue());
+            }
+        }
+        return result;
     }
 
     private static Integer integerValue(Object value) {
