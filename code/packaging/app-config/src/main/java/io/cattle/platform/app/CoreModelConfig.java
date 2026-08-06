@@ -38,6 +38,9 @@ import io.cattle.platform.core.addon.ToServiceUpgradeStrategy;
 import io.cattle.platform.core.addon.Ulimit;
 import io.cattle.platform.core.addon.VirtualMachineDisk;
 import io.cattle.platform.core.addon.VolumeActivateInput;
+import io.cattle.platform.core.addon.VolumePreflightInput;
+import io.cattle.platform.core.addon.VolumePreflightIssue;
+import io.cattle.platform.core.addon.VolumePreflightResult;
 import io.cattle.platform.core.model.CattleTable;
 import io.cattle.platform.db.jooq.utils.SchemaRecordTypeListGenerator;
 import io.cattle.platform.extension.dynamic.api.addon.ExternalHandlerProcessConfig;
@@ -92,6 +95,9 @@ public class CoreModelConfig {
                 PortPreflightInput.class,
                 PortPreflightConflict.class,
                 PortPreflightResult.class,
+                VolumePreflightInput.class,
+                VolumePreflightIssue.class,
+                VolumePreflightResult.class,
                 TargetPortRule.class,
                 MountEntry.class,
                 NetworkPolicyRule.class,

@@ -28,7 +28,7 @@ if grep -RIn --include='pom.xml' --exclude-dir=target --exclude-dir=.git \
     fail snapshot_project_version
 fi
 
-require_line code/meta-parent/pom.xml '    <version>0.183.280</version>'
+require_line code/meta-parent/pom.xml '    <version>0.183.281</version>'
 require_line code/meta-parent/pom.xml '    <url>https://github.com/PastureStack/orchestration-engine</url>'
 require_line Dockerfile 'FROM ubuntu:26.04'
 require_line Dockerfile.dapper 'FROM ubuntu:26.04'
@@ -126,6 +126,10 @@ require_line code/iaas/api-logic/src/main/resources/schema/base/project.json.d/v
 require_line resources/content/schema/project/project-auth.json '        "volumePreflightInput" : "cr",'
 require_line resources/content/schema/project/project-auth.json '        "volumePreflightResult" : "r",'
 require_line resources/content/schema/project/project-auth.json '        "volumePreflightIssue" : "r",'
+require_line code/packaging/app-config/src/main/java/io/cattle/platform/app/CoreModelConfig.java '                VolumePreflightInput.class,'
+require_line code/packaging/app-config/src/main/java/io/cattle/platform/app/CoreModelConfig.java '                VolumePreflightResult.class,'
+require_line code/packaging/app-config/src/main/java/io/cattle/platform/app/CoreModelConfig.java '                VolumePreflightIssue.class,'
+require_line code/packaging/app-config/src/test/java/io/cattle/platform/app/VolumePreflightSchemaAuthorizationTest.java '    public void coreAddonTypeSetRegistersEveryVolumePreflightSchema() {'
 require_line code/packaging/app-config/src/test/java/io/cattle/platform/app/VolumePreflightSchemaAuthorizationTest.java '    public void projectAuthorizationKeepsVolumePreflightActionSchemasVisible() throws Exception {'
 require_line code/iaas/api-logic/src/test/java/io/cattle/platform/iaas/api/volume/VolumePreflightServiceTest.java '    public void rejectsInvalidAnonymousModeInsteadOfTreatingItAsABindMount() {'
 require_line code/iaas/api-logic/src/main/java/io/cattle/platform/iaas/api/volume/VolumePreflightService.java '    static List<String> nfsContractReasons(String driverName, boolean environmentScope,'
@@ -204,4 +208,4 @@ fi
 require_line README.md 'PastureStack is an independent community effort to preserve, audit, and modernize the Rancher 1.6 ecosystem. It is not affiliated with or endorsed by Rancher Labs or SUSE.'
 require_line ORIGIN.md '- Preserved upstream boundary: `82d154a53f4089fecfb9f320caad826bb4f6055f`'
 
-printf 'PASTURESTACK_SOURCE_GATE_OK version=0.183.280 runtime_sources=github_release images=ghcr_digest_pinned ubuntu=26.04 maven=3.9.14 patched_hazelcast=5.7.0-pasturestack.2 docker=29.6.2 credential_secret_capacity=mediumtext port_preflight=authoritative volume_preflight=authoritative volume_preflight_project_schema=authorized\n'
+printf 'PASTURESTACK_SOURCE_GATE_OK version=0.183.281 runtime_sources=github_release images=ghcr_digest_pinned ubuntu=26.04 maven=3.9.14 patched_hazelcast=5.7.0-pasturestack.2 docker=29.6.2 credential_secret_capacity=mediumtext port_preflight=authoritative volume_preflight=authoritative volume_preflight_project_schema=authorized volume_preflight_type_set=registered\n'

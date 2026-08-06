@@ -6,7 +6,11 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 
+import io.cattle.platform.core.addon.VolumePreflightInput;
+import io.cattle.platform.core.addon.VolumePreflightIssue;
+import io.cattle.platform.core.addon.VolumePreflightResult;
 import io.cattle.platform.json.JacksonJsonMapper;
+import io.cattle.platform.object.meta.TypeSet;
 import io.cattle.platform.schema.processor.AuthOverlayPostProcessor;
 import io.github.ibuildthecloud.gdapi.model.Field;
 import io.github.ibuildthecloud.gdapi.model.impl.FieldImpl;
@@ -36,6 +40,15 @@ public class VolumePreflightSchemaAuthorizationTest {
     private static final String[] ISSUE_FIELDS = {
         "severity", "reasonCode", "rowIndex", "value", "driverName", "hostId", "hostName"
     };
+
+    @Test
+    public void coreAddonTypeSetRegistersEveryVolumePreflightSchema() {
+        TypeSet typeSet = new CoreModelConfig().CoreAddonTypeSet();
+
+        assertTrue(typeSet.getTypeClasses().contains(VolumePreflightInput.class));
+        assertTrue(typeSet.getTypeClasses().contains(VolumePreflightResult.class));
+        assertTrue(typeSet.getTypeClasses().contains(VolumePreflightIssue.class));
+    }
 
     @Test
     public void projectAuthorizationKeepsVolumePreflightActionSchemasVisible() throws Exception {
