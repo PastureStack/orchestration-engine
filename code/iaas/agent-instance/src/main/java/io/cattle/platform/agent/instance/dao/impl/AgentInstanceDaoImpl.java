@@ -32,13 +32,12 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 
-import org.apache.commons.lang3.StringUtils;
 import org.jooq.Record2;
-import org.jooq.RecordHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -107,7 +106,7 @@ public class AgentInstanceDaoImpl extends AbstractJooqDao implements AgentInstan
     @Override
     public List<Long> getAgentProvider(String providedServiceLabel, long accountId) {
         final Map<Long, Integer> result = new HashMap<>();
-        create().select(INSTANCE.AGENT_ID, LABEL.VALUE)
+        for (Record2<Long, String> record : create().select(INSTANCE.AGENT_ID, LABEL.VALUE)
                 .from(INSTANCE)
                 .join(INSTANCE_LABEL_MAP)
                     .on(INSTANCE_LABEL_MAP.INSTANCE_ID.eq(INSTANCE.ID))
@@ -125,21 +124,17 @@ public class AgentInstanceDaoImpl extends AbstractJooqDao implements AgentInstan
                         .and(INSTANCE.HEALTH_STATE.in(HealthcheckConstants.HEALTH_STATE_HEALTHY,
                                 HealthcheckConstants.HEALTH_STATE_UPDATING_HEALTHY)))
                         .and(AGENT.STATE.eq(CommonStatesConstants.ACTIVE))
-                .orderBy(INSTANCE.AGENT_ID.asc())
-        .fetchInto(new RecordHandler<Record2<Long, String>>() {
-            @Override
-            public void next(Record2<Long, String> record) {
-                Long agentId = record.getValue(INSTANCE.AGENT_ID);
-                String p = record.getValue(LABEL.VALUE);
-                Integer pVal = 1;
-                try {
-                    pVal = Integer.valueOf(p);
-                } catch (Exception e) {
-                    log.debug("Priority value not found for agent {}. Set it as default", agentId);
-                }
-                result.put(agentId, pVal);
+                .orderBy(INSTANCE.AGENT_ID.asc())) {
+            Long agentId = record.getValue(INSTANCE.AGENT_ID);
+            String p = record.getValue(LABEL.VALUE);
+            Integer pVal = 1;
+            try {
+                pVal = Integer.valueOf(p);
+            } catch (Exception e) {
+                log.debug("Priority value not found for agent {}. Set it as default", agentId);
             }
-        });
+            result.put(agentId, pVal);
+        }
         
         List<Long> returnAgentIds = new ArrayList<>(result.keySet());
         
@@ -181,7 +176,7 @@ public class AgentInstanceDaoImpl extends AbstractJooqDao implements AgentInstan
             }
             Map<String, Object> labels = DataAccessor.fieldMap(agent, InstanceConstants.FIELD_LABELS);
             for (String key : labels.keySet()) {
-                if (StringUtils.equals(providedServiceLabel, key)) {
+                if (Objects.equals(providedServiceLabel, key)) {
                     agentIds.add(agent.getId());
                     break;
                 }

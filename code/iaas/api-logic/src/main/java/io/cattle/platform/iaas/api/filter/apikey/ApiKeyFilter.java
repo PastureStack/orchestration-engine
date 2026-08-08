@@ -1,6 +1,7 @@
 package io.cattle.platform.iaas.api.filter.apikey;
 
 import io.cattle.platform.archaius.util.ArchaiusUtil;
+import io.cattle.platform.archaius.util.ConfigProperty;
 import io.cattle.platform.core.constants.CredentialConstants;
 import io.cattle.platform.core.model.Credential;
 import io.cattle.platform.iaas.api.filter.common.AbstractDefaultResourceManagerFilter;
@@ -13,11 +14,10 @@ import java.security.SecureRandom;
 import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.codec.binary.Hex;
 
-import com.netflix.config.DynamicStringProperty;
 
 public class ApiKeyFilter extends AbstractDefaultResourceManagerFilter {
 
-    public static final DynamicStringProperty BAD_CHARACTERS = ArchaiusUtil.getString("process.credential.create.bad.characters");
+    public static final ConfigProperty<String> BAD_CHARACTERS = ArchaiusUtil.getStringProperty("process.credential.create.bad.characters");
     private final static SecureRandom RANDOM = new SecureRandom();
 
     @Override

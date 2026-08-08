@@ -1,6 +1,7 @@
 package io.cattle.platform.object.purge.impl;
 
 import io.cattle.platform.archaius.util.ArchaiusUtil;
+import io.cattle.platform.archaius.util.ConfigProperty;
 import io.cattle.platform.engine.manager.ProcessManager;
 import io.cattle.platform.engine.manager.ProcessNotFoundException;
 import io.cattle.platform.engine.process.ProcessDefinition;
@@ -25,13 +26,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import javax.inject.Inject;
-import javax.inject.Named;
+import jakarta.inject.Inject;
+import jakarta.inject.Named;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.netflix.config.DynamicLongProperty;
 
 public class RemoveMonitorImpl implements RemoveMonitor, Task {
 
@@ -53,7 +53,7 @@ public class RemoveMonitorImpl implements RemoveMonitor, Task {
 
     private static final String ERROR_STATE = "error";
     private static final Logger log = LoggerFactory.getLogger(RemoveMonitorImpl.class);
-    private static final DynamicLongProperty REMOVE_DELAY = ArchaiusUtil.getLong("remove.resources.after");
+    private static final ConfigProperty<Long> REMOVE_DELAY = ArchaiusUtil.getLongProperty("remove.resources.after");
 
 
     @Override

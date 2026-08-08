@@ -1,6 +1,7 @@
 package io.cattle.platform.agent.util;
 
 import io.cattle.platform.archaius.util.ArchaiusUtil;
+import io.cattle.platform.archaius.util.ConfigListProperty;
 import io.cattle.platform.core.constants.AgentConstants;
 import io.cattle.platform.core.constants.CommonStatesConstants;
 import io.cattle.platform.core.constants.CredentialConstants;
@@ -17,11 +18,9 @@ import java.util.Map;
 import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.lang3.StringUtils;
 
-import com.netflix.config.DynamicStringListProperty;
-
 public class AgentUtils {
 
-    public static final DynamicStringListProperty AGENT_RESOURCES = ArchaiusUtil.getList("agent.resources");
+    public static final ConfigListProperty<String> AGENT_RESOURCES = ArchaiusUtil.getStringListProperty("agent.resources");
 
     public static Ping newPing(Agent agent) {
         if (agent == null) {

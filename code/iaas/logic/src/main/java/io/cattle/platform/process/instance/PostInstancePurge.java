@@ -11,7 +11,7 @@ import io.cattle.platform.object.util.ObjectUtils;
 import io.cattle.platform.process.common.handler.AgentBasedProcessHandler;
 import io.cattle.platform.util.type.Priority;
 
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 
 public class PostInstancePurge extends AgentBasedProcessHandler {
    

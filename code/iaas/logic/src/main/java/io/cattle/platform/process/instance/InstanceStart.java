@@ -4,6 +4,7 @@ import static io.cattle.platform.core.model.tables.InstanceHostMapTable.*;
 
 import io.cattle.platform.allocator.service.AllocatorService;
 import io.cattle.platform.archaius.util.ArchaiusUtil;
+import io.cattle.platform.archaius.util.ConfigProperty;
 import io.cattle.platform.async.utils.ResourceTimeoutException;
 import io.cattle.platform.async.utils.TimeoutException;
 import io.cattle.platform.core.addon.InstanceHealthCheck;
@@ -52,19 +53,18 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-import javax.inject.Inject;
-import javax.inject.Named;
+import jakarta.inject.Inject;
+import jakarta.inject.Named;
 
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.netflix.config.DynamicIntProperty;
 
 @Named
 public class InstanceStart extends AbstractDefaultProcessHandler {
 
-    private static final DynamicIntProperty COMPUTE_TRIES = ArchaiusUtil.getInt("instance.compute.tries");
+    private static final ConfigProperty<Integer> COMPUTE_TRIES = ArchaiusUtil.getIntProperty("instance.compute.tries");
 
     private static final List<String> REMOVED_STATES = Arrays.asList(CommonStatesConstants.REMOVED, CommonStatesConstants.REMOVING,
             CommonStatesConstants.PURGED, CommonStatesConstants.PURGING);
@@ -186,7 +186,8 @@ public class InstanceStart extends AbstractDefaultProcessHandler {
             return handleStartError(state, instance, e);
         }
 
-        assignPrimaryIpAddress(instance, resultData);
+        Instance current = getObjectManager().loadResource(Instance.class, instance.getId());
+        assignPrimaryIpAddress(current == null ? instance : current, resultData);
 
         Event event = EventVO.newEvent(IaasEvents.INVALIDATE_INSTANCE_DATA_CACHE)
                 .withResourceType(instance.getKind())
@@ -352,9 +353,53 @@ public class InstanceStart extends AbstractDefaultProcessHandler {
             address = ip.getAddress();
         }
 
+        if (StringUtils.isBlank(address)) {
+            address = primaryIpAddressFromAgentData(instance);
+        }
+
         if (address != null) {
             resultData.put(InstanceConstants.FIELD_PRIMARY_IP_ADDRESS, address);
+            persistPrimaryIpAddress(instance, address);
         }
+    }
+
+    protected void persistPrimaryIpAddress(Instance instance, String address) {
+        if (!shouldPersistPrimaryIpAddress(instance, address)) {
+            return;
+        }
+
+        DataAccessor.setField(instance, InstanceConstants.FIELD_PRIMARY_IP_ADDRESS, address);
+        getObjectManager().persist(instance);
+    }
+
+    protected boolean shouldPersistPrimaryIpAddress(Instance instance, String address) {
+        return StringUtils.isNotBlank(address)
+                && !address.equals(DataAccessor.fieldString(instance, InstanceConstants.FIELD_PRIMARY_IP_ADDRESS));
+    }
+
+    protected String primaryIpAddressFromAgentData(Instance instance) {
+        String dockerIp = normalizePrimaryIpAddress(DataAccessor.fieldString(instance, DockerInstanceConstants.FIELD_DOCKER_IP));
+        if (dockerIp != null) {
+            return dockerIp;
+        }
+
+        Map<String, Object> labels = DataAccessor.fieldMap(instance, InstanceConstants.FIELD_LABELS);
+        Object labelIp = labels.get("io.rancher.container.ip");
+        return normalizePrimaryIpAddress(labelIp == null ? null : labelIp.toString());
+    }
+
+    protected String normalizePrimaryIpAddress(String value) {
+        String address = StringUtils.trimToNull(value);
+        if (address == null) {
+            return null;
+        }
+
+        int cidr = address.indexOf('/');
+        if (cidr >= 0) {
+            address = StringUtils.trimToNull(address.substring(0, cidr));
+        }
+
+        return address;
     }
 
     protected int getMaxComputeTries(Instance instance) {

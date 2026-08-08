@@ -31,10 +31,9 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 
 import org.jooq.Record2;
-import org.jooq.RecordHandler;
 
 public class ServiceConsumeMapDaoImpl extends AbstractJooqDao implements ServiceConsumeMapDao {
 
@@ -327,22 +326,18 @@ public class ServiceConsumeMapDaoImpl extends AbstractJooqDao implements Service
     @Override
     public Map<Long, Long> findConsumedServicesIdsToStackIdsFromOtherAccounts(long accountId) {
         final Map<Long, Long> result = new HashMap<>();
-        create().select(SERVICE.ID, SERVICE.STACK_ID)
+        for (Record2<Long, Long> record : create().select(SERVICE.ID, SERVICE.STACK_ID)
         .from(SERVICE)
         .join(SERVICE_CONSUME_MAP)
         .on(SERVICE_CONSUME_MAP.CONSUMED_SERVICE_ID.eq(SERVICE.ID))
         .where(SERVICE_CONSUME_MAP.ACCOUNT_ID.eq(accountId)
                         .and(SERVICE_CONSUME_MAP.REMOVED.isNull())
                         .and(SERVICE.REMOVED.isNull())
-                        .and(SERVICE.ACCOUNT_ID.ne(accountId)))
-                .fetchInto(new RecordHandler<Record2<Long, Long>>() {
-                    @Override
-                    public void next(Record2<Long, Long> record) {
-                        Long serviceId = record.getValue(SERVICE.ID);
-                        Long stackId = record.getValue(SERVICE.STACK_ID);
-                        result.put(serviceId, stackId);
-                    }
-                });
+                        .and(SERVICE.ACCOUNT_ID.ne(accountId)))) {
+            Long serviceId = record.getValue(SERVICE.ID);
+            Long stackId = record.getValue(SERVICE.STACK_ID);
+            result.put(serviceId, stackId);
+        }
         return result;
     }
 

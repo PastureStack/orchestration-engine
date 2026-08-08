@@ -19,7 +19,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 
 public abstract class AbstractObjectManager implements ObjectManager {
 
@@ -41,8 +41,7 @@ public abstract class AbstractObjectManager implements ObjectManager {
 
     @Override
     public <T> T create(T instance, Map<String, Object> properties) {
-        @SuppressWarnings("unchecked")
-        Class<T> clz = (Class<T>) instance.getClass();
+        Class<?> clz = instance.getClass();
 
         for (ObjectPostInstantiationHandler handler : postInitHandlers) {
             instance = handler.postProcess(instance, clz, properties);
@@ -82,7 +81,7 @@ public abstract class AbstractObjectManager implements ObjectManager {
         return instance;
     }
 
-    protected <T> T callLifeCycleHandlers(LifeCycleEvent event, T instance, Class<T> clz, Map<String, Object> properties) {
+    protected <T> T callLifeCycleHandlers(LifeCycleEvent event, T instance, Class<?> clz, Map<String, Object> properties) {
         if (lifeCycleHandlers == null) {
             return instance;
         }
@@ -95,7 +94,7 @@ public abstract class AbstractObjectManager implements ObjectManager {
 
     protected abstract <T> T instantiate(Class<T> clz, Map<String, Object> properties);
 
-    protected abstract <T> T insert(T instance, Class<T> clz, Map<String, Object> properties);
+    protected abstract <T> T insert(T instance, Class<?> clz, Map<String, Object> properties);
 
     @Override
     public String getType(Object obj) {
@@ -139,7 +138,6 @@ public abstract class AbstractObjectManager implements ObjectManager {
         return setFields(obj, convertToPropertiesFor(obj, values));
     }
 
-    @SuppressWarnings("unchecked")
     protected Map<Object, Object> toObjectsToWrite(Object obj, Map<String, Object> values) {
         String type = getType(obj);
         Map<String, Relationship> relationships = null;
@@ -160,7 +158,7 @@ public abstract class AbstractObjectManager implements ObjectManager {
                 if (rel == null) {
                     objValues.put(key, value);
                 } else {
-                    value = toObjectsToWrite(rel.getObjectType(), (Map<String, Object>) value);
+                    value = toObjectsToWrite(rel.getObjectType(), CollectionUtils.castMap(value));
                     objValues.put(rel, value);
                 }
             } else {
@@ -171,7 +169,6 @@ public abstract class AbstractObjectManager implements ObjectManager {
         return objValues;
     }
 
-    @SuppressWarnings("unchecked")
     @Override
     public <T> List<T> getListByRelationship(Object obj, Relationship rel) {
         if (rel == null || obj == null) {
@@ -183,17 +180,16 @@ public abstract class AbstractObjectManager implements ObjectManager {
         }
 
         if (rel.getRelationshipType() == RelationshipType.CHILD) {
-            return (List<T>) children(obj, rel.getObjectType(), rel.getPropertyName());
+            return relationshipCast(children(obj, rel.getObjectType(), rel.getPropertyName()));
         } else if (rel.getRelationshipType() == RelationshipType.MAP) {
-            return getListByRelationshipMap(obj, (MapRelationship) rel);
+            return relationshipCast(getListByRelationshipMap(obj, (MapRelationship) rel));
         }
 
         return Collections.emptyList();
     }
 
-    protected abstract <T> List<T> getListByRelationshipMap(Object obj, MapRelationship rel);
+    protected abstract List<?> getListByRelationshipMap(Object obj, MapRelationship rel);
 
-    @SuppressWarnings("unchecked")
     @Override
     public <T> T getObjectByRelationship(Object obj, Relationship rel) {
         if (rel == null || obj == null) {
@@ -206,7 +202,12 @@ public abstract class AbstractObjectManager implements ObjectManager {
 
         Object id = ObjectUtils.getProperty(obj, rel.getPropertyName());
 
-        return id == null ? null : (T) loadResource(rel.getObjectType(), id.toString());
+        return id == null ? null : relationshipCast(loadResource(rel.getObjectType(), id.toString()));
+    }
+
+    @SuppressWarnings("unchecked")
+    private static <T> T relationshipCast(Object value) {
+        return (T) value;
     }
 
     @Override

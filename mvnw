@@ -46,6 +46,16 @@ if [ -z "$MAVEN_SKIP_RC" ] ; then
 
 fi
 
+if [ "${RC16_MAVEN_WRAPPER_FORCE:-false}" != "true" ] && command -v mvn >/dev/null 2>&1; then
+  exec mvn "$@"
+fi
+
+if [ "${RC16_ALLOW_MAVEN_WRAPPER_DOWNLOAD:-false}" != "true" ]; then
+  echo "RC16 Maven wrapper download is disabled by default." >&2
+  echo "Install the maintained Maven toolchain, use the Ubuntu 26.04 dapper image, or set RC16_ALLOW_MAVEN_WRAPPER_DOWNLOAD=true to opt in explicitly." >&2
+  exit 1
+fi
+
 # OS specific support.  $var _must_ be set to either true or false.
 cygwin=false;
 darwin=false;

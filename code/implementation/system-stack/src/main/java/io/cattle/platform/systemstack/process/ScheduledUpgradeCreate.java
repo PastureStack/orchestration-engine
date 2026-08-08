@@ -3,6 +3,7 @@ package io.cattle.platform.systemstack.process;
 import static io.cattle.platform.core.model.tables.ScheduledUpgradeTable.*;
 
 import io.cattle.platform.archaius.util.ArchaiusUtil;
+import io.cattle.platform.archaius.util.ConfigProperty;
 import io.cattle.platform.core.constants.AccountConstants;
 import io.cattle.platform.core.model.Account;
 import io.cattle.platform.core.model.ScheduledUpgrade;
@@ -19,18 +20,16 @@ import io.cattle.platform.systemstack.service.UpgradeManager;
 
 import java.util.Date;
 
-import javax.inject.Inject;
-import javax.inject.Named;
+import jakarta.inject.Inject;
+import jakarta.inject.Named;
 
 import org.apache.commons.lang3.StringUtils;
-
-import com.netflix.config.DynamicLongProperty;
 
 
 @Named
 public class ScheduledUpgradeCreate extends AbstractDefaultProcessHandler {
 
-    public static final DynamicLongProperty DEFAULT_DELAY = ArchaiusUtil.getLong("default.schedule.upgrade.delay.minutes");
+    public static final ConfigProperty<Long> DEFAULT_DELAY = ArchaiusUtil.getLongProperty("default.schedule.upgrade.delay.minutes");
 
     @Inject
     UpgradeManager upgradeManager;

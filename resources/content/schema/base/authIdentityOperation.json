@@ -1,0 +1,103 @@
+{
+    "collectionMethods": [ "POST" ],
+    "resourceMethods": [],
+    "resourceFields": {
+        "operation": {
+            "type": "enum",
+            "options": [ "inspect", "bind", "reassign", "restore", "cancelSwitch", "switchToLocal" ],
+            "required": true,
+            "nullable": false
+        },
+        "identityProof": {
+            "type": "password",
+            "required": false,
+            "nullable": true
+        },
+        "sourceAccountId": {
+            "type": "reference[account]",
+            "required": false,
+            "nullable": true
+        },
+        "targetAccountId": {
+            "type": "reference[account]",
+            "required": false,
+            "nullable": true
+        },
+        "transferPermissions": {
+            "type": "boolean",
+            "required": false,
+            "nullable": true,
+            "default": true
+        },
+        "oldAccountDisposition": {
+            "type": "enum",
+            "options": [ "keep", "disable", "discardPermissions" ],
+            "required": false,
+            "nullable": true,
+            "default": "keep"
+        },
+        "prepareProviderSwitch": {
+            "type": "boolean",
+            "required": false,
+            "nullable": true,
+            "default": false
+        },
+        "providerSwitchCode": {
+            "type": "string",
+            "required": false,
+            "nullable": true
+        },
+        "localUsername": {
+            "type": "string",
+            "required": false,
+            "nullable": true
+        },
+        "localPassword": {
+            "type": "password",
+            "required": false,
+            "nullable": true
+        },
+        "providerSwitchExpiresAt": {
+            "type": "date",
+            "create": false,
+            "update": false,
+            "nullable": true
+        },
+        "matchedAccountId": {
+            "type": "reference[account]",
+            "create": false,
+            "update": false,
+            "nullable": true
+        },
+        "verifiedIdentity": {
+            "type": "map[string]",
+            "create": false,
+            "update": false,
+            "nullable": true
+        },
+        "status": {
+            "type": "string",
+            "create": false,
+            "update": false,
+            "nullable": true
+        },
+        "identityLink": {
+            "type": "authIdentityLink",
+            "create": false,
+            "update": false,
+            "nullable": true
+        },
+        "membershipsCopied": {
+            "type": "int",
+            "create": false,
+            "update": false,
+            "nullable": true
+        },
+        "administratorTransferred": {
+            "type": "boolean",
+            "create": false,
+            "update": false,
+            "nullable": true
+        }
+    }
+}

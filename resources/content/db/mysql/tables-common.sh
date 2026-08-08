@@ -57,6 +57,11 @@ string()
     echo "  \`$1\` varchar(${2:-255}) DEFAULT NULL,"
 }
 
+mediumtext()
+{
+    echo "  \`$1\` mediumtext DEFAULT NULL,"
+}
+
 bigint()
 {
     echo "  \`$1\` bigint(19) DEFAULT NULL,"

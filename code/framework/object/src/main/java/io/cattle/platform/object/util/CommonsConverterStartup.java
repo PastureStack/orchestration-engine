@@ -1,11 +1,11 @@
 package io.cattle.platform.object.util;
 
-import javax.annotation.PostConstruct;
+import jakarta.annotation.PostConstruct;
 
-import org.apache.commons.beanutils.BeanUtilsBean;
-import org.apache.commons.beanutils.ConvertUtilsBean;
-import org.apache.commons.beanutils.converters.IntegerConverter;
-import org.apache.commons.beanutils.converters.LongConverter;
+import org.apache.commons.beanutils2.BeanUtilsBean;
+import org.apache.commons.beanutils2.ConvertUtilsBean;
+import org.apache.commons.beanutils2.converters.IntegerConverter;
+import org.apache.commons.beanutils2.converters.LongConverter;
 
 public class CommonsConverterStartup {
 

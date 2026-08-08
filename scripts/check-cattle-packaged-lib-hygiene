@@ -1,0 +1,77 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+repo_root=$(cd "$(dirname "$0")/.." && pwd)
+cd "$repo_root"
+
+python_cmd=${PYTHON:-}
+if [ -z "$python_cmd" ]; then
+    for candidate in python3 python; do
+        if command -v "$candidate" >/dev/null 2>&1 && "$candidate" -c 'import sys' >/dev/null 2>&1; then
+            python_cmd=$candidate
+            break
+        fi
+    done
+fi
+
+if [ -z "$python_cmd" ]; then
+    echo "python3 or python is required for the cattle packaged library hygiene audit" >&2
+    exit 2
+fi
+
+"$python_cmd" - <<'PY'
+import re
+import sys
+from pathlib import Path
+
+lib_dirs = sorted(Path("code/packaging/app/target").glob("*/WEB-INF/lib"))
+if not lib_dirs:
+    print("CATTLE_PACKAGED_LIB_HYGIENE_NO_APP_LIBS path=code/packaging/app/target/*/WEB-INF/lib")
+    print("Run this gate after the packaging/app Maven module has produced the Rancher webapp.")
+    print("failure_count=1")
+    sys.exit(1)
+
+blocked = {
+    "legacy-apache-httpclient": re.compile(r"^(fluent-hc|httpclient|httpcore|httpmime)-.*\.jar$"),
+    "legacy-archaius": re.compile(r"^(archaius-core|commons-configuration)-.*\.jar$"),
+    "legacy-jmxtrans": re.compile(r"^(embedded-jmxtrans|jmxtrans-|jmxtrans_).*.jar$"),
+    "legacy-javaee-javax": re.compile(r"^(javax[.-].*|geronimo-servlet_.*|jaxb-api-.*|servlet-api-.*)\.jar$"),
+    "legacy-commons-beanutils": re.compile(r"^commons-beanutils-[0-9].*\.jar$"),
+    "legacy-commons-collections": re.compile(r"^commons-collections-[0-9].*\.jar$"),
+    "legacy-log4j-runtime": re.compile(r"^(log4j-[0-9].*|log4j-core-.*|log4j-api-.*)\.jar$"),
+    "legacy-xstream": re.compile(r"^xstream-.*\.jar$"),
+}
+
+explicit_allowed = {
+    "commons-beanutils2-2.0.0-M2.jar",
+    "commons-collections4-4.5.0.jar",
+    "log4j-over-slf4j-2.0.18.jar",
+}
+
+failures = []
+jar_count = 0
+for lib_dir in lib_dirs:
+    for jar in sorted(lib_dir.glob("*.jar")):
+        jar_count += 1
+        name = jar.name
+        if name in explicit_allowed:
+            continue
+        for family, pattern in blocked.items():
+            if pattern.match(name):
+                failures.append(f"CATTLE_PACKAGED_LIB_BLOCKED family={family} file={jar}")
+                break
+
+for failure in failures[:100]:
+    print(failure)
+if len(failures) > 100:
+    print(f"CATTLE_PACKAGED_LIB_FAIL_MORE count={len(failures) - 100}")
+
+print(f"CATTLE_PACKAGED_LIB_HYGIENE_OK lib_dir_count={len(lib_dirs)} jar_count={jar_count}")
+print("Allowed replacements include commons-beanutils2, commons-collections4, Jakarta APIs, and log4j-over-slf4j.")
+print("Blocked families include Apache HttpClient 4.x, old javax/servlet/jaxb jars, JMXTrans, Archaius core, Commons BeanUtils 1.x, Commons Collections 3.x, Log4j runtime jars, and XStream.")
+print(f"failure_count={len(failures)}")
+if failures:
+    sys.exit(1)
+PY
+
+"$repo_root/scripts/check-cattle-runtime-jar-uniqueness"

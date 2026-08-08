@@ -1,6 +1,7 @@
 package io.cattle.platform.schema.processor;
 
 import io.cattle.platform.archaius.util.ArchaiusUtil;
+import io.cattle.platform.archaius.util.ConfigListProperty;
 import io.cattle.platform.util.type.Priority;
 import io.github.ibuildthecloud.gdapi.factory.SchemaFactory;
 import io.github.ibuildthecloud.gdapi.factory.impl.AbstractSchemaPostProcessor;
@@ -8,13 +9,11 @@ import io.github.ibuildthecloud.gdapi.factory.impl.SchemaPostProcessor;
 import io.github.ibuildthecloud.gdapi.model.Field;
 import io.github.ibuildthecloud.gdapi.model.impl.FieldImpl;
 import io.github.ibuildthecloud.gdapi.model.impl.SchemaImpl;
-import com.netflix.config.DynamicStringListProperty;
 
 public class AuthSchemaAdditionsPostProcessor extends AbstractSchemaPostProcessor implements SchemaPostProcessor, Priority {
 
-    private static final DynamicStringListProperty AUTH_SERVICE_EXTERNAL_ID_TYPES = ArchaiusUtil.getList("auth.service.external.id.types");
+    private static final ConfigListProperty<String> AUTH_SERVICE_EXTERNAL_ID_TYPES = ArchaiusUtil.getStringListProperty("auth.service.external.id.types");
 
-    
     @Override
     public SchemaImpl postProcess(SchemaImpl schema, SchemaFactory factory) {
       if(schema.getId().equals("projectMember")) {

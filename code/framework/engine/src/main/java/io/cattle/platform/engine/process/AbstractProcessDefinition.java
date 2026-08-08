@@ -8,8 +8,8 @@ import io.cattle.platform.extension.ExtensionPoint;
 
 import java.util.List;
 
-import javax.annotation.PostConstruct;
-import javax.inject.Inject;
+import jakarta.annotation.PostConstruct;
+import jakarta.inject.Inject;
 
 public abstract class AbstractProcessDefinition implements ProcessDefinition, ExtensionBasedProcessDefinition {
 

@@ -13,7 +13,7 @@ import io.cattle.platform.process.common.handler.AgentBasedProcessHandler;
 
 import java.util.List;
 
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 
 public class VolumeRevertRestoreAgentProcessHandler extends AgentBasedProcessHandler {
 

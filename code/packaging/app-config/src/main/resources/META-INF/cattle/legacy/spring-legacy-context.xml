@@ -1,9 +1,7 @@
 <beans xmlns="http://www.springframework.org/schema/beans"
     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
     xmlns:context="http://www.springframework.org/schema/context"
-    xmlns:metrics="http://www.ryantenney.com/schema/metrics"
     xmlns:task="http://www.springframework.org/schema/task"
-    xmlns:management="http://www.xebia.fr/schema/xebia-management-extras"
     xmlns:aop="http://www.springframework.org/schema/aop"
     xmlns:tx="http://www.springframework.org/schema/tx"
     xsi:schemaLocation="
@@ -11,17 +9,11 @@
         http://www.springframework.org/schema/task http://www.springframework.org/schema/task/spring-task-3.2.xsd
 		http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-3.2.xsd
         http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context-3.2.xsd
-        http://www.xebia.fr/schema/xebia-management-extras http://www.xebia.fr/schema/management/xebia-management-extras.xsd
-        http://www.springframework.org/schema/tx http://www.springframework.org/schema/tx/spring-tx.xsd
-        http://www.ryantenney.com/schema/metrics http://www.ryantenney.com/schema/metrics/metrics-3.0.xsd">
-
-    <metrics:annotation-driven 
-        metric-registry="MetricsRegistry"
-        health-check-registry="HealthCheckRegistry"/>
+        http://www.springframework.org/schema/tx http://www.springframework.org/schema/tx/spring-tx.xsd">
 
     <task:scheduler id="CoreTaskScheduler" pool-size="2" />
 
-    <context:mbean-export />
+    <context:mbean-export registration="ignoreExisting" />
 
     <tx:advice id="AgentInstanceDaoAdvice" transaction-manager="CoreTransactionManager">
         <tx:attributes>
@@ -110,6 +102,18 @@
         </tx:attributes>
     </tx:advice>
 
+    <!--
+        Failed-attempt writes must survive the rejected API request, and the
+        follow-up lock check must read that committed state instead of the
+        caller's earlier repeatable-read snapshot.
+    -->
+    <tx:advice id="MfaAttemptServiceAdvice" transaction-manager="CoreTransactionManager">
+        <tx:attributes>
+            <tx:method name="assertAllowed" propagation="REQUIRES_NEW" read-only="true" />
+            <tx:method name="recordFailure" propagation="REQUIRES_NEW" />
+        </tx:attributes>
+    </tx:advice>
+
     <tx:advice id="AllocatorAdvice" transaction-manager="CoreTransactionManager">
         <tx:attributes>
             <tx:method name="recordCandidate" />
@@ -159,6 +163,7 @@
         <aop:advisor advice-ref="ServiceMapDaoImplAdvice" pointcut="execution(* io.cattle.platform.servicediscovery.api.dao.ServiceExposeMapDao.*(..))" />
         <aop:advisor advice-ref="ServiceMapDaoImplAdvice" pointcut="execution(* io.cattle.platform.servicediscovery.api.dao.ServiceConsumeMapDao.*(..))" />
         <aop:advisor advice-ref="ImageDaoAdvice" pointcut="execution(* io.cattle.platform.storage.service.dao.ImageDao.*(..))" />
+        <aop:advisor advice-ref="MfaAttemptServiceAdvice" pointcut="execution(* io.cattle.platform.iaas.api.auth.mfa.MfaAttemptService.assertAllowed(..)) or execution(* io.cattle.platform.iaas.api.auth.mfa.MfaAttemptService.recordFailure(..))" />
         <aop:advisor advice-ref="AllocatorAdvice" pointcut="execution(* io.cattle.platform.allocator.dao.AllocatorDao.*(..))" />
         <aop:advisor advice-ref="ApiDelegateAdvice" pointcut="execution(* io.github.ibuildthecloud.gdapi.request.handler.write.ReadWriteApiDelegate.*(..))" />
         <aop:advisor advice-ref="StorageDriverDaoAdvice" pointcut="execution(* io.cattle.platform.core.dao.StorageDriverDao.*(..))" />

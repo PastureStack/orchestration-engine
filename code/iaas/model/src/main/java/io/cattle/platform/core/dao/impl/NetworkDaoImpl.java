@@ -9,6 +9,7 @@ import static io.cattle.platform.core.model.tables.ServiceExposeMapTable.*;
 import static io.cattle.platform.core.model.tables.SubnetTable.*;
 
 import io.cattle.platform.archaius.util.ArchaiusUtil;
+import io.cattle.platform.archaius.util.ConfigListProperty;
 import io.cattle.platform.core.constants.CommonStatesConstants;
 import io.cattle.platform.core.constants.PortConstants;
 import io.cattle.platform.core.constants.SubnetConstants;
@@ -35,17 +36,15 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import javax.inject.Inject;
-import javax.inject.Named;
+import jakarta.inject.Inject;
+import jakarta.inject.Named;
 
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
 
-import com.netflix.config.DynamicStringListProperty;
-
 @Named
 public class NetworkDaoImpl extends AbstractJooqDao implements NetworkDao {
-    DynamicStringListProperty DOCKER_VIP_SUBNET_CIDR = ArchaiusUtil.getList("docker.vip.subnet.cidr");
+    ConfigListProperty<String> DOCKER_VIP_SUBNET_CIDR = ArchaiusUtil.getStringListProperty("docker.vip.subnet.cidr");
 
     @Inject
     ObjectManager objectManager;

@@ -3,7 +3,7 @@ package io.cattle.platform.task.cleanup;
 import io.cattle.platform.task.Task;
 import io.cattle.platform.task.dao.impl.TaskDaoImpl;
 
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 
 public class CleanupTaskInstances implements Task {
 

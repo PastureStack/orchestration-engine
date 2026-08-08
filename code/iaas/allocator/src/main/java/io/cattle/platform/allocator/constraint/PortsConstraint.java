@@ -3,11 +3,10 @@ package io.cattle.platform.allocator.constraint;
 import io.cattle.platform.allocator.service.AllocationCandidate;
 import io.cattle.platform.core.constants.PortConstants;
 import io.cattle.platform.core.model.Port;
+import io.cattle.platform.core.util.PortBindingAddress;
 import io.cattle.platform.object.util.DataAccessor;
 
 import java.util.List;
-
-import org.apache.commons.lang3.StringUtils;
 
 public class PortsConstraint extends HardConstraint implements Constraint {
 
@@ -47,7 +46,7 @@ public class PortsConstraint extends HardConstraint implements Constraint {
         } else {
             String requestedIp = DataAccessor.fields(requestedPort).withKey(PortConstants.FIELD_BIND_ADDR).as(String.class);
             String usedIp = DataAccessor.fields(portUsed).withKey(PortConstants.FIELD_BIND_ADDR).as(String.class);
-            return StringUtils.equals(requestedIp, usedIp);
+            return PortBindingAddress.overlaps(requestedIp, usedIp);
         }
     }
 

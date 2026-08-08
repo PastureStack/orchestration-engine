@@ -3,17 +3,24 @@ set -x -e
 
 LIQUIBASE_HOME=${LIQUIBASE_HOME:-~/.local/liquibase}
 DB=${DB:-cattle}
-DRIVER_VERSION=5.1.34
+DRIVER_GROUP_ID=${DRIVER_GROUP_ID:-com.mysql}
+DRIVER_ARTIFACT_ID=${DRIVER_ARTIFACT_ID:-mysql-connector-j}
+DRIVER_VERSION=${DRIVER_VERSION:-9.7.0}
+DRIVER_CLASS=${DRIVER_CLASS:-com.mysql.cj.jdbc.Driver}
+JDBC_SCHEME=${JDBC_SCHEME:-mysql}
 
 function prep_driver_jar(){
-    if [ -n "$DRIVER" ]; then
-        echo $DRIVER
+    if [ -n "${DRIVER:-}" ]; then
+        echo "$DRIVER"
     else
-        if [ -z "$(find $HOME/.m2 -name mysql-connector-java*.jar)" ]; then
-            mvn -DgroupId=mysql -DartifactId=mysql-connector-java -Dversion=$DRIVER_VERSION dependency:get &> /dev/null
+        local driver_jar
+        driver_jar=$(find "$HOME/.m2" -name "${DRIVER_ARTIFACT_ID}-${DRIVER_VERSION}.jar" -print -quit)
+        if [ -z "$driver_jar" ]; then
+            mvn -q -DgroupId="$DRIVER_GROUP_ID" -DartifactId="$DRIVER_ARTIFACT_ID" -Dversion="$DRIVER_VERSION" dependency:get
+            driver_jar=$(find "$HOME/.m2" -name "${DRIVER_ARTIFACT_ID}-${DRIVER_VERSION}.jar" -print -quit)
         fi
-        if [ -n "$(find $HOME/.m2 -name mysql-connector-java*.jar)" ]; then
-            echo $(find $HOME/.m2 -name mysql-connector-java*.jar -print -quit)
+        if [ -n "$driver_jar" ]; then
+            echo "$driver_jar"
         else
             # Couldn't install driver
             return 1
@@ -28,15 +35,15 @@ fi
 DRIVER_JAR=$(prep_driver_jar)
 
 JAVA_OPTS="-Duser.name=rancher" $LIQUIBASE_HOME/liquibase --classpath="$DRIVER_JAR"  \
-    --driver=com.mysql.jdbc.Driver \
+    --driver="$DRIVER_CLASS" \
     --changeLogFile=dump.xml \
-    --url="jdbc:mysql://localhost:3306/${DB}_base" \
-    --username=$DB \
-    --password=$DB \
+    --url="jdbc:${JDBC_SCHEME}://localhost:3306/${DB}_base" \
+    --username="$DB" \
+    --password="$DB" \
      diffChangeLog \
-    --referenceUrl="jdbc:mysql://localhost:3306/$DB" \
-    --referenceUsername=$DB \
-    --referencePassword=$DB
+    --referenceUrl="jdbc:${JDBC_SCHEME}://localhost:3306/$DB" \
+    --referenceUsername="$DB" \
+    --referencePassword="$DB"
 
 sed -i -E \
     -e '2r header.xml' \

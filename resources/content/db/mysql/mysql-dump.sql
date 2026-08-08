@@ -617,7 +617,7 @@ CREATE TABLE `credential` (
   `remove_time` datetime DEFAULT NULL,
   `data` mediumtext,
   `public_value` varchar(4096) DEFAULT NULL,
-  `secret_value` varchar(4096) DEFAULT NULL,
+  `secret_value` mediumtext,
   `registry_id` bigint(20) DEFAULT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `idx_credential_uuid` (`uuid`),

@@ -1,0 +1,23 @@
+{
+    "collectionMethods": [ "GET" ],
+    "resourceMethods": [ "GET" ],
+    "collectionFilters": {
+        "accountId": {
+            "modifiers": [ "eq" ]
+        }
+    },
+    "resourceFields": {
+        "accountId": { "type": "reference[account]", "nullable": false },
+        "enrolled": { "type": "boolean", "nullable": false },
+        "enrollmentRequired": { "type": "boolean", "nullable": false },
+        "enforcement": { "type": "enum", "options": [ "optional", "requiredAdmins", "requiredAll" ], "nullable": false },
+        "totpCount": { "type": "int", "nullable": false },
+        "passkeyCount": { "type": "int", "nullable": false },
+        "passkeyLimit": { "type": "int", "nullable": false },
+        "recoveryCodesRemaining": { "type": "int", "nullable": false },
+        "webAuthnConfigured": { "type": "boolean", "nullable": false },
+        "emailRecoveryAvailable": { "type": "boolean", "nullable": false },
+        "recoveryEmailEnrollmentAvailable": { "type": "boolean", "nullable": false },
+        "recoveryEmailMasked": { "type": "string", "nullable": true }
+    }
+}

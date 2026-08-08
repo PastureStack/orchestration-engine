@@ -2,6 +2,7 @@ package io.cattle.platform.configitem.context.impl;
 
 import static io.cattle.platform.core.model.tables.InstanceTable.*;
 import io.cattle.platform.archaius.util.ArchaiusUtil;
+import io.cattle.platform.archaius.util.ConfigListProperty;
 import io.cattle.platform.configitem.context.ConfigItemContextFactory;
 import io.cattle.platform.configitem.model.Client;
 import io.cattle.platform.configitem.server.model.ConfigItem;
@@ -14,7 +15,7 @@ import io.cattle.platform.object.ObjectManager;
 import java.util.ArrayList;
 import java.util.List;
 
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -29,7 +30,8 @@ public abstract class AbstractAgentBaseContextFactory implements ConfigItemConte
 
     public AbstractAgentBaseContextFactory() {
         String name = getClass().getSimpleName().replaceAll("Factory", "").replaceAll("([a-z])([A-Z])", "$1.$2").toLowerCase();
-        List<String> items = ArchaiusUtil.getList(String.format("item.context.%s.items", name)).get();
+        ConfigListProperty<String> itemProperty = ArchaiusUtil.getStringListProperty(String.format("item.context.%s.items", name));
+        List<String> items = itemProperty.get();
         this.items = items.toArray(new String[items.size()]);
     }
 

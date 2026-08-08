@@ -3,6 +3,8 @@ package io.cattle.platform.process.account;
 import static io.cattle.platform.core.model.tables.CredentialTable.*;
 
 import io.cattle.platform.archaius.util.ArchaiusUtil;
+import io.cattle.platform.archaius.util.ConfigListProperty;
+import io.cattle.platform.archaius.util.ConfigProperty;
 import io.cattle.platform.core.constants.AccountConstants;
 import io.cattle.platform.core.constants.CredentialConstants;
 import io.cattle.platform.core.dao.AccountDao;
@@ -23,21 +25,19 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import javax.inject.Inject;
-import javax.inject.Named;
+import jakarta.inject.Inject;
+import jakarta.inject.Named;
 
-import com.netflix.config.DynamicBooleanProperty;
-import com.netflix.config.DynamicStringListProperty;
-import com.netflix.config.DynamicStringProperty;
 
 @Named
 public class AccountCreate extends AbstractDefaultProcessHandler {
 
-    public static final DynamicBooleanProperty CREATE_CREDENTIAL = ArchaiusUtil.getBoolean("process.account.create.create.credential");
+    public static final ConfigProperty<Boolean> CREATE_CREDENTIAL = ArchaiusUtil.getBooleanProperty("process.account.create.create.credential");
 
-    public static final DynamicStringProperty CREDENTIAL_TYPE = ArchaiusUtil.getString("process.account.create.create.credential.default.kind");
+    public static final ConfigProperty<String> CREDENTIAL_TYPE = ArchaiusUtil.getStringProperty("process.account.create.create.credential.default.kind");
 
-    public static final DynamicStringListProperty ACCOUNT_KIND_CREDENTIALS = ArchaiusUtil.getList("process.account.create.create.credential.account.kinds");
+    public static final ConfigListProperty<String> ACCOUNT_KIND_CREDENTIALS = ArchaiusUtil
+            .getStringListProperty("process.account.create.create.credential.account.kinds");
 
     ObjectProcessManager processManager;
 

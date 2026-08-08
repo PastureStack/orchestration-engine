@@ -56,15 +56,15 @@ import io.cattle.platform.object.ObjectManager;
 import io.cattle.platform.object.util.DataAccessor;
 import io.cattle.platform.object.util.DataUtils;
 
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.TimeUnit;
 
-import javax.inject.Inject;
-import javax.inject.Named;
+import jakarta.inject.Inject;
+import jakarta.inject.Named;
 
 import org.apache.commons.lang3.StringUtils;
 import org.jooq.Condition;
@@ -120,7 +120,7 @@ public class InstanceDaoImpl extends AbstractJooqDao implements InstanceDao, Ann
     }
 
     LoadingCache<Long, Map<String, Object>> instanceData = CacheBuilder.newBuilder()
-            .expireAfterWrite(8, TimeUnit.HOURS)
+            .expireAfterWrite(Duration.ofHours(8))
             .build(new CacheLoader<Long, Map<String, Object>>() {
                 @Override
                 public Map<String, Object> load(Long key) throws Exception {
@@ -366,12 +366,13 @@ public class InstanceDaoImpl extends AbstractJooqDao implements InstanceDao, Ann
             }
         };
 
-        InstanceTable instance = mapper.add(INSTANCE, INSTANCE.ID, INSTANCE.ACCOUNT_ID);
-        PortTable port = mapper.add(PORT);
-        HostTable host = mapper.add(HOST, HOST.ID);
-        IpAddressTable ipAddress = mapper.add(IP_ADDRESS, IP_ADDRESS.ID, IP_ADDRESS.ADDRESS);
-        IpAddressTable hostIp = mapper.add(IP_ADDRESS, IP_ADDRESS.ID, IP_ADDRESS.ADDRESS);
-        ServiceExposeMapTable exposeMap = mapper.add(SERVICE_EXPOSE_MAP, SERVICE_EXPOSE_MAP.INSTANCE_ID,
+        InstanceTable instance = mapper.add(INSTANCE, InstanceTable.class, INSTANCE.ID, INSTANCE.ACCOUNT_ID);
+        PortTable port = mapper.add(PORT, PortTable.class);
+        HostTable host = mapper.add(HOST, HostTable.class, HOST.ID);
+        IpAddressTable ipAddress = mapper.add(IP_ADDRESS, IpAddressTable.class, IP_ADDRESS.ID, IP_ADDRESS.ADDRESS);
+        IpAddressTable hostIp = mapper.add(IP_ADDRESS, IpAddressTable.class, IP_ADDRESS.ID, IP_ADDRESS.ADDRESS);
+        ServiceExposeMapTable exposeMap = mapper.add(SERVICE_EXPOSE_MAP, ServiceExposeMapTable.class,
+                SERVICE_EXPOSE_MAP.INSTANCE_ID,
                 SERVICE_EXPOSE_MAP.SERVICE_ID);
 
         Condition condition = null;
@@ -426,10 +427,11 @@ public class InstanceDaoImpl extends AbstractJooqDao implements InstanceDao, Ann
             }
         };
 
-        ServiceIndexTable serviceIndex = mapper.add(SERVICE_INDEX);
-        IpAddressTable ipAddress = mapper.add(IP_ADDRESS);
-        SubnetTable subnet = mapper.add(SUBNET);
-        ServiceExposeMapTable exposeMap = mapper.add(SERVICE_EXPOSE_MAP, SERVICE_EXPOSE_MAP.REMOVED);
+        ServiceIndexTable serviceIndex = mapper.add(SERVICE_INDEX, ServiceIndexTable.class);
+        IpAddressTable ipAddress = mapper.add(IP_ADDRESS, IpAddressTable.class);
+        SubnetTable subnet = mapper.add(SUBNET, SubnetTable.class);
+        ServiceExposeMapTable exposeMap = mapper.add(SERVICE_EXPOSE_MAP, ServiceExposeMapTable.class,
+                SERVICE_EXPOSE_MAP.REMOVED);
 
         return create()
                 .select(mapper.fields())

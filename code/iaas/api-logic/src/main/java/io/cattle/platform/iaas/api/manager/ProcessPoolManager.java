@@ -12,9 +12,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ThreadPoolExecutor;
 
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 
-import org.apache.commons.beanutils.PropertyUtils;
+import org.apache.commons.beanutils2.PropertyUtils;
 
 public class ProcessPoolManager extends AbstractNoOpResourceManager {
 

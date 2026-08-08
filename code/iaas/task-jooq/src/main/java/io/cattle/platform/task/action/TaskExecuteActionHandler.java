@@ -5,7 +5,7 @@ import io.cattle.platform.core.model.Task;
 import io.cattle.platform.task.TaskManager;
 import io.github.ibuildthecloud.gdapi.request.ApiRequest;
 
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 
 public class TaskExecuteActionHandler implements ActionHandler {
 

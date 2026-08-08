@@ -15,7 +15,7 @@ import io.cattle.platform.process.instance.IgnoreReconnectionAgentHandler;
 
 import java.util.List;
 
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 
 public class MountRemove extends IgnoreReconnectionAgentHandler {
 

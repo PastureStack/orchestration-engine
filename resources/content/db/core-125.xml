@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog" xmlns:ext="http://www.liquibase.org/xml/ns/dbchangelog-ext" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog-ext http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-ext.xsd http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.1.xsd">
+    <property name="mediumtext" value="TEXT" dbms="postgresql" />
+    <property name="mediumtext" value="MEDIUMTEXT(16777215)" />
+    <changeSet author="PastureStack" dbms="mysql,mariadb,postgresql" id="pasturestack-credential-secret-value-mediumtext">
+        <validCheckSum>9:b637c459df9bda3afe28733bd3f6fb3f</validCheckSum>
+        <preConditions onFail="HALT">
+            <tableExists tableName="credential"/>
+            <columnExists tableName="credential" columnName="secret_value"/>
+        </preConditions>
+        <modifyDataType tableName="credential" columnName="secret_value" newDataType="${mediumtext}"/>
+    </changeSet>
+</databaseChangeLog>

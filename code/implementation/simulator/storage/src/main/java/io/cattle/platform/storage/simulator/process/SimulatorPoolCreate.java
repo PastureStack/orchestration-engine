@@ -12,7 +12,7 @@ import io.cattle.platform.object.process.StandardProcess;
 import io.cattle.platform.process.common.handler.AbstractObjectProcessHandler;
 import io.cattle.platform.storage.simulator.lock.SimExtPoolCreateLock;
 
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 
 public class SimulatorPoolCreate extends AbstractObjectProcessHandler {
 

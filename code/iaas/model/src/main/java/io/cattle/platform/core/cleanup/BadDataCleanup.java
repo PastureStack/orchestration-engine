@@ -1,6 +1,7 @@
 package io.cattle.platform.core.cleanup;
 
 import io.cattle.platform.archaius.util.ArchaiusUtil;
+import io.cattle.platform.archaius.util.ConfigProperty;
 import io.cattle.platform.core.constants.VolumeConstants;
 import io.cattle.platform.core.dao.AccountDao;
 import io.cattle.platform.core.dao.InstanceDao;
@@ -25,18 +26,16 @@ import io.cattle.platform.task.Task;
 import java.util.Collection;
 import java.util.concurrent.ExecutorService;
 
-import javax.inject.Inject;
-import javax.inject.Named;
+import jakarta.inject.Inject;
+import jakarta.inject.Named;
 
 import org.apache.cloudstack.managed.context.NoExceptionRunnable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.netflix.config.DynamicIntProperty;
-
 public class BadDataCleanup extends AbstractJooqDao implements Task {
 
-    private static final DynamicIntProperty LIMIT = ArchaiusUtil.getInt("bad.data.batch.size");
+    private static final ConfigProperty<Integer> LIMIT = ArchaiusUtil.getIntProperty("bad.data.batch.size");
     private static final Logger log = LoggerFactory.getLogger(BadDataCleanup.class);
 
     @Inject

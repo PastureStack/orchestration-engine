@@ -1,0 +1,8 @@
+{
+  "resourceActions": {
+    "volumepreflight": {
+      "input": "volumePreflightInput",
+      "output": "volumePreflightResult"
+    }
+  }
+}

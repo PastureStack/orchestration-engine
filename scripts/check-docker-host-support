@@ -1,0 +1,34 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+cd "$(dirname "$0")/.."
+
+fail()
+{
+    printf 'DOCKER_HOST_SUPPORT_GATE_FAIL reason=%s\n' "$1" >&2
+    exit 1
+}
+
+require_line()
+{
+    local file=$1
+    local line=$2
+    grep -Fx -- "$line" "$file" >/dev/null || fail "required_line_missing:${file}:${line}"
+}
+
+defaults=code/packaging/app-config/src/main/resources/META-INF/cattle/api-server/defaults.properties
+supported='supported.docker.range=~v1.12.3 || ~v1.13.0 || ~v17.03.0 || ~v17.06.0 || ~v17.09.0 || ~v17.12.0 || ~v18.03.0 || ~v18.06.0 || ~v18.09.0 || ~v19.03.2 || v24.0.9 || v29.4.1 || v29.6.2'
+
+require_line "$defaults" "$supported"
+require_line "$defaults" 'newest.docker.version=v29.6.2'
+require_line Makefile 'DOCKER_VERSION ?= 29.6.2'
+require_line Dockerfile 'ARG DOCKER_VERSION=29.6.2'
+require_line Dockerfile.dapper 'ARG DOCKER_VERSION=29.6.2'
+require_line Dockerfile 'ARG DOCKER_SHA256_AMD64=d6204aea92238e2453d5445c885b9d2e5eb8f82915568ec50edf9dbe12a3ac74'
+require_line Dockerfile.dapper 'ARG DOCKER_SHA256_AMD64=d6204aea92238e2453d5445c885b9d2e5eb8f82915568ec50edf9dbe12a3ac74'
+
+if grep -Eq 'supported\.docker\.range=.*(~v24|~v29|v2[5-8]\.)' "$defaults"; then
+    fail broad_untested_modern_range
+fi
+
+printf 'DOCKER_HOST_SUPPORT_GATE_OK newest=29.6.2 exact_modern_versions=24.0.9,29.4.1,29.6.2 broad_25_to_28=0\n'

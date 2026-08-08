@@ -6,6 +6,7 @@ import static io.cattle.platform.core.model.tables.InstanceHostMapTable.*;
 import static io.cattle.platform.core.model.tables.RegionTable.*;
 
 import io.cattle.platform.archaius.util.ArchaiusUtil;
+import io.cattle.platform.archaius.util.ConfigProperty;
 import io.cattle.platform.configitem.context.dao.MetaDataInfoDao;
 import io.cattle.platform.configitem.context.data.metadata.common.HostMetaData;
 import io.cattle.platform.configitem.context.data.metadata.common.MetaHelperInfo;
@@ -34,6 +35,7 @@ import io.github.ibuildthecloud.gdapi.util.RequestUtils;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.time.Duration;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -46,8 +48,8 @@ import java.util.concurrent.locks.ReentrantLock;
 import java.util.zip.Deflater;
 import java.util.zip.DeflaterOutputStream;
 
-import javax.inject.Inject;
-import javax.inject.Named;
+import jakarta.inject.Inject;
+import jakarta.inject.Named;
 
 import org.apache.commons.io.IOUtils;
 import org.slf4j.Logger;
@@ -57,13 +59,12 @@ import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
-import com.netflix.config.DynamicBooleanProperty;
 
 @Named
 public class ServiceMetadataInfoFactory extends AbstractAgentBaseContextFactory {
 
-    private static DynamicBooleanProperty CACHE = ArchaiusUtil.getBoolean("cache.metadata");
-    private static DynamicBooleanProperty CACHE_LOCK = ArchaiusUtil.getBoolean("cache.metadata.lock");
+    private static ConfigProperty<Boolean> CACHE = ArchaiusUtil.getBooleanProperty("cache.metadata");
+    private static ConfigProperty<Boolean> CACHE_LOCK = ArchaiusUtil.getBooleanProperty("cache.metadata.lock");
     private static final Logger log = LoggerFactory.getLogger(ServiceMetadataInfoFactory.class);
 
     @Inject
@@ -73,15 +74,15 @@ public class ServiceMetadataInfoFactory extends AbstractAgentBaseContextFactory 
     MetaDataInfoDao metaDataInfoDao;
 
     Cache<String, CacheData> cache = CacheBuilder.newBuilder()
-        .expireAfterAccess(30, TimeUnit.SECONDS)
+        .expireAfterAccess(Duration.ofSeconds(30))
         .build();
 
     Cache<Long, String> latestVersion = CacheBuilder.newBuilder()
-        .expireAfterAccess(29, TimeUnit.SECONDS)
+        .expireAfterAccess(Duration.ofSeconds(29))
         .build();
 
     LoadingCache<Long, ReentrantLock> lockCache = CacheBuilder.newBuilder()
-        .expireAfterWrite(2, TimeUnit.MINUTES)
+        .expireAfterWrite(Duration.ofMinutes(2))
         .build(new CacheLoader<Long, ReentrantLock>() {
             @Override
             public ReentrantLock load(Long key) throws Exception {

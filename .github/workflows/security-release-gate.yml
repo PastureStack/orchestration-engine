@@ -1,0 +1,166 @@
+name: Security release gate
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: orchestration-engine-security-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build-test-scan:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    env:
+      DAPPER_IMAGE: pasturestack/orchestration-engine-dapper:${{ github.sha }}
+      TRIVY_IMAGE: aquasec/trivy:0.73.0@sha256:7cced7cae583819fc7806d4cbc0dbbc7cad18b99f7d3e235192e6da8c091045c
+    steps:
+      - name: Check out candidate
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Record candidate identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -z "$(git status --porcelain)"
+          mkdir -p evidence
+          git rev-parse HEAD > evidence/source-revision.txt
+          : > evidence/source-status.txt
+          sha256sum ubuntu-apt.lock .mvn/wrapper/maven-wrapper.properties > evidence/source-locks.sha256
+
+      - name: Build and test all Maven modules
+        shell: bash
+        run: |
+          set -euo pipefail
+          make DAPPER_IMAGE="$DAPPER_IMAGE" ci
+          test -s dist/artifacts/cattle.jar
+          cp dist/version evidence/engine-version.txt
+          sha256sum dist/artifacts/cattle.jar > evidence/cattle.jar.sha256
+
+      - name: Record resolved build inputs
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker inspect "$DAPPER_IMAGE" > evidence/dapper-image-inspect.json
+          docker run --rm --entrypoint sh "$DAPPER_IMAGE" -lc \
+            "printf 'package\\tversion\\n'; dpkg-query -W -f='\${binary:Package}\\t\${Version}\\n' | LC_ALL=C sort" \
+            > evidence/dapper-dpkg.tsv
+          docker run --rm \
+            -v "$PWD:/usr/src/pasturestack/orchestration-engine" \
+            -v "$HOME/.m2:/root/.m2" \
+            -w /usr/src/pasturestack/orchestration-engine \
+            "$DAPPER_IMAGE" \
+            bash -lc 'mvn -B -DskipTests help:effective-pom -Doutput=evidence/effective-pom.xml'
+          docker run --rm \
+            -v "$PWD:/usr/src/pasturestack/orchestration-engine" \
+            -v "$HOME/.m2:/root/.m2" \
+            -w /usr/src/pasturestack/orchestration-engine \
+            "$DAPPER_IMAGE" \
+            bash -lc 'mvn -B -DskipTests dependency:tree -Dverbose' \
+            > evidence/maven-dependency-tree.txt
+
+      - name: Scan source, product artifact, and Dapper image
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker pull "$TRIVY_IMAGE"
+          trivy_cache="$RUNNER_TEMP/trivy-cache"
+          mkdir -p "$trivy_cache"
+          source_tree=$(mktemp -d)
+          trap 'rm -rf "$source_tree"' EXIT
+          git archive --format=tar HEAD | tar -xf - -C "$source_tree"
+          docker run --rm \
+            -v "$source_tree:/scan:ro" \
+            -v "$PWD/evidence:/evidence" \
+            -v "$HOME/.m2:/root/.m2:ro" \
+            -v "$trivy_cache:/root/.cache/trivy" \
+            "$TRIVY_IMAGE" fs \
+            --offline-scan --scanners secret --format json --output /evidence/source-secrets.raw.json /scan
+          jq 'walk(if type == "object" then del(.Match, .Code) else . end)' \
+            evidence/source-secrets.raw.json > evidence/source-secrets.json
+          rm -f evidence/source-secrets.raw.json
+          rm -rf "$source_tree"
+          trap - EXIT
+          docker run --rm \
+            -v "$PWD:/work" -w /work \
+            -v "$HOME/.m2:/root/.m2:ro" \
+            -v "$trivy_cache:/root/.cache/trivy" \
+            "$TRIVY_IMAGE" fs \
+            --offline-scan --scanners vuln --format json --output /work/evidence/cattle-artifact-vulnerabilities.json \
+            /work/dist/artifacts/cattle.jar
+          docker run --rm \
+            -v /var/run/docker.sock:/var/run/docker.sock \
+            -v "$PWD:/work" -w /work \
+            -v "$HOME/.m2:/root/.m2:ro" \
+            -v "$trivy_cache:/root/.cache/trivy" \
+            "$TRIVY_IMAGE" image \
+            --offline-scan --scanners vuln --format json --output /work/evidence/dapper-image-vulnerabilities.json \
+            "$DAPPER_IMAGE"
+          docker run --rm \
+            -v "$PWD:/work" -w /work \
+            -v "$HOME/.m2:/root/.m2:ro" \
+            -v "$trivy_cache:/root/.cache/trivy" \
+            "$TRIVY_IMAGE" fs \
+            --offline-scan --format cyclonedx --output /work/evidence/cyclonedx.json \
+            /work/dist/artifacts/cattle.jar
+
+      - name: Summarize scan evidence
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          source_secrets=$(jq '[.Results[]?.Secrets[]?] | length' evidence/source-secrets.json 2>/dev/null || echo missing)
+          artifact_critical=$(jq '[.Results[]?.Vulnerabilities[]? | select(.Severity == "CRITICAL")] | length' evidence/cattle-artifact-vulnerabilities.json 2>/dev/null || echo missing)
+          artifact_high=$(jq '[.Results[]?.Vulnerabilities[]? | select(.Severity == "HIGH")] | length' evidence/cattle-artifact-vulnerabilities.json 2>/dev/null || echo missing)
+          dapper_critical=$(jq '[.Results[]?.Vulnerabilities[]? | select(.Severity == "CRITICAL")] | length' evidence/dapper-image-vulnerabilities.json 2>/dev/null || echo missing)
+          dapper_high=$(jq '[.Results[]?.Vulnerabilities[]? | select(.Severity == "HIGH")] | length' evidence/dapper-image-vulnerabilities.json 2>/dev/null || echo missing)
+          {
+            printf 'source_secrets=%s\n' "$source_secrets"
+            printf 'artifact_critical=%s\n' "$artifact_critical"
+            printf 'artifact_high=%s\n' "$artifact_high"
+            printf 'dapper_critical=%s\n' "$dapper_critical"
+            printf 'dapper_high=%s\n' "$dapper_high"
+          } | tee evidence/security-summary.txt
+
+      - name: Upload review evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: orchestration-engine-security-${{ github.sha }}
+          path: evidence/
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Enforce zero applicable Critical or High findings
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s evidence/security-summary.txt
+          source evidence/security-summary.txt
+          for value in "$source_secrets" "$artifact_critical" "$artifact_high" "$dapper_critical" "$dapper_high"; do
+            case "$value" in
+              ''|*[!0-9]*) echo "Incomplete security evidence: $value" >&2; exit 1 ;;
+            esac
+          done
+          test "$source_secrets" -eq 0
+          test "$artifact_critical" -eq 0
+          test "$artifact_high" -eq 0
+          test "$dapper_critical" -eq 0
+          test "$dapper_high" -eq 0
+
+      - name: Clean runner resources
+        if: always()
+        shell: bash
+        run: |
+          set +e
+          docker rm -f $(docker ps -aq --filter ancestor="$DAPPER_IMAGE") 2>/dev/null
+          docker image rm -f "$DAPPER_IMAGE" "$TRIVY_IMAGE" 2>/dev/null
+          docker builder prune --all --force >/dev/null 2>&1
+          rm -rf dist target runtime code/packaging/app/target

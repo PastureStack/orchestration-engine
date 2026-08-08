@@ -17,8 +17,8 @@ public class CleanableTable {
             "created");
 
     public final Table<?> table;
-    public final Field<Long> idField;
-    public final Field<Date> removeField;
+    public final Field<?> idField;
+    public final Field<?> removeField;
     public final boolean referenceCheckOnly;
 
     private Integer rowsDeleted = 0;
@@ -35,26 +35,33 @@ public class CleanableTable {
         this.referenceCheckOnly = refCheckOnly;
     }
 
-    @SuppressWarnings("unchecked")
-    private Field<Long> getIdField(Table<?> table) {
+    private Field<?> getIdField(Table<?> table) {
         for (Field<?> field : table.fields()) {
             if (field.getName().equals("id")) {
-                return (Field<Long>) field;
+                requireFieldType(field, Long.class);
+                return field;
             }
         }
         return null;
     }
 
-    @SuppressWarnings("unchecked")
-    private Field<Date> getRemoveField(Table<?> table) {
+    private Field<?> getRemoveField(Table<?> table) {
         for (String fieldName : TIMESTAMP_FIELD_NAME_PRECEDENCE) {
             for (Field<?> field : table.fields()) {
                 if (fieldName.equals(field.getName())) {
-                    return (Field<Date>) field;
+                    requireFieldType(field, Date.class);
+                    return field;
                 }
             }
         }
         return null;
+    }
+
+    static void requireFieldType(Field<?> field, Class<?> type) {
+        if (!type.isAssignableFrom(field.getType())) {
+            throw new IllegalArgumentException("Expected [" + field + "] to use [" + type.getName()
+                    + "] but found [" + field.getType().getName() + "]");
+        }
     }
 
     public void clearRowCounts() {

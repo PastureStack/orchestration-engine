@@ -2,7 +2,7 @@ package io.cattle.platform.core.util;
 
 import java.lang.reflect.InvocationTargetException;
 
-import org.apache.commons.beanutils.PropertyUtils;
+import org.apache.commons.beanutils2.PropertyUtils;
 
 public class ConstantsUtils {
 

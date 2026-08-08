@@ -5,7 +5,7 @@ import io.cattle.platform.core.model.Setting;
 import io.cattle.platform.deferred.util.DeferredUtils;
 import io.cattle.platform.object.ObjectManager;
 
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 
 public class SettingsUtils {
 

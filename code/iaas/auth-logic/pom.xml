@@ -4,11 +4,16 @@
     <parent>
         <artifactId>cattle-parent</artifactId>
         <groupId>io.cattle</groupId>
-        <version>0.5.0-SNAPSHOT</version>
+        <version>0.183.282</version>
         <relativePath>../../parent/pom.xml</relativePath>
     </parent>
     
     <dependencies>
+        <dependency>
+            <groupId>io.cattle</groupId>
+            <artifactId>cattle-framework-utils</artifactId>
+            <version>${project.version}</version>
+        </dependency>
         <dependency>
             <groupId>io.cattle</groupId>
             <artifactId>cattle-framework-token</artifactId>
@@ -55,14 +60,10 @@
             <artifactId>commons-codec</artifactId>
         </dependency>
         <dependency>
-            <groupId>javax.servlet</groupId>
-            <artifactId>servlet-api</artifactId>
+            <groupId>jakarta.servlet</groupId>
+            <artifactId>jakarta.servlet-api</artifactId>
             <scope>provided</scope>
             <optional>true</optional>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.httpcomponents</groupId>
-            <artifactId>fluent-hc</artifactId>
         </dependency>
         <dependency>
             <groupId>io.cattle</groupId>
@@ -78,6 +79,23 @@
             <groupId>io.cattle</groupId>
             <artifactId>cattle-framework-resource-monitor</artifactId>
             <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.webauthn4j</groupId>
+            <artifactId>webauthn4j-core</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.google.guava</groupId>
+            <artifactId>guava</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>jakarta.mail</groupId>
+            <artifactId>jakarta.mail-api</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.eclipse.angus</groupId>
+            <artifactId>angus-mail</artifactId>
+            <scope>runtime</scope>
         </dependency>
     </dependencies>
 </project>

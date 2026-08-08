@@ -4,8 +4,9 @@ import static io.cattle.platform.core.model.tables.SettingTable.*;
 
 import io.cattle.platform.api.resource.jooq.AbstractJooqResourceManager;
 import io.cattle.platform.api.settings.model.ActiveSetting;
-import io.cattle.platform.archaius.sources.NamedConfigurationSource;
+import io.cattle.platform.archaius.util.ConfigurationView;
 import io.cattle.platform.archaius.util.ArchaiusUtil;
+import io.cattle.platform.archaius.util.ConfigListProperty;
 import io.cattle.platform.core.model.Setting;
 import io.cattle.platform.util.type.CollectionUtils;
 import io.github.ibuildthecloud.gdapi.context.ApiContext;
@@ -25,22 +26,16 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
+import java.util.function.Predicate;
 
-import org.apache.commons.collections.Predicate;
-import org.apache.commons.configuration.CompositeConfiguration;
-import org.apache.commons.configuration.Configuration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.netflix.config.ConcurrentCompositeConfiguration;
-import com.netflix.config.DynamicConfiguration;
-import com.netflix.config.DynamicPropertyFactory;
-import com.netflix.config.DynamicStringListProperty;
 
 public class SettingManager extends AbstractJooqResourceManager {
 
     private static final Logger log = LoggerFactory.getLogger(SettingManager.class);
-    private static final DynamicStringListProperty PUBLIC_SETTINGS = ArchaiusUtil.getList("settings.public");
+    private static final ConfigListProperty<String> PUBLIC_SETTINGS = ArchaiusUtil.getStringListProperty("settings.public");
 
     @Override
     public Class<?>[] getTypeClasses() {
@@ -88,7 +83,7 @@ public class SettingManager extends AbstractJooqResourceManager {
         type = ApiContext.getSchemaFactory().getSchemaName(Setting.class);
 
         Setting setting = (Setting) super.getByIdInternal(type, id, options);
-        Configuration config = lookupConfiguration();
+        ConfigurationView config = lookupConfiguration();
 
         if (config == null) {
             return setting;
@@ -117,7 +112,7 @@ public class SettingManager extends AbstractJooqResourceManager {
         }
 
         try {
-            int result = create().delete(SETTING).where(SETTING.ID.eq(new Long(id))).execute();
+            int result = create().delete(SETTING).where(SETTING.ID.eq(Long.valueOf(id))).execute();
 
             if (result != 1) {
                 log.error("While deleting type [{}] and id [{}] got a result of [{}]", type, id, result);
@@ -134,12 +129,11 @@ public class SettingManager extends AbstractJooqResourceManager {
         }
     }
 
-    @SuppressWarnings("unchecked")
     @Override
     protected Object listInternal(SchemaFactory schemaFactory, String type, Map<Object, Object> criteria, ListOptions options) {
         type = schemaFactory.getSchemaName(Setting.class);
 
-        Configuration config = lookupConfiguration();
+        ConfigurationView config = lookupConfiguration();
         if (config == null) {
             return super.listInternal(schemaFactory, type, criteria, options);
         }
@@ -153,7 +147,7 @@ public class SettingManager extends AbstractJooqResourceManager {
         String value = null;
         List<ActiveSetting> result = new ArrayList<ActiveSetting>();
 
-        for (ActiveSetting setting : getSettings((List<Setting>) CollectionUtils.toList(list), config)) {
+        for (ActiveSetting setting : getSettings(settingList(list), config)) {
             if (value == null) {
                 result.add(setting);
             } else if (value.equals(setting.getName())) {
@@ -164,21 +158,30 @@ public class SettingManager extends AbstractJooqResourceManager {
         return result;
     }
 
+    protected List<Setting> settingList(Object input) {
+        List<?> source = CollectionUtils.toList(input);
+        List<Setting> result = new ArrayList<Setting>(source.size());
+        for (Object item : source) {
+            result.add(Setting.class.cast(item));
+        }
+        return result;
+    }
+
     @Override
     protected Object authorize(Object object) {
-        Predicate predicate = new SettingsFilter(PUBLIC_SETTINGS.get(), ApiContext.getContext().getApiRequest());
+        Predicate<Object> predicate = new SettingsFilter(PUBLIC_SETTINGS.get(), ApiContext.getContext().getApiRequest());
         if (object instanceof List<?>) {
             List<Object> list = new ArrayList<>((List<?>) object);
-            org.apache.commons.collections.CollectionUtils.filter(list, predicate);
+            list.removeIf(predicate.negate());
             return super.authorize(list);
-        } else if (predicate.evaluate(object)){
+        } else if (predicate.test(object)){
             return super.authorize(object);
         }
 
         return null;
     }
 
-    protected List<ActiveSetting> getSettings(List<Setting> settings, Configuration config) {
+    protected List<ActiveSetting> getSettings(List<Setting> settings, ConfigurationView config) {
         Map<String, ActiveSetting> result = new TreeMap<String, ActiveSetting>();
 
         for (Setting setting : settings) {
@@ -208,24 +211,18 @@ public class SettingManager extends AbstractJooqResourceManager {
         return new ArrayList<ActiveSetting>(result.values());
     }
 
-    protected ActiveSetting getSettingByName(String name, Configuration config, boolean checkDb) {
+    protected ActiveSetting getSettingByName(String name, ConfigurationView config, boolean checkDb) {
         if (name == null) {
             return null;
         }
 
         Object value = config.getProperty(name);
-        Configuration source = null;
-        if (config instanceof ConcurrentCompositeConfiguration) {
-            source = ((ConcurrentCompositeConfiguration) config).getSource(name);
-        } else if (config instanceof CompositeConfiguration) {
-            source = ((CompositeConfiguration) config).getSource(name);
-        }
 
         if (value != null) {
             value = value.toString();
         }
 
-        ActiveSetting activeSetting = new ActiveSetting(name, value, toString(source));
+        ActiveSetting activeSetting = new ActiveSetting(name, value, config.getSourceName(name));
 
         if (checkDb) {
             Setting setting = create().selectFrom(SETTING).where(SETTING.NAME.eq(name)).fetchAny();
@@ -237,26 +234,8 @@ public class SettingManager extends AbstractJooqResourceManager {
         return activeSetting;
     }
 
-    protected String toString(Configuration config) {
-        if (config instanceof NamedConfigurationSource) {
-            return ((NamedConfigurationSource) config).getSourceName();
-        }
-
-        if (config instanceof DynamicConfiguration) {
-            return ((DynamicConfiguration) config).getSource().getClass().getName();
-        }
-
-        return config == null ? null : config.getClass().getName();
-    }
-
-    protected Configuration lookupConfiguration() {
-        Object obj = DynamicPropertyFactory.getBackingConfigurationSource();
-
-        if (obj instanceof Configuration) {
-            return (Configuration) obj;
-        }
-
-        return null;
+    protected ConfigurationView lookupConfiguration() {
+        return ArchaiusUtil.getConfigurationView();
     }
 
     @Override

@@ -1,6 +1,7 @@
 package io.cattle.platform.spring.resource;
 
 import io.cattle.platform.archaius.util.ArchaiusUtil;
+import io.cattle.platform.archaius.util.ConfigProperty;
 import io.cattle.platform.util.type.Named;
 
 import java.util.concurrent.BlockingQueue;
@@ -17,12 +18,8 @@ import javax.management.ObjectName;
 
 import org.springframework.scheduling.concurrent.CustomizableThreadFactory;
 
-import com.netflix.config.DynamicBooleanProperty;
-import com.netflix.config.DynamicIntProperty;
 
-import fr.xebia.springframework.concurrent.ThreadPoolExecutorFactory.SpringJmxEnabledThreadPoolExecutor;
-
-public class SpringConfigurableExecutorService extends SpringJmxEnabledThreadPoolExecutor implements Named {
+public class SpringConfigurableExecutorService extends JmxEnabledThreadPoolExecutor implements Named {
 
     String name;
 
@@ -38,11 +35,11 @@ public class SpringConfigurableExecutorService extends SpringJmxEnabledThreadPoo
     }
 
     public static SpringConfigurableExecutorService byName(String name, RejectedExecutionHandler rejectedExecutionHandler) throws MalformedObjectNameException {
-        final DynamicIntProperty corePoolSize = ArchaiusUtil.getInt("pool." + name.toLowerCase() + ".core.size");
-        final DynamicIntProperty maxPoolSize = ArchaiusUtil.getInt("pool." + name.toLowerCase() + ".max.size");
-        final DynamicIntProperty keepAliveTime = ArchaiusUtil.getInt("pool." + name.toLowerCase() + ".keep.alive");
-        DynamicIntProperty queueSize = ArchaiusUtil.getInt("pool." + name.toLowerCase() + ".queue.size");
-        DynamicBooleanProperty priorityQueue = ArchaiusUtil.getBoolean("pool." + name.toLowerCase() + ".priority.queue");
+        final ConfigProperty<Integer> corePoolSize = ArchaiusUtil.getIntProperty("pool." + name.toLowerCase() + ".core.size");
+        final ConfigProperty<Integer> maxPoolSize = ArchaiusUtil.getIntProperty("pool." + name.toLowerCase() + ".max.size");
+        final ConfigProperty<Integer> keepAliveTime = ArchaiusUtil.getIntProperty("pool." + name.toLowerCase() + ".keep.alive");
+        ConfigProperty<Integer> queueSize = ArchaiusUtil.getIntProperty("pool." + name.toLowerCase() + ".queue.size");
+        ConfigProperty<Boolean> priorityQueue = ArchaiusUtil.getBooleanProperty("pool." + name.toLowerCase() + ".priority.queue");
 
         BlockingQueue<Runnable> workQueue = new SynchronousQueue<>();
         int size = queueSize.get();

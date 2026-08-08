@@ -16,9 +16,10 @@ import io.cattle.platform.process.common.handler.AbstractObjectProcessLogic;
 
 import java.util.Map;
 
-import javax.inject.Inject;
-import javax.inject.Named;
+import jakarta.inject.Inject;
+import jakarta.inject.Named;
 
+import org.apache.commons.lang3.Strings;
 import org.apache.commons.lang3.StringUtils;
 
 @Named
@@ -57,8 +58,8 @@ public class HostCreateToProvision extends AbstractObjectProcessLogic implements
     public static String getDriver(Object obj) {
         Map<String, Object> fields = DataUtils.getFields(obj);
         for (Map.Entry<String, Object> field : fields.entrySet()) {
-            if (StringUtils.endsWithIgnoreCase(field.getKey(), MachineConstants.CONFIG_FIELD_SUFFIX) && field.getValue() != null) {
-                return StringUtils.removeEndIgnoreCase(field.getKey(), MachineConstants.CONFIG_FIELD_SUFFIX);
+            if (Strings.CI.endsWith(field.getKey(), MachineConstants.CONFIG_FIELD_SUFFIX) && field.getValue() != null) {
+                return Strings.CI.removeEnd(field.getKey(), MachineConstants.CONFIG_FIELD_SUFFIX);
             }
         }
 

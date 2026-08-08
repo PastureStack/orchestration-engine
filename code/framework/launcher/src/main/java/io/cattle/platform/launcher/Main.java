@@ -26,6 +26,7 @@ public class Main {
     public static final String JETTY_PREFIX = "WEB-INF/jetty";
     public static final String[] URL_PATHS = new String[] { JETTY_PREFIX, LIB_PREFIX };
     public static final String JETTY_LAUNCHER = "io.cattle.platform.launcher.jetty.Main";
+    static final String JDK_HTTP_CLIENT_ALLOW_RESTRICTED_HEADERS = "jdk.httpclient.allowRestrictedHeaders";
 
     JarInJarHandlerFactory factory = new JarInJarHandlerFactory();
 
@@ -82,8 +83,37 @@ public class Main {
 
         URL[] urlArray = urls.toArray(new URL[urls.size()]);
 
-        ClassLoader cl = Boolean.getBoolean("cattle.main.inherit.cl") ? Main.class.getClassLoader() : null;
+        ClassLoader cl = getParentClassLoader();
         return new URLClassLoader(urlArray, cl, factory);
+    }
+
+    protected ClassLoader getParentClassLoader() {
+        if (Boolean.getBoolean("cattle.main.inherit.cl")) {
+            return Main.class.getClassLoader();
+        }
+
+        if (!isJava9OrLater()) {
+            return null;
+        }
+
+        try {
+            Method getPlatformClassLoader = ClassLoader.class.getMethod("getPlatformClassLoader");
+            return (ClassLoader) getPlatformClassLoader.invoke(null);
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    protected boolean isJava9OrLater() {
+        String version = System.getProperty("java.specification.version", "1.8");
+        if (version.startsWith("1.")) {
+            return false;
+        }
+        try {
+            return Integer.parseInt(version) >= 9;
+        } catch (NumberFormatException e) {
+            return true;
+        }
     }
 
     protected List<URL> collectDirectoryUrls(URL url) throws IOException {
@@ -173,6 +203,7 @@ public class Main {
          * The world is better place without time zones. Well, at least for
          * computers
          */
+        allowJdkHttpClientRestrictedHeader("host");
         TimeZone.setDefault(TimeZone.getTimeZone("UTC"));
 
         setupHome();
@@ -253,6 +284,23 @@ public class Main {
             e.printStackTrace();
             System.exit(1);
         }
+    }
+
+    static void allowJdkHttpClientRestrictedHeader(String header) {
+        String current = System.getProperty(JDK_HTTP_CLIENT_ALLOW_RESTRICTED_HEADERS);
+        if (current == null || current.isBlank()) {
+            System.setProperty(JDK_HTTP_CLIENT_ALLOW_RESTRICTED_HEADERS, header);
+            return;
+        }
+
+        String[] values = current.split(",");
+        for (String value : values) {
+            if (header.equalsIgnoreCase(value.trim())) {
+                return;
+            }
+        }
+
+        System.setProperty(JDK_HTTP_CLIENT_ALLOW_RESTRICTED_HEADERS, current + "," + header);
     }
 
 }

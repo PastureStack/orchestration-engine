@@ -7,7 +7,7 @@ public class ApiSettings implements Settings {
 
     @Override
     public String getProperty(String key) {
-        return ArchaiusUtil.getString(key).get();
+        return ArchaiusUtil.getStringProperty(key).get();
     }
 
 }

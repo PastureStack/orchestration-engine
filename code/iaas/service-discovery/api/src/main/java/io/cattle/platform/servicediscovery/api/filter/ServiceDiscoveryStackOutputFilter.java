@@ -7,7 +7,7 @@ import io.github.ibuildthecloud.gdapi.model.Resource;
 import io.github.ibuildthecloud.gdapi.request.ApiRequest;
 import io.github.ibuildthecloud.gdapi.response.ResourceOutputFilter;
 
-import javax.inject.Named;
+import jakarta.inject.Named;
 
 @Named
 public class ServiceDiscoveryStackOutputFilter implements ResourceOutputFilter {

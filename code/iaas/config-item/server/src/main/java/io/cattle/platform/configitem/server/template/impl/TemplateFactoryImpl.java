@@ -8,7 +8,7 @@ import io.cattle.platform.configitem.server.template.TemplateLoader;
 import java.io.IOException;
 import java.util.List;
 
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 
 public class TemplateFactoryImpl implements TemplateFactory {
 

@@ -41,9 +41,9 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 
-import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.Strings;
 import org.apache.commons.lang3.tuple.Pair;
 
 public class UpgradeManagerImpl implements UpgradeManager {
@@ -122,7 +122,7 @@ public class UpgradeManagerImpl implements UpgradeManager {
     }
 
     protected boolean preseveDeploymentUnit(Service service, InServiceUpgradeStrategy strategy) {
-        boolean isServiceIndexDUStrategy = StringUtils.equalsIgnoreCase(
+        boolean isServiceIndexDUStrategy = Strings.CI.equals(
                 ServiceConstants.SERVICE_INDEX_DU_STRATEGY,
                 DataAccessor.fieldString(service, ServiceConstants.FIELD_SERVICE_INDEX_STRATEGY));
         return isServiceIndexDUStrategy || !strategy.isFullUpgrade();
@@ -394,11 +394,11 @@ public class UpgradeManagerImpl implements UpgradeManager {
             throw new ProcessExecutionExitException(ExitReason.STATE_CHANGED);
         }
 
-        if (StringUtils.equals(currentProcess, ServiceConstants.STATE_RESTARTING)) {
+        if (Strings.CS.equals(currentProcess, ServiceConstants.STATE_RESTARTING)) {
             return service;
         }
         // rollback should cancel upgarde, and vice versa
-        if (!StringUtils.equals(currentProcess, service.getState())) {
+        if (!Strings.CS.equals(currentProcess, service.getState())) {
             throw new ProcessExecutionExitException(ExitReason.STATE_CHANGED);
         }
 

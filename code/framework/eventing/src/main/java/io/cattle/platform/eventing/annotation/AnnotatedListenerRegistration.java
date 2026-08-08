@@ -14,7 +14,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 
 public class AnnotatedListenerRegistration implements InitializationTask {
 
@@ -47,10 +47,8 @@ public class AnnotatedListenerRegistration implements InitializationTask {
         } else {
             EventNameProvider supplier = null;
             try {
-                supplier = supplierClass.newInstance();
-            } catch (InstantiationException e) {
-                throw new IllegalArgumentException("Failed to instantiate [" + supplierClass + "]", e);
-            } catch (IllegalAccessException e) {
+                supplier = supplierClass.getDeclaredConstructor().newInstance();
+            } catch (ReflectiveOperationException e) {
                 throw new IllegalArgumentException("Failed to instantiate [" + supplierClass + "]", e);
             }
 

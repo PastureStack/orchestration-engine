@@ -11,7 +11,7 @@ import io.cattle.platform.process.common.handler.AbstractObjectProcessLogic;
 import java.util.HashMap;
 import java.util.Map;
 
-import javax.inject.Named;
+import jakarta.inject.Named;
 
 import org.apache.commons.lang3.StringUtils;
 

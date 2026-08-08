@@ -13,7 +13,7 @@ import io.cattle.platform.util.type.Priority;
 
 import java.util.List;
 
-import javax.inject.Named;
+import jakarta.inject.Named;
 
 /**
  * This handler takes care of removing service-instance link on instance purge

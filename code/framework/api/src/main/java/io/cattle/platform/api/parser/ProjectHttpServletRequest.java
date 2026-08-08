@@ -6,8 +6,8 @@ import java.util.Enumeration;
 import java.util.HashSet;
 import java.util.Set;
 
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletRequestWrapper;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletRequestWrapper;
 
 public class ProjectHttpServletRequest extends HttpServletRequestWrapper {
 
@@ -31,9 +31,8 @@ public class ProjectHttpServletRequest extends HttpServletRequestWrapper {
         }
     }
 
-    @SuppressWarnings("rawtypes")
     @Override
-    public Enumeration getHeaders(String name) {
+    public Enumeration<String> getHeaders(String name) {
         if (PROJECT_HEADER.equalsIgnoreCase(name)) {
             return Collections.enumeration(Arrays.asList(projectId));
         } else {
@@ -41,10 +40,9 @@ public class ProjectHttpServletRequest extends HttpServletRequestWrapper {
         }
     }
 
-    @SuppressWarnings({ "rawtypes", "unchecked" })
     @Override
-    public Enumeration getHeaderNames() {
-        Set names = new HashSet(Collections.list(super.getHeaderNames()));
+    public Enumeration<String> getHeaderNames() {
+        Set<String> names = new HashSet<String>(Collections.list(super.getHeaderNames()));
         names.add(PROJECT_HEADER);
         return Collections.enumeration(names);
     }

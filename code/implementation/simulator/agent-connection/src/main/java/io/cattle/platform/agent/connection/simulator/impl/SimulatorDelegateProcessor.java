@@ -11,7 +11,7 @@ import io.cattle.platform.json.JsonMapper;
 import io.cattle.platform.object.ObjectManager;
 import io.cattle.platform.util.type.Priority;
 
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 
 public class SimulatorDelegateProcessor implements AgentSimulatorEventProcessor, Priority {
 

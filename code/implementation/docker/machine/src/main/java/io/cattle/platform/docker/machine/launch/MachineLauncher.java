@@ -1,25 +1,21 @@
 package io.cattle.platform.docker.machine.launch;
 
 import io.cattle.platform.archaius.util.ArchaiusUtil;
+import io.cattle.platform.archaius.util.ConfigProperty;
 import io.cattle.platform.core.model.Credential;
 import io.cattle.platform.hazelcast.membership.ClusterService;
 import io.cattle.platform.lock.definition.LockDefinition;
-import io.cattle.platform.server.context.ServerContext;
-import io.cattle.platform.server.context.ServerContext.BaseProtocol;
 import io.cattle.platform.service.launcher.GenericServiceLauncher;
 import io.cattle.platform.util.type.InitializationTask;
 
 import java.util.Map;
 
-import javax.inject.Inject;
-
-import com.netflix.config.DynamicBooleanProperty;
-import com.netflix.config.DynamicStringProperty;
+import jakarta.inject.Inject;
 
 public class MachineLauncher extends GenericServiceLauncher implements InitializationTask {
 
-    private static final DynamicStringProperty MACHINE_BINARY = ArchaiusUtil.getString("machine.service.executable");
-    private static final DynamicBooleanProperty LAUNCH_MACHINE = ArchaiusUtil.getBoolean("machine.execute");
+    private static final ConfigProperty<String> MACHINE_BINARY = ArchaiusUtil.getStringProperty("machine.service.executable");
+    private static final ConfigProperty<Boolean> LAUNCH_MACHINE = ArchaiusUtil.getBooleanProperty("machine.execute");
 
     @Inject
     ClusterService clusterService;
@@ -39,7 +35,7 @@ public class MachineLauncher extends GenericServiceLauncher implements Initializ
         Credential cred = getCredential();
         env.put("CATTLE_ACCESS_KEY", cred.getPublicValue());
         env.put("CATTLE_SECRET_KEY", cred.getSecretValue());
-        env.put("CATTLE_URL", ServerContext.getLocalhostUrl(BaseProtocol.HTTP));
+        env.put("CATTLE_URL", LocalCattleApi.url());
     }
 
     @Override
@@ -49,7 +45,7 @@ public class MachineLauncher extends GenericServiceLauncher implements Initializ
 
     @Override
     protected boolean isReady() {
-        return true;
+        return LocalCattleApi.isReady();
     }
 
 }

@@ -2,7 +2,7 @@ package io.cattle.platform.core.json;
 
 import io.cattle.platform.core.model.tables.records.CredentialRecord;
 
-import javax.annotation.PostConstruct;
+import jakarta.annotation.PostConstruct;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.databind.module.SimpleModule;

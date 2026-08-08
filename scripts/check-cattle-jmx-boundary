@@ -1,0 +1,31 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+cd "$(dirname "$0")/.."
+
+tmp=$(mktemp)
+trap 'rm -f "$tmp"' EXIT
+
+grep -RIn \
+    --include='*.java' \
+    --exclude-dir=target \
+    -E 'org\.jmxtrans\.embedded|EmbeddedJmxTrans([^[:alnum:]_]|$)|ConfigurationParser|GraphiteWriter|AbstractOutputWriter' code \
+    | grep -v '^code/framework/jmx/src/main/java/io/cattle/platform/jmx/EmbeddedJmxTransPublisher.java:' \
+    > "$tmp" || true
+
+if [ -s "$tmp" ]; then
+    echo "Embedded jmxtrans runtime usage must not leak outside the compatibility publisher." >&2
+    cat "$tmp" >&2
+    exit 1
+fi
+
+if grep -RIn \
+    --include='pom.xml' \
+    --exclude-dir=target \
+    -E 'org\.jmxtrans\.embedded|embedded-jmxtrans|embedded\.jmxtrans\.version' code > "$tmp"; then
+    echo "embedded-jmxtrans dependency is retired; do not reintroduce it in Maven metadata." >&2
+    cat "$tmp" >&2
+    exit 1
+fi
+
+echo "Cattle JMX boundary check passed; embedded-jmxtrans runtime dependency is absent."

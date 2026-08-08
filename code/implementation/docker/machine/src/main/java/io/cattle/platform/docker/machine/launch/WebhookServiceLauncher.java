@@ -1,10 +1,9 @@
 package io.cattle.platform.docker.machine.launch;
 
 import io.cattle.platform.archaius.util.ArchaiusUtil;
+import io.cattle.platform.archaius.util.ConfigProperty;
 import io.cattle.platform.core.model.Credential;
 import io.cattle.platform.lock.definition.LockDefinition;
-import io.cattle.platform.server.context.ServerContext;
-import io.cattle.platform.server.context.ServerContext.BaseProtocol;
 import io.cattle.platform.service.launcher.GenericServiceLauncher;
 import io.cattle.platform.ssh.common.SshKeyGen;
 import io.cattle.platform.token.impl.RSAKeyProvider;
@@ -14,13 +13,10 @@ import io.cattle.platform.util.type.InitializationTask;
 import java.security.PublicKey;
 import java.util.Map;
 
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import com.netflix.config.DynamicBooleanProperty;
-import com.netflix.config.DynamicStringProperty;
 
 public class WebhookServiceLauncher extends GenericServiceLauncher implements InitializationTask {
     @Inject
@@ -28,8 +24,8 @@ public class WebhookServiceLauncher extends GenericServiceLauncher implements In
 
     private static final Logger log = LoggerFactory.getLogger(WebhookServiceLauncher.class);
 
-    private static final DynamicStringProperty WEBHOOK_SERVICE_BINARY = ArchaiusUtil.getString("webhook.service.executable");
-    private static final DynamicBooleanProperty LAUNCH_WEBHOOK_SERVICE = ArchaiusUtil.getBoolean("webhook.service.execute");
+    private static final ConfigProperty<String> WEBHOOK_SERVICE_BINARY = ArchaiusUtil.getStringProperty("webhook.service.executable");
+    private static final ConfigProperty<Boolean> LAUNCH_WEBHOOK_SERVICE = ArchaiusUtil.getBooleanProperty("webhook.service.execute");
 
     @Override
     protected boolean shouldRun() {
@@ -46,7 +42,7 @@ public class WebhookServiceLauncher extends GenericServiceLauncher implements In
         Credential cred = getCredential();
         env.put("CATTLE_ACCESS_KEY", cred.getPublicValue());
         env.put("CATTLE_SECRET_KEY", cred.getSecretValue());
-        env.put("CATTLE_URL", ServerContext.getLocalhostUrl(BaseProtocol.HTTP));
+        env.put("CATTLE_URL", LocalCattleApi.url());
         String publicKey = getPublicKey();
         if (publicKey == null) {
             throw new RuntimeException("Couldn't get public key for webhook-service.");
@@ -91,7 +87,7 @@ public class WebhookServiceLauncher extends GenericServiceLauncher implements In
 
     @Override
     protected boolean isReady() {
-        return true;
+        return LocalCattleApi.isReady();
     }
 
 }

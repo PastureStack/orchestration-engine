@@ -16,6 +16,7 @@ public class ResponseCodes {
     public static final int METHOD_NOT_ALLOWED = 405;
     public static final int NOT_ACCEPTABLE = 406;
     public static final int CONFLICT = 409;
+    public static final int TOO_MANY_REQUESTS = 429;
     public static final int LENGTH_REQUIRED = 411;
     public static final int REQUEST_ENTITY_TOO_LARGE = 413;
     public static final int REQUEST_URI_TOO_LONG = 414;

@@ -2,11 +2,11 @@ package io.cattle.platform.configitem.server.resource;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.net.URL;
 
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.io.output.CountingOutputStream;
-import org.apache.commons.io.output.NullOutputStream;
 
 public class URLResource extends AbstractResource {
 
@@ -23,7 +23,7 @@ public class URLResource extends AbstractResource {
         InputStream is = null;
         CountingOutputStream os = null;
         try {
-            os = new CountingOutputStream(new NullOutputStream());
+            os = new CountingOutputStream(OutputStream.nullOutputStream());
             is = getInputStream();
             IOUtils.copy(is, os);
 

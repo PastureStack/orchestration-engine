@@ -10,7 +10,7 @@ import io.cattle.platform.register.util.RegistrationToken;
 
 import java.util.Date;
 
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 
 public class RegistrationAuthTokenManagerImpl implements RegistrationAuthTokenManager {
 
@@ -21,7 +21,11 @@ public class RegistrationAuthTokenManagerImpl implements RegistrationAuthTokenMa
 
     @Override
     public Account validateToken(String password) {
-        String[] parts = password.split(":");
+        if (password == null) {
+            return null;
+        }
+
+        String[] parts = password.split(":", -1);
 
         if (parts.length != 3) {
             return null;
@@ -47,9 +51,7 @@ public class RegistrationAuthTokenManagerImpl implements RegistrationAuthTokenMa
             return null;
         }
 
-        String token = RegistrationToken.createToken(cred.getPublicValue(), cred.getSecretValue(), date);
-
-        if (!password.equals(token)) {
+        if (!RegistrationToken.isValidToken(password, cred.getPublicValue(), cred.getSecretValue(), date)) {
             return null;
         }
 

@@ -8,7 +8,8 @@ public abstract class LocalAuthConfigurable implements Configurable, Provider {
 
     @Override
     public boolean isConfigured() {
-        return LocalAuthConstants.CONFIG.equalsIgnoreCase(SecurityConstants.AUTH_PROVIDER.get());
+        return LocalAuthConstants.CONFIG.equalsIgnoreCase(SecurityConstants.AUTH_PROVIDER.get())
+                || (SecurityConstants.SECURITY.get() && LocalAuthConstants.RECOVERY_ENABLED.get());
     }
 
     @Override

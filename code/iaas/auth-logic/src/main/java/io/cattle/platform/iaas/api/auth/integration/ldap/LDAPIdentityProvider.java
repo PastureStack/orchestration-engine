@@ -12,12 +12,12 @@ import io.cattle.platform.pool.PoolConfig;
 import io.github.ibuildthecloud.gdapi.exception.ClientVisibleException;
 import io.github.ibuildthecloud.gdapi.util.ResponseCodes;
 
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Hashtable;
 import java.util.List;
 import java.util.Map;
 
-import javax.annotation.PostConstruct;
 import javax.naming.Context;
 import javax.naming.NamingEnumeration;
 import javax.naming.NamingException;
@@ -28,6 +28,8 @@ import javax.naming.directory.SearchResult;
 import javax.naming.ldap.InitialLdapContext;
 import javax.naming.ldap.LdapContext;
 import javax.naming.ldap.LdapName;
+
+import jakarta.annotation.PostConstruct;
 
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.pool2.impl.AbandonedConfig;
@@ -58,10 +60,9 @@ public abstract class LDAPIdentityProvider implements IdentityProvider{
         if (!isConfigured()){
             notConfigured();
         }
-        name = escapeLDAPSearchFilter(name);
         if (getConstantsConfig().getUserScope().equalsIgnoreCase(scope)) {
             return searchUser(name, exactMatch);
-        } else if(getConstantsConfig().getGroupScope().equalsIgnoreCase(scope)) {
+        } else if (getConstantsConfig().getGroupScope().equalsIgnoreCase(scope)) {
             return searchGroup(name, exactMatch);
         } else{
             throw new ClientVisibleException(ResponseCodes.BAD_REQUEST, "invalidScope", "Identity type is not valid for Ldap", null);
@@ -106,30 +107,29 @@ public abstract class LDAPIdentityProvider implements IdentityProvider{
     }
 
     protected List<Identity> searchGroup(String name, boolean exactMatch) {
-        String query;
+        LDAPSearchFilter filter;
         if (exactMatch) {
-            query = "(&(" + getConstantsConfig().getGroupSearchField() + '=' + name + ")(" + getConstantsConfig().objectClass() + '='
-                    + getConstantsConfig().getGroupObjectClass() + "))";
+            filter = LDAPSearchFilter.and(LDAPSearchFilter.equality(getConstantsConfig().getGroupSearchField(), name),
+                    LDAPSearchFilter.equality(getConstantsConfig().objectClass(), getConstantsConfig().getGroupObjectClass()));
         } else {
-            query = "(&(" + getConstantsConfig().getGroupSearchField() + "=*" + name + "*)(" + getConstantsConfig().objectClass() + '='
-                    + getConstantsConfig().getGroupObjectClass() + "))";
+            filter = LDAPSearchFilter.and(LDAPSearchFilter.contains(getConstantsConfig().getGroupSearchField(), name),
+                    LDAPSearchFilter.equality(getConstantsConfig().objectClass(), getConstantsConfig().getGroupObjectClass()));
         }
-        log.trace("LDAPIdentityProvider searchGroup query: " + query);
-        return resultsToIdentities(searchLdap(query, getConstantsConfig().getGroupScope()));
+        log.trace("LDAPIdentityProvider searchGroup query: " + filter);
+        return resultsToIdentities(searchLdap(filter, getConstantsConfig().getGroupScope()));
     }
 
     protected List<Identity> searchUser(String name, boolean exactMatch) {
-        String query;
-        if (exactMatch)
-        {
-            query = "(&(" + getConstantsConfig().getUserSearchField() + '=' + name + ")(" + getConstantsConfig().objectClass() + '='
-                    + getConstantsConfig().getUserObjectClass() + "))";
+        LDAPSearchFilter filter;
+        if (exactMatch) {
+            filter = LDAPSearchFilter.and(LDAPSearchFilter.equality(getConstantsConfig().getUserSearchField(), name),
+                    LDAPSearchFilter.equality(getConstantsConfig().objectClass(), getConstantsConfig().getUserObjectClass()));
         } else {
-            query = "(&(" + getConstantsConfig().getUserSearchField() + "=*" + name + "*)(" + getConstantsConfig().objectClass() + '='
-                    + getConstantsConfig().getUserObjectClass() + "))";
+            filter = LDAPSearchFilter.and(LDAPSearchFilter.contains(getConstantsConfig().getUserSearchField(), name),
+                    LDAPSearchFilter.equality(getConstantsConfig().objectClass(), getConstantsConfig().getUserObjectClass()));
         }
-        log.trace("LDAPIdentityProvider searchUser query: " + query);
-        return resultsToIdentities(searchLdap(query, getConstantsConfig().getUserScope()));
+        log.trace("LDAPIdentityProvider searchUser query: " + filter);
+        return resultsToIdentities(searchLdap(filter, getConstantsConfig().getUserScope()));
     }
 
     protected List<Identity> resultsToIdentities(NamingEnumeration<SearchResult> results) {
@@ -257,7 +257,8 @@ public abstract class LDAPIdentityProvider implements IdentityProvider{
         }
     }
 
-    protected NamingEnumeration<SearchResult> searchLdap(String query, String scope) {
+    // LDAPSearchFilter passes values via JNDI filterArgs; attributes are provider config.
+    protected NamingEnumeration<SearchResult> searchLdap(LDAPSearchFilter filter, String scope) {
         SearchControls controls = new SearchControls();
         LdapContext context = null;
         controls.setSearchScope(SUBTREE_SCOPE);
@@ -265,12 +266,14 @@ public abstract class LDAPIdentityProvider implements IdentityProvider{
         try {
             context = getServiceContext();
             if (getConstantsConfig().getGroupScope().equalsIgnoreCase(scope) && StringUtils.isNotBlank(getConstantsConfig().getGroupSearchDomain())) {
-                results = context.search(getConstantsConfig().getGroupSearchDomain(), query, controls);
+                results = context.search( // nosemgrep: java.lang.security.audit.ldap-injection.ldap-injection
+                        getConstantsConfig().getGroupSearchDomain(), filter.expression(), filter.arguments(), controls);
             } else {
-                results = context.search(getConstantsConfig().getDomain(), query, controls);
+                results = context.search( // nosemgrep: java.lang.security.audit.ldap-injection.ldap-injection
+                        getConstantsConfig().getDomain(), filter.expression(), filter.arguments(), controls);
             }
         } catch (NamingException e) {
-            getLogger().error("When searching ldap from /v1/identity Failed to search: " + query + " scope:" + getConstantsConfig().getDomain(), e);
+            getLogger().error("When searching ldap from /v1/identity Failed to search: " + filter + " scope:" + getConstantsConfig().getDomain(), e);
             if(!LDAPUtils.isRecoverable(e)) {
                 invalidateServiceContext(context);
                 context = null;
@@ -330,30 +333,7 @@ public abstract class LDAPIdentityProvider implements IdentityProvider{
     }
 
     protected String escapeLDAPSearchFilter(String filter) {
-        StringBuilder sb = new StringBuilder();
-        for (int i = 0; i < filter.length(); i++) {
-            char curChar = filter.charAt(i);
-            switch (curChar) {
-                case '\\':
-                    sb.append("\\5c");
-                    break;
-                case '*':
-                    sb.append("\\2a");
-                    break;
-                case '(':
-                    sb.append("\\28");
-                    break;
-                case ')':
-                    sb.append("\\29");
-                    break;
-                case '\u0000':
-                    sb.append("\\00");
-                    break;
-                default:
-                    sb.append(curChar);
-            }
-        }
-        return sb.toString();
+        return LDAPFilterUtils.escapeValue(filter);
     }
 
 
@@ -388,7 +368,7 @@ public abstract class LDAPIdentityProvider implements IdentityProvider{
     @PostConstruct
     public void init() {
         if (getContextPool() == null) {
-            GenericObjectPoolConfig config = new GenericObjectPoolConfig();
+            GenericObjectPoolConfig<LdapContext> config = new GenericObjectPoolConfig<LdapContext>();
             PoolConfig.setConfig(config, "ldap.context.pool", "ldap.context.pool.", "global.pool.");
             config.setTestOnBorrow(true);
             LdapServiceContextPoolFactory serviceContextPoolFactory = new LdapServiceContextPoolFactory(getConstantsConfig());
@@ -397,7 +377,7 @@ public abstract class LDAPIdentityProvider implements IdentityProvider{
             abandonedConfig.setUseUsageTracking(true);
             abandonedConfig.setRemoveAbandonedOnMaintenance(true);
             abandonedConfig.setRemoveAbandonedOnBorrow(true);
-            abandonedConfig.setRemoveAbandonedTimeout(60);
+            abandonedConfig.setRemoveAbandonedTimeout(Duration.ofSeconds(60));
             getContextPool().setAbandonedConfig(abandonedConfig);
         }
     }

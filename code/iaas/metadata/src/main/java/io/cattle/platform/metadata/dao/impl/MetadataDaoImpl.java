@@ -31,7 +31,7 @@ import io.cattle.platform.object.ObjectManager;
 
 import java.util.List;
 
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 
 import org.jooq.ResultQuery;
 
@@ -43,13 +43,13 @@ public class MetadataDaoImpl extends AbstractJooqDao implements MetadataDao {
     private List<MetadataEntry> getMetaDataInternal(Instance agentInstance) {
         MultiRecordMapper<MetadataEntry> mapper = new AggregateMultiRecordMapper<MetadataEntry>(MetadataEntry.class);
 
-        InstanceTable instance = mapper.add(INSTANCE);
-        NicTable nic = mapper.add(NIC);
-        IpAddressTable primaryIp = mapper.add(IP_ADDRESS);
-        VolumeTable volume = mapper.add(VOLUME);
-        CredentialTable credential = mapper.add(CREDENTIAL);
-        NetworkTable network = mapper.add(NETWORK);
-        SubnetTable subnet = mapper.add(SUBNET);
+        InstanceTable instance = mapper.add(INSTANCE, InstanceTable.class);
+        NicTable nic = mapper.add(NIC, NicTable.class);
+        IpAddressTable primaryIp = mapper.add(IP_ADDRESS, IpAddressTable.class);
+        VolumeTable volume = mapper.add(VOLUME, VolumeTable.class);
+        CredentialTable credential = mapper.add(CREDENTIAL, CredentialTable.class);
+        NetworkTable network = mapper.add(NETWORK, NetworkTable.class);
+        SubnetTable subnet = mapper.add(SUBNET, SubnetTable.class);
 
         ResultQuery<?> q = create()
             .select(mapper.fields())

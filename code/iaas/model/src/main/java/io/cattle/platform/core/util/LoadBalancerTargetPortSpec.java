@@ -6,7 +6,7 @@ import io.github.ibuildthecloud.gdapi.util.ResponseCodes;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 
 /**
  * This class is to parse the port specs defined for the load balancer, in format

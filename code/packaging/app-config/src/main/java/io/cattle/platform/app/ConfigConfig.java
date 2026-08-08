@@ -1,17 +1,11 @@
 package io.cattle.platform.app;
 
 import io.cattle.platform.archaius.polling.RefreshableFixedDelayPollingScheduler;
-import io.cattle.platform.archaius.sources.DefaultTransformedEnvironmentProperties;
-import io.cattle.platform.archaius.sources.LazyJDBCSource;
-import io.cattle.platform.archaius.sources.NamedDynamicConfiguration;
-import io.cattle.platform.archaius.sources.NamedMapConfiguration;
-import io.cattle.platform.archaius.sources.NamedSystemConfiguration;
-import io.cattle.platform.archaius.sources.OptionalPropertiesConfigurationFactory;
-import io.cattle.platform.archaius.sources.TransformedEnvironmentProperties;
+import io.cattle.platform.archaius.sources.ArchaiusConfigFactory;
 import io.cattle.platform.archaius.startup.ArchaiusStartup;
+import io.cattle.platform.archaius.startup.ArchaiusConfigRegistration;
 import io.cattle.platform.datasource.DataSourceFactory;
 import io.cattle.platform.extension.dynamic.DynamicExtensionManager;
-import io.cattle.platform.extension.impl.EMUtils;
 import io.cattle.platform.extension.impl.ExtensionManagerImpl;
 import io.cattle.platform.logback.Startup;
 
@@ -20,7 +14,6 @@ import java.io.InputStream;
 import java.util.Arrays;
 import java.util.Properties;
 
-import org.apache.commons.configuration.AbstractConfiguration;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -57,29 +50,27 @@ public class ConfigConfig {
         startup.setDataSourceFactory(dsf);
         startup.setSchedulers(Arrays.asList(scheduler));
 
-        EMUtils.addConfig(em, new DefaultTransformedEnvironmentProperties(), "DefaultEnvironmentConfig");
-        EMUtils.addConfig(em, new TransformedEnvironmentProperties(), "EnvironmentConfig");
-        EMUtils.addConfig(em, new NamedSystemConfiguration(), "SystemConfig");
+        ArchaiusConfigRegistration.addConfig(em, ArchaiusConfigFactory.defaultEnvironment(), "DefaultEnvironmentConfig");
+        ArchaiusConfigRegistration.addConfig(em, ArchaiusConfigFactory.environment(), "EnvironmentConfig");
+        ArchaiusConfigRegistration.addConfig(em, ArchaiusConfigFactory.systemProperties(), "SystemConfig");
 
-        AbstractConfiguration localFileConfig = OptionalPropertiesConfigurationFactory.getConfiguration("cattle-local.properties");
-        EMUtils.addConfig(em, localFileConfig, "CattleLocalFileConfig");
+        ArchaiusConfigRegistration.addConfig(em, ArchaiusConfigFactory.optionalProperties("cattle-local.properties"),
+                "CattleLocalFileConfig");
 
-        NamedDynamicConfiguration dbConfig = new NamedDynamicConfiguration(new LazyJDBCSource(), scheduler);
-        dbConfig.setSourceName("Database");
-        EMUtils.addConfig(em, dbConfig, "DatabaseConfig");
+        ArchaiusConfigRegistration.addConfig(em, ArchaiusConfigFactory.database(scheduler, "Database"),
+                "DatabaseConfig");
 
-        AbstractConfiguration cattleFileConfig = OptionalPropertiesConfigurationFactory.getConfiguration("cattle.properties");
-        EMUtils.addConfig(em, cattleFileConfig, "CattleFileConfig");
+        ArchaiusConfigRegistration.addConfig(em, ArchaiusConfigFactory.optionalProperties("cattle.properties"),
+                "CattleFileConfig");
 
-        AbstractConfiguration cattleOverrideFileConfig = OptionalPropertiesConfigurationFactory.getConfiguration("cattle-override.properties");
-        EMUtils.addConfig(em, cattleOverrideFileConfig, "CattleOverrideFileConfig");
+        ArchaiusConfigRegistration.addConfig(em, ArchaiusConfigFactory.optionalProperties("cattle-override.properties"),
+                "CattleOverrideFileConfig");
 
-        AbstractConfiguration cattleGlobalFileConfig = OptionalPropertiesConfigurationFactory.getConfiguration("cattle-global.properties");
-        EMUtils.addConfig(em, cattleGlobalFileConfig, "CattleGlobalFileConfig");
+        ArchaiusConfigRegistration.addConfig(em, ArchaiusConfigFactory.optionalProperties("cattle-global.properties"),
+                "CattleGlobalFileConfig");
 
-        NamedMapConfiguration defaultsConfig = new NamedMapConfiguration(props);
-        defaultsConfig.setSourceName("Code Packaged Defaults");
-        EMUtils.addConfig(em, defaultsConfig, "DefaultsConfig");
+        ArchaiusConfigRegistration.addConfig(em, ArchaiusConfigFactory.defaults(props, "Code Packaged Defaults"),
+                "DefaultsConfig");
 
         startup.init();
         em.start();

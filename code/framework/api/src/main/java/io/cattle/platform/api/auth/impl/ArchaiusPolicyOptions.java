@@ -1,20 +1,18 @@
 package io.cattle.platform.api.auth.impl;
 
 import io.cattle.platform.archaius.util.ArchaiusUtil;
+import io.cattle.platform.archaius.util.ConfigProperty;
 
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-import com.netflix.config.DynamicBooleanProperty;
-import com.netflix.config.DynamicStringProperty;
-
 public class ArchaiusPolicyOptions implements PolicyOptions {
 
     private static String PROP_FORMAT = "account.type.%s.%s";
 
-    Map<String, DynamicBooleanProperty> bools = new ConcurrentHashMap<String, DynamicBooleanProperty>();
-    Map<String, DynamicStringProperty> strings = new ConcurrentHashMap<String, DynamicStringProperty>();
+    Map<String, ConfigProperty<Boolean>> bools = new ConcurrentHashMap<String, ConfigProperty<Boolean>>();
+    Map<String, ConfigProperty<String>> strings = new ConcurrentHashMap<String, ConfigProperty<String>>();
     Map<String, OptionCallback> callbacks = new HashMap<String, OptionCallback>();
     String name;
 
@@ -24,9 +22,9 @@ public class ArchaiusPolicyOptions implements PolicyOptions {
 
     @Override
     public boolean isOption(String optionName) {
-        DynamicBooleanProperty prop = bools.get(optionName);
+        ConfigProperty<Boolean> prop = bools.get(optionName);
         if (prop == null) {
-            prop = ArchaiusUtil.getBoolean(String.format(PROP_FORMAT, name, optionName));
+            prop = ArchaiusUtil.getBooleanProperty(String.format(PROP_FORMAT, name, optionName));
             bools.put(optionName, prop);
         }
         return prop.get();
@@ -39,9 +37,9 @@ public class ArchaiusPolicyOptions implements PolicyOptions {
             return callback.getOption();
         }
 
-        DynamicStringProperty prop = strings.get(optionName);
+        ConfigProperty<String> prop = strings.get(optionName);
         if (prop == null) {
-            prop = ArchaiusUtil.getString(String.format(PROP_FORMAT, name, optionName));
+            prop = ArchaiusUtil.getStringProperty(String.format(PROP_FORMAT, name, optionName));
             strings.put(optionName, prop);
         }
         return prop.get();

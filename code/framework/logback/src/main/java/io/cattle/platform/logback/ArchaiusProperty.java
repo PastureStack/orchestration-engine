@@ -16,7 +16,7 @@ public class ArchaiusProperty extends PropertyDefinerBase implements PropertyDef
 
     @Override
     public String getPropertyValue() {
-        String value = ArchaiusUtil.getString(name).get();
+        String value = ArchaiusUtil.getStringProperty(name).get();
         log.info("Logback [{}] = [{}]", name, value);
         return value;
     }
