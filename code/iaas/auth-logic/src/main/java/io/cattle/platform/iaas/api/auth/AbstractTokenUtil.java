@@ -2,14 +2,17 @@ package io.cattle.platform.iaas.api.auth;
 
 import io.cattle.platform.api.auth.Identity;
 import io.cattle.platform.archaius.util.ArchaiusUtil;
+import io.cattle.platform.archaius.util.ConfigProperty;
 import io.cattle.platform.core.constants.AccountConstants;
 import io.cattle.platform.core.constants.ProjectConstants;
 import io.cattle.platform.core.dao.AccountDao;
 import io.cattle.platform.core.model.Account;
 import io.cattle.platform.core.model.AuthToken;
+import io.cattle.platform.core.model.Credential;
 import io.cattle.platform.core.util.SettingsUtils;
 import io.cattle.platform.iaas.api.auth.dao.AuthDao;
 import io.cattle.platform.iaas.api.auth.dao.AuthTokenDao;
+import io.cattle.platform.iaas.api.auth.identity.IdentityLinkKey;
 import io.cattle.platform.iaas.api.auth.identity.Token;
 import io.cattle.platform.iaas.api.auth.integration.interfaces.TokenUtil;
 import io.cattle.platform.iaas.api.auth.projects.ProjectResourceManager;
@@ -32,21 +35,20 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import javax.inject.Inject;
-import javax.servlet.http.Cookie;
+import jakarta.inject.Inject;
+import jakarta.servlet.http.Cookie;
 
-import org.apache.commons.lang.ObjectUtils;
+import org.apache.commons.lang3.Strings;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import com.netflix.config.DynamicBooleanProperty;
 
 public abstract class AbstractTokenUtil implements TokenUtil {
 
     public static final String ACCESSMODE = "accessMode";
     public static final String TOKEN = "token";
     public static final String ACCOUNT_ID = "account_id";
+    public static final String PRINCIPAL_ACCOUNT_ID = "principal_account_id";
     public static final String ACCESS_TOKEN_INVALID = "InvalidAccessToken";
     public static final String ID_LIST = "idList";
     public static final String USER_IDENTITY = "userIdentity";
@@ -57,7 +59,7 @@ public abstract class AbstractTokenUtil implements TokenUtil {
     public static final String UNRESTRICTED_ACCESSMODE = "unrestricted";
 
     private static final Logger log = LoggerFactory.getLogger(AbstractTokenUtil.class);
-    private static final DynamicBooleanProperty CREATE_PROJECT = ArchaiusUtil.getBoolean("project.create.default");
+    private static final ConfigProperty<Boolean> CREATE_PROJECT = ArchaiusUtil.getBooleanProperty("project.create.default");
 
     @Inject
     protected AuthDao authDao;
@@ -86,15 +88,36 @@ public abstract class AbstractTokenUtil implements TokenUtil {
         if (jsonData == null) {
             return null;
         }
-        String accountId = ObjectUtils.toString(jsonData.get(ACCOUNT_ID), null);
+        Account account = accountFromPrincipalClaim(jsonData.get(PRINCIPAL_ACCOUNT_ID));
+        if (account != null) {
+            if (!accountDao.isActiveAccount(account)) {
+                throw new ClientVisibleException(ResponseCodes.UNAUTHORIZED);
+            }
+            return account;
+        }
+
+        // Compatibility with sessions issued before the authorization
+        // principal received its own stable claim.
+        String accountId = java.util.Objects.toString(jsonData.get(ACCOUNT_ID), (String)null);
         if (null == accountId) {
             return null;
         }
-        Account account = authDao.getAccountByExternalId(accountId, userType());
+        account = authDao.getAccountByExternalId(accountId, userType());
         if (account != null && !accountDao.isActiveAccount(account)) {
             throw new ClientVisibleException(ResponseCodes.UNAUTHORIZED);
         }
         return account;
+    }
+
+    private Account accountFromPrincipalClaim(Object value) {
+        if (value == null) {
+            return null;
+        }
+        try {
+            return authDao.getAccountById(Long.valueOf(String.valueOf(value)));
+        } catch (NumberFormatException e) {
+            return null;
+        }
     }
 
     protected Map<String, Object> getJsonData() {
@@ -138,7 +161,7 @@ public abstract class AbstractTokenUtil implements TokenUtil {
         String toParse;
         String[] tokenArr = jwtKey.split("\\s+");
         if (tokenArr.length == 2) {
-            if (!StringUtils.equalsIgnoreCase("bearer", StringUtils.trim(tokenArr[0]))) {
+            if (!Strings.CI.equals("bearer", StringUtils.trim(tokenArr[0]))) {
                 return null;
             }
             toParse = tokenArr[1];
@@ -173,21 +196,19 @@ public abstract class AbstractTokenUtil implements TokenUtil {
         return jwt;
     }
 
-    @SuppressWarnings("unchecked")
     protected boolean isAllowed(Map<String, Object> jsonData) {
-        List<String> idList = (List<String>) jsonData.get(ID_LIST);
+        List<String> idList = stringList(jsonData.get(ID_LIST));
         log.trace("ID List in the token: {}", idList);
         Set<Identity> identities = identities(jsonData);
         return isAllowed(idList, identities);
     }
 
-    @SuppressWarnings("unchecked")
     protected Set<Identity> identities(Map<String, Object> jsonData) {
         Set<Identity> identities = new HashSet<>();
         if (jsonData == null) {
             return identities;
         }
-        List<String> idList = (List<String>) jsonData.get(ID_LIST);
+        List<String> idList = stringList(jsonData.get(ID_LIST));
         for (String id : idList) {
             Identity identityObj = Identity.fromId(id);
             if (identityObj != null) {
@@ -197,6 +218,18 @@ public abstract class AbstractTokenUtil implements TokenUtil {
             }
         }
         return identities;
+    }
+
+    protected static List<String> stringList(Object value) {
+        if (value == null) {
+            return null;
+        }
+        List<?> values = List.class.cast(value);
+        List<String> result = new ArrayList<>(values.size());
+        for (Object item : values) {
+            result.add(String.class.cast(item));
+        }
+        return result;
     }
 
     @Override
@@ -291,7 +324,17 @@ public abstract class AbstractTokenUtil implements TokenUtil {
     public Account getOrCreateAccount(Identity user, Set<Identity> identities, Account account) {
         if (SecurityConstants.SECURITY.get()) {
             isAllowed(identitiesToIdList(identities), identities);
+            String providerName = SecurityConstants.AUTH_PROVIDER.get();
+            String identityLinkKey = null;
+            if (!ProjectConstants.RANCHER_ID.equalsIgnoreCase(user.getExternalIdType())) {
+                identityLinkKey = IdentityLinkKey.create(providerName, user.getExternalIdType(), user.getExternalId());
+            }
             if (account == null) {
+                account = identityLinkKey == null ? null : authDao.getAccountByIdentityLink(identityLinkKey);
+            }
+            if (account == null) {
+                // Compatibility bridge for accounts created before login
+                // identities became first-class links.
                 account = authDao.getAccountByExternalId(user.getExternalId(), user.getExternalIdType());
             }
             if (account != null && !accountDao.isActiveAccount(account)) {
@@ -302,6 +345,11 @@ public abstract class AbstractTokenUtil implements TokenUtil {
                                 .getExternalId(),
                         user.getExternalIdType());
             }
+            if (account != null && identityLinkKey != null) {
+                Credential link = authDao.linkIdentity(account, user, providerName, identityLinkKey);
+                authDao.recordIdentityLogin(link);
+            }
+            addStableAccountIdentities(account, identities);
             Object hasLoggedIn = DataAccessor.fields(account).withKey(SecurityConstants.HAS_LOGGED_IN).get();
             if (((hasLoggedIn == null || !((Boolean) hasLoggedIn)) &&
                     !authDao.hasAccessToAnyProject(identities, false, null)) &&
@@ -328,6 +376,41 @@ public abstract class AbstractTokenUtil implements TokenUtil {
         return account;
     }
 
+    protected void addStableAccountIdentities(Account account, Set<Identity> identities) {
+        if (account == null || identities == null) {
+            return;
+        }
+
+        identities.add(new Identity(ProjectConstants.RANCHER_ID, String.valueOf(account.getId()),
+                account.getName(), null, null, null, true));
+        for (Credential link : authDao.getIdentityLinks(account.getId())) {
+            Map<String, Object> data = link.getData();
+            if (!linkMatchesProvider(data, SecurityConstants.AUTH_PROVIDER.get())) {
+                continue;
+            }
+            String externalId = stringValue(data.get("externalId"));
+            String externalIdType = stringValue(data.get("externalIdType"));
+            if (StringUtils.isBlank(externalId) || StringUtils.isBlank(externalIdType)) {
+                continue;
+            }
+            identities.add(new Identity(externalIdType, externalId, stringValue(data.get("name")),
+                    null, null, stringValue(data.get("login")), true));
+        }
+    }
+
+    protected boolean linkMatchesProvider(Map<String, Object> data, String activeProvider) {
+        if (data == null || StringUtils.isBlank(activeProvider)) {
+            return false;
+        }
+        String linkProvider = stringValue(data.get("provider"));
+        return StringUtils.isNotBlank(linkProvider)
+                && linkProvider.equalsIgnoreCase(activeProvider);
+    }
+
+    private String stringValue(Object value) {
+        return value == null ? null : String.valueOf(value);
+    }
+
 
     @Override
     public Token createToken(Set<Identity> identities, Account account) {
@@ -351,12 +434,15 @@ public abstract class AbstractTokenUtil implements TokenUtil {
 
         postAuthModification(account);
 
-        account = authDao.updateAccount(account, user.getName(), account.getKind(), user.getExternalId(), user
-                .getExternalIdType());
+        // The account is the stable authorization principal.  A successful
+        // login may refresh its display name, but must never overwrite the
+        // account's identity with the currently selected login provider.
+        account = authDao.updateAccount(account, user.getName(), account.getKind(), null, null);
 
         Map<String, Object> jsonData = new HashMap<>();
         jsonData.put(AbstractTokenUtil.TOKEN, tokenType());
         jsonData.put(AbstractTokenUtil.ACCOUNT_ID, user.getExternalId());
+        jsonData.put(AbstractTokenUtil.PRINCIPAL_ACCOUNT_ID, String.valueOf(account.getId()));
         jsonData.put(AbstractTokenUtil.ID_LIST, identitiesToIdList(identities));
         jsonData.put(AbstractTokenUtil.USER_IDENTITY, user);
         jsonData.put(AbstractTokenUtil.USER_TYPE, account.getKind());
@@ -406,12 +492,12 @@ public abstract class AbstractTokenUtil implements TokenUtil {
     }
 
     public Identity jsonToIdentity(Map<String, Object> jsonData) {
-        String externalId = ObjectUtils.toString(jsonData.get("externalId"));
-        String externalIdType = ObjectUtils.toString(jsonData.get("externalIdType"));
-        String name = ObjectUtils.toString(jsonData.get("name"));
-        String profilePicture = ObjectUtils.toString(jsonData.get("profilePicture"));
-        String profileUrl = ObjectUtils.toString(jsonData.get("profileUrl"));
-        String login = ObjectUtils.toString(jsonData.get("login"));
+        String externalId = java.util.Objects.toString(jsonData.get("externalId"), "");
+        String externalIdType = java.util.Objects.toString(jsonData.get("externalIdType"), "");
+        String name = java.util.Objects.toString(jsonData.get("name"), "");
+        String profilePicture = java.util.Objects.toString(jsonData.get("profilePicture"), "");
+        String profileUrl = java.util.Objects.toString(jsonData.get("profileUrl"), "");
+        String login = java.util.Objects.toString(jsonData.get("login"), "");
         boolean user = Boolean.TRUE.equals(jsonData.get("user"));
         return new Identity(externalIdType, externalId, name, profileUrl, profilePicture, login, user);
     }
@@ -427,8 +513,8 @@ public abstract class AbstractTokenUtil implements TokenUtil {
         if (idObject != null) {
             Map<String, Object> idMap = CollectionUtils.toMap(idObject);
             Identity userIdentity = jsonToIdentity(idMap);
-            String userType = ObjectUtils.toString(jsonData.get(USER_TYPE), null);
-            String originalLogin = ObjectUtils.toString(jsonData.get("originalLogin"), null);
+            String userType = java.util.Objects.toString(jsonData.get(USER_TYPE), (String)null);
+            String originalLogin = java.util.Objects.toString(jsonData.get("originalLogin"), (String)null);
             token.setUserIdentity(userIdentity);
             token.setUserType(userType);
             token.setOriginalLogin(originalLogin);
@@ -448,7 +534,8 @@ public abstract class AbstractTokenUtil implements TokenUtil {
                 token.setOriginalLogin(userToken.getOriginalLogin());
             }
         }
-        log.debug("retrieveCurrentToken returning {}", token);
+        log.debug("Current authentication token resolved: identity={}, userType={}, delegated={}",
+                token.getUserIdentity() != null, token.getUserType() != null, token.getOriginalLogin() != null);
         return token;
     }
 }

@@ -31,10 +31,10 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import javax.inject.Inject;
-import javax.inject.Named;
+import jakarta.inject.Inject;
+import jakarta.inject.Named;
 
-import org.apache.commons.lang3.ObjectUtils;
+import org.apache.commons.lang3.Strings;
 import org.apache.commons.lang3.StringUtils;
 
 import com.google.common.base.Joiner;
@@ -78,7 +78,7 @@ public class InstancePreCreate extends AbstractObjectProcessLogic implements Pro
     }
 
     protected String toString(Object obj) {
-        return ObjectUtils.toString(obj, null);
+        return java.util.Objects.toString(obj, (String)null);
     }
 
     protected void setName(Instance instance, Map<String, Object> labels, Map<Object, Object> data) {
@@ -160,7 +160,7 @@ public class InstancePreCreate extends AbstractObjectProcessLogic implements Pro
             }
             if (labels.containsKey(SystemLabels.LABEL_RANCHER_CONTAINER_DNS_PRIORITY)) {
                 String setSearchDomain = labels.get(SystemLabels.LABEL_RANCHER_CONTAINER_DNS_PRIORITY).toString();
-                if (setSearchDomain != null && !setSearchDomain.isEmpty() && StringUtils.equalsIgnoreCase(setSearchDomain.trim(), "None")) {
+                if (setSearchDomain != null && !setSearchDomain.isEmpty() && Strings.CI.equals(setSearchDomain.trim(), "None")) {
                     setRancherSearchDomain = false;
                 }
             }

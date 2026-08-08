@@ -13,8 +13,8 @@ import io.cattle.platform.process.base.AbstractDefaultProcessHandler;
 import io.cattle.platform.sample.data.SampleDataStartupV3;
 import io.cattle.platform.systemstack.catalog.CatalogService;
 
-import javax.inject.Inject;
-import javax.inject.Named;
+import jakarta.inject.Inject;
+import jakarta.inject.Named;
 
 @Named
 public class ProjecttemplateCreate extends AbstractDefaultProcessHandler {

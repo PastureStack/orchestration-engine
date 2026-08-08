@@ -1,0 +1,70 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+repo_root=$(cd "$(dirname "$0")/.." && pwd)
+cd "$repo_root"
+
+workdir=$(mktemp -d "${TMPDIR:-/tmp}/cattle-metrics-servlet.XXXXXX")
+trap 'rm -rf "$workdir"' EXIT
+
+write_pom() {
+    local path=$1
+    local artifact=$2
+    mkdir -p "$(dirname "$path")"
+    cat >"$path" <<EOF
+<project xmlns="http://maven.apache.org/POM/4.0.0">
+  <modelVersion>4.0.0</modelVersion>
+  <groupId>fixture</groupId>
+  <artifactId>fixture</artifactId>
+  <version>1</version>
+  <dependencies>
+    <dependency>
+      <groupId>io.dropwizard.metrics</groupId>
+      <artifactId>${artifact}</artifactId>
+      <version>4.2.39</version>
+    </dependency>
+  </dependencies>
+</project>
+EOF
+}
+
+positive_root="$workdir/positive"
+write_pom "$positive_root/pom.xml" "metrics-jakarta-servlets"
+positive_output="$workdir/positive.log"
+RC16_CATTLE_SOURCE_ROOT="$positive_root" scripts/check-cattle-metrics-servlet-boundary >"$positive_output"
+for expected in \
+    'CATTLE_METRICS_SERVLET_BOUNDARY_OK' \
+    'allowed_jakarta_servlets_count=1' \
+    'failure_count=0'; do
+    if ! grep -F "$expected" "$positive_output" >/dev/null; then
+        echo "CATTLE_METRICS_SERVLET_BOUNDARY_POSITIVE_MISSING=$expected" >&2
+        cat "$positive_output" >&2
+        exit 1
+    fi
+done
+
+negative_root="$workdir/negative"
+write_pom "$negative_root/pom.xml" "metrics-servlets"
+negative_output="$workdir/negative.log"
+set +e
+RC16_CATTLE_SOURCE_ROOT="$negative_root" scripts/check-cattle-metrics-servlet-boundary >"$negative_output" 2>&1
+negative_rc=$?
+set -e
+if [ "$negative_rc" -eq 0 ]; then
+    echo "CATTLE_METRICS_SERVLET_BOUNDARY_NEGATIVE_DID_NOT_FAIL" >&2
+    cat "$negative_output" >&2
+    exit 1
+fi
+
+for expected in \
+    'CATTLE_METRICS_SERVLET_LEGACY_DEPENDENCY' \
+    'artifactId=metrics-servlets' \
+    'failure_count=1'; do
+    if ! grep -F "$expected" "$negative_output" >/dev/null; then
+        echo "CATTLE_METRICS_SERVLET_BOUNDARY_NEGATIVE_MISSING=$expected" >&2
+        cat "$negative_output" >&2
+        exit 1
+    fi
+done
+
+echo "CATTLE_METRICS_SERVLET_BOUNDARY_FIXTURES_OK"

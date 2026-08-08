@@ -5,12 +5,10 @@
 
     <appender name="SYNC_FILE_EVENT_IN" class="ch.qos.logback.core.rolling.RollingFileAppender">
         <file>${logDir}cattle-event-in.log</file>
-        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
             <fileNamePattern>${logDir}cattle-event-in${fileNamePattern}</fileNamePattern>
             <maxHistory>${maxHistory}</maxHistory>
-            <timeBasedFileNamingAndTriggeringPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedFNATP">
-                <maxFileSize>${maxFileSize}</maxFileSize>
-            </timeBasedFileNamingAndTriggeringPolicy>
+            <maxFileSize>${maxFileSize}</maxFileSize>
         </rollingPolicy>
         <encoder>
             <pattern>${eventPattern}</pattern>
@@ -22,12 +20,10 @@
 
     <appender name="SYNC_FILE_EVENT_OUT" class="ch.qos.logback.core.rolling.RollingFileAppender">
         <file>${logDir}cattle-event-out.log</file>
-        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
             <fileNamePattern>${logDir}cattle-event-out${fileNamePattern}</fileNamePattern>
             <maxHistory>${maxHistory}</maxHistory>
-            <timeBasedFileNamingAndTriggeringPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedFNATP">
-                <maxFileSize>${maxFileSize}</maxFileSize>
-            </timeBasedFileNamingAndTriggeringPolicy>
+            <maxFileSize>${maxFileSize}</maxFileSize>
         </rollingPolicy>
         <encoder>
             <pattern>${eventPattern}</pattern>

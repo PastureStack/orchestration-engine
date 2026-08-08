@@ -10,7 +10,7 @@ import io.cattle.platform.object.ObjectManager;
 
 import java.util.List;
 
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 
 public class GenericResourceProcessDefinition extends AbstractProcessDefinition {
 

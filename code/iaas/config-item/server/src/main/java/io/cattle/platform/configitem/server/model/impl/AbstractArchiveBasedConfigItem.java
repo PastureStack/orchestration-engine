@@ -25,6 +25,9 @@ import org.apache.commons.io.IOUtils;
 
 public abstract class AbstractArchiveBasedConfigItem extends AbstractResourceRootConfigItem {
 
+    static final String CHECKSUMS = "SHA256SUMS";
+    static final String CHECKSUMS_SUM = "SHA256SUMSSUM";
+
     List<ConfigItemContextFactory> contextFactories;
 
     public AbstractArchiveBasedConfigItem(String name, ConfigItemStatusManager versionManager, ResourceRoot resourceRoot,
@@ -78,7 +81,7 @@ public abstract class AbstractArchiveBasedConfigItem extends AbstractResourceRoo
         hashes.clear();
 
         final byte[] content = stringContent.toString().getBytes("UTF-8");
-        withEntry(context, "SHA1SUMS", content.length, new WithEntry() {
+        withEntry(context, CHECKSUMS, content.length, new WithEntry() {
             @Override
             public void with(OutputStream os) throws IOException {
                 os.write(content);
@@ -87,7 +90,7 @@ public abstract class AbstractArchiveBasedConfigItem extends AbstractResourceRoo
 
         Map.Entry<String, String> entry = hashes.entrySet().iterator().next();
         final byte[] sumSum = String.format("%s *%s\n", entry.getValue(), entry.getKey()).getBytes("UTF-8");
-        withEntry(context, "SHA1SUMSSUM", sumSum.length, new WithEntry() {
+        withEntry(context, CHECKSUMS_SUM, sumSum.length, new WithEntry() {
             @Override
             public void with(OutputStream os) throws IOException {
                 os.write(sumSum);
@@ -138,7 +141,7 @@ public abstract class AbstractArchiveBasedConfigItem extends AbstractResourceRoo
     protected static void withEntry(ArchiveContext context, TarArchiveEntry entry, WithEntry with) throws IOException {
         try {
             TarArchiveOutputStream taos = context.getOutputStream();
-            DigestOutputStream dos = new DigestOutputStream(taos, MessageDigest.getInstance("SHA1"));
+            DigestOutputStream dos = new DigestOutputStream(taos, MessageDigest.getInstance("SHA-256"));
 
             taos.putArchiveEntry(entry);
             with.with(dos);
@@ -147,7 +150,7 @@ public abstract class AbstractArchiveBasedConfigItem extends AbstractResourceRoo
             String hash = Hex.encodeHexString(dos.getMessageDigest().digest());
             context.getHashes().put(entry.getName(), hash);
         } catch (NoSuchAlgorithmException e) {
-            throw new IllegalStateException("Missing SHA1 digest", e);
+            throw new IllegalStateException("Missing SHA-256 digest", e);
         }
     };
 

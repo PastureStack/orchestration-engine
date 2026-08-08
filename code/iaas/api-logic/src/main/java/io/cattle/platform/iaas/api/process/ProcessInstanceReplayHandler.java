@@ -9,7 +9,7 @@ import io.cattle.platform.eventing.model.EventVO;
 import io.cattle.platform.object.ObjectManager;
 import io.github.ibuildthecloud.gdapi.request.ApiRequest;
 
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 
 public class ProcessInstanceReplayHandler implements ActionHandler {
 

@@ -11,7 +11,7 @@ import io.github.ibuildthecloud.gdapi.request.resource.ResourceManager;
 import io.github.ibuildthecloud.gdapi.util.ResponseCodes;
 
 import java.util.Map;
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 
 public class AccountFilter extends AbstractDefaultResourceManagerFilter {
 

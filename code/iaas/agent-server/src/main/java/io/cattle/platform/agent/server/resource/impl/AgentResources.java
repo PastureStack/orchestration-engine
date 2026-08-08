@@ -1,18 +1,14 @@
 package io.cattle.platform.agent.server.resource.impl;
 
-import java.io.UnsupportedEncodingException;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.nio.charset.StandardCharsets;
 import java.util.Map;
 import java.util.TreeMap;
 
 import org.apache.commons.codec.binary.Hex;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class AgentResources {
-
-    private static final Logger log = LoggerFactory.getLogger(AgentResources.class);
 
     Map<String, Map<String, Object>> hosts = new TreeMap<>();
     Map<String, Map<String, Object>> storagePools = new TreeMap<>();
@@ -26,9 +22,9 @@ public class AgentResources {
 
         MessageDigest md;
         try {
-            md = MessageDigest.getInstance("SHA1");
+            md = MessageDigest.getInstance("SHA-256");
         } catch (NoSuchAlgorithmException e) {
-            throw new RuntimeException("Failed to find SHA1 digest", e);
+            throw new RuntimeException("Failed to find SHA-256 digest", e);
         }
 
         hashMap(md, hosts);
@@ -45,14 +41,10 @@ public class AgentResources {
     protected void hashMap(MessageDigest md, Map<String, Map<String, Object>> data) {
         for (Map<String, Object> value : data.values()) {
             for (Map.Entry<String, Object> entry : value.entrySet()) {
-                try {
-                    md.update(entry.getKey().getBytes("UTF-8"));
-                    Object obj = entry.getValue();
-                    if (obj != null) {
-                        md.update(obj.toString().getBytes("UTF-8"));
-                    }
-                } catch (UnsupportedEncodingException e) {
-                    log.error("Failed to hash [{}]", entry, e);
+                md.update(entry.getKey().getBytes(StandardCharsets.UTF_8));
+                Object obj = entry.getValue();
+                if (obj != null) {
+                    md.update(obj.toString().getBytes(StandardCharsets.UTF_8));
                 }
             }
         }

@@ -3,6 +3,7 @@ package io.cattle.platform.configitem.version.impl;
 import io.cattle.platform.agent.AgentLocator;
 import io.cattle.platform.agent.RemoteAgent;
 import io.cattle.platform.archaius.util.ArchaiusUtil;
+import io.cattle.platform.archaius.util.ConfigProperty;
 import io.cattle.platform.async.utils.TimeoutException;
 import io.cattle.platform.configitem.events.ConfigUpdate;
 import io.cattle.platform.configitem.events.ConfigUpdateData;
@@ -36,7 +37,7 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 
 import org.apache.cloudstack.managed.context.NoExceptionRunnable;
 import org.slf4j.Logger;
@@ -45,14 +46,13 @@ import org.slf4j.LoggerFactory;
 import com.google.common.util.concurrent.FutureCallback;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
+import com.google.common.util.concurrent.MoreExecutors;
 import com.google.common.util.concurrent.SettableFuture;
-import com.netflix.config.DynamicIntProperty;
-import com.netflix.config.DynamicLongProperty;
 
 public class ConfigUpdatePublisher extends NoExceptionRunnable implements InitializationTask, AnnotatedEventListener {
 
-    private static final DynamicIntProperty RETRY = ArchaiusUtil.getInt("item.wait.for.event.tries");
-    private static final DynamicLongProperty TIMEOUT = ArchaiusUtil.getLong("item.wait.for.event.timeout.millis");
+    private static final ConfigProperty<Integer> RETRY = ArchaiusUtil.getIntProperty("item.wait.for.event.tries");
+    private static final ConfigProperty<Long> TIMEOUT = ArchaiusUtil.getLongProperty("item.wait.for.event.timeout.millis");
 
     private static final Logger log = LoggerFactory.getLogger(ConfigUpdatePublisher.class);
 
@@ -241,7 +241,7 @@ public class ConfigUpdatePublisher extends NoExceptionRunnable implements Initia
                     item.t = t;
                     requests.add(item);
                 }
-            });
+            }, MoreExecutors.directExecutor());
         } catch (Throwable t) {
             item.t = t;
             requests.add(item);
@@ -307,7 +307,7 @@ public class ConfigUpdatePublisher extends NoExceptionRunnable implements Initia
     }
 
     private void processRequest(WorkItem item) {
-        CollectionUtils.addToMap(this.waiters, item.key, item, ArrayList.class);
+        CollectionUtils.addToMap(this.waiters, item.key, item, ArrayList::new);
     }
 
     protected EventCallOptions defaultOptions() {

@@ -2,6 +2,7 @@ package io.cattle.platform.agent.server.ping.impl;
 
 import static io.cattle.platform.core.model.tables.HostTable.*;
 import static com.google.common.util.concurrent.Futures.*;
+import static com.google.common.util.concurrent.MoreExecutors.directExecutor;
 
 import io.cattle.platform.agent.AgentLocator;
 import io.cattle.platform.agent.RemoteAgent;
@@ -11,6 +12,7 @@ import io.cattle.platform.agent.server.resource.impl.AgentResourcesMonitor;
 import io.cattle.platform.agent.server.util.AgentConnectionUtils;
 import io.cattle.platform.agent.util.AgentUtils;
 import io.cattle.platform.archaius.util.ArchaiusUtil;
+import io.cattle.platform.archaius.util.ConfigProperty;
 import io.cattle.platform.core.constants.AgentConstants;
 import io.cattle.platform.core.constants.CommonStatesConstants;
 import io.cattle.platform.core.model.Agent;
@@ -28,9 +30,8 @@ import io.cattle.platform.object.process.ObjectProcessManager;
 import io.cattle.platform.task.Task;
 import io.cattle.platform.task.TaskOptions;
 
-import java.util.concurrent.TimeUnit;
 
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -40,16 +41,15 @@ import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
 import com.google.common.util.concurrent.FutureCallback;
 import com.google.common.util.concurrent.ListeningExecutorService;
-import com.netflix.config.DynamicLongProperty;
 
 public class PingMonitorImpl implements PingMonitor, Task, TaskOptions {
 
-    private static final DynamicLongProperty BAD_PINGS = ArchaiusUtil.getLong("agent.ping.reconnect.after.failed.count");
-    private static final DynamicLongProperty PING_TIMEOUT = ArchaiusUtil.getLong("agent.ping.timeout.seconds");
-    private static final DynamicLongProperty PING_STATS_EVERY = ArchaiusUtil.getLong("agent.ping.stats.every");
-    private static final DynamicLongProperty PING_RESOURCES_EVERY = ArchaiusUtil.getLong("agent.ping.resources.every");
-    private static final DynamicLongProperty PING_INSTANCES_EVERY = ArchaiusUtil.getLong("agent.ping.instances.every");
-    private static final DynamicLongProperty PING_SCHEDULE = ArchaiusUtil.getLong("task.agent.ping.schedule");
+    private static final ConfigProperty<Long> BAD_PINGS = ArchaiusUtil.getLongProperty("agent.ping.reconnect.after.failed.count");
+    private static final ConfigProperty<Long> PING_TIMEOUT = ArchaiusUtil.getLongProperty("agent.ping.timeout.seconds");
+    private static final ConfigProperty<Long> PING_STATS_EVERY = ArchaiusUtil.getLongProperty("agent.ping.stats.every");
+    private static final ConfigProperty<Long> PING_RESOURCES_EVERY = ArchaiusUtil.getLongProperty("agent.ping.resources.every");
+    private static final ConfigProperty<Long> PING_INSTANCES_EVERY = ArchaiusUtil.getLongProperty("agent.ping.instances.every");
+    private static final ConfigProperty<Long> PING_SCHEDULE = ArchaiusUtil.getLongProperty("task.agent.ping.schedule");
 
     private static final Logger log = LoggerFactory.getLogger(PingMonitorImpl.class);
 
@@ -70,7 +70,7 @@ public class PingMonitorImpl implements PingMonitor, Task, TaskOptions {
     AgentLocator agentLocator;
     @Inject
     ListeningExecutorService executorService;
-    LoadingCache<Long, PingStatus> status = CacheBuilder.newBuilder().expireAfterAccess(PING_SCHEDULE.get() * 3, TimeUnit.SECONDS).build(
+    LoadingCache<Long, PingStatus> status = CacheBuilder.newBuilder().expireAfterAccess(java.time.Duration.ofSeconds(PING_SCHEDULE.get() * 3L)).build(
             new CacheLoader<Long, PingStatus>() {
                 @Override
                 public PingStatus load(Long key) throws Exception {
@@ -122,7 +122,7 @@ public class PingMonitorImpl implements PingMonitor, Task, TaskOptions {
             public void onFailure(Throwable t) {
                 pingFailure(agent);
             }
-        });
+        }, directExecutor());
     }
 
     protected void pingSuccess(Agent agent, Ping pong) {

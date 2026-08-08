@@ -20,19 +20,19 @@ public class PortSpecTest {
         spec = new PortSpec("81:80");
         assertEquals(80, spec.getPrivatePort());
         assertEquals("tcp", spec.getProtocol());
-        assertEquals(new Integer(81), spec.getPublicPort());
+        assertEquals(Integer.valueOf(81), spec.getPublicPort());
         assertNull(spec.getIpAddress());
 
         spec = new PortSpec("81:80/tcp");
         assertEquals(80, spec.getPrivatePort());
         assertEquals("tcp", spec.getProtocol());
-        assertEquals(new Integer(81), spec.getPublicPort());
+        assertEquals(Integer.valueOf(81), spec.getPublicPort());
         assertNull(spec.getIpAddress());
 
         spec = new PortSpec("81:80/udp");
         assertEquals(80, spec.getPrivatePort());
         assertEquals("udp", spec.getProtocol());
-        assertEquals(new Integer(81), spec.getPublicPort());
+        assertEquals(Integer.valueOf(81), spec.getPublicPort());
         assertNull(spec.getIpAddress());
 
         spec = new PortSpec("80/udp");
@@ -43,19 +43,19 @@ public class PortSpecTest {
 
         spec = new PortSpec("127.0.0.1:81:80");
         assertEquals("127.0.0.1", spec.getIpAddress());
-        assertEquals(new Integer(81), spec.getPublicPort());
+        assertEquals(Integer.valueOf(81), spec.getPublicPort());
         assertEquals("tcp", spec.getProtocol());
         assertEquals(80, spec.getPrivatePort());
 
         spec = new PortSpec("[::1]:81:80");
         assertEquals("::1", spec.getIpAddress());
-        assertEquals(new Integer(81), spec.getPublicPort());
+        assertEquals(Integer.valueOf(81), spec.getPublicPort());
         assertEquals("tcp", spec.getProtocol());
         assertEquals(80, spec.getPrivatePort());
 
         spec = new PortSpec("127.0.0.1:81:80/udp");
         assertEquals("127.0.0.1", spec.getIpAddress());
-        assertEquals(new Integer(81), spec.getPublicPort());
+        assertEquals(Integer.valueOf(81), spec.getPublicPort());
         assertEquals("udp", spec.getProtocol());
         assertEquals(80, spec.getPrivatePort());
 

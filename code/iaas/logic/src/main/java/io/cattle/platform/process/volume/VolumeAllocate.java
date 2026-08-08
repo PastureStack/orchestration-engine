@@ -14,8 +14,8 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
-import javax.inject.Inject;
-import javax.inject.Named;
+import jakarta.inject.Inject;
+import jakarta.inject.Named;
 
 @Named
 public class VolumeAllocate extends AbstractDefaultProcessHandler {
@@ -31,7 +31,7 @@ public class VolumeAllocate extends AbstractDefaultProcessHandler {
         Volume volume = (Volume) state.getResource();
 
         for (VolumeStoragePoolMap map : mapDao.findNonRemoved(VolumeStoragePoolMap.class, Volume.class, volume.getId())) {
-            CollectionUtils.addToMap(allocationData, "volume:" + volume.getId(), map.getVolumeId(), HashSet.class);
+            CollectionUtils.addToMap(allocationData, "volume:" + volume.getId(), map.getVolumeId(), HashSet::new);
             create(map, state.getData());
         }
 

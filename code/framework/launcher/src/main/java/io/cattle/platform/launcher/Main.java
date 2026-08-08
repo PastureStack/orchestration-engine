@@ -7,7 +7,6 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.lang.reflect.Method;
-import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLClassLoader;
 import java.security.CodeSource;
@@ -26,6 +25,7 @@ public class Main {
     public static final String JETTY_PREFIX = "WEB-INF/jetty";
     public static final String[] URL_PATHS = new String[] { JETTY_PREFIX, LIB_PREFIX };
     public static final String JETTY_LAUNCHER = "io.cattle.platform.launcher.jetty.Main";
+    static final String JDK_HTTP_CLIENT_ALLOW_RESTRICTED_HEADERS = "jdk.httpclient.allowRestrictedHeaders";
 
     JarInJarHandlerFactory factory = new JarInJarHandlerFactory();
 
@@ -77,13 +77,44 @@ public class Main {
         if (urls.size() == 0)
             return this.getClass().getClassLoader();
 
-        urls.addAll(getPlugins());
+        // Runtime-configured extension directories are intentionally excluded from
+        // the executable class path. Additional code must be reviewed and bundled
+        // into the immutable application artifact before it can run in-process.
         urls.add(0, thisLocation);
 
         URL[] urlArray = urls.toArray(new URL[urls.size()]);
 
-        ClassLoader cl = Boolean.getBoolean("cattle.main.inherit.cl") ? Main.class.getClassLoader() : null;
+        ClassLoader cl = getParentClassLoader();
         return new URLClassLoader(urlArray, cl, factory);
+    }
+
+    protected ClassLoader getParentClassLoader() {
+        if (Boolean.getBoolean("cattle.main.inherit.cl")) {
+            return Main.class.getClassLoader();
+        }
+
+        if (!isJava9OrLater()) {
+            return null;
+        }
+
+        try {
+            Method getPlatformClassLoader = ClassLoader.class.getMethod("getPlatformClassLoader");
+            return (ClassLoader) getPlatformClassLoader.invoke(null);
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    protected boolean isJava9OrLater() {
+        String version = System.getProperty("java.specification.version", "1.8");
+        if (version.startsWith("1.")) {
+            return false;
+        }
+        try {
+            return Integer.parseInt(version) >= 9;
+        } catch (NumberFormatException e) {
+            return true;
+        }
     }
 
     protected List<URL> collectDirectoryUrls(URL url) throws IOException {
@@ -173,6 +204,7 @@ public class Main {
          * The world is better place without time zones. Well, at least for
          * computers
          */
+        allowJdkHttpClientRestrictedHeader("host");
         TimeZone.setDefault(TimeZone.getTimeZone("UTC"));
 
         setupHome();
@@ -193,59 +225,6 @@ public class Main {
         }
     }
 
-    protected List<URL> getPlugins() throws IOException {
-        String base = System.getenv("CATTLE_HOME");
-        if (base == null) {
-            base = System.getProperty("cattle.home", ".");
-        }
-        String pathStrings = System.getenv("CATTLE_EXTENSIONS");
-        if (pathStrings == null) {
-            pathStrings = System.getProperty("cattle.extensions", "etc/cattle,extensions");
-        }
-
-        String[] paths = pathStrings.trim().split("\\s*[,;:]\\s*");
-
-        final List<URL> result = new ArrayList<URL>();
-
-        for (String path : paths) {
-            if (path.length() == 0)
-                continue;
-
-            File file = new File(base, path);
-
-            if (file.exists()) {
-                result.add(file.toURI().toURL());
-                System.out.println("[MAIN] Scanning [" + path + "] for extensions");
-                traverse(file.getAbsolutePath(), result);
-            }
-        }
-
-        return result;
-    }
-
-    protected void traverse(String path, List<URL> result) {
-        File file = new File(path);
-
-        if (!file.exists()) {
-            System.err.println("[MAIN] Failed to find : " + path);
-            return;
-        }
-
-        for (File testFile : file.listFiles()) {
-            if (testFile.isDirectory()) {
-                traverse(testFile.getAbsolutePath(), result);
-            } else if (testFile.getName().endsWith(".jar")) {
-                try {
-                    URL plugin = testFile.toURI().toURL();
-                    System.out.println("[MAIN] Plugin : " + plugin);
-                    result.add(plugin);
-                } catch (MalformedURLException e) {
-                    e.printStackTrace();
-                }
-            }
-        }
-    }
-
     public static void main(String... args) {
         try {
             new Main().run(args);
@@ -253,6 +232,23 @@ public class Main {
             e.printStackTrace();
             System.exit(1);
         }
+    }
+
+    static void allowJdkHttpClientRestrictedHeader(String header) {
+        String current = System.getProperty(JDK_HTTP_CLIENT_ALLOW_RESTRICTED_HEADERS);
+        if (current == null || current.isBlank()) {
+            System.setProperty(JDK_HTTP_CLIENT_ALLOW_RESTRICTED_HEADERS, header);
+            return;
+        }
+
+        String[] values = current.split(",");
+        for (String value : values) {
+            if (header.equalsIgnoreCase(value.trim())) {
+                return;
+            }
+        }
+
+        System.setProperty(JDK_HTTP_CLIENT_ALLOW_RESTRICTED_HEADERS, current + "," + header);
     }
 
 }

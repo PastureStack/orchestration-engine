@@ -16,6 +16,10 @@ import io.cattle.platform.core.addon.NetworkPolicyRule.NetworkPolicyRuleWithin;
 import io.cattle.platform.core.addon.NetworkPolicyRuleBetween;
 import io.cattle.platform.core.addon.NetworkPolicyRuleMember;
 import io.cattle.platform.core.addon.PortRule;
+import io.cattle.platform.core.addon.PortPreflightConflict;
+import io.cattle.platform.core.addon.PortPreflightInput;
+import io.cattle.platform.core.addon.PortPreflightPort;
+import io.cattle.platform.core.addon.PortPreflightResult;
 import io.cattle.platform.core.addon.ProcessPool;
 import io.cattle.platform.core.addon.ProcessSummary;
 import io.cattle.platform.core.addon.PublicEndpoint;
@@ -34,6 +38,9 @@ import io.cattle.platform.core.addon.ToServiceUpgradeStrategy;
 import io.cattle.platform.core.addon.Ulimit;
 import io.cattle.platform.core.addon.VirtualMachineDisk;
 import io.cattle.platform.core.addon.VolumeActivateInput;
+import io.cattle.platform.core.addon.VolumePreflightInput;
+import io.cattle.platform.core.addon.VolumePreflightIssue;
+import io.cattle.platform.core.addon.VolumePreflightResult;
 import io.cattle.platform.core.model.CattleTable;
 import io.cattle.platform.db.jooq.utils.SchemaRecordTypeListGenerator;
 import io.cattle.platform.extension.dynamic.api.addon.ExternalHandlerProcessConfig;
@@ -84,6 +91,13 @@ public class CoreModelConfig {
                 Ulimit.class,
                 CatalogTemplate.class,
                 PortRule.class,
+                PortPreflightPort.class,
+                PortPreflightInput.class,
+                PortPreflightConflict.class,
+                PortPreflightResult.class,
+                VolumePreflightInput.class,
+                VolumePreflightIssue.class,
+                VolumePreflightResult.class,
                 TargetPortRule.class,
                 MountEntry.class,
                 NetworkPolicyRule.class,

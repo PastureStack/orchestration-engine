@@ -1,0 +1,22 @@
+*.sh text eol=lf
+* text=auto
+*.java text eol=lf
+*.xml text eol=lf
+*.json text eol=lf
+*.properties text eol=lf
+*.md text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+*.txt text eol=lf
+*.py text eol=lf
+*.sql text eol=lf
+Dockerfile* text eol=lf
+Makefile text eol=lf
+mvnw.cmd -text
+mvnw text eol=lf
+scripts/* text eol=lf
+scripts/**/* text eol=lf
+resources/content/config-content/** text eol=lf
+resources/content/agent/** text eol=lf
+code/implementation/register/src/main/resources/registration/*.sh text eol=lf
+tools/**/*.sh text eol=lf

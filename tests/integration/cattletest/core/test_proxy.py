@@ -4,7 +4,9 @@ import requests
 
 
 def test_proxy(client, admin_user_client):
-    domain = 'releases.rancher.com'
+    domain = 'example.com'
+    path = ''
+    expected = 'Example Domain'
     s = admin_user_client.by_id_setting('api.proxy.whitelist')
 
     if domain not in s.value:
@@ -21,11 +23,12 @@ def test_proxy(client, admin_user_client):
     base_url = base_url.replace('/schemas', '')
 
     r = requests.get(base_url + '/proxy/http://{}/{}'
-                     .format(domain, 'ui/latest/humans.txt'),
+                     .format(domain, path),
                      headers=auth_header_map(client))
 
     assert r.status_code == 200
-    assert 'Darren' in r.text
+    if expected:
+        assert expected in r.text
 
 
 def test_aws_proxy(client):

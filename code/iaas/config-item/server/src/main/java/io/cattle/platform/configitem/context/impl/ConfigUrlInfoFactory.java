@@ -11,7 +11,7 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.concurrent.Callable;
 
-import javax.inject.Named;
+import jakarta.inject.Named;
 
 import org.apache.commons.codec.binary.Hex;
 import org.slf4j.Logger;

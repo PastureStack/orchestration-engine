@@ -1,8 +1,8 @@
 package io.cattle.platform.iaas.api.auth.integration.local;
 
 import io.cattle.platform.archaius.util.ArchaiusUtil;
+import io.cattle.platform.archaius.util.ConfigProperty;
 
-import com.netflix.config.DynamicStringProperty;
 
 public class LocalAuthConstants {
     public static final String NAME = "localAuth";
@@ -11,8 +11,19 @@ public class LocalAuthConstants {
     public static final String JWT = NAME + "JWT";
 
     public static final String ACCESS_MODE_SETTING = "api.auth.local.access.mode";
-    public static final DynamicStringProperty ACCESS_MODE = ArchaiusUtil.getString(ACCESS_MODE_SETTING);
+    public static final ConfigProperty<String> ACCESS_MODE = ArchaiusUtil.getStringProperty(ACCESS_MODE_SETTING);
 
+    public static final String RECOVERY_ENABLED_SETTING = "api.auth.local.recovery.enabled";
+    public static final ConfigProperty<Boolean> RECOVERY_ENABLED =
+            ArchaiusUtil.getBooleanProperty(RECOVERY_ENABLED_SETTING);
+    public static final String RECOVERY_VERIFIED_AT_SETTING =
+            "api.auth.local.recovery.verified.at";
+    public static final ConfigProperty<Long> RECOVERY_VERIFIED_AT =
+            ArchaiusUtil.getLongProperty(RECOVERY_VERIFIED_AT_SETTING);
+    public static final String RECOVERY_MFA_READY_SETTING =
+            "api.auth.local.recovery.mfa.ready";
+    public static final ConfigProperty<Boolean> RECOVERY_MFA_READY =
+            ArchaiusUtil.getBooleanProperty(RECOVERY_MFA_READY_SETTING);
 
     public static final String TOKEN_CREATOR = NAME + "TokenCreator";
     public static final String AUTH_IMPL = NAME + "AuthImpl";

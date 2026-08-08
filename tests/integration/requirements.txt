@@ -1,12 +1,12 @@
-cattle==0.5.3
+cattle==0.5.4
 git+https://github.com/rancher/gdapi-python.git@31d74507d96c8f053a08bda129cc63f96ca60161
-websocket-client==0.23.0
-PyJWT==1.4.0
+websocket-client==1.9.0
+PyJWT==2.13.0
 
-flake8==2.5.1
-pytest==3.0.2
-pytest-repeat==0.7.0
-pytest-xdist==v1.14
-pyyaml
-netaddr
-requests
+flake8==7.3.0
+pytest==9.0.3
+pytest-repeat==0.9.4
+pytest-xdist==3.8.0
+pyyaml==6.0.3
+netaddr==1.3.0
+requests==2.33.1

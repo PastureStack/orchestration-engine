@@ -3,7 +3,7 @@ package io.cattle.platform.extension.api.util;
 import java.lang.reflect.InvocationTargetException;
 import java.util.Map;
 
-import org.apache.commons.beanutils.PropertyUtils;
+import org.apache.commons.beanutils2.PropertyUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

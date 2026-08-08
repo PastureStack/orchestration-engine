@@ -108,9 +108,7 @@ public class SslCertificateUtils {
         }
     }
 
-    /**
-     * Obtains the fingerprint of the certificate in the "ab:cd:ef:...:12" format.
-     */
+    /** Obtains the SHA-256 fingerprint in colon-separated hexadecimal form. */
     public static String getCertificateFingerprint(String certInput) throws Exception {
         X509Certificate cert = getCertificateFromPem(certInput);
         if (cert == null) {
@@ -120,8 +118,8 @@ public class SslCertificateUtils {
     }
 
     public static String digest(X509Certificate k) throws Exception {
-        MessageDigest md5 = MessageDigest.getInstance("SHA1");
-        DigestInputStream in = new DigestInputStream(new ByteArrayInputStream(k.getEncoded()), md5);
+        MessageDigest digest = MessageDigest.getInstance("SHA-256");
+        DigestInputStream in = new DigestInputStream(new ByteArrayInputStream(k.getEncoded()), digest);
         try {
             while (in.read(new byte[128]) > 0) {
             }
@@ -129,7 +127,7 @@ public class SslCertificateUtils {
             in.close();
         }
         StringBuilder buf = new StringBuilder();
-        char[] hex = Hex.encodeHex(md5.digest());
+        char[] hex = Hex.encodeHex(digest.digest());
         for (int i = 0; i < hex.length; i += 2) {
             if (buf.length() > 0)
                 buf.append(':');

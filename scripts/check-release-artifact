@@ -1,0 +1,288 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+cd "$(dirname "$0")/.."
+
+artifact=${1:-dist/artifacts/cattle.jar}
+expected_version=${EXPECTED_ENGINE_VERSION:-0.183.285}
+
+test -f "$artifact"
+artifact=$(realpath "$artifact")
+# The Windows JDK writes CRLF through Git Bash even though mapfile removes only
+# LF. Normalize the listing so the same exact-entry gate works on Linux and
+# Windows release hosts.
+mapfile -t entries < <(jar tf "$artifact" | tr -d '\r')
+
+require_exact_entry()
+{
+    local expected=$1
+    local count=0
+    local entry
+    for entry in "${entries[@]}"; do
+        if [ "$entry" = "$expected" ]; then
+            count=$((count + 1))
+        fi
+    done
+    if [ "$count" -ne 1 ]; then
+        printf 'ENGINE_RELEASE_ENTRY_COUNT_MISMATCH entry=%s count=%s\n' "$expected" "$count" >&2
+        exit 1
+    fi
+}
+
+require_single_versioned_entry()
+{
+    local prefix=$1
+    local suffix=$2
+    local count=0
+    local entry
+    for entry in "${entries[@]}"; do
+        case "$entry" in
+            "$prefix"*"$suffix") count=$((count + 1)) ;;
+        esac
+    done
+    if [ "$count" -ne 1 ]; then
+        printf 'ENGINE_RELEASE_VERSIONED_ENTRY_COUNT_MISMATCH prefix=%s suffix=%s count=%s\n' "$prefix" "$suffix" "$count" >&2
+        exit 1
+    fi
+}
+
+require_exact_entry WEB-INF/web.xml
+require_exact_entry io/cattle/platform/launcher/Main.class
+require_single_versioned_entry WEB-INF/lib/cattle-resources- .jar
+require_single_versioned_entry WEB-INF/lib/cattle-iaas-auth-logic- .jar
+require_single_versioned_entry WEB-INF/lib/cattle-app-config- .jar
+require_single_versioned_entry WEB-INF/lib/cattle-iaas-api-logic- .jar
+require_single_versioned_entry WEB-INF/lib/cattle-iaas-model- .jar
+
+resources_entry=$(printf '%s\n' "${entries[@]}" |
+    grep -E '^WEB-INF/lib/cattle-resources-[^/]+\.jar$')
+auth_logic_entry=$(printf '%s\n' "${entries[@]}" |
+    grep -E '^WEB-INF/lib/cattle-iaas-auth-logic-[^/]+\.jar$')
+app_config_entry=$(printf '%s\n' "${entries[@]}" |
+    grep -E '^WEB-INF/lib/cattle-app-config-[^/]+\.jar$')
+api_logic_entry=$(printf '%s\n' "${entries[@]}" |
+    grep -E '^WEB-INF/lib/cattle-iaas-api-logic-[^/]+\.jar$')
+model_entry=$(printf '%s\n' "${entries[@]}" |
+    grep -E '^WEB-INF/lib/cattle-iaas-model-[^/]+\.jar$')
+
+workdir=$(mktemp -d "${TMPDIR:-/tmp}/pasturestack-engine-release-gate.XXXXXX")
+cleanup()
+{
+    rm -rf "$workdir"
+}
+trap cleanup EXIT
+(
+    cd "$workdir"
+    jar xf "$artifact" \
+        META-INF/MANIFEST.MF \
+        META-INF/maven/io.cattle/cattle-app/pom.properties \
+        "$resources_entry" \
+        "$auth_logic_entry" \
+        "$app_config_entry" \
+        "$api_logic_entry" \
+        "$model_entry"
+)
+tr -d '\r' <"$workdir/META-INF/MANIFEST.MF" | grep -Fx "Implementation-Version: ${expected_version}" >/dev/null
+tr -d '\r' <"$workdir/META-INF/maven/io.cattle/cattle-app/pom.properties" \
+    | grep -Fx "version=${expected_version}" >/dev/null
+
+for class_name in \
+    io/cattle/platform/iaas/api/auth/identity/AuthIdentityLink.class \
+    io/cattle/platform/iaas/api/auth/identity/AuthIdentityOperation.class \
+    io/cattle/platform/iaas/api/auth/mfa/MfaFactor.class \
+    io/cattle/platform/iaas/api/auth/mfa/MfaOperation.class \
+    io/cattle/platform/iaas/api/auth/mfa/MfaSettings.class \
+    io/cattle/platform/iaas/api/auth/mfa/MfaStatus.class; do
+    test "$(jar tf "$workdir/$auth_logic_entry" |
+        tr -d '\r' |
+        grep -Fxc "$class_name")" -eq 1
+done
+unzip -p "$workdir/$auth_logic_entry" \
+    io/cattle/platform/iaas/api/auth/mfa/MfaResourceManager.class |
+    grep -aF MfaAccountHolderRequired >/dev/null
+unzip -p "$workdir/$resources_entry" schema/base/mfaStatus.json |
+    grep -F '"recoveryEmailEnrollmentAvailable"' >/dev/null
+unzip -p "$workdir/$resources_entry" schema/base/mfaSettings.json |
+    grep -F '"collectionMethods": [ "GET" ]' >/dev/null
+unzip -p "$workdir/$resources_entry" schema/base/mfaSettings.json |
+    grep -F '"resourceMethods": [ "GET", "PUT" ]' >/dev/null
+unzip -p "$workdir/$resources_entry" db/changelog.xml |
+    grep -F '<include file="db/core-125.xml"/>' >/dev/null
+unzip -p "$workdir/$resources_entry" db/core-125.xml |
+    grep -F '<changeSet author="PastureStack" dbms="mysql,mariadb,postgresql" id="pasturestack-credential-secret-value-mediumtext">' >/dev/null
+unzip -p "$workdir/$resources_entry" db/core-125.xml |
+    grep -F '<validCheckSum>9:b637c459df9bda3afe28733bd3f6fb3f</validCheckSum>' >/dev/null
+unzip -p "$workdir/$resources_entry" db/core-125.xml |
+    grep -F '<modifyDataType tableName="credential" columnName="secret_value" newDataType="${mediumtext}"/>' >/dev/null
+unzip -p "$workdir/$resources_entry" db/mysql/mysql-dump.sql |
+    grep -F '`secret_value` mediumtext,' >/dev/null
+
+for marker in \
+    authIdentityLink \
+    authIdentityOperation \
+    identityProof \
+    localPassword \
+    mfaFactor \
+    mfaOperation \
+    mfaSettings \
+    mfaStatus \
+    providerSwitchCode \
+    smtpClearPassword \
+    smtpPassword \
+    webAuthnResponse; do
+    unzip -p "$workdir/$resources_entry" schema/v1/admin.ser |
+        grep -aF "$marker" >/dev/null
+done
+for marker in \
+    challengeId \
+    emailCode \
+    mfaFactor \
+    mfaOperation \
+    mfaStatus \
+    verificationCode \
+    webAuthnResponse; do
+    unzip -p "$workdir/$resources_entry" schema/v1/user.ser |
+        grep -aF "$marker" >/dev/null
+done
+for marker in \
+    beginSecurityConfirmation \
+    confirmSecurityConfirmation \
+    federatedMfaMode \
+    localAdministratorRecoveryConfigured \
+    localAdministratorRecoveryEnabled \
+    localAdministratorRecoveryMfaReady \
+    localAdministratorRecoveryRequired \
+    localAdministratorRecoveryStatus \
+    lockoutSeconds \
+    maximumFailedAttempts \
+    maximumFederatedAuthenticationAgeSeconds \
+    methods \
+    passkeyCounterPolicy \
+    recoveryCode \
+    securityConfirmation \
+    securityConfirmationTtlSeconds \
+    securityEmailLocale \
+    trustedAuthenticationContexts \
+    trustedAuthenticationMethods \
+    webAuthnOptions; do
+    unzip -p "$workdir/$resources_entry" schema/v1/admin.ser |
+        grep -aF "$marker" >/dev/null
+done
+for marker in \
+    beginSecurityConfirmation \
+    confirmSecurityConfirmation \
+    methods \
+    recoveryCode \
+    securityConfirmation \
+    webAuthnOptions; do
+    unzip -p "$workdir/$resources_entry" schema/v1/user.ser |
+        grep -aF "$marker" >/dev/null
+done
+for marker in \
+    emailCode \
+    localRecoveryEnabled \
+    loginMethod \
+    mfaChallengeId \
+    mfaCode \
+    mfaMethods \
+    mfaRequired \
+    providerSwitchCode \
+    recoveryCode \
+    webAuthnResponse; do
+    unzip -p "$workdir/$resources_entry" schema/v1/token.ser |
+        grep -aF "$marker" >/dev/null
+done
+unzip -p "$workdir/$model_entry" \
+    io/cattle/platform/core/addon/PortPreflightPort.class |
+    grep -aF networkMode >/dev/null
+unzip -p "$workdir/$app_config_entry" \
+    io/cattle/platform/app/IaasApiConfig.class |
+    grep -aF IdentitySecurityApiTypes >/dev/null
+unzip -p "$workdir/$app_config_entry" \
+    META-INF/cattle/legacy/spring-legacy-context.xml |
+    grep -F '<tx:method name="assertAllowed" propagation="REQUIRES_NEW" read-only="true" />' >/dev/null
+unzip -p "$workdir/$app_config_entry" \
+    META-INF/cattle/legacy/spring-legacy-context.xml |
+    grep -F '<tx:method name="recordFailure" propagation="REQUIRES_NEW" />' >/dev/null
+unzip -p "$workdir/$app_config_entry" \
+    META-INF/cattle/legacy/spring-legacy-context.xml |
+    grep -F 'MfaAttemptService.assertAllowed(..)' >/dev/null
+unzip -p "$workdir/$app_config_entry" \
+    META-INF/cattle/legacy/spring-legacy-context.xml |
+    grep -F 'MfaAttemptService.recordFailure(..)' >/dev/null
+
+for class_name in \
+    io/cattle/platform/iaas/api/port/PortPreflightActionHandler.class \
+    io/cattle/platform/iaas/api/port/PortPreflightDaoImpl.class \
+    io/cattle/platform/iaas/api/port/PortPreflightInputs.class \
+    io/cattle/platform/iaas/api/port/PortPreflightService.class; do
+    test "$(jar tf "$workdir/$api_logic_entry" |
+        tr -d '\r' |
+        grep -Fxc "$class_name")" -eq 1
+done
+unzip -p "$workdir/$api_logic_entry" \
+    schema/base/project.json.d/port-preflight.json |
+    grep -F '"portpreflight"' >/dev/null
+for class_name in \
+    io/cattle/platform/core/addon/PortPreflightConflict.class \
+    io/cattle/platform/core/addon/PortPreflightInput.class \
+    io/cattle/platform/core/addon/PortPreflightPort.class \
+    io/cattle/platform/core/addon/PortPreflightResult.class \
+    io/cattle/platform/core/util/PortBindingAddress.class; do
+    test "$(jar tf "$workdir/$model_entry" |
+        tr -d '\r' |
+        grep -Fxc "$class_name")" -eq 1
+done
+unzip -p "$workdir/$app_config_entry" \
+    io/cattle/platform/app/ApiServerConfig.class |
+    grep -aF PortPreflightActionHandler >/dev/null
+for class_name in \
+    io/cattle/platform/iaas/api/filter/instance/InstanceVolumesValidationFilter.class \
+    io/cattle/platform/iaas/api/volume/VolumePreflightActionHandler.class \
+    io/cattle/platform/iaas/api/volume/VolumePreflightInputs.class \
+    io/cattle/platform/iaas/api/volume/VolumePreflightService.class; do
+    test "$(jar tf "$workdir/$api_logic_entry" |
+        tr -d '\r' |
+        grep -Fxc "$class_name")" -eq 1
+done
+for marker in \
+    nfs_requires_environment_scope \
+    nfs_requires_multi_host_rw \
+    nfs_incomplete_host_coverage; do
+    unzip -p "$workdir/$api_logic_entry" \
+        io/cattle/platform/iaas/api/volume/VolumePreflightService.class |
+        grep -aF "$marker" >/dev/null
+done
+unzip -p "$workdir/$api_logic_entry" \
+    schema/base/project.json.d/volume-preflight.json |
+    grep -F '"volumepreflight"' >/dev/null
+for authorization in \
+    '"volumePreflightInput" : "cr",' \
+    '"volumePreflightResult" : "r",' \
+    '"volumePreflightIssue" : "r",'; do
+    test "$(unzip -p "$workdir/$resources_entry" \
+        schema/project/project-auth.json |
+        grep -Fxc "        $authorization")" -eq 1
+done
+for class_name in \
+    io/cattle/platform/core/addon/VolumePreflightInput.class \
+    io/cattle/platform/core/addon/VolumePreflightIssue.class \
+    io/cattle/platform/core/addon/VolumePreflightResult.class; do
+    test "$(jar tf "$workdir/$model_entry" |
+        tr -d '\r' |
+        grep -Fxc "$class_name")" -eq 1
+done
+unzip -p "$workdir/$app_config_entry" \
+    io/cattle/platform/app/ApiServerConfig.class |
+    grep -aF VolumePreflightActionHandler >/dev/null
+for schema_type in \
+    VolumePreflightInput \
+    VolumePreflightResult \
+    VolumePreflightIssue; do
+    unzip -p "$workdir/$app_config_entry" \
+        io/cattle/platform/app/CoreModelConfig.class |
+        grep -aF "$schema_type" >/dev/null
+done
+
+printf 'ENGINE_RELEASE_ARTIFACT_OK artifact=%s version=%s webapp=1 resources=1 auth_logic=1 app_config=1 api_logic=1 model=1 port_preflight=authoritative volume_preflight=authoritative volume_preflight_project_schema=authorized volume_preflight_type_set=registered nfs_contract=environment-multiHostRW-complete-coverage identity_security_v1_schemas=1 frozen_mfa_policy_schema=1 mfa_account_holder_boundary=1 mfa_attempt_transactions=requires-new-read-and-write recovery_email_enrollment_schema=1 credential_secret_capacity=mediumtext launcher=1\n' \
+    "$artifact" "$expected_version"

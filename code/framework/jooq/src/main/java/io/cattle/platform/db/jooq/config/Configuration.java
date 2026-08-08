@@ -4,16 +4,19 @@ import io.cattle.platform.archaius.util.ArchaiusUtil;
 
 import java.util.List;
 
-import javax.annotation.PostConstruct;
 import javax.sql.DataSource;
+
+import jakarta.annotation.PostConstruct;
 
 import org.jooq.ConnectionProvider;
 import org.jooq.ExecuteListener;
 import org.jooq.SQLDialect;
-import org.jooq.conf.RenderNameStyle;
+import org.jooq.conf.RenderNameCase;
+import org.jooq.conf.RenderQuotedNames;
 import org.jooq.conf.Settings;
 import org.jooq.impl.DefaultConfiguration;
 import org.jooq.impl.DefaultExecuteListenerProvider;
+import org.jooq.jpa.extensions.DefaultAnnotatedPojoMemberProvider;
 
 public class Configuration extends DefaultConfiguration {
 
@@ -28,7 +31,7 @@ public class Configuration extends DefaultConfiguration {
     @PostConstruct
     public void init() {
         String prop = "db." + name + ".database";
-        String database = ArchaiusUtil.getString(prop).get();
+        String database = ArchaiusUtil.getStringProperty(prop).get();
         if (database == null) {
             throw new IllegalStateException("Failed to find config for [" + prop + "]");
         }
@@ -40,6 +43,8 @@ public class Configuration extends DefaultConfiguration {
             throw new IllegalArgumentException("Invalid SQLDialect [" + database.toUpperCase() + "]", e);
         }
 
+        set(new DefaultAnnotatedPojoMemberProvider());
+
         if (connectionProvider == null) {
             set(new AutoCommitConnectionProvider(dataSource));
         } else {
@@ -48,9 +53,9 @@ public class Configuration extends DefaultConfiguration {
 
         settings.setRenderSchema(false);
 
-        String renderNameStyle = ArchaiusUtil.getString("db." + name + "." + database + ".render.name.style").get();
+        String renderNameStyle = ArchaiusUtil.getStringProperty("db." + name + "." + database + ".render.name.style").get();
         if (renderNameStyle != null) {
-            settings.setRenderNameStyle(RenderNameStyle.valueOf(renderNameStyle.trim().toUpperCase()));
+            applyRenderNameStyle(settings, renderNameStyle);
         }
 
         set(settings);
@@ -61,11 +66,34 @@ public class Configuration extends DefaultConfiguration {
         }
     }
 
+    static void applyRenderNameStyle(Settings settings, String renderNameStyle) {
+        switch (renderNameStyle.trim().toUpperCase()) {
+        case "QUOTED":
+            settings.setRenderQuotedNames(RenderQuotedNames.ALWAYS);
+            settings.setRenderNameCase(RenderNameCase.AS_IS);
+            break;
+        case "AS_IS":
+            settings.setRenderQuotedNames(RenderQuotedNames.NEVER);
+            settings.setRenderNameCase(RenderNameCase.AS_IS);
+            break;
+        case "LOWER":
+            settings.setRenderQuotedNames(RenderQuotedNames.NEVER);
+            settings.setRenderNameCase(RenderNameCase.LOWER);
+            break;
+        case "UPPER":
+            settings.setRenderQuotedNames(RenderQuotedNames.NEVER);
+            settings.setRenderNameCase(RenderNameCase.UPPER);
+            break;
+        default:
+            throw new IllegalArgumentException("Invalid render.name.style [" + renderNameStyle + "]");
+        }
+    }
+
     public DataSource getDataSource() {
         return dataSource;
     }
 
-    public void setDataSource(DataSource dataSource) {
+    public void setManagedDataSource(DataSource dataSource) {
         this.dataSource = dataSource;
     }
 
@@ -81,7 +109,7 @@ public class Configuration extends DefaultConfiguration {
         return connectionProvider;
     }
 
-    public void setConnectionProvider(ConnectionProvider connectionProvider) {
+    public void setManagedConnectionProvider(ConnectionProvider connectionProvider) {
         this.connectionProvider = connectionProvider;
     }
 
@@ -97,7 +125,7 @@ public class Configuration extends DefaultConfiguration {
         return settings;
     }
 
-    public void setSettings(Settings settings) {
+    public void setManagedSettings(Settings settings) {
         this.settings = settings;
     }
 

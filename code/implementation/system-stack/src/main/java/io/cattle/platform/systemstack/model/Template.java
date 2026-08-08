@@ -125,8 +125,16 @@ public class Template {
         return StringUtils.isBlank(value) ? this.getFiles().get("docker-compose.yml.tpl") : value;
     }
 
+    public String getPlatformCompose() {
+        String value = this.getFiles().get("platform-compose.yml");
+        return StringUtils.isBlank(value) ? this.getFiles().get("rancher-compose.yml") : value;
+    }
+
+    /**
+     * Compatibility accessor for persisted catalog clients.
+     */
     public String getRancherCompose() {
-        return this.getFiles().get("rancher-compose.yml");
+        return getPlatformCompose();
     }
 
     public Map<String, String> getFiles() {

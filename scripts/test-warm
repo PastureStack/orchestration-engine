@@ -13,11 +13,7 @@ pull()
     docker pull $1
 }
 
-pull ibuildthecloud/helloworld
-pull cjellick/rancher-test-tools
-pull ranchertest/volume-test:v0.1.0
-pull tianon/true:latest
-pull rancher/agent
+pull "${BUSYBOX_IMAGE:-busybox:1@sha256:dc2d74b28e4cf8984fa52af1f39bc7c3d9c73760b41a74d629f5d11b1ab28616}"
 for i in bootstrap.required.image; do
     pull $(grep $i ../resources/content/cattle-global.properties | cut -f2 -d=)
 done

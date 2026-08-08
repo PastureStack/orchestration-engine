@@ -9,6 +9,7 @@ import io.cattle.platform.iaas.api.infrastructure.InfrastructureAccessManager;
 import io.cattle.platform.object.ObjectManager;
 import io.cattle.platform.object.meta.ObjectMetaDataManager;
 import io.cattle.platform.object.util.DataAccessor;
+import io.cattle.platform.util.type.CollectionUtils;
 import io.github.ibuildthecloud.gdapi.context.ApiContext;
 import io.github.ibuildthecloud.gdapi.model.Resource;
 import io.github.ibuildthecloud.gdapi.request.ApiRequest;
@@ -17,7 +18,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 
 public class StackOutputFilter extends CachedOutputFilter<Map<Long, List<Object>>> {
 
@@ -67,6 +68,11 @@ public class StackOutputFilter extends CachedOutputFilter<Map<Long, List<Object>
         }
         List<Long> ids = getIds(apiRequest);
         return stackDao.getServicesForStack(ids, ApiContext.getContext().getIdFormatter());
+    }
+
+    @Override
+    protected Map<Long, List<Object>> castCached(Object cached) {
+        return CollectionUtils.castMap(cached);
     }
 
     @Override

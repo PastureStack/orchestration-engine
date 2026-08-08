@@ -1,0 +1,123 @@
+name: CodeQL verification
+
+on:
+  push:
+    branches:
+      - 'verification/orchestration-engine-*'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: orchestration-engine-codeql-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  analyze:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    steps:
+      - name: Check out candidate
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Verify candidate shape
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -z "$(git status --porcelain)"
+          test "$(git rev-list --count 82d154a53f4089fecfb9f320caad826bb4f6055f..HEAD)" -eq 1
+          grep -Fxq '    <version>0.183.285</version>' code/meta-parent/pom.xml
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@c16c0f3f2812ec4bb3750a5ed64873fe2ce0fbef
+        with:
+          languages: java-kotlin
+          build-mode: none
+          config: |
+            queries:
+              - uses: security-extended
+            threat-models: local
+
+      - name: Analyze without publishing temporary alerts
+        uses: github/codeql-action/analyze@c16c0f3f2812ec4bb3750a5ed64873fe2ce0fbef
+        with:
+          category: '/language:java-kotlin'
+          upload: never
+          output: codeql-results
+
+      - name: Reject Critical and High findings
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import glob
+          import json
+
+          blocked = []
+          unresolved = []
+          total = 0
+          for path in glob.glob('codeql-results/**/*.sarif', recursive=True):
+              with open(path, encoding='utf-8') as stream:
+                  sarif = json.load(stream)
+              for run in sarif.get('runs', []):
+                  driver_rules = {
+                      rule.get('id'): rule
+                      for rule in run.get('tool', {}).get('driver', {}).get('rules', [])
+                  }
+                  extension_rules = [
+                      {
+                          rule.get('id'): rule
+                          for rule in extension.get('rules', [])
+                      }
+                      for extension in run.get('tool', {}).get('extensions', [])
+                  ]
+                  for result in run.get('results', []):
+                      total += 1
+                      rule_id = result.get('ruleId')
+                      rule = driver_rules.get(rule_id)
+                      if rule is None:
+                          rule = next(
+                              (rules.get(rule_id) for rules in extension_rules if rule_id in rules),
+                              None,
+                          )
+                      if rule is None:
+                          unresolved.append((rule_id, 'missing rule metadata'))
+                          continue
+                      try:
+                          score = float(rule.get('properties', {}).get('security-severity', '0'))
+                      except (TypeError, ValueError):
+                          unresolved.append((rule_id, 'invalid security severity'))
+                          continue
+                      if score >= 7.0:
+                          location = result.get('locations', [{}])[0].get('physicalLocation', {})
+                          blocked.append((
+                              rule_id,
+                              score,
+                              location.get('artifactLocation', {}).get('uri', 'unknown'),
+                              location.get('region', {}).get('startLine', 0),
+                          ))
+          print(f'codeql_total={total}')
+          print(f'codeql_critical_high={len(blocked)}')
+          print(f'codeql_unresolved_rule_metadata={len(unresolved)}')
+          for rule_id, score, path, line in blocked:
+              print(f'{rule_id}\t{score}\t{path}:{line}')
+          for rule_id, reason in unresolved:
+              print(f'{rule_id}\t{reason}')
+          if blocked or unresolved:
+              raise SystemExit(1)
+          PY
+
+      - name: Upload verification evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: orchestration-engine-codeql-${{ github.sha }}
+          path: codeql-results/
+          if-no-files-found: error
+          retention-days: 7
+          compression-level: 9
+          include-hidden-files: false

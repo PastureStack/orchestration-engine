@@ -16,8 +16,8 @@ import io.cattle.platform.servicediscovery.api.dao.ServiceConsumeMapDao;
 import java.util.HashSet;
 import java.util.Set;
 
-import javax.inject.Inject;
-import javax.inject.Named;
+import jakarta.inject.Inject;
+import jakarta.inject.Named;
 
 
 @Named

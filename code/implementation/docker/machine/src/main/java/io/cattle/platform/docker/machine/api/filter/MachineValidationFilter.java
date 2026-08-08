@@ -20,9 +20,9 @@ import io.github.ibuildthecloud.gdapi.util.ResponseCodes;
 import java.io.IOException;
 import java.util.Map;
 
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 
-import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.Strings;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -61,7 +61,7 @@ public class MachineValidationFilter extends AbstractDefaultResourceManagerFilte
         boolean alreadyFound = false;
 
         for (Map.Entry<String, Object> field : data.entrySet()) {
-            if (StringUtils.endsWithIgnoreCase(field.getKey(), CONFIG_FIELD_SUFFIX) && field.getValue() != null) {
+            if (Strings.CI.endsWith(field.getKey(), CONFIG_FIELD_SUFFIX) && field.getValue() != null) {
                 if (alreadyFound) {
                     throw new ClientVisibleException(ResponseCodes.UNPROCESSABLE_ENTITY, DRIVER_CONFIG_EXACTLY_ONE_REQUIRED);
                 }

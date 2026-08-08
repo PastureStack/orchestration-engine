@@ -27,14 +27,12 @@ import io.cattle.platform.servicediscovery.api.util.ServiceDiscoveryUtil;
 import io.cattle.platform.servicediscovery.service.ServiceDiscoveryService;
 
 import java.util.ArrayList;
-import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 
-import org.apache.commons.collections.CollectionUtils;
-import org.apache.commons.collections.TransformerUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.jooq.Condition;
 import org.jooq.Configuration;
@@ -60,7 +58,7 @@ public class ServiceExposeMapDaoImpl extends AbstractJooqDao implements ServiceE
     @Override
     public Pair<Instance, ServiceExposeMap> createServiceInstance(Map<String, Object> properties, Service service) {
         final ServiceRecord record = JooqUtils.getRecordObject(objectManager.loadResource(Service.class,
-                service.getId()));
+                service.getId()), ServiceRecord.class);
         record.attach(lockingConfiguration);
         record.setCreateIndex((record.getCreateIndex() == null ? 0 : record.getCreateIndex()) + 1);
         record.update();
@@ -73,10 +71,9 @@ public class ServiceExposeMapDaoImpl extends AbstractJooqDao implements ServiceE
     }
 
     @Override
-    @SuppressWarnings("unchecked")
     public ServiceExposeMap createServiceInstanceMap(Service service, final Instance instance, boolean managed) {
-        Map<String, String> instanceLabels = DataAccessor.fields(instance)
-                .withKey(InstanceConstants.FIELD_LABELS).withDefault(Collections.EMPTY_MAP).as(Map.class);
+        Map<String, String> instanceLabels = instanceLabels(DataAccessor.fields(instance)
+                .withKey(InstanceConstants.FIELD_LABELS).get());
         String dnsPrefix = instanceLabels
                 .get(ServiceConstants.LABEL_SERVICE_LAUNCH_CONFIG);
         if (ServiceConstants.PRIMARY_LAUNCH_CONFIG_NAME.equalsIgnoreCase(dnsPrefix)) {
@@ -91,6 +88,19 @@ public class ServiceExposeMapDaoImpl extends AbstractJooqDao implements ServiceE
                     managed);
         }
         return map;
+    }
+
+    static Map<String, String> instanceLabels(Object value) {
+        Map<String, String> result = new LinkedHashMap<String, String>();
+        if (value == null) {
+            return result;
+        }
+
+        Map<?, ?> labels = Map.class.cast(value);
+        for (Map.Entry<?, ?> label : labels.entrySet()) {
+            result.put(String.class.cast(label.getKey()), String.class.cast(label.getValue()));
+        }
+        return result;
     }
 
     @Override
@@ -186,9 +196,10 @@ public class ServiceExposeMapDaoImpl extends AbstractJooqDao implements ServiceE
                         CommonStatesConstants.PURGED, CommonStatesConstants.PURGING))
                 .and(HOST.ACCOUNT_ID.eq(service.getAccountId()))
                         .fetchInto(HostRecord.class);
-        @SuppressWarnings("unchecked")
-        List<Long> validHostIds = (List<Long>) CollectionUtils.collect(validHosts,
-                TransformerUtils.invokerTransformer("getId"));
+        List<Long> validHostIds = new ArrayList<>();
+        for (Host host : validHosts) {
+            validHostIds.add(host.getId());
+        }
 
         List<Instance> toReturn = new ArrayList<>();
         for (Instance instance : instances) {

@@ -25,7 +25,7 @@ import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
 
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
@@ -83,16 +83,7 @@ public class AuditServiceImpl implements AuditService{
         putInAsString(data, request.getType(), "requestObject", "Failed to convert request object to json.", request.getRequestObject());
         putInAsString(data, request.getType(), "responseObject", "Failed to convert response object to json.", request.getResponseObject());
         data.put("responseCode", request.getResponseCode());
-        Identity user = null;
-        for (Identity identity: policy.getIdentities()){
-            if (identity.getExternalIdType().contains("user")){
-                user = identity;
-                break;
-            }
-        }
-        if (user == null && policy.getIdentities().size() == 1){
-            user = policy.getIdentities().iterator().next();
-        }
+        Identity user = auditIdentity(policy.getIdentities());
         long runtime = ((long) request.getAttribute("requestEndTime")) - ((long)request.getAttribute("requestStartTime"));
         String authType = (String) request.getAttribute(AccountConstants.AUTH_TYPE);
         String resourceId =request.getResponseObject() instanceof Resource ? ((Resource) request.getResponseObject()).getId(): null;
@@ -102,6 +93,19 @@ public class AuditServiceImpl implements AuditService{
         auditLogDao.create(resourceType, parseId(resourceId), data, user,
                 policy.getAccountId(), policy.getAuthenticatedAsAccountId(), eventType, authType, runtime, null,
                 request.getClientIp());
+    }
+
+    Identity auditIdentity(Set<Identity> identities) {
+        if (identities == null || identities.isEmpty()) {
+            return null;
+        }
+        for (Identity identity : identities) {
+            if (identity != null && identity.getExternalIdType() != null
+                    && identity.getExternalIdType().contains("user")) {
+                return identity;
+            }
+        }
+        return identities.size() == 1 ? identities.iterator().next() : null;
     }
 
     private String convertResourceType(String type) {
@@ -153,8 +157,19 @@ public class AuditServiceImpl implements AuditService{
             return;
         }
 
-        @SuppressWarnings("unchecked")
-        Map<String, Object> obj = jsonMapper.convertValue(objectToPlace, Map.class);
+        Map<String, Object> obj = sanitizedAuditObject(objectToPlace, type);
+
+        ByteArrayOutputStream os = new ByteArrayOutputStream();
+        try {
+            jsonMapper.writeValue(os, obj);
+            data.put(fieldForObject, os.toString());
+        } catch (IOException e) {
+            log.error("Failed to log [{}]", errMsg, e);
+        }
+    }
+
+    protected Map<String, Object> sanitizedAuditObject(Object objectToPlace, String type) {
+        Map<String, Object> obj = auditObjectMap(objectToPlace);
 
         if ("secret".equals(type)) {
             obj.remove("value");
@@ -166,19 +181,37 @@ public class AuditServiceImpl implements AuditService{
         obj.remove("oldSecret");
         obj.remove("adminAccountPassword");
         obj.remove("serviceAccountPassword");
+        obj.remove("identityProof");
+        obj.remove("providerSwitchCode");
+        obj.remove("localPassword");
+        obj.remove("mfaCode");
+        obj.remove("recoveryCode");
+        obj.remove("verificationCode");
+        obj.remove("webAuthnResponse");
+        obj.remove("challengeId");
+        obj.remove("totpSecret");
+        obj.remove("totpProvisioningUri");
+        obj.remove("publicKey");
+        obj.remove("recoveryCodes");
+        obj.remove("smtpPassword");
+        obj.remove("emailCode");
+        obj.remove("email");
+        obj.remove("testRecipient");
         Iterator<Map.Entry<String, Object>> iter = obj.entrySet().iterator();
         while (iter.hasNext()) {
             if (iter.next().getKey().endsWith("Config")) {
                 iter.remove();
             }
         }
+        return obj;
+    }
 
-        ByteArrayOutputStream os = new ByteArrayOutputStream();
-        try {
-            jsonMapper.writeValue(os, obj);
-            data.put(fieldForObject, os.toString());
-        } catch (IOException e) {
-            log.error("Failed to log [{}]", errMsg, e);
+    protected Map<String, Object> auditObjectMap(Object objectToPlace) {
+        Map<?, ?> converted = jsonMapper.convertValue(objectToPlace, Map.class);
+        Map<String, Object> result = new HashMap<String, Object>(converted.size());
+        for (Map.Entry<?, ?> entry : converted.entrySet()) {
+            result.put(String.class.cast(entry.getKey()), entry.getValue());
         }
+        return result;
     }
 }

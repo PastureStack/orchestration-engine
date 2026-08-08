@@ -1,6 +1,7 @@
 package io.cattle.platform.resource.pool.mac;
 
 import io.cattle.platform.archaius.util.ArchaiusUtil;
+import io.cattle.platform.archaius.util.ConfigProperty;
 import io.cattle.platform.core.constants.NetworkConstants;
 import io.cattle.platform.core.model.Network;
 import io.cattle.platform.object.util.DataAccessor;
@@ -8,11 +9,9 @@ import io.cattle.platform.resource.pool.PooledResourceItemGenerator;
 import io.cattle.platform.resource.pool.impl.AbstractTypeAndQualifierPooledItemGeneratorFactory;
 import io.cattle.platform.resource.pool.util.ResourcePoolConstants;
 
-import com.netflix.config.DynamicStringProperty;
-
 public class MacAddressGeneratorFactory extends AbstractTypeAndQualifierPooledItemGeneratorFactory {
 
-    private static final DynamicStringProperty MAC_UNASSIGNED_PREFIX = ArchaiusUtil.getString("mac.unassigned.prefix");
+    private static final ConfigProperty<String> MAC_UNASSIGNED_PREFIX = ArchaiusUtil.getStringProperty("mac.unassigned.prefix");
 
     public MacAddressGeneratorFactory() {
         super(Network.class, ResourcePoolConstants.MAC);

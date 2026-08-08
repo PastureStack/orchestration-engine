@@ -1,0 +1,8 @@
+{
+  "resourceActions": {
+    "portpreflight": {
+      "input": "portPreflightInput",
+      "output": "portPreflightResult"
+    }
+  }
+}

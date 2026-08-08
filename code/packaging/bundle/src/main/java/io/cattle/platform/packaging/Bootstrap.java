@@ -2,13 +2,16 @@ package io.cattle.platform.packaging;
 
 import java.io.Closeable;
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.lang.reflect.Method;
 import java.net.URL;
 import java.net.URLClassLoader;
+import java.nio.file.AtomicMoveNotSupportedException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.security.CodeSource;
 import java.security.ProtectionDomain;
 import java.util.Arrays;
@@ -17,8 +20,6 @@ import java.util.jar.JarEntry;
 import java.util.jar.JarInputStream;
 import java.util.jar.JarOutputStream;
 import java.util.jar.Manifest;
-import java.util.jar.Pack200;
-import java.util.jar.Pack200.Unpacker;
 import java.util.zip.ZipEntry;
 
 public class Bootstrap implements Closeable {
@@ -37,29 +38,16 @@ public class Bootstrap implements Closeable {
     String version = null;
 
     protected void setHomeAndEnv() throws IOException {
-        String home = System.getenv("CATTLE_HOME");
+        String configuredHome = System.getenv("CATTLE_HOME");
 
-        if (home == null) {
-            home = System.getProperty("cattle.home");
+        if (configuredHome == null) {
+            configuredHome = System.getProperty("cattle.home");
         }
 
-        if (home == null) {
-            home = new File(System.getProperty("user.home"), ".cattle") + File.separator;
-        }
-
-        if (!home.endsWith(File.separator)) {
-            home = home + File.separator;
-        }
-
-        System.setProperty("cattle.home", home);
-
-        File homeFile = new File(home);
-
-        if (!homeFile.exists() && !homeFile.mkdirs()) {
-            throw new IOException("Failed to create [" + homeFile.getAbsolutePath() + "]");
-        }
-
-        this.home = new File(home);
+        Path homePath = SafePaths.runtimeHome(configuredHome);
+        Files.createDirectories(homePath);
+        this.home = homePath.toFile();
+        System.setProperty("cattle.home", homePath.toString() + File.separator);
 
         if (System.getProperty("logback.bootstrap.level") == null) {
             System.setProperty("logback.bootstrap.level", "WARN");
@@ -71,13 +59,12 @@ public class Bootstrap implements Closeable {
             lib = System.getProperty("cattle.lib");
         }
 
-        if (lib != null) {
-            System.setProperty("cattle.lib", lib);
+        Path libPath = homePath.resolve("lib");
+        if (lib != null && !lib.equals(libPath.toString())) {
+            throw new IOException("CATTLE_LIB must use the managed runtime library directory");
         }
-
-        if (lib != null) {
-            libDir = new File(lib);
-        }
+        libDir = libPath.toFile();
+        System.setProperty("cattle.lib", libPath.toString());
     }
 
     protected void mkdirs(File dir) throws IOException {
@@ -87,12 +74,6 @@ public class Bootstrap implements Closeable {
     }
 
     protected JarInputStream getInput() throws IOException {
-        String input = System.getenv("INPUT");
-
-        if (input != null) {
-            return new JarInputStream(new FileInputStream(input));
-        }
-
         ProtectionDomain domain = Bootstrap.class.getProtectionDomain();
         CodeSource source = domain.getCodeSource();
 
@@ -133,16 +114,15 @@ public class Bootstrap implements Closeable {
     }
 
     protected void determineLibDir(JarInputStream is) throws IOException {
-        version = getVersion(is);
-
-        if (version == null) {
+        String detectedVersion = getVersion(is);
+        if (detectedVersion == null) {
             System.err.println("No cattle version found in jar");
             version = UUID.randomUUID().toString();
+        } else {
+            version = SafePaths.version(detectedVersion);
         }
 
-        if (libDir == null) {
-            libDir = new File(new File(home, "lib"), version);
-        }
+        libDir = SafePaths.child(libDir.toPath(), version).toFile();
     }
 
     protected void extractLib(JarInputStream is) throws IOException {
@@ -159,7 +139,11 @@ public class Bootstrap implements Closeable {
         System.out.println("\n[BOOTSTRAP] Done");
 
         if (tempDir != null) {
-            tempDir.renameTo(libDir);
+            try {
+                Files.move(tempDir.toPath(), libDir.toPath(), StandardCopyOption.ATOMIC_MOVE);
+            } catch (AtomicMoveNotSupportedException e) {
+                Files.move(tempDir.toPath(), libDir.toPath());
+            }
             tempDir = null;
         }
     }
@@ -177,8 +161,6 @@ public class Bootstrap implements Closeable {
     }
 
     protected void extractFiles(JarInputStream is, boolean first) throws IOException {
-        Unpacker unpacker = Pack200.newUnpacker();
-
         int total = first ? count(getInput()) : 0;
         int done = 0;
         int lastPrinted = -1;
@@ -186,19 +168,13 @@ public class Bootstrap implements Closeable {
 
         JarEntry entry = null;
         while ((entry = is.getNextJarEntry()) != null) {
-            String name = entry.getName();
+            String name = SafePaths.archiveEntry(entry.getName());
 
             if (name.equals(RESOURCES)) {
                 extractFiles(new JarInputStream(new NoCloseInputStream(is)), false);
             } else if (name.endsWith(".pack")) {
                 name = name.substring(0, name.length() - 5);
-                JarOutputStream os = new JarOutputStream(getOutputStream(name, false));
-                os.setLevel(0);
-                try {
-                    unpacker.unpack(new NoCloseInputStream(is), os);
-                } finally {
-                    closeQuietly(os);
-                }
+                unpackPack200(is, name);
                 done++;
             } else if (!entry.isDirectory()) {
                 OutputStream os = getOutputStream(name, first ? !name.endsWith(".jar") : first);
@@ -230,13 +206,18 @@ public class Bootstrap implements Closeable {
         }
     }
 
+    protected void unpackPack200(JarInputStream is, String name) throws IOException {
+        throw new IOException("Pack200 entries are not supported on the JDK 25 maintenance runtime. "
+                + "Rebuild cattle.jar without .pack entries: " + name);
+    }
+
     protected OutputStream getOutputStream(String name, boolean rootResource) throws IOException {
         if (warOutput == null) {
             File root = rootResource ? home : tempDir;
-            File outputFile = new File(root, name);
+            File outputFile = SafePaths.child(root.toPath(), name).toFile();
 
             if (rootResource) {
-                if (!name.startsWith("etc") && !name.startsWith("extensions")) {
+                if (!SafePaths.isRootResource(name)) {
                     return null;
                 }
 
@@ -255,7 +236,7 @@ public class Bootstrap implements Closeable {
             if (inEntry) {
                 warOutput.closeEntry();
             }
-            warOutput.putNextEntry(new ZipEntry(name));
+            warOutput.putNextEntry(new ZipEntry(SafePaths.archiveEntry(name)));
             inEntry = true;
             return new NoCloseOutputStream(warOutput);
         }
@@ -280,17 +261,16 @@ public class Bootstrap implements Closeable {
             }
 
             try {
-                warName = "cattle-" + version + ".war";
-                warOutput = new JarOutputStream(new FileOutputStream(warName), manifest);
+                warName = "cattle-" + SafePaths.version(version) + ".war";
+                Path warPath = SafePaths.child(SafePaths.workingDirectory(), warName);
+                warOutput = new JarOutputStream(new FileOutputStream(warPath.toFile()), manifest);
             } finally {
                 closeQuietly(jis);
             }
         } else {
-            tempDir = new File(libDir.getAbsolutePath() + "-" + UUID.randomUUID().toString());
-
-            if (!tempDir.mkdirs()) {
-                throw new IOException("Failed to create [" + tempDir.getAbsolutePath() + "]");
-            }
+            Path parent = libDir.toPath().toAbsolutePath().normalize().getParent();
+            Files.createDirectories(parent);
+            tempDir = Files.createTempDirectory(parent, SafePaths.version(version) + "-").toFile();
         }
     }
 

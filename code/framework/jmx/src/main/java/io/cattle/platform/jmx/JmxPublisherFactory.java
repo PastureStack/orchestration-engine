@@ -1,77 +1,32 @@
 package io.cattle.platform.jmx;
 
 import io.cattle.platform.archaius.util.ArchaiusUtil;
+import io.cattle.platform.archaius.util.ConfigMapProperty;
+import io.cattle.platform.archaius.util.ConfigProperty;
 import io.cattle.platform.server.context.ServerContext;
 
-import java.io.InputStream;
 import java.net.URL;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
-import javax.annotation.PostConstruct;
-
-import org.apache.commons.io.IOUtils;
-import org.apache.commons.lang3.StringUtils;
-import org.jmxtrans.embedded.EmbeddedJmxTrans;
-import org.jmxtrans.embedded.config.ConfigurationParser;
-import org.jmxtrans.embedded.output.AbstractOutputWriter;
-import org.jmxtrans.embedded.output.GraphiteWriter;
-
-import com.netflix.config.DynamicIntProperty;
-import com.netflix.config.DynamicStringMapProperty;
-import com.netflix.config.DynamicStringProperty;
+import jakarta.annotation.PostConstruct;
 
 public class JmxPublisherFactory {
 
-    private static final DynamicStringProperty GRAPHITE_HOST = ArchaiusUtil.getString("graphite.host");
-    private static final DynamicIntProperty JMX_TRANS_EXPORT_INTERVAL = ArchaiusUtil.getInt("jmx.trans.export.interval.seconds");
-    private static final DynamicIntProperty JMX_TRANS_QUERY_INTERVAL = ArchaiusUtil.getInt("jmx.trans.query.interval.seconds");
+    private static final ConfigProperty<String> GRAPHITE_HOST = ArchaiusUtil.getStringProperty("graphite.host");
+    private static final ConfigProperty<Integer> JMX_TRANS_EXPORT_INTERVAL = ArchaiusUtil.getIntProperty("jmx.trans.export.interval.seconds");
+    private static final ConfigProperty<Integer> JMX_TRANS_QUERY_INTERVAL = ArchaiusUtil.getIntProperty("jmx.trans.query.interval.seconds");
 
-    private static final DynamicIntProperty GRAPHITE_PORT = ArchaiusUtil.getInt("graphite.port");
-    private static final DynamicStringMapProperty GRAPHITE_OPTIONS = new DynamicStringMapProperty("graphite.options", (String) null);
+    private static final ConfigProperty<Integer> GRAPHITE_PORT = ArchaiusUtil.getIntProperty("graphite.port");
+    private static final ConfigMapProperty<String, String> GRAPHITE_OPTIONS = ArchaiusUtil.getStringMapProperty("graphite.options");
 
     List<URL> resources;
-    EmbeddedJmxTrans jmxTrans;
+    JmxPublisher publisher = new EmbeddedJmxTransPublisher();
 
     @PostConstruct
     public void init() throws Exception {
-        ConfigurationParser parser = new ConfigurationParser();
-        jmxTrans = new EmbeddedJmxTrans();
-        jmxTrans.setExportIntervalInSeconds(JMX_TRANS_EXPORT_INTERVAL.get());
-        jmxTrans.setQueryIntervalInSeconds(JMX_TRANS_QUERY_INTERVAL.get());
-
-        for (URL resource : resources) {
-            InputStream is = null;
-            try {
-                is = resource.openStream();
-                parser.mergeEmbeddedJmxTransConfiguration(is, jmxTrans);
-            } finally {
-                IOUtils.closeQuietly(is);
-            }
-        }
-
-        if (!StringUtils.isBlank(GRAPHITE_HOST.get())) {
-            Map<String, Object> config = new HashMap<String, Object>();
-            config.put(AbstractOutputWriter.SETTING_HOST, GRAPHITE_HOST.get());
-            config.put(AbstractOutputWriter.SETTING_PORT, GRAPHITE_PORT.get());
-
-            for (Map.Entry<String, String> entry : GRAPHITE_OPTIONS.getMap().entrySet()) {
-                config.put(entry.getKey(), entry.getValue());
-            }
-
-            if (!config.containsKey(AbstractOutputWriter.SETTING_NAME_PREFIX) && !StringUtils.isBlank(ServerContext.SERVER_ID.get())) {
-                config.put(AbstractOutputWriter.SETTING_NAME_PREFIX, "servers." + ServerContext.SERVER_ID.get());
-            }
-
-            GraphiteWriter writer = new GraphiteWriter();
-            writer.setEnabled(true);
-            writer.setSettings(config);
-
-            jmxTrans.getOutputWriters().add(writer);
-        }
-
-        jmxTrans.start();
+        publisher.start(new JmxPublisherConfig(resources, JMX_TRANS_EXPORT_INTERVAL.get(),
+                JMX_TRANS_QUERY_INTERVAL.get(), GRAPHITE_HOST.get(), GRAPHITE_PORT.get(), GRAPHITE_OPTIONS.get(),
+                ServerContext.SERVER_ID.get()));
     }
 
     public List<URL> getResources() {
@@ -80,6 +35,13 @@ public class JmxPublisherFactory {
 
     public void setResources(List<URL> resources) {
         this.resources = resources;
+    }
+
+    public void setPublisher(JmxPublisher publisher) {
+        if (publisher == null) {
+            throw new IllegalArgumentException("publisher is required");
+        }
+        this.publisher = publisher;
     }
 
 }

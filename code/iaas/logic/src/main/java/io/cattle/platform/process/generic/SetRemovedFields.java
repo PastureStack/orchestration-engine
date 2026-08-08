@@ -1,6 +1,7 @@
 package io.cattle.platform.process.generic;
 
 import io.cattle.platform.archaius.util.ArchaiusUtil;
+import io.cattle.platform.archaius.util.ConfigProperty;
 import io.cattle.platform.engine.handler.HandlerResult;
 import io.cattle.platform.engine.handler.ProcessPostListener;
 import io.cattle.platform.engine.process.ProcessInstance;
@@ -11,20 +12,34 @@ import io.cattle.platform.process.common.handler.AbstractObjectProcessLogic;
 import io.cattle.platform.util.type.Priority;
 
 import java.util.Date;
+import java.util.Map;
 import java.util.Random;
+import java.util.concurrent.ConcurrentHashMap;
 
-import javax.inject.Named;
+import jakarta.inject.Named;
 
 import org.apache.commons.lang3.StringUtils;
 
-import com.netflix.config.DynamicLongProperty;
 
 @Named
 public class SetRemovedFields extends AbstractObjectProcessLogic implements ProcessPostListener, Priority {
 
     private static final String REMOVE_DELAY_FORMAT = "object.%s.remove.time.delay.seconds";
-    private static final DynamicLongProperty DEFAULT_REMOVE_DELAY = ArchaiusUtil.getLong("object.remove.time.delay.seconds");
+    private static final ConfigProperty<Long> DEFAULT_REMOVE_DELAY = ArchaiusUtil.getLongProperty("object.remove.time.delay.seconds");
+    private static final Map<String, ConfigProperty<String>> REMOVE_DELAY_BY_TYPE = new ConcurrentHashMap<String, ConfigProperty<String>>();
     private static final Random RANDOM = new Random();
+
+    protected ConfigProperty<String> removeDelay(String type) {
+        ConfigProperty<String> property = REMOVE_DELAY_BY_TYPE.get(type);
+        if (property == null) {
+            property = ArchaiusUtil.getStringProperty(String.format(REMOVE_DELAY_FORMAT, type));
+            ConfigProperty<String> existing = REMOVE_DELAY_BY_TYPE.putIfAbsent(type, property);
+            if (existing != null) {
+                property = existing;
+            }
+        }
+        return property;
+    }
 
     @Override
     public HandlerResult handle(ProcessState state, ProcessInstance process) {
@@ -52,7 +67,7 @@ public class SetRemovedFields extends AbstractObjectProcessLogic implements Proc
         long delay = 0;
 
         /* Look up by string to detect null */
-        String delayString = ArchaiusUtil.getString(String.format(REMOVE_DELAY_FORMAT, type)).get();
+        String delayString = removeDelay(type).get();
         if (StringUtils.isBlank(delayString)) {
             delay = DEFAULT_REMOVE_DELAY.get();
         } else {

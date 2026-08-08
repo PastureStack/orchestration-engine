@@ -144,13 +144,13 @@ download()
     (
         cd $DOWNLOAD_TEMP
 
-        if [ ! -e $dir/SHA1SUMSSUM ] || [ ! -e $dir/SHA1SUMS ]; then
-            error "Missing SHA1SUMS files, invalid download"
+        if [ ! -e "$dir/SHA256SUMSSUM" ] || [ ! -e "$dir/SHA256SUMS" ]; then
+            error "Missing SHA256SUMS files, invalid download"
             exit 1
         fi
 
-        sha1sum -c $dir/SHA1SUMSSUM
-        sha1sum -c $dir/SHA1SUMS
+        sha256sum -c "$dir/SHA256SUMSSUM"
+        sha256sum -c "$dir/SHA256SUMS"
     ) >/dev/null
 
     if [ -n "$archive_version" ]; then
@@ -163,7 +163,7 @@ download()
     content_root=${DOWNLOAD}/$name/${dir}
 
     if [ -e ${DOWNLOAD_TEMP}/${dir}/uptodate ] && [ -e ${DOWNLOAD_TEMP}/${dir}/version ] && [ ! -e ${content_root}/version ]; then
-        # Migration of version file because CDN cached assets in rancher/server don't have a version file
+        # Preserve the version marker for cached compatibility assets that predate it.
         mkdir -p ${content_root}
         cp ${DOWNLOAD_TEMP}/${dir}/version ${content_root}/version
     fi

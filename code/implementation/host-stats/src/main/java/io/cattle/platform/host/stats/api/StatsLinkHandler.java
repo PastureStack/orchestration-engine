@@ -2,6 +2,7 @@ package io.cattle.platform.host.stats.api;
 
 import io.cattle.platform.api.link.LinkHandler;
 import io.cattle.platform.archaius.util.ArchaiusUtil;
+import io.cattle.platform.archaius.util.ConfigProperty;
 import io.cattle.platform.core.constants.HostConstants;
 import io.cattle.platform.core.constants.InstanceConstants;
 import io.cattle.platform.core.model.Host;
@@ -11,21 +12,24 @@ import io.cattle.platform.host.model.HostApiAccess;
 import io.cattle.platform.host.service.HostApiService;
 import io.cattle.platform.host.stats.utils.StatsConstants;
 import io.cattle.platform.object.ObjectManager;
+import io.github.ibuildthecloud.gdapi.context.ApiContext;
 import io.github.ibuildthecloud.gdapi.request.ApiRequest;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 
-import com.netflix.config.DynamicStringProperty;
-
-@Deprecated
+/**
+ * Legacy `stats` link kept for backward compatibility with older Rancher 1.6
+ * clients while newer callers use the host/container stats links.
+ */
 public class StatsLinkHandler implements LinkHandler {
 
-    private static final DynamicStringProperty HOST_STATS_PATH = ArchaiusUtil.getString("host.stats.path");
+    private static final ConfigProperty<String> HOST_STATS_PATH = ArchaiusUtil.getStringProperty("host.stats.path");
 
     HostApiService hostApiService;
     ObjectManager objectManager;
@@ -58,14 +62,33 @@ public class StatsLinkHandler implements LinkHandler {
             return null;
         }
 
-        String[] pathSegments = null;
+        String[] pathSegments;
+        Map<String, Object> payload = new HashMap<>();
         if (instance != null) {
-            pathSegments = new String[] { HOST_STATS_PATH.get(), DockerUtils.getDockerIdentifier(instance) };
+            String dockerId = DockerUtils.getDockerIdentifier(instance);
+            if (dockerId == null || dockerId.length() == 0) {
+                return null;
+            }
+            Map<String, Object> containerIds = new HashMap<>();
+            Object formattedId = ApiContext.getContext().getIdFormatter()
+                    .formatId(objectManager.getType(instance), instance.getId());
+            if (formattedId == null) {
+                return null;
+            }
+            containerIds.put(dockerId, String.valueOf(formattedId));
+            payload.put("containerIds", containerIds);
+            pathSegments = new String[] { HOST_STATS_PATH.get(), dockerId };
         } else {
+            Object formattedId = ApiContext.getContext().getIdFormatter()
+                    .formatId(objectManager.getType(host), host.getId());
+            if (formattedId == null) {
+                return null;
+            }
+            payload.put("resourceId", String.valueOf(formattedId));
             pathSegments = new String[] { HOST_STATS_PATH.get() };
         }
 
-        HostApiAccess apiAccess = hostApiService.getAccess(request, host.getId(), Collections.<String, Object> emptyMap(), pathSegments);
+        HostApiAccess apiAccess = hostApiService.getAccess(request, host.getId(), payload, pathSegments);
         if (apiAccess == null) {
             return null;
         }

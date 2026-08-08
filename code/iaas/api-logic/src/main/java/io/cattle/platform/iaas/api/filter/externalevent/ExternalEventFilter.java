@@ -10,7 +10,7 @@ import io.github.ibuildthecloud.gdapi.request.ApiRequest;
 import io.github.ibuildthecloud.gdapi.request.resource.ResourceManager;
 import io.github.ibuildthecloud.gdapi.util.ResponseCodes;
 
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 
 public class ExternalEventFilter extends AbstractDefaultResourceManagerFilter {
 

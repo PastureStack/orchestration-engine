@@ -4,7 +4,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
 
-import com.hazelcast.core.IMap;
+import com.hazelcast.map.IMap;
 
 public class HazelcastMapLock implements Lock {
 

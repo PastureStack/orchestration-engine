@@ -3,6 +3,7 @@ package io.cattle.platform.systemstack.service;
 import static io.cattle.platform.core.model.tables.ProjectTemplateTable.*;
 
 import io.cattle.platform.archaius.util.ArchaiusUtil;
+import io.cattle.platform.archaius.util.ConfigProperty;
 import io.cattle.platform.async.utils.TimeoutException;
 import io.cattle.platform.core.dao.GenericResourceDao;
 import io.cattle.platform.core.model.ProjectTemplate;
@@ -23,20 +24,18 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
 
-import javax.inject.Inject;
-import javax.inject.Named;
+import jakarta.inject.Inject;
+import jakarta.inject.Named;
 
 import org.apache.cloudstack.managed.context.NoExceptionRunnable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.netflix.config.DynamicBooleanProperty;
-
 public class ProjectTemplateService implements InitializationTask, Task {
 
-    private static final DynamicBooleanProperty CATALOG_URL = ArchaiusUtil.getBoolean("catalog.url");
-    private static final DynamicBooleanProperty LAUNCH_CATALOG = ArchaiusUtil.getBoolean("catalog.execute");
-    private static final DynamicBooleanProperty DEFAULTS = ArchaiusUtil.getBoolean("project.template.defaults");
+    private static final ConfigProperty<String> CATALOG_URL = ArchaiusUtil.getStringProperty("catalog.url");
+    private static final ConfigProperty<Boolean> LAUNCH_CATALOG = ArchaiusUtil.getBooleanProperty("catalog.execute");
+    private static final ConfigProperty<Boolean> DEFAULTS = ArchaiusUtil.getBooleanProperty("project.template.defaults");
 
     private static final Logger log = LoggerFactory.getLogger(ProjectTemplateService.class);
 

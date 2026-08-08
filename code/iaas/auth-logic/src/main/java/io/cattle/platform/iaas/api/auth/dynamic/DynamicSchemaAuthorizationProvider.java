@@ -12,9 +12,8 @@ import io.github.ibuildthecloud.gdapi.model.Schema;
 import io.github.ibuildthecloud.gdapi.request.ApiRequest;
 
 import java.util.Set;
-import java.util.concurrent.TimeUnit;
 
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
@@ -32,7 +31,7 @@ public class DynamicSchemaAuthorizationProvider implements AuthorizationProvider
     @Inject
     AuthDao authDao;
 
-    Cache<String, Schema> schemaCache = CacheBuilder.newBuilder().expireAfterWrite(15, TimeUnit.MINUTES).build();
+    Cache<String, Schema> schemaCache = CacheBuilder.newBuilder().expireAfterWrite(java.time.Duration.ofMinutes(15)).build();
 
     @Override
     public SchemaFactory getSchemaFactory(Account account, Policy policy, ApiRequest request) {

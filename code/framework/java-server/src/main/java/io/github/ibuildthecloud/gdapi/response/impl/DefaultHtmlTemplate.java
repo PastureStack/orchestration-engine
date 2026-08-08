@@ -10,13 +10,17 @@ import io.github.ibuildthecloud.gdapi.util.SettingsUtil;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.UnsupportedEncodingException;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.net.URL;
+import java.nio.charset.Charset;
 
-import javax.annotation.PostConstruct;
-import javax.servlet.http.Cookie;
+import jakarta.annotation.PostConstruct;
+import jakarta.servlet.http.Cookie;
 
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.owasp.encoder.Encode;
 
 public class DefaultHtmlTemplate implements HtmlTemplate {
 
@@ -41,7 +45,7 @@ public class DefaultHtmlTemplate implements HtmlTemplate {
         if (schemaUrl == null) {
             result = result.replace("%SCHEMAS%", "");
         } else {
-            result = result.replace("%SCHEMAS%", schemaUrl.toExternalForm());
+            result = result.replace("%SCHEMAS%", Encode.forJavaScript(schemaUrl.toExternalForm()));
         }
 
         if ("true".equals(SettingsUtil.getSetting(settings, "api.dev", ""))) {
@@ -49,26 +53,53 @@ public class DefaultHtmlTemplate implements HtmlTemplate {
             if (cookies != null) {
                 for (Cookie cookie : cookies) {
                     if ("js.url".equals(cookie.getName()) && !StringUtils.isEmpty(cookie.getValue())) {
-                        result = result.replace("%JS%", cookie.getValue());
+                        result = result.replace("%JS%", safeResourceUrl(cookie.getValue()));
                     }
                     if ("css.url".equals(cookie.getName()) && !StringUtils.isEmpty(cookie.getValue())) {
-                        result = result.replace("%CSS%", cookie.getValue());
+                        result = result.replace("%CSS%", safeResourceUrl(cookie.getValue()));
                     }
                 }
             }
         }
 
-        result = result.replace("%JS%", SettingsUtil.getSetting(settings, "api.js.url", getJsUrl()));
-        result = result.replace("%CSS%", SettingsUtil.getSetting(settings, "api.css.url", getCssUrl()));
+        result = result.replace("%JS%", safeResourceUrl(SettingsUtil.getSetting(settings, "api.js.url", getJsUrl())));
+        result = result.replace("%CSS%", safeResourceUrl(SettingsUtil.getSetting(settings, "api.css.url", getCssUrl())));
 
         String user = getUser(request, response);
         if (user == null) {
             user = "";
         }
 
-        result = result.replace("%USER%", user);
+        result = result.replace("%USER%", Encode.forJavaScript(user));
 
         return result;
+    }
+
+    protected String safeResourceUrl(String value) {
+        if (value == null) {
+            return "";
+        }
+        String trimmed = value.trim();
+        if (!(isAbsoluteLocalResource(trimmed) || isHttpsResource(trimmed))) {
+            throw new IllegalArgumentException("UI resource URLs must use HTTPS or an absolute local path");
+        }
+        return Encode.forHtmlAttribute(trimmed);
+    }
+
+    private boolean isAbsoluteLocalResource(String value) {
+        return value.startsWith("/") && !value.startsWith("//") && value.indexOf('\\') < 0;
+    }
+
+    private boolean isHttpsResource(String value) {
+        try {
+            URI parsed = new URI(value);
+            return "https".equalsIgnoreCase(parsed.getScheme())
+                    && parsed.getHost() != null
+                    && !parsed.getHost().isEmpty()
+                    && parsed.getUserInfo() == null;
+        } catch (URISyntaxException e) {
+            return false;
+        }
     }
 
     protected String getUser(ApiRequest request, Object response) {
@@ -89,7 +120,7 @@ public class DefaultHtmlTemplate implements HtmlTemplate {
             if (is == null) {
                 is = DefaultHtmlTemplate.class.getResourceAsStream("header.txt");
             }
-            header = IOUtils.toString(is);
+            header = IOUtils.toString(is, Charset.defaultCharset());
         } finally {
             IOUtils.closeQuietly(is);
         }

@@ -12,12 +12,11 @@ import org.apache.commons.lang3.StringUtils;
 
 public class ProxyRequest {
 
-    @SuppressWarnings("unchecked")
     public static <T> T proxy(ApiRequest request, Class<T> typeClz) {
         final Object obj = new Object();
         final Map<String, Object> map = CollectionUtils.toMap(request.getRequestObject());
 
-        return (T) Proxy.newProxyInstance(typeClz.getClassLoader(), new Class<?>[] { typeClz }, new InvocationHandler() {
+        Object proxy = Proxy.newProxyInstance(typeClz.getClassLoader(), new Class<?>[] { typeClz }, new InvocationHandler() {
             @Override
             public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
                 if (method.getDeclaringClass() == Object.class) {
@@ -37,5 +36,6 @@ public class ProxyRequest {
                 return null;
             }
         });
+        return typeClz.cast(proxy);
     }
 }

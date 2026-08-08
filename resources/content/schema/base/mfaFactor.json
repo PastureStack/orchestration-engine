@@ -1,0 +1,19 @@
+{
+    "collectionMethods": [ "GET" ],
+    "resourceMethods": [ "GET" ],
+    "collectionFilters": {
+        "accountId": {
+            "modifiers": [ "eq" ]
+        }
+    },
+    "resourceFields": {
+        "accountId": { "type": "reference[account]", "nullable": false },
+        "factorType": { "type": "enum", "options": [ "totp", "passkey" ], "nullable": false },
+        "label": { "type": "string", "nullable": false },
+        "createdAt": { "type": "date", "nullable": true },
+        "lastUsedAt": { "type": "date", "nullable": true },
+        "backupEligible": { "type": "boolean", "nullable": true },
+        "backedUp": { "type": "boolean", "nullable": true },
+        "state": { "type": "string", "nullable": false }
+    }
+}

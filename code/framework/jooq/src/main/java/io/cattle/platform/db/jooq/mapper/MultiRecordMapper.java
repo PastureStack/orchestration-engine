@@ -20,8 +20,15 @@ public abstract class MultiRecordMapper<T> implements RecordMapper<Record, T> {
     protected List<Field<?>> fields = new ArrayList<Field<?>>();
     protected int count = 0;
 
-    @SuppressWarnings({ "unchecked", "hiding" })
-    public <T extends Table<?>> T add(T input, Field<?>... selectedFields) {
+    public Table<?> add(Table<?> input, Field<?>... selectedFields) {
+        return addAlias(input, selectedFields);
+    }
+
+    public <R extends Table<?>> R add(R input, Class<? extends R> tableType, Field<?>... selectedFields) {
+        return tableType.cast(addAlias(input, selectedFields));
+    }
+
+    private Table<?> addAlias(Table<?> input, Field<?>... selectedFields) {
         Set<String> selectFields = selectedFields == null || selectedFields.length == 0 ? null : new HashSet<String>();
         int index = count++;
         String prefix = String.format("%s_%d", input.getName(), index);
@@ -45,7 +52,7 @@ public abstract class MultiRecordMapper<T> implements RecordMapper<Record, T> {
 
         classes.add(input.getRecordType());
 
-        return (T) alias;
+        return alias;
     }
 
     @Override
@@ -76,16 +83,14 @@ public abstract class MultiRecordMapper<T> implements RecordMapper<Record, T> {
             try {
                 Map<String, Object> map = maps.get(i);
                 if (map.size() > 0) {
-                    Record resultRecord = classes.get(i).newInstance();
+                    Record resultRecord = classes.get(i).getDeclaredConstructor().newInstance();
                     resultRecord.fromMap(map);
-                    resultRecord.changed(false);
+                    resultRecord.touched(false);
                     result.add(resultRecord);
                 } else {
                     result.add(null);
                 }
-            } catch (InstantiationException e) {
-                throw new IllegalStateException(e);
-            } catch (IllegalAccessException e) {
+            } catch (ReflectiveOperationException e) {
                 throw new IllegalStateException(e);
             }
         }

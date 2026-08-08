@@ -1,6 +1,7 @@
 package io.cattle.platform.ssh.common;
 
 import io.cattle.platform.archaius.util.ArchaiusUtil;
+import io.cattle.platform.archaius.util.ConfigProperty;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -25,7 +26,6 @@ import java.util.Date;
 import java.util.List;
 import java.util.Random;
 
-import javax.crypto.KeyAgreement;
 import javax.security.auth.x500.X500Principal;
 
 import org.apache.commons.codec.binary.Base64;
@@ -54,14 +54,11 @@ import org.bouncycastle.operator.ContentSigner;
 import org.bouncycastle.operator.OperatorCreationException;
 import org.bouncycastle.operator.jcajce.JcaContentSignerBuilder;
 
-import com.netflix.config.DynamicLongProperty;
-import com.netflix.config.DynamicStringProperty;
-
 public class SshKeyGen {
 
     private static final byte[] HEADER = new byte[] { 's', 's', 'h', '-', 'r', 's', 'a' };
-    private static final DynamicStringProperty SSH_FORMAT = ArchaiusUtil.getString("ssh.key.text.format");
-    private static final DynamicLongProperty EXPIRATION = ArchaiusUtil.getLong("cert.expiry.days");
+    private static final ConfigProperty<String> SSH_FORMAT = ArchaiusUtil.getStringProperty("ssh.key.text.format");
+    private static final ConfigProperty<Long> EXPIRATION = ArchaiusUtil.getLongProperty("cert.expiry.days");
     private static final JcaPEMKeyConverter CONVERTER = new JcaPEMKeyConverter().setProvider("BC");
     private static final Random RANDOM = new Random();
     public static final String BOUNCY_CASTLE = "BC";
@@ -70,8 +67,7 @@ public class SshKeyGen {
         if (java.security.Security.getProvider(BOUNCY_CASTLE) == null) {
             java.security.Security.addProvider(new BouncyCastleProvider());
             try {
-                MessageDigest.getInstance("MD5", BOUNCY_CASTLE);
-                KeyAgreement.getInstance("DH", BOUNCY_CASTLE);
+                MessageDigest.getInstance("SHA-256", BOUNCY_CASTLE);
             } catch (NoSuchAlgorithmException | NoSuchProviderException e) {
                 throw new RuntimeException(e);
             }
@@ -142,14 +138,10 @@ public class SshKeyGen {
         return new JcaX509CertificateConverter().setProvider("BC").getCertificate(certBldr.build(signer));
     }
 
-    public static KeyPair generateKeyPair(int keySize) throws Exception {
-        KeyPairGenerator generator = KeyPairGenerator.getInstance("RSA", BOUNCY_CASTLE);
-        generator.initialize(keySize);
-        return generator.generateKeyPair();
-    }
-
     public static KeyPair generateKeyPair() throws Exception {
-        return generateKeyPair(2048);
+        KeyPairGenerator generator = KeyPairGenerator.getInstance("RSA", BOUNCY_CASTLE);
+        generator.initialize(2048);
+        return generator.generateKeyPair();
     }
 
     public static X509Certificate readCACert(String encoded) throws Exception {

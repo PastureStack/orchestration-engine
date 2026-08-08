@@ -3,6 +3,7 @@ package io.cattle.platform.process.common.handler;
 import io.cattle.platform.agent.AgentLocator;
 import io.cattle.platform.agent.RemoteAgent;
 import io.cattle.platform.archaius.util.ArchaiusUtil;
+import io.cattle.platform.archaius.util.ConfigProperty;
 import io.cattle.platform.async.utils.TimeoutException;
 import io.cattle.platform.core.constants.InstanceConstants;
 import io.cattle.platform.engine.handler.HandlerResult;
@@ -32,11 +33,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 
 import org.apache.commons.lang3.StringUtils;
-
-import com.netflix.config.DynamicStringProperty;
 
 public class AgentBasedProcessLogic extends AbstractObjectProcessLogic implements InitializationTask, Priority {
 
@@ -311,7 +310,7 @@ public class AgentBasedProcessLogic extends AbstractObjectProcessLogic implement
             return expression;
         }
 
-        DynamicStringProperty prop = getExpressionProperty(type);
+        ConfigProperty<String> prop = getExpressionProperty(type);
         prop.addCallback(new Runnable() {
             @Override
             public void run() {
@@ -324,8 +323,8 @@ public class AgentBasedProcessLogic extends AbstractObjectProcessLogic implement
         return prop.get();
     }
 
-    protected DynamicStringProperty getExpressionProperty(String type) {
-        return ArchaiusUtil.getString(getConfigPrefix() + type);
+    protected ConfigProperty<String> getExpressionProperty(String type) {
+        return ArchaiusUtil.getStringProperty(getConfigPrefix() + type);
     }
 
     public AgentLocator getAgentLocator() {

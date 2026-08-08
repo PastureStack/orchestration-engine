@@ -10,7 +10,7 @@ def update_event_settings(request, admin_user_client):
         for s in settings:
             if s.name == 'registry.whitelist':
                 setting = s
-                print setting
+                print(setting)
         setting = admin_user_client.update(setting, {'value': ''})
         wait_setting_active(admin_user_client, setting)
 

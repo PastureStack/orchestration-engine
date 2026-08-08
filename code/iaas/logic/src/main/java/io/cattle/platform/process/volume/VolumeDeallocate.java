@@ -12,8 +12,8 @@ import io.cattle.platform.process.base.AbstractDefaultProcessHandler;
 import java.util.HashMap;
 import java.util.Map;
 
-import javax.inject.Inject;
-import javax.inject.Named;
+import jakarta.inject.Inject;
+import jakarta.inject.Named;
 
 @Named
 public class VolumeDeallocate extends AbstractDefaultProcessHandler {

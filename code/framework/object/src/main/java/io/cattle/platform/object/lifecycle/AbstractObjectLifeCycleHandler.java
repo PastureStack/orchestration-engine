@@ -5,7 +5,7 @@ import java.util.Map;
 public class AbstractObjectLifeCycleHandler implements ObjectLifeCycleHandler {
 
     @Override
-    public <T> T onEvent(LifeCycleEvent event, T instance, Class<T> clz, Map<String, Object> properties) {
+    public <T> T onEvent(LifeCycleEvent event, T instance, Class<?> clz, Map<String, Object> properties) {
         switch (event) {
         case CREATE:
             return onCreate(instance, clz, properties);
@@ -14,7 +14,7 @@ public class AbstractObjectLifeCycleHandler implements ObjectLifeCycleHandler {
         }
     }
 
-    protected <T> T onCreate(T instance, Class<T> clz, Map<String, Object> properties) {
+    protected <T> T onCreate(T instance, Class<?> clz, Map<String, Object> properties) {
         return instance;
     }
 }

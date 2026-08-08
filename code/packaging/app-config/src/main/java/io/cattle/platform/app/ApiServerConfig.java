@@ -74,8 +74,13 @@ import io.cattle.platform.iaas.api.credential.SshKeyPemDownloadLinkHandler;
 import io.cattle.platform.iaas.api.host.HostEvacuateActionHandler;
 import io.cattle.platform.iaas.api.host.HostTemplateLinkHandler;
 import io.cattle.platform.iaas.api.host.HostTemplateOutputFilter;
+import io.cattle.platform.iaas.api.port.PortPreflightActionHandler;
+import io.cattle.platform.iaas.api.port.PortPreflightDaoImpl;
+import io.cattle.platform.iaas.api.port.PortPreflightService;
 import io.cattle.platform.iaas.api.snapshot.SnapshotBackupActionHandler;
 import io.cattle.platform.iaas.api.volume.VolumeSnapshotActionHandler;
+import io.cattle.platform.iaas.api.volume.VolumePreflightActionHandler;
+import io.cattle.platform.iaas.api.volume.VolumePreflightService;
 import io.cattle.platform.object.meta.TypeSet;
 import io.cattle.platform.storage.api.filter.ExternalTemplateInstanceFilter;
 import io.cattle.platform.systemstack.service.UpgradeManager;
@@ -104,7 +109,6 @@ import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.ComponentScans;
 import org.springframework.context.annotation.Configuration;
 
-@SuppressWarnings("deprecation")
 @Configuration
 @ComponentScans({
     @ComponentScan("io.cattle.platform.configitem.context.impl"),
@@ -298,7 +302,8 @@ public class ApiServerConfig {
 
     @Bean
     freemarker.template.Configuration FreemarkerConfig() {
-        freemarker.template.Configuration config = new freemarker.template.Configuration();
+        freemarker.template.Configuration config = new freemarker.template.Configuration(
+                freemarker.template.Configuration.VERSION_2_3_0);
         config.setTemplateLoader(new FreemarkerURLTemplateLoader());
         config.setLocalizedLookup(false);
         config.setNumberFormat("computer");
@@ -506,6 +511,31 @@ public class ApiServerConfig {
     @Bean
     AccountDeactivateActionHandler AccountDeactivateActionHandler() {
         return new AccountDeactivateActionHandler();
+    }
+
+    @Bean
+    PortPreflightDaoImpl PortPreflightDao() {
+        return new PortPreflightDaoImpl();
+    }
+
+    @Bean
+    PortPreflightService PortPreflightService() {
+        return new PortPreflightService();
+    }
+
+    @Bean
+    PortPreflightActionHandler PortPreflightActionHandler() {
+        return new PortPreflightActionHandler();
+    }
+
+    @Bean
+    VolumePreflightService VolumePreflightService() {
+        return new VolumePreflightService();
+    }
+
+    @Bean
+    VolumePreflightActionHandler VolumePreflightActionHandler() {
+        return new VolumePreflightActionHandler();
     }
 
     @Bean

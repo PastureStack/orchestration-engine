@@ -1,5 +1,5 @@
 package io.cattle.platform.db.jooq.generator;
 
-public class JavaGenerator extends org.jooq.util.JavaGenerator {
+public class JavaGenerator extends org.jooq.codegen.JavaGenerator {
     // Yep, nothing going on here
 }

@@ -2,13 +2,14 @@ package io.cattle.platform.servicediscovery.api.service.impl;
 
 import io.cattle.platform.servicediscovery.api.resource.ServiceDiscoveryConfigItem;
 import io.cattle.platform.servicediscovery.api.service.RancherConfigToComposeFormatter;
+import io.cattle.platform.util.type.CollectionUtils;
 import io.cattle.platform.util.type.NamedUtils;
 
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
 
-import javax.inject.Named;
+import jakarta.inject.Named;
 
 @Named
 public class RancherGenericMapToComposeFormatter implements RancherConfigToComposeFormatter {
@@ -23,15 +24,14 @@ public class RancherGenericMapToComposeFormatter implements RancherConfigToCompo
         return valueToTransform;
     }
 
-    @SuppressWarnings("unchecked")
-    private Object lowerCaseParameters(Object valueToTransform) {
+    static Object lowerCaseParameters(Object valueToTransform) {
         // lower case all the parameters
         if (valueToTransform instanceof Map) {
-            Map<String, Object> map = (Map<String, Object>)valueToTransform;
-            Iterator<String> it = map.keySet().iterator();
+            Map<Object, Object> map = CollectionUtils.toMap(valueToTransform);
+            Iterator<Object> it = map.keySet().iterator();
             Map<String, Object> newMap = new HashMap<>();
             while (it.hasNext()) {
-                String key = it.next();
+                String key = String.class.cast(it.next());
                 if (map.get(key) instanceof Map) {
                     lowerCaseParameters(map.get(key));
                 }

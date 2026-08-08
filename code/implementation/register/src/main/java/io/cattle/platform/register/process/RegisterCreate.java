@@ -20,8 +20,8 @@ import io.cattle.platform.process.common.handler.AbstractGenericObjectProcessLog
 import io.cattle.platform.register.dao.RegisterDao;
 import io.cattle.platform.register.util.RegisterConstants;
 
-import javax.inject.Inject;
-import javax.inject.Named;
+import jakarta.inject.Inject;
+import jakarta.inject.Named;
 
 @Named
 public class RegisterCreate extends AbstractGenericObjectProcessLogic implements ProcessHandler {

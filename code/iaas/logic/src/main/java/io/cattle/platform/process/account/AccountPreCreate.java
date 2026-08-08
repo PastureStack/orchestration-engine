@@ -4,6 +4,7 @@ import static io.cattle.platform.core.model.tables.AccountTable.*;
 import static io.cattle.platform.core.model.tables.ProjectTemplateTable.*;
 
 import io.cattle.platform.archaius.util.ArchaiusUtil;
+import io.cattle.platform.archaius.util.ConfigProperty;
 import io.cattle.platform.core.constants.AccountConstants;
 import io.cattle.platform.core.model.Account;
 import io.cattle.platform.core.model.ProjectTemplate;
@@ -13,16 +14,15 @@ import io.cattle.platform.engine.process.ProcessInstance;
 import io.cattle.platform.engine.process.ProcessState;
 import io.cattle.platform.process.common.handler.AbstractObjectProcessLogic;
 
-import javax.inject.Named;
+import jakarta.inject.Named;
 
 import org.apache.commons.lang3.StringUtils;
 
-import com.netflix.config.DynamicStringProperty;
 
 @Named
 public class AccountPreCreate extends AbstractObjectProcessLogic implements ProcessPreListener {
 
-    public static final DynamicStringProperty DEFAULT_TEMPLATE = ArchaiusUtil.getString("project.template.default.name");
+    public static final ConfigProperty<String> DEFAULT_TEMPLATE = ArchaiusUtil.getStringProperty("project.template.default.name");
 
     @Override
     public String[] getProcessNames() {

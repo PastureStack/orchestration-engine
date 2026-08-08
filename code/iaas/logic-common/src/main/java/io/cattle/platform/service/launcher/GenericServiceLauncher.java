@@ -3,6 +3,7 @@ package io.cattle.platform.service.launcher;
 import static io.cattle.platform.core.model.tables.AccountTable.*;
 import static io.cattle.platform.core.model.tables.CredentialTable.*;
 
+import io.cattle.platform.archaius.util.ConfigProperty;
 import io.cattle.platform.core.constants.AccountConstants;
 import io.cattle.platform.core.constants.CommonStatesConstants;
 import io.cattle.platform.core.constants.CredentialConstants;
@@ -32,11 +33,9 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 
 import org.apache.cloudstack.managed.context.NoExceptionRunnable;
-
-import com.netflix.config.DynamicStringProperty;
 
 public abstract class GenericServiceLauncher extends NoExceptionRunnable implements InitializationTask, Runnable {
 
@@ -71,9 +70,9 @@ public abstract class GenericServiceLauncher extends NoExceptionRunnable impleme
             }
         });
         future = executor.scheduleWithFixedDelay(this, WAIT, WAIT, TimeUnit.MILLISECONDS);
-        List<DynamicStringProperty> reloadList = getReloadSettings();
+        List<ConfigProperty<String>> reloadList = getReloadSettings();
         if (reloadList != null) {
-            for(DynamicStringProperty reload : reloadList) {
+            for(ConfigProperty<String> reload : reloadList) {
                 if (reload != null) {
                     reload.addCallback(cb);
                 }
@@ -108,7 +107,7 @@ public abstract class GenericServiceLauncher extends NoExceptionRunnable impleme
         return SERVICE_USER_NAME;
     }
 
-    protected List<DynamicStringProperty> getReloadSettings() {
+    protected List<ConfigProperty<String>> getReloadSettings() {
         return null;
     }
 

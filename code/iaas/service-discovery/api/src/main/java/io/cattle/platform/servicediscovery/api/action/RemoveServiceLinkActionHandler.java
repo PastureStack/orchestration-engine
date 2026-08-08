@@ -9,8 +9,8 @@ import io.cattle.platform.object.util.DataAccessor;
 import io.cattle.platform.servicediscovery.api.service.ServiceDiscoveryApiService;
 import io.github.ibuildthecloud.gdapi.request.ApiRequest;
 
-import javax.inject.Inject;
-import javax.inject.Named;
+import jakarta.inject.Inject;
+import jakarta.inject.Named;
 
 @Named
 public class RemoveServiceLinkActionHandler implements ActionHandler {

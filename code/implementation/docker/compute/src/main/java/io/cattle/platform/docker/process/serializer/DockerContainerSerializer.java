@@ -17,7 +17,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 
 public class DockerContainerSerializer implements ObjectTypeSerializerPostProcessor {
 
@@ -29,7 +29,6 @@ public class DockerContainerSerializer implements ObjectTypeSerializerPostProces
         return new String[] { InstanceConstants.TYPE };
     }
 
-    @SuppressWarnings({ "rawtypes", "unchecked" })
     @Override
     public void process(Object obj, String type, Map<String, Object> data) {
         if (!(obj instanceof Instance))
@@ -39,17 +38,18 @@ public class DockerContainerSerializer implements ObjectTypeSerializerPostProces
         if (!InstanceConstants.CONTAINER_LIKE.contains(instance.getKind()))
             return;
 
-        List volumesFromContainerIds = DataAccessor.fields(instance).withKey(DockerInstanceConstants.FIELD_VOLUMES_FROM).as(jsonMapper, List.class);
+        List<? extends Object> volumesFromContainerIds = DataAccessor.fields(instance)
+                .withKey(DockerInstanceConstants.FIELD_VOLUMES_FROM).asList(jsonMapper, Object.class);
         List<Instance> containers = null;
         if (volumesFromContainerIds != null && !volumesFromContainerIds.isEmpty()) {
-            Condition condition = new Condition(ConditionType.IN, volumesFromContainerIds);
+            Condition condition = new Condition(ConditionType.IN, new ArrayList<Object>(volumesFromContainerIds));
             containers = objectManager.find(Instance.class, INSTANCE.ID, condition);
         }
         if (containers == null)
             containers = new ArrayList<Instance>();
         data.put(DockerInstanceConstants.EVENT_FIELD_VOLUMES_FROM, containers);
 
-        List<Volume>volumes = InstanceHelpers.extractVolumesFromMounts(instance, objectManager);
+        List<Volume> volumes = InstanceHelpers.extractVolumesFromMounts(instance, objectManager);
         data.put(DockerInstanceConstants.EVENT_FIELD_VOLUMES_FROM_DVM, volumes);
     }
 

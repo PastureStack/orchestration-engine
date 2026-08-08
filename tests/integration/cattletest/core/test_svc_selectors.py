@@ -47,8 +47,8 @@ def _validate_service_link(client, context, service_kind):
     # is present when service with selector is created
     labels, service = _create_service(client, env, image_uuid, service_kind)
     service = client.wait_success(service)
-    assert all(item in service.launchConfig.labels.items()
-               for item in labels.items())
+    assert all(item in list(service.launchConfig.labels.items())
+               for item in list(labels.items()))
     launch_config = {"imageUuid": image_uuid}
     if service_kind == 'loadBalancerService':
         service1 = client.create_service(name=random_str(),
@@ -68,8 +68,8 @@ def _validate_service_link(client, context, service_kind):
     # is added after service with selector creation
     labels, service2 = _create_service(client, env, image_uuid, service_kind)
     service2 = client.wait_success(service2)
-    assert all(item in service2.launchConfig.labels.items()
-               for item in labels.items())
+    assert all(item in list(service2.launchConfig.labels.items())
+               for item in list(labels.items()))
     _validate_add_service_link(service1, service2, client)
 
     compose_config = env.exportconfig()

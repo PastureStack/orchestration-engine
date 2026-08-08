@@ -1,6 +1,7 @@
 package io.cattle.platform.iaas.api.filter.agent;
 
 import io.cattle.platform.archaius.util.ArchaiusUtil;
+import io.cattle.platform.archaius.util.ConfigProperty;
 import io.cattle.platform.core.constants.AgentConstants;
 import io.cattle.platform.core.dao.AgentDao;
 import io.cattle.platform.core.model.Agent;
@@ -14,22 +15,20 @@ import io.github.ibuildthecloud.gdapi.validation.ValidationErrorCodes;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.netflix.config.DynamicBooleanProperty;
-import com.netflix.config.DynamicStringProperty;
 
 public class AgentFilter extends AbstractDefaultResourceManagerFilter {
 
     private static final Logger log = LoggerFactory.getLogger(AgentFilter.class);
 
-    private static final DynamicBooleanProperty ASSIGN_AGENT_URI = ArchaiusUtil.getBoolean("agent.filter.assign.uri");
-    private static final DynamicBooleanProperty TRY_DNS = ArchaiusUtil.getBoolean("agent.filter.default.uri.reverse.dns");
-    private static final DynamicStringProperty URI_FORMAT = ArchaiusUtil.getString("agent.filter.default.uri");
-    private static final DynamicStringProperty USER = ArchaiusUtil.getString("agent.filter.default.user");
+    private static final ConfigProperty<Boolean> ASSIGN_AGENT_URI = ArchaiusUtil.getBooleanProperty("agent.filter.assign.uri");
+    private static final ConfigProperty<Boolean> TRY_DNS = ArchaiusUtil.getBooleanProperty("agent.filter.default.uri.reverse.dns");
+    private static final ConfigProperty<String> URI_FORMAT = ArchaiusUtil.getStringProperty("agent.filter.default.uri");
+    private static final ConfigProperty<String> USER = ArchaiusUtil.getStringProperty("agent.filter.default.user");
 
     ResourceManagerLocator locator;
     AgentDao agentDao;

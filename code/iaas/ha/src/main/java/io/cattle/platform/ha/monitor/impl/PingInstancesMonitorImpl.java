@@ -7,6 +7,7 @@ import static io.cattle.platform.core.constants.InstanceConstants.*;
 import io.cattle.platform.agent.AgentLocator;
 import io.cattle.platform.agent.RemoteAgent;
 import io.cattle.platform.archaius.util.ArchaiusUtil;
+import io.cattle.platform.archaius.util.ConfigProperty;
 import io.cattle.platform.core.constants.CommonStatesConstants;
 import io.cattle.platform.core.constants.InstanceConstants;
 import io.cattle.platform.core.dao.AgentDao;
@@ -31,13 +32,14 @@ import io.cattle.platform.object.util.DataUtils;
 import io.cattle.platform.process.containerevent.ContainerEventCreate;
 import io.cattle.platform.util.type.CollectionUtils;
 
+import java.time.Duration;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.TimeUnit;
+import java.util.Objects;
 
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.ImmutablePair;
@@ -48,12 +50,11 @@ import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
 import com.google.common.util.concurrent.UncheckedExecutionException;
-import com.netflix.config.DynamicLongProperty;
 
 public class PingInstancesMonitorImpl implements PingInstancesMonitor {
 
-    private static final DynamicLongProperty CACHE_TIME = ArchaiusUtil.getLong("ha.instance.state.cache.millis");
-    private static final DynamicLongProperty HOST_ID_CACHE_TIME = ArchaiusUtil.getLong("ha.host.id.cache.millis");
+    private static final ConfigProperty<Long> CACHE_TIME = ArchaiusUtil.getLongProperty("ha.instance.state.cache.millis");
+    private static final ConfigProperty<Long> HOST_ID_CACHE_TIME = ArchaiusUtil.getLongProperty("ha.host.id.cache.millis");
 
     private static final Logger log = LoggerFactory.getLogger(PingInstancesMonitorImpl.class);
 
@@ -80,7 +81,7 @@ public class PingInstancesMonitorImpl implements PingInstancesMonitor {
     ContainerEventDao containerEventDao;
 
 
-    LoadingCache<Long, Map<String, KnownInstance>> instanceCache = CacheBuilder.newBuilder().expireAfterWrite(CACHE_TIME.get(), TimeUnit.MILLISECONDS)
+    LoadingCache<Long, Map<String, KnownInstance>> instanceCache = CacheBuilder.newBuilder().expireAfterWrite(Duration.ofMillis(CACHE_TIME.get()))
             .build(new CacheLoader<Long, Map<String, KnownInstance>>() {
                 @Override
                 public Map<String, KnownInstance> load(Long key) throws Exception {
@@ -89,7 +90,7 @@ public class PingInstancesMonitorImpl implements PingInstancesMonitor {
             });
 
     LoadingCache<ImmutablePair<Long, String>, AgentAndHost> hostCache = CacheBuilder.newBuilder()
-            .expireAfterWrite(HOST_ID_CACHE_TIME.get(), TimeUnit.MILLISECONDS).build(new CacheLoader<ImmutablePair<Long, String>, AgentAndHost>() {
+            .expireAfterWrite(Duration.ofMillis(HOST_ID_CACHE_TIME.get())).build(new CacheLoader<ImmutablePair<Long, String>, AgentAndHost>() {
                 @Override
                 public AgentAndHost load(ImmutablePair<Long, String> key) throws Exception {
                     return PingInstancesMonitorImpl.this.loadAgentAndHostData(key);
@@ -223,7 +224,7 @@ public class PingInstancesMonitorImpl implements PingInstancesMonitor {
 
     void determineSyncAction(KnownInstance ki, ReportedInstance ri, Map<String, ReportedInstance> needsSynced, Map<String, String> syncActions,
             boolean checkOnly) {
-        if (objectMetaDataManager.isTransitioningState(Instance.class, ki.getState()) || StringUtils.equals(ki.getState(), ri.getState()))
+        if (objectMetaDataManager.isTransitioningState(Instance.class, ki.getState()) || Objects.equals(ki.getState(), ri.getState()))
             return;
 
         if (STATE_RUNNING.equals(ri.getState())) {

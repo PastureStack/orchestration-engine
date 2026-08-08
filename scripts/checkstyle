@@ -2,7 +2,12 @@
 
 cd $(dirname $0)/..
 
-if ! ./mvnw checkstyle:checkstyle-aggregate; then
+maven_cmd=${MAVEN_CMD:-mvn}
+if ! command -v "$maven_cmd" >/dev/null 2>&1; then
+    maven_cmd=./mvnw
+fi
+
+if ! "$maven_cmd" checkstyle:checkstyle-aggregate; then
     grep -C 1 error target/checkstyle-result.xml
     echo Checkstyle Errors 1>&2
     exit 1

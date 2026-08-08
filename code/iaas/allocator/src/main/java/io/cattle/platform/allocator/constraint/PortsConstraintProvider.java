@@ -13,7 +13,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 
 public class PortsConstraintProvider implements AllocationConstraintsProvider {
 
@@ -45,6 +45,8 @@ public class PortsConstraintProvider implements AllocationConstraintsProvider {
 
     @Override
     public boolean isCritical() {
-        return false;
+        // Requested-host allocations retain only critical constraints. Host ports
+        // are still exclusive in that path and must never be skipped.
+        return true;
     }
 }

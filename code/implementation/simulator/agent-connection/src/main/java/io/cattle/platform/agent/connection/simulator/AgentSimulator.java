@@ -12,12 +12,12 @@ import io.cattle.platform.json.JsonMapper;
 import io.cattle.platform.object.ObjectManager;
 import io.cattle.platform.object.resource.ResourceMonitor;
 
+import java.time.Duration;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.TimeUnit;
 
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
@@ -39,7 +39,7 @@ public class AgentSimulator implements AnnotatedEventListener {
     EventService eventService;
 
     List<AgentSimulatorEventProcessor> processors;
-    LoadingCache<String, Simulator> cache = CacheBuilder.newBuilder().expireAfterAccess(5, TimeUnit.MINUTES).build(new CacheLoader<String, Simulator>() {
+    LoadingCache<String, Simulator> cache = CacheBuilder.newBuilder().expireAfterAccess(Duration.ofMinutes(5)).build(new CacheLoader<String, Simulator>() {
         @Override
         public Simulator load(String agentId) throws Exception {
             return makeSimulator(agentId);

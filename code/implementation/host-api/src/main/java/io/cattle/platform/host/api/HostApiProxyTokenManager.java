@@ -20,13 +20,16 @@ import io.github.ibuildthecloud.gdapi.validation.ValidationErrorCodes;
 import java.util.HashMap;
 import java.util.Map;
 
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 
+import org.apache.commons.lang3.Strings;
 import org.apache.commons.lang3.StringUtils;
 
 public class HostApiProxyTokenManager extends AbstractNoOpResourceManager {
 
     private static final String VERIFY_AGENT = "CantVerifyAgent";
+
+    private final HostApiSettings settings;
 
     @Inject
     TokenService tokenService;
@@ -36,6 +39,17 @@ public class HostApiProxyTokenManager extends AbstractNoOpResourceManager {
 
     @Inject
     ObjectManager objectManager;
+
+    public HostApiProxyTokenManager() {
+        this(ArchaiusHostApiSettings.create());
+    }
+
+    HostApiProxyTokenManager(HostApiSettings settings) {
+        if (settings == null) {
+            throw new IllegalArgumentException("settings is required");
+        }
+        this.settings = settings;
+    }
 
     @Override
     public Class<?>[] getTypeClasses() {
@@ -54,9 +68,10 @@ public class HostApiProxyTokenManager extends AbstractNoOpResourceManager {
         StringBuilder buffer = new StringBuilder();
         switch (getHostApiProxyMode()) {
         case HOST_API_PROXY_MODE_HA:
-            if (StringUtils.isNotBlank(HostApiUtils.HOST_API_PROXY_HOST.get())) {
-                String scheme = StringUtils.startsWithIgnoreCase(request.getResponseUrlBase(), "https") ? "wss://" : "ws://";
-                buffer.append(scheme).append(HostApiUtils.HOST_API_PROXY_HOST.get());
+            String proxyHost = settings.proxyHost();
+            if (StringUtils.isNotBlank(proxyHost)) {
+                String scheme = Strings.CI.startsWith(request.getResponseUrlBase(), "https") ? "wss://" : "ws://";
+                buffer.append(scheme).append(proxyHost);
                 break;
             }
             // Purposefully fall through
@@ -81,7 +96,7 @@ public class HostApiProxyTokenManager extends AbstractNoOpResourceManager {
             buffer.deleteCharAt(buffer.length() - 1);
         }
 
-        String url = buffer.append(HostApiUtils.HOST_API_PROXY_BACKEND.get()).toString();
+        String url = buffer.append(settings.proxyBackendPath()).toString();
         token.setUrl(url);
         return token;
     }

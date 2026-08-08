@@ -11,8 +11,8 @@ import io.cattle.platform.servicediscovery.deployment.DeploymentManager;
 import io.cattle.platform.servicediscovery.service.ServiceDiscoveryService;
 import io.cattle.platform.servicediscovery.upgrade.UpgradeManager;
 
-import javax.inject.Inject;
-import javax.inject.Named;
+import jakarta.inject.Inject;
+import jakarta.inject.Named;
 
 @Named
 public class ServiceRemove extends AbstractObjectProcessHandler {

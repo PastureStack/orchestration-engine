@@ -10,8 +10,8 @@ import java.net.URL;
 import java.util.List;
 import java.util.Map;
 
-import javax.annotation.PostConstruct;
-import javax.inject.Inject;
+import jakarta.annotation.PostConstruct;
+import jakarta.inject.Inject;
 
 import org.apache.commons.io.IOUtils;
 
@@ -28,7 +28,7 @@ public class DocumentationLoader {
 
             try {
                 Map<String, TypeDocumentation> typeDocs = docHandler.getDocs();
-                List<TypeDocumentation> docs = jsonMapper.readCollectionValue(is, List.class, TypeDocumentation.class);
+                List<TypeDocumentation> docs = jsonMapper.readListValue(is, TypeDocumentation.class);
 
                 for (TypeDocumentation doc : docs) {
                     typeDocs.put(doc.getId(), doc);

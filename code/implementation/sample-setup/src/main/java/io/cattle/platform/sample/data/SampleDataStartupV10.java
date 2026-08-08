@@ -5,6 +5,7 @@ import static io.cattle.platform.core.model.tables.DynamicSchemaTable.*;
 import static io.cattle.platform.core.model.tables.MachineDriverTable.*;
 
 import io.cattle.platform.archaius.util.ArchaiusUtil;
+import io.cattle.platform.archaius.util.ConfigListProperty;
 import io.cattle.platform.core.constants.CommonStatesConstants;
 import io.cattle.platform.core.constants.MachineDriverConstants;
 import io.cattle.platform.core.model.Account;
@@ -15,20 +16,19 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 
 import org.jooq.Configuration;
 import org.jooq.DSLContext;
 import org.jooq.impl.DefaultDSLContext;
 
-import com.netflix.config.DynamicStringListProperty;
 
 public class SampleDataStartupV10 extends AbstractSampleData {
 
     @Inject
     Configuration configuration;
 
-    private static final DynamicStringListProperty DRIVERS = ArchaiusUtil.getList("machine.drivers.default");
+    private static final ConfigListProperty<String> DRIVERS = ArchaiusUtil.getStringListProperty("machine.drivers.default");
 
     protected DSLContext create() {
         return new DefaultDSLContext(configuration);
@@ -61,7 +61,7 @@ public class SampleDataStartupV10 extends AbstractSampleData {
                 continue;
             }
 
-            List<String> values = ArchaiusUtil.getList(String.format("machine.driver.%s", name)).get();
+            List<String> values = ArchaiusUtil.getStringListProperty(String.format("machine.driver.%s", name)).get();
             String activate = values.get(0);
             String url = values.get(1);
             String checksum = "";

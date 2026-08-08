@@ -7,9 +7,9 @@ import io.cattle.platform.iaas.api.auth.integration.interfaces.AccountLookup;
 import io.cattle.platform.util.type.Priority;
 import io.github.ibuildthecloud.gdapi.request.ApiRequest;
 
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 
-import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.Strings;
 
 public class TokenAccountLookup implements AccountLookup, Priority {
 
@@ -19,7 +19,7 @@ public class TokenAccountLookup implements AccountLookup, Priority {
     @Override
     public Account getAccount(ApiRequest request) {
         Account account = null;
-        if (StringUtils.equals(AbstractTokenUtil.TOKEN, request.getType())) {
+        if (Strings.CS.equals(AbstractTokenUtil.TOKEN, request.getType())) {
             account = authDao.getAccountByUuid("token");
         }
         return account;
