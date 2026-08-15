@@ -505,14 +505,22 @@ public class ServiceDiscoveryUtil {
         return isDrainProvider(instanceImage.getRight());
     }
 
-    private static Pair<String, String> getImageAndVersion(String imageUUID) {
+    static Pair<String, String> getImageAndVersion(String imageUUID) {
         DockerImage dockerImage = DockerImage.parse(imageUUID);
-        String[] splitted = dockerImage.getFullName().split(":");
-        if (splitted.length <= 1) {
+        String fullName = dockerImage.getFullName();
+        int digestSeparator = fullName.indexOf('@');
+        if (digestSeparator >= 0) {
+            fullName = fullName.substring(0, digestSeparator);
+        }
+
+        int lastSlash = fullName.lastIndexOf('/');
+        int tagSeparator = fullName.lastIndexOf(':');
+        if (tagSeparator <= lastSlash || tagSeparator == fullName.length() - 1) {
             return Pair.of("", "");
         }
-        String repoAndImage = splitted[0];
-        String imageVersion = splitted[1];
+
+        String repoAndImage = fullName.substring(0, tagSeparator);
+        String imageVersion = fullName.substring(tagSeparator + 1);
         return Pair.of(repoAndImage, imageVersion);
     }
 
