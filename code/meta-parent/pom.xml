@@ -45,7 +45,7 @@
         <jooq.version>3.21.7</jooq.version>
         <jackson.version>2.22.1</jackson.version>
         <jackson.annotations.version>2.22</jackson.annotations.version>
-        <spring.version>6.2.19</spring.version>
+        <spring.version>7.0.9</spring.version>
         <metrics.version>4.2.39</metrics.version>
         <hazelcast.version>5.7.2</hazelcast.version>
         <javassist.version>3.32.0-GA</javassist.version>
