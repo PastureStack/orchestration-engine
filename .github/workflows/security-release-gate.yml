@@ -23,7 +23,7 @@ jobs:
       CYCLONEDX_MAVEN_PLUGIN_VERSION: 2.9.3
     steps:
       - name: Check out candidate
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
           persist-credentials: false
@@ -166,7 +166,7 @@ jobs:
 
       - name: Upload review evidence
         if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: orchestration-engine-security-${{ github.sha }}
           path: evidence/

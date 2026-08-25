@@ -19,7 +19,7 @@ jobs:
     timeout-minutes: 120
     steps:
       - name: Check out candidate
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
           persist-credentials: false
@@ -33,7 +33,7 @@ jobs:
           grep -Fxq '    <version>0.183.285</version>' code/meta-parent/pom.xml
 
       - name: Initialize CodeQL
-        uses: github/codeql-action/init@c16c0f3f2812ec4bb3750a5ed64873fe2ce0fbef
+        uses: github/codeql-action/init@db488ddef3bf6cb639b32c2e9a7c0a7ea8271d28 # v4.37.8
         with:
           languages: java-kotlin
           build-mode: none
@@ -43,7 +43,7 @@ jobs:
             threat-models: local
 
       - name: Analyze without publishing temporary alerts
-        uses: github/codeql-action/analyze@c16c0f3f2812ec4bb3750a5ed64873fe2ce0fbef
+        uses: github/codeql-action/analyze@db488ddef3bf6cb639b32c2e9a7c0a7ea8271d28 # v4.37.8
         with:
           category: '/language:java-kotlin'
           upload: never
@@ -113,7 +113,7 @@ jobs:
 
       - name: Upload verification evidence
         if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: orchestration-engine-codeql-${{ github.sha }}
           path: codeql-results/

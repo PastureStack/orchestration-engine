@@ -8,8 +8,8 @@ ARG TEMURIN_JDK25_URL="https://github.com/adoptium/temurin25-binaries/releases/d
 ARG TEMURIN_JDK25_SHA256=e58fcdcd637b25c03ca84cbbcefc70d11efb8f4b4cbd05decc9f661769d77f94
 ARG MAVEN_VERSION=3.9.16
 ARG MAVEN_SHA512=831a8591fe20c8243b1dbe7d71e3244f31d1665b0804b2e825e38cbbe5ce0cafb8338851f90780735568773e0a6cd07bbec107cda0b896b008b861075358b6f6
-ARG DOCKER_VERSION=29.6.2
-ARG DOCKER_SHA256_AMD64=d6204aea92238e2453d5445c885b9d2e5eb8f82915568ec50edf9dbe12a3ac74
+ARG DOCKER_VERSION=29.7.2
+ARG DOCKER_SHA256_AMD64=803d433f226db4776e1768fd319fc6c6e4935a456acf84fcc0080818b854bc8f
 ENV JAVA_HOME=/opt/java/openjdk
 ENV MAVEN_HOME=/opt/apache-maven
 ENV PATH=${JAVA_HOME}/bin:${MAVEN_HOME}/bin:${PATH}
@@ -81,7 +81,7 @@ RUN mkdir -p ${JAVA_HOME} /usr/lib/jvm && \
     mvn -version | grep -F 'Apache Maven 3.9.16' && \
     test "$(python3 --version)" = 'Python 3.14.4' && \
     tox --version | grep -F '4.33.0' && \
-    docker --version | grep -F 'Docker version 29.6.2'
+    docker --version | grep -F 'Docker version 29.7.2'
 
 WORKDIR /workspace
 

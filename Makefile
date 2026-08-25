@@ -3,7 +3,7 @@ TARGETS := $(shell ls scripts)
 
 DAPPER_IMAGE ?= rc16-cattle-dapper:ubuntu26
 DAPPER_SOURCE ?= /usr/src/pasturestack/orchestration-engine
-DOCKER_VERSION ?= 29.6.2
+DOCKER_VERSION ?= 29.7.2
 DOCKER_BUILD_NETWORK ?= default
 
 .dapper:
