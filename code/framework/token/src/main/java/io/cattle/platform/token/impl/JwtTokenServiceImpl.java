@@ -13,8 +13,6 @@ import java.util.Map;
 
 import jakarta.inject.Inject;
 
-import org.bouncycastle.jce.provider.BouncyCastleProvider;
-
 import com.nimbusds.jose.EncryptionMethod;
 import com.nimbusds.jose.JOSEException;
 import com.nimbusds.jose.JOSEObject;
@@ -25,7 +23,6 @@ import com.nimbusds.jose.JWSHeader;
 import com.nimbusds.jose.JWSObject;
 import com.nimbusds.jose.JWSSigner;
 import com.nimbusds.jose.JWSVerifier;
-import com.nimbusds.jose.jca.JCASupport;
 import com.nimbusds.jose.crypto.RSADecrypter;
 import com.nimbusds.jose.crypto.RSAEncrypter;
 import com.nimbusds.jose.crypto.RSASSASigner;
@@ -45,14 +42,6 @@ public class JwtTokenServiceImpl implements TokenService {
     private static final ConfigProperty<String> JWE_ALGORITHM = ArchaiusUtil.getStringProperty("jwt.jwe.algorithm");
 
     RSAKeyProvider keyProvider;
-
-    // Delete after Java 8 switch
-    static {
-        if (!JCASupport.isSupported(EncryptionMethod.A128GCM) &&
-            java.security.Security.getProvider("BC") == null) {
-            java.security.Security.addProvider(new BouncyCastleProvider());
-        }
-    }
 
     @Override
     public String generateToken(Map<String, Object> payload) {

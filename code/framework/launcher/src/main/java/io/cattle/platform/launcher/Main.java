@@ -93,27 +93,11 @@ public class Main {
             return Main.class.getClassLoader();
         }
 
-        if (!isJava9OrLater()) {
-            return null;
-        }
-
         try {
             Method getPlatformClassLoader = ClassLoader.class.getMethod("getPlatformClassLoader");
             return (ClassLoader) getPlatformClassLoader.invoke(null);
         } catch (Exception e) {
             return null;
-        }
-    }
-
-    protected boolean isJava9OrLater() {
-        String version = System.getProperty("java.specification.version", "1.8");
-        if (version.startsWith("1.")) {
-            return false;
-        }
-        try {
-            return Integer.parseInt(version) >= 9;
-        } catch (NumberFormatException e) {
-            return true;
         }
     }
 
