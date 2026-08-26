@@ -43,8 +43,8 @@ project_version=$(sed -n 's/^[[:space:]]*<version>\([^<]*\)<\/version>[[:space:]
 [[ "$project_version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || fail non_numeric_project_version
 require_line code/meta-parent/pom.xml '    <version>0.183.285</version>'
 require_line code/meta-parent/pom.xml '    <url>https://github.com/PastureStack/orchestration-engine</url>'
-require_line Dockerfile 'FROM ubuntu:26.04@sha256:678c6550cc43645e08669028bc177f50be4e7c5b8cca677067b1914d4afc7a03'
-require_line Dockerfile.dapper 'FROM ubuntu:26.04@sha256:678c6550cc43645e08669028bc177f50be4e7c5b8cca677067b1914d4afc7a03'
+require_line Dockerfile 'FROM ubuntu:26.04@sha256:2260313b31c8c011cd2eebe728008efac1b3982be73eb71348ea2648d2c0e09b'
+require_line Dockerfile.dapper 'FROM ubuntu:26.04@sha256:2260313b31c8c011cd2eebe728008efac1b3982be73eb71348ea2648d2c0e09b'
 require_line Dockerfile 'ARG TEMURIN_JDK25_URL="https://github.com/adoptium/temurin25-binaries/releases/download/jdk-25.0.4%2B7/OpenJDK25U-jdk_x64_linux_hotspot_25.0.4_7.tar.gz"'
 require_line Dockerfile.dapper 'ARG TEMURIN_JDK25_URL="https://github.com/adoptium/temurin25-binaries/releases/download/jdk-25.0.4%2B7/OpenJDK25U-jdk_x64_linux_hotspot_25.0.4_7.tar.gz"'
 require_line Dockerfile 'ARG TEMURIN_JDK25_SHA256=e58fcdcd637b25c03ca84cbbcefc70d11efb8f4b4cbd05decc9f661769d77f94'
