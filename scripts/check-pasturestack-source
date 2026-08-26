@@ -51,7 +51,8 @@ require_line Dockerfile 'ARG TEMURIN_JDK25_SHA256=e58fcdcd637b25c03ca84cbbcefc70
 require_line Dockerfile.dapper 'ARG TEMURIN_JDK25_SHA256=e58fcdcd637b25c03ca84cbbcefc70d11efb8f4b4cbd05decc9f661769d77f94'
 require_line Dockerfile 'ARG MAVEN_VERSION=3.9.16'
 require_line Dockerfile.dapper 'ARG MAVEN_VERSION=3.9.16'
-require_line ubuntu-apt.lock "UBUNTU_APT_SNAPSHOT='20260808T000000Z'"
+require_line ubuntu-apt.lock "UBUNTU_APT_SNAPSHOT='20260826T000000Z'"
+require_line ubuntu-apt.lock "UBUNTU_APT_CURL_VERSION='8.18.0-1ubuntu2.4'"
 require_line ubuntu-apt.lock "UBUNTU_APT_PYTHON3_14_VERSION='3.14.4-1ubuntu0.1'"
 require_line Dockerfile '    rm -f /etc/apt/sources.list /etc/apt/sources.list.d/*.list /etc/apt/sources.list.d/*.sources; \'
 require_line Dockerfile.dapper '    rm -f /etc/apt/sources.list /etc/apt/sources.list.d/*.list /etc/apt/sources.list.d/*.sources; \'
@@ -63,6 +64,8 @@ require_text Dockerfile 'Signed-By: /usr/share/keyrings/ubuntu-archive-keyring.g
 require_text Dockerfile.dapper 'Signed-By: /usr/share/keyrings/ubuntu-archive-keyring.gpg\nSnapshot: no\n'
 require_text Dockerfile 'Acquire::https::CaInfo "/etc/ssl/certs/ca-certificates.crt";\nAcquire::https::Verify-Peer "true";\nAcquire::https::Verify-Host "true";'
 require_text Dockerfile.dapper 'Acquire::https::CaInfo "/etc/ssl/certs/ca-certificates.crt";\nAcquire::https::Verify-Peer "true";\nAcquire::https::Verify-Host "true";'
+require_line Dockerfile '    apt-get upgrade -y; \'
+require_line Dockerfile.dapper '    apt-get upgrade -y; \'
 require_line Makefile 'DAPPER_SOURCE ?= /usr/src/pasturestack/orchestration-engine'
 require_line Dockerfile.dapper 'ENV DAPPER_SOURCE=/usr/src/pasturestack/orchestration-engine'
 require_line scripts/entry 'git config --global --add safe.directory "$(pwd)"'
@@ -285,4 +288,4 @@ fi
 require_line README.md 'PastureStack is an independent community effort to preserve, audit, and modernize the Rancher 1.6 ecosystem. It is not affiliated with or endorsed by Rancher Labs or SUSE.'
 require_line ORIGIN.md '- Preserved upstream boundary: `82d154a53f4089fecfb9f320caad826bb4f6055f`'
 
-printf 'PASTURESTACK_SOURCE_GATE_OK version=0.183.285 runtime_sources=github_release images=digest_pinned ubuntu=26.04 ubuntu_snapshot=20260808T000000Z jdk=25.0.4 maven=3.9.16 patched_hazelcast=5.7.2 docker=29.7.2 credential_secret_capacity=mediumtext port_preflight=authoritative volume_preflight=authoritative volume_preflight_project_schema=authorized volume_preflight_type_set=registered\n'
+printf 'PASTURESTACK_SOURCE_GATE_OK version=0.183.285 runtime_sources=github_release images=digest_pinned ubuntu=26.04 ubuntu_snapshot=20260826T000000Z jdk=25.0.4 maven=3.9.16 patched_hazelcast=5.7.2 docker=29.7.2 credential_secret_capacity=mediumtext port_preflight=authoritative volume_preflight=authoritative volume_preflight_project_schema=authorized volume_preflight_type_set=registered\n'
