@@ -228,7 +228,7 @@ require_line code/iaas/allocator/src/test/java/io/cattle/platform/allocator/cons
 require_line "$settings" 'api.ui.index=local'
 require_line "$settings" 'api.ui.js.url='
 require_line "$settings" 'api.ui.css.url='
-require_line "$settings" 'lb.instance.image=ghcr.io/pasturestack/load-balancer-service:v0.9.23@sha256:bc08e650fed337c5217f3472a89ab6c843e788f383703327e8f426443285dfaf'
+require_line "$settings" 'lb.instance.image=ghcr.io/pasturestack/load-balancer-service:v0.9.27'
 require_line "$settings" 'bootstrap.required.image=ghcr.io/pasturestack/node-agent:v1.2.30@sha256:5310b748fc52bcd87fdeaa2285f424a07ec13c9b41639692eef96bda53ac8277'
 require_line "$settings" 'bootstrap.required.windows.image='
 
