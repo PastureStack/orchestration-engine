@@ -12,28 +12,28 @@ public class HaConfigSettingsTest {
     public void mysqlCommandsRemainCompatible() {
         HaConfigManager manager = new HaConfigManager(new StubHaConfigSettings("mysql"));
 
-        assertEquals(Arrays.asList("mysql", "--skip-column-names", "-s", "-uroot", "-e",
+        assertEquals(Arrays.asList("/usr/bin/mysql", "--skip-column-names", "-s", "-uroot", "-e",
                 "SELECT SUM(data_length)/power(1024,2) AS dbsize_mb FROM information_schema.tables WHERE table_schema='cattle' GROUP BY table_schema;"),
                 manager.dbSizeProcessBuilder().command());
-        assertEquals(Arrays.asList("mysqldump", "-uroot", "cattle"), manager.dbDumpProcessBuilder().command());
+        assertEquals(Arrays.asList("/usr/bin/mysqldump", "-uroot", "cattle"), manager.dbDumpProcessBuilder().command());
     }
 
     @Test
     public void postgresCommandsRemainCompatible() {
         HaConfigManager manager = new HaConfigManager(new StubHaConfigSettings("postgres"));
 
-        assertEquals(Arrays.asList("psql", "cattle", "cattle", "-t", "-q", "-c",
+        assertEquals(Arrays.asList("/usr/bin/psql", "cattle", "cattle", "-t", "-q", "-c",
                 "SELECT pg_database_size('cattle')/power(1024,2)"),
                 manager.dbSizeProcessBuilder().command());
-        assertEquals(Arrays.asList("pg_dump", "-Fc", "-Ucattle", "cattle"), manager.dbDumpProcessBuilder().command());
+        assertEquals(Arrays.asList("/usr/bin/pg_dump", "-Fc", "-Ucattle", "cattle"), manager.dbDumpProcessBuilder().command());
     }
 
     @Test
     public void unknownDbTypeKeepsPostgresFallbackBehavior() {
         HaConfigManager manager = new HaConfigManager(new StubHaConfigSettings("sqlite"));
 
-        assertEquals("psql", manager.dbSizeProcessBuilder().command().get(0));
-        assertEquals("pg_dump", manager.dbDumpProcessBuilder().command().get(0));
+        assertEquals("/usr/bin/psql", manager.dbSizeProcessBuilder().command().get(0));
+        assertEquals("/usr/bin/pg_dump", manager.dbDumpProcessBuilder().command().get(0));
     }
 
     private static class StubHaConfigSettings implements HaConfigSettings {

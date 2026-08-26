@@ -6,9 +6,13 @@ import static org.junit.Assert.assertTrue;
 import java.io.File;
 import java.io.FileWriter;
 import java.lang.management.ManagementFactory;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.UUID;
 
 import javax.management.MBeanServer;
 import javax.management.ObjectName;
@@ -36,7 +40,9 @@ public class JmxTransCompatibilityPublisherTest {
 
     @Test
     public void parserReadsLegacyJmxtransJsonShape() throws Exception {
-        File file = File.createTempFile("rc16-jmx", ".json");
+        Path testDirectory = Paths.get("target", "security-test-files");
+        Files.createDirectories(testDirectory);
+        File file = testDirectory.resolve("jmx-" + UUID.randomUUID() + ".json").toFile();
         try {
             FileWriter writer = new FileWriter(file);
             try {
