@@ -1,6 +1,16 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
-import cattle
+import sys
+from pathlib import Path
+
+
+CLIENT_DIR = (
+    Path(__file__).resolve().parents[2] / "tests" / "integration-client"
+)
+sys.path.insert(0, str(CLIENT_DIR))
+
+import cattle  # noqa: E402
+
 
 def find_instance(instance):
     hosts = instance.hosts()
@@ -8,11 +18,14 @@ def find_instance(instance):
         return hosts[0].agent().uuid == 'test-agent'
     return False
 
+
 client = cattle.from_env()
 
 UUID = 'docker0-agent-instance-provider'
 nsp = client.list_network_service_provider(uuid=UUID)[0]
-instances = filter(find_instance, nsp.instances())
+instances = [
+    instance for instance in nsp.instances() if find_instance(instance)
+]
 
 if len(instances) != 1:
     raise Exception('Found {} instances, expect 1.  Try running a container'
@@ -26,7 +39,7 @@ for cred in account.credentials():
         found = True
 
 if not found:
-    print 'Creating credential for account', account.id
+    print("Creating credential for account", account.id)
     client.create_credential(accountId=account.id,
                              publicValue='ai',
                              secretValue='aipass',

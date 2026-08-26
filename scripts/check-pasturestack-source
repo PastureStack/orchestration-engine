@@ -113,6 +113,22 @@ require_line tests/integration/requirements.txt 'requests==2.34.2'
 require_line tests/integration-v1/requirements.txt 'PyJWT==2.13.0'
 require_line tests/integration-v1/requirements.txt 'pytest==9.1.1'
 require_line tests/integration-v1/requirements.txt 'requests==2.34.2'
+for integration_requirements in \
+    tests/integration/requirements.txt \
+    tests/integration-v1/requirements.txt; do
+    if grep -Eq '(^cattle==|rancher/(gdapi-python)|gdapi-python==)' \
+        "$integration_requirements"; then
+        fail "retired_integration_client:${integration_requirements}"
+    fi
+done
+require_line tests/integration/tox.ini 'setenv=PYTHONPATH={toxinidir}/../integration-client'
+require_line tests/integration-v1/tox.ini 'setenv=PYTHONPATH={toxinidir}/../integration-client'
+require_text tests/integration-client/README.md 'The retired CLI and table'
+require_text tests/integration-client/gdapi.py 'DEFAULT_REQUEST_TIMEOUT = 60'
+require_text tests/integration-client/cattle.py 'class Client(gdapi.Client):'
+test -f tests/integration-client/LICENSE.txt || fail missing_integration_client_license
+require_line tools/development/setup_test_agent.py '#!/usr/bin/env python3'
+require_text tools/development/setup_test_agent.py 'tests" / "integration-client"'
 require_line scripts/build '    MAVEN_ARGS="$MAVEN_ARGS" SOURCE_DATE_EPOCH="$SOURCE_DATE_EPOCH" \'
 require_line scripts/build '        scripts/install-patched-hazelcast "$maven_cmd"'
 require_line scripts/build '    PATH="${JAVA_HOME}/bin:${PATH}"'
