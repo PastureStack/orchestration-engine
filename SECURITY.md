@@ -37,7 +37,8 @@ Only artifacts referenced by a published PastureStack release and its checksum m
   they are not authentication factors.
 - Do not commit credentials, private endpoints, production data, certificates, or captured traffic.
 - Ubuntu base images, test-service images, direct APT packages, Temurin, Maven, and the Maven wrapper are locked by digest, snapshot, exact version, or checksum as appropriate. Docker BuildKit checksum-verifies the official Ubuntu CA package before it is used to bootstrap HTTPS; every APT index and package is then fetched from the explicitly dated HTTPS snapshot with signed repository metadata required. Refresh each lock only with a complete build, test, SBOM, and vulnerability review.
-- Spring remains on the supported `6.2` compatibility line. Spring `7` is a separate migration because it changes the runtime compatibility boundary and is not part of a supply-chain-only update.
+- The build and Dapper images compile Docker CLI `29.7.2` from its official `v29.7.2` tag commit `a7dcaa6fdb6ed04aacbfdc76357fdae01605609e` with Go `1.27.0`. The source archive and Go builder image are checksum or digest pinned; the precompiled Docker CLI containing the vulnerable Go `1.26.5` standard library is rejected.
+- Spring `6` and older compatibility paths are blocked. The maintained JDK 25 / Jakarta runtime uses Spring Framework `7.0.9`.
 
 ## Reporting
 

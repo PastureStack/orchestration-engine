@@ -36,19 +36,19 @@ for jar in \
     slf4j-api-2.0.18.jar \
     log4j-over-slf4j-2.0.18.jar \
     jcl-over-slf4j-2.0.18.jar \
-    logback-classic-1.5.34.jar \
-    logback-core-1.5.34.jar \
+    logback-classic-1.6.3.jar \
+    logback-core-1.6.3.jar \
     metrics-core-4.2.39.jar \
     metrics-jakarta-servlets-4.2.39.jar; do
     touch_jar "$positive_root" "$jar"
 done
-namespace_jar "$positive_root" jackson-core-2.22.1.jar \
+namespace_jar "$positive_root" jackson-core-2.22.2.jar \
     com/fasterxml/jackson/core/ReviewedJackson2.class
-namespace_jar "$positive_root" jackson-core-3.2.1.jar \
+namespace_jar "$positive_root" jackson-core-3.2.2.jar \
     tools/jackson/core/ReviewedJackson3.class
-namespace_jar "$positive_root" jackson-databind-2.22.1.jar \
+namespace_jar "$positive_root" jackson-databind-2.22.2.jar \
     com/fasterxml/jackson/databind/ReviewedJackson2.class
-namespace_jar "$positive_root" jackson-databind-3.2.1.jar \
+namespace_jar "$positive_root" jackson-databind-3.2.2.jar \
     tools/jackson/databind/ReviewedJackson3.class
 
 positive_output="$workdir/positive.log"
@@ -69,9 +69,9 @@ for expected in \
 done
 
 jackson_negative_root="$workdir/jackson-negative"
-namespace_jar "$jackson_negative_root" jackson-core-2.22.1.jar \
+namespace_jar "$jackson_negative_root" jackson-core-2.22.2.jar \
     com/fasterxml/jackson/core/ReviewedJackson2.class
-namespace_jar "$jackson_negative_root" jackson-core-3.2.1.jar \
+namespace_jar "$jackson_negative_root" jackson-core-3.2.2.jar \
     com/fasterxml/jackson/core/UnexpectedJackson3.class
 jackson_negative_output="$workdir/jackson-negative.log"
 set +e
@@ -102,7 +102,7 @@ for jar in \
     javax.annotation-api-1.3.2.jar \
     slf4j-api-2.0.18.jar \
     slf4j-api-2.0.19.jar \
-    logback-classic-1.5.34.jar \
+    logback-classic-1.6.3.jar \
     slf4j-simple-2.0.18.jar \
     metrics-jakarta-servlets-4.2.39.jar \
     metrics-servlets-4.2.39.jar; do

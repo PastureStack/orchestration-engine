@@ -1,3 +1,17 @@
+FROM golang:1.27.0-bookworm@sha256:484ef6066fa69acb059fdfeda7ba2b8f7391f2ef6abc6f9b8411e669ebd56466 AS docker-cli-build
+
+ARG DOCKER_VERSION=29.7.2
+ARG DOCKER_CLI_COMMIT=a7dcaa6fdb6ed04aacbfdc76357fdae01605609e
+ADD --checksum=sha256:6e5c91d3a5a79db78cf989d07727d00e757aa0da4d135a3ce4b86061b83fb511 https://codeload.github.com/docker/cli/tar.gz/a7dcaa6fdb6ed04aacbfdc76357fdae01605609e /tmp/docker-cli.tar.gz
+RUN set -eux; \
+    mkdir -p /go/src/github.com/docker/cli; \
+    tar -xzf /tmp/docker-cli.tar.gz -C /go/src/github.com/docker/cli --strip-components=1; \
+    cd /go/src/github.com/docker/cli; \
+    test "$(cat VERSION)" = "${DOCKER_VERSION}"; \
+    CGO_ENABLED=0 GO_STRIP=1 VERSION="${DOCKER_VERSION}" GITCOMMIT="${DOCKER_CLI_COMMIT}" SOURCE_DATE_EPOCH=1785922455 ./scripts/build/binary; \
+    test -x build/docker-linux-amd64; \
+    build/docker-linux-amd64 --version | grep -F "Docker version ${DOCKER_VERSION}"
+
 FROM ubuntu:26.04@sha256:678c6550cc43645e08669028bc177f50be4e7c5b8cca677067b1914d4afc7a03
 
 COPY ubuntu-apt.lock /licenses/ubuntu-apt.lock
@@ -9,7 +23,6 @@ ARG TEMURIN_JDK25_SHA256=e58fcdcd637b25c03ca84cbbcefc70d11efb8f4b4cbd05decc9f661
 ARG MAVEN_VERSION=3.9.16
 ARG MAVEN_SHA512=831a8591fe20c8243b1dbe7d71e3244f31d1665b0804b2e825e38cbbe5ce0cafb8338851f90780735568773e0a6cd07bbec107cda0b896b008b861075358b6f6
 ARG DOCKER_VERSION=29.7.2
-ARG DOCKER_SHA256_AMD64=803d433f226db4776e1768fd319fc6c6e4935a456acf84fcc0080818b854bc8f
 ENV JAVA_HOME=/opt/java/openjdk
 ENV MAVEN_HOME=/opt/apache-maven
 ENV PATH=${JAVA_HOME}/bin:${MAVEN_HOME}/bin:${PATH}
@@ -60,6 +73,8 @@ RUN set -eux; \
     apt-get clean; \
     rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* /usr/bin/pebble
 
+COPY --from=docker-cli-build /go/src/github.com/docker/cli/build/docker-linux-amd64 /usr/bin/docker
+
 RUN mkdir -p ${JAVA_HOME} /usr/lib/jvm && \
     curl -fsSL --retry 5 --retry-all-errors --retry-delay 2 --connect-timeout 10 --max-time 600 -o /tmp/temurin-jdk25.tar.gz "${TEMURIN_JDK25_URL}" && \
     echo "${TEMURIN_JDK25_SHA256}  /tmp/temurin-jdk25.tar.gz" | sha256sum -c - && \
@@ -72,10 +87,6 @@ RUN mkdir -p ${JAVA_HOME} /usr/lib/jvm && \
     tar -xzf /tmp/apache-maven.tar.gz -C ${MAVEN_HOME} --strip-components=1 && \
     rm -f /tmp/apache-maven.tar.gz && \
     test "$(find ${MAVEN_HOME}/lib -maxdepth 1 -name 'plexus-utils-*.jar' -printf '%f\n')" = 'plexus-utils-3.6.1.jar' && \
-    curl -fsSL --retry 5 --retry-all-errors --retry-delay 2 --connect-timeout 10 --max-time 600 -o /tmp/docker.tgz "https://download.docker.com/linux/static/stable/x86_64/docker-${DOCKER_VERSION}.tgz" && \
-    echo "${DOCKER_SHA256_AMD64}  /tmp/docker.tgz" | sha256sum -c - && \
-    tar xzf /tmp/docker.tgz -C /usr/bin --strip-components=1 docker/docker && \
-    rm -f /tmp/docker.tgz && \
     chmod +x /usr/bin/docker && \
     java -version 2>&1 | grep -F '25.0.4' && \
     mvn -version | grep -F 'Apache Maven 3.9.16' && \

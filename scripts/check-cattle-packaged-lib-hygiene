@@ -44,7 +44,7 @@ blocked = {
 
 explicit_allowed = {
     "commons-beanutils2-2.0.0-M2.jar",
-    "commons-collections4-4.5.0.jar",
+    "commons-collections4-4.6.0.jar",
     "log4j-over-slf4j-2.0.18.jar",
 }
 
