@@ -270,7 +270,7 @@ public class TokenResourceManager extends AbstractNoOpResourceManager {
 
         request.setResponseCode(ResponseCodes.NO_CONTENT);
         HttpServletResponse response = request.getServletContext().getResponse();
-        String cookieString="token=;Path=/;Expires=Thu, 01 Jan 1970 00:00:00 GMT;";
+        String cookieString="token=;Path=/;Expires=Thu, 01 Jan 1970 00:00:00 GMT;Max-Age=0;Secure;HttpOnly;SameSite=Lax";
         response.addHeader("Set-Cookie", cookieString);
         request.getServletContext().setResponse(response);
         if(authTokenDao.deleteToken(jwt)) {

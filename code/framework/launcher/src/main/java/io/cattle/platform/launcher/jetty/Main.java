@@ -172,7 +172,7 @@ public class Main {
             s.setHandler(context);
             s.start();
 
-            CONSOLE_LOG.info("[DONE ] [{}ms] Startup Succeeded, Listening on port {}", (System.currentTimeMillis() - start), getHttpPort());
+            CONSOLE_LOG.info("[DONE ] [{}ms] Startup succeeded", (System.currentTimeMillis() - start));
 
             for (int i = 0; i < args.length; i++) {
                 String arg = args[i];

@@ -46,6 +46,10 @@ import freemarker.template.TemplateException;
 public class HaConfigManager extends AbstractNoOpResourceManager {
 
     private static final HaConfigSettings DEFAULT_SETTINGS = ArchaiusHaConfigSettings.create();
+    private static final String MYSQL_CLIENT = "/usr/bin/mysql";
+    private static final String MYSQL_DUMP = "/usr/bin/mysqldump";
+    private static final String POSTGRES_CLIENT = "/usr/bin/psql";
+    private static final String POSTGRES_DUMP = "/usr/bin/pg_dump";
 
     @Inject
     Aes256Encrypter encrypter;
@@ -174,9 +178,9 @@ public class HaConfigManager extends AbstractNoOpResourceManager {
 
     protected ProcessBuilder dbSizeProcessBuilder() {
         return "mysql".equals(settings.dbType())
-                ? new ProcessBuilder("mysql", "--skip-column-names", "-s", "-uroot", "-e",
+                ? new ProcessBuilder(MYSQL_CLIENT, "--skip-column-names", "-s", "-uroot", "-e",
                 "SELECT SUM(data_length)/power(1024,2) AS dbsize_mb FROM information_schema.tables WHERE table_schema='cattle' GROUP BY table_schema;")
-                : new ProcessBuilder("psql", "cattle", "cattle", "-t", "-q", "-c",
+                : new ProcessBuilder(POSTGRES_CLIENT, "cattle", "cattle", "-t", "-q", "-c",
                 "SELECT pg_database_size('cattle')/power(1024,2)");
     }
 
@@ -215,8 +219,8 @@ public class HaConfigManager extends AbstractNoOpResourceManager {
 
     protected ProcessBuilder dbDumpProcessBuilder() {
         return "mysql".equals(settings.dbType())
-                ? new ProcessBuilder("mysqldump", "-uroot", "cattle")
-                : new ProcessBuilder("pg_dump", "-Fc", "-Ucattle", "cattle");
+                ? new ProcessBuilder(MYSQL_DUMP, "-uroot", "cattle")
+                : new ProcessBuilder(POSTGRES_DUMP, "-Fc", "-Ucattle", "cattle");
     }
 
     @PostConstruct

@@ -93,7 +93,7 @@ public class SimulatorConfigUpdateProcessor implements AgentSimulatorEventProces
 
                 if (entry.getName().endsWith("/version")) {
                     version = IOUtils.toString(tar, Charset.defaultCharset()).trim();
-                    log.info("Simulator found version [{}] for [{}]", version, item.getName());
+                    log.info("Simulator found a version marker in the configuration archive");
                 }
             }
 
@@ -101,7 +101,7 @@ public class SimulatorConfigUpdateProcessor implements AgentSimulatorEventProces
                 throw new IllegalStateException("Failed to find versions for [" + item.getName() + "]");
             }
 
-            log.info("Simulator POSTing version [{}] for [{}]", version, item.getName());
+            log.info("Simulator posting the validated configuration version");
             HttpURLConnection conn = (HttpURLConnection) getConnection(contentUrl + "?version=" + version, auth);
             conn.setRequestMethod("PUT");
             IOUtils.closeQuietly(is);

@@ -7,6 +7,10 @@ import java.io.InputStream;
 import java.net.URL;
 import java.net.URLConnection;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.UUID;
 import java.util.jar.JarEntry;
 import java.util.jar.JarOutputStream;
 
@@ -16,7 +20,9 @@ public class JarInJarHandlerTest {
 
     @Test
     public void createsSelfContainedInJarUrlWithoutGlobalFactory() throws Exception {
-        File jar = File.createTempFile("cattle-launcher-", ".jar");
+        Path testDirectory = Paths.get("target", "security-test-files");
+        Files.createDirectories(testDirectory);
+        File jar = testDirectory.resolve("launcher-" + UUID.randomUUID() + ".jar").toFile();
         jar.deleteOnExit();
 
         try (JarOutputStream out = new JarOutputStream(java.nio.file.Files.newOutputStream(jar.toPath()))) {
