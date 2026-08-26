@@ -70,19 +70,19 @@ public class ServiceDiscoveryUtilBalancerDefaultsTest {
     @Test
     public void digestPinnedBalancerImagePreservesTagVersion() {
         Pair<String, String> parsed = ServiceDiscoveryUtil.getImageAndVersion(
-                "docker:ghcr.io/pasturestack/load-balancer-service:v0.9.23@sha256:"
+                "docker:ghcr.io/pasturestack/load-balancer-service:v0.9.27@sha256:"
                         + "3139b2a54688e4e34b24df943a36a2ed1eecc26d53c0ab329bf7ffcb62cdb893");
 
         assertEquals("pasturestack/load-balancer-service", parsed.getLeft());
-        assertEquals("v0.9.23", parsed.getRight());
+        assertEquals("v0.9.27", parsed.getRight());
     }
 
     @Test
     public void registryPortDoesNotReplaceImageTag() {
         Pair<String, String> parsed = ServiceDiscoveryUtil.getImageAndVersion(
-                "docker:registry.example.test:5443/pasturestack/load-balancer-service:v0.9.23");
+                "docker:registry.example.test:5443/pasturestack/load-balancer-service:v0.9.27");
 
         assertEquals("pasturestack/load-balancer-service", parsed.getLeft());
-        assertEquals("v0.9.23", parsed.getRight());
+        assertEquals("v0.9.27", parsed.getRight());
     }
 }
