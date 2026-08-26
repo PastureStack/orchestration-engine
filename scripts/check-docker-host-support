@@ -24,8 +24,16 @@ require_line "$defaults" 'newest.docker.version=v29.7.2'
 require_line Makefile 'DOCKER_VERSION ?= 29.7.2'
 require_line Dockerfile 'ARG DOCKER_VERSION=29.7.2'
 require_line Dockerfile.dapper 'ARG DOCKER_VERSION=29.7.2'
-require_line Dockerfile 'ARG DOCKER_SHA256_AMD64=803d433f226db4776e1768fd319fc6c6e4935a456acf84fcc0080818b854bc8f'
-require_line Dockerfile.dapper 'ARG DOCKER_SHA256_AMD64=803d433f226db4776e1768fd319fc6c6e4935a456acf84fcc0080818b854bc8f'
+require_line Dockerfile 'FROM golang:1.27.0-bookworm@sha256:484ef6066fa69acb059fdfeda7ba2b8f7391f2ef6abc6f9b8411e669ebd56466 AS docker-cli-build'
+require_line Dockerfile.dapper 'FROM golang:1.27.0-bookworm@sha256:484ef6066fa69acb059fdfeda7ba2b8f7391f2ef6abc6f9b8411e669ebd56466 AS docker-cli-build'
+require_line Dockerfile 'ARG DOCKER_CLI_COMMIT=a7dcaa6fdb6ed04aacbfdc76357fdae01605609e'
+require_line Dockerfile.dapper 'ARG DOCKER_CLI_COMMIT=a7dcaa6fdb6ed04aacbfdc76357fdae01605609e'
+require_line Dockerfile 'ADD --checksum=sha256:6e5c91d3a5a79db78cf989d07727d00e757aa0da4d135a3ce4b86061b83fb511 https://codeload.github.com/docker/cli/tar.gz/a7dcaa6fdb6ed04aacbfdc76357fdae01605609e /tmp/docker-cli.tar.gz'
+require_line Dockerfile.dapper 'ADD --checksum=sha256:6e5c91d3a5a79db78cf989d07727d00e757aa0da4d135a3ce4b86061b83fb511 https://codeload.github.com/docker/cli/tar.gz/a7dcaa6fdb6ed04aacbfdc76357fdae01605609e /tmp/docker-cli.tar.gz'
+
+if grep -Fq 'download.docker.com/linux/static/stable' Dockerfile Dockerfile.dapper; then
+    fail vulnerable_prebuilt_docker_cli
+fi
 
 if grep -Eq 'supported\.docker\.range=.*(~v24|~v29|v2[5-8]\.)' "$defaults"; then
     fail broad_untested_modern_range

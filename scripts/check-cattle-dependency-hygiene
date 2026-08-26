@@ -92,7 +92,7 @@ FLOORS = {
     ("org.apache.commons", "commons-compress"): ((1, 28, 0, 999), "1.28.0", "Commons Compress", (1,)),
     ("org.apache.commons", "commons-text"): ((1, 15, 0, 999), "1.15.0", "Commons Text", (1,)),
     ("org.apache.commons", "commons-lang3"): ((3, 20, 0, 999), "3.20.0", "Commons Lang3", (3,)),
-    ("org.apache.commons", "commons-collections4"): ((4, 5, 0, 999), "4.5.0", "Commons Collections4", (4,)),
+    ("org.apache.commons", "commons-collections4"): ((4, 6, 0, 999), "4.6.0", "Commons Collections4", (4,)),
     ("org.apache.commons", "commons-beanutils2"): ((2, 0, 0, 2), "2.0.0-M2", "Commons BeanUtils2", (2,)),
     ("org.apache.commons", "commons-fileupload2-jakarta-servlet6"): ((2, 0, 0, 5), "2.0.0-M5", "Commons FileUpload2 Jakarta Servlet6", (2,)),
 }
@@ -171,7 +171,7 @@ sys.exit(0)
 PY
 )
 if [ -n "$commons_core_floor_dependencies" ]; then
-    echo "Blocked Commons core dependency outside reviewed floors found in Maven POMs; keep Commons IO 2.22.0+, Compress 1.28.0+, Text 1.15.0+, Lang3 3.20.0+, Collections4 4.5.0+, BeanUtils2 2.0.0-M2+, and FileUpload2 Jakarta Servlet6 2.0.0-M5+" >&2
+    echo "Blocked Commons core dependency outside reviewed floors found in Maven POMs; keep Commons IO 2.22.0+, Compress 1.28.0+, Text 1.15.0+, Lang3 3.20.0+, Collections4 4.6.0+, BeanUtils2 2.0.0-M2+, and FileUpload2 Jakarta Servlet6 2.0.0-M5+" >&2
     echo "$commons_core_floor_dependencies" >&2
     fail=1
 fi
@@ -444,8 +444,12 @@ import xml.etree.ElementTree as ET
 from pathlib import Path
 
 NS = {"m": "http://maven.apache.org/POM/4.0.0"}
-FLOOR = (1, 85, 0)
-FLOOR_TEXT = "1.85"
+DEFAULT_FLOOR = ((1, 85, 0), "1.85")
+FLOORS = {
+    "bcprov-jdk18on": ((1, 85, 2), "1.85.2"),
+    "bcpkix-jdk18on": ((1, 85, 0), "1.85"),
+    "bcutil-jdk18on": ((1, 85, 0), "1.85"),
+}
 REVIEWED_LINE = (1,)
 UNREVIEWED_QUALIFIER = re.compile(r"(?:^|[.-])(alpha|beta|snapshot|rc|b\d+|m\d+|mr)(?:[.-]|\d|$)", re.IGNORECASE)
 
@@ -490,14 +494,15 @@ for pom in sorted(Path(".").rglob("pom.xml")):
         version = (dep.findtext("m:version", default="", namespaces=NS) or "").strip()
         if group != "org.bouncycastle" or not artifact.endswith("-jdk18on"):
             continue
+        floor, floor_text = FLOORS.get(artifact, DEFAULT_FLOOR)
         resolved = resolve_property(version, properties)
         parsed = parse_version(resolved)
         if parsed is not None and parsed[:len(REVIEWED_LINE)] != REVIEWED_LINE:
             display_version = version if version == resolved else f"{version}={resolved}"
             failures.append(f"{pom}: {group}:{artifact}:{display_version} is outside the reviewed BC-JAVA 1.x compatibility line")
-        elif parsed is not None and parsed < FLOOR:
+        elif parsed is not None and parsed < floor:
             display_version = version if version == resolved else f"{version}={resolved}"
-            failures.append(f"{pom}: {group}:{artifact}:{display_version} < {FLOOR_TEXT}")
+            failures.append(f"{pom}: {group}:{artifact}:{display_version} < {floor_text}")
         elif parsed is not None and UNREVIEWED_QUALIFIER.search(resolved):
             display_version = version if version == resolved else f"{version}={resolved}"
             failures.append(f"{pom}: {group}:{artifact}:{display_version} uses an unreviewed qualifier")
@@ -507,7 +512,7 @@ sys.exit(0)
 PY
 )
 if [ -n "$bouncycastle_jdk18on_security_floor_dependencies" ]; then
-    echo "Blocked Bouncy Castle jdk18on dependency outside the reviewed stable line found in Maven POMs; keep BC-JAVA 1.85+ on the reviewed 1.x line for current CVE fixes" >&2
+    echo "Blocked Bouncy Castle jdk18on dependency outside the reviewed stable line found in Maven POMs; keep each artifact at its latest published floor (bcprov 1.85.2, bcpkix/bcutil 1.85)" >&2
     echo "$bouncycastle_jdk18on_security_floor_dependencies" >&2
     fail=1
 fi
@@ -520,8 +525,8 @@ import xml.etree.ElementTree as ET
 from pathlib import Path
 
 NS = {"m": "http://maven.apache.org/POM/4.0.0"}
-FLOOR = (5, 0, 3)
-FLOOR_TEXT = "5.0.3"
+FLOOR = (5, 0, 4)
+FLOOR_TEXT = "5.0.4"
 REVIEWED_LINE = (5,)
 UNREVIEWED_QUALIFIER = re.compile(r"(?:^|[.-])(alpha|beta|snapshot|rc|b\d+|m\d+|mr)(?:[.-]|\d|$)", re.IGNORECASE)
 
@@ -583,7 +588,7 @@ sys.exit(0)
 PY
 )
 if [ -n "$liquibase_core_security_floor_dependencies" ]; then
-    echo "Blocked Liquibase Core dependency outside the reviewed stable line found in Maven POMs; keep Liquibase 5.0.3+ on the reviewed 5.x line for current security fixes" >&2
+    echo "Blocked Liquibase Core dependency outside the reviewed stable line found in Maven POMs; keep Liquibase 5.0.4+ on the reviewed 5.x line for current security fixes" >&2
     echo "$liquibase_core_security_floor_dependencies" >&2
     fail=1
 fi
@@ -1207,8 +1212,8 @@ import xml.etree.ElementTree as ET
 from pathlib import Path
 
 NS = {"m": "http://maven.apache.org/POM/4.0.0"}
-FLOOR = (33, 6, 0)
-FLOOR_TEXT = "33.6.0-jre"
+FLOOR = (33, 7, 1)
+FLOOR_TEXT = "33.7.1-jre"
 LINE = (33,)
 UNREVIEWED_QUALIFIER = re.compile(r"(?:^|[.-])(alpha|beta|snapshot|rc|b\d+|m\d+|mr|milestone)(?:[.-]|\d|$)", re.IGNORECASE)
 
@@ -1284,7 +1289,7 @@ sys.exit(0)
 PY
 )
 if [ -n "$guava_stable_line_dependencies" ]; then
-    echo "Blocked Guava dependency outside the reviewed stable JRE line found in Maven POMs; keep Guava on stable 33.x at 33.6.0-jre+ without unreviewed qualifiers" >&2
+    echo "Blocked Guava dependency outside the reviewed stable JRE line found in Maven POMs; keep Guava on stable 33.x at 33.7.1-jre+ without unreviewed qualifiers" >&2
     echo "$guava_stable_line_dependencies" >&2
     fail=1
 fi
@@ -1484,9 +1489,9 @@ import xml.etree.ElementTree as ET
 from pathlib import Path
 
 NS = {"m": "http://maven.apache.org/POM/4.0.0"}
-FLOOR = (1, 5, 34)
-FLOOR_TEXT = "1.5.34"
-REVIEWED_LINE = (1, 5)
+FLOOR = (1, 6, 3)
+FLOOR_TEXT = "1.6.3"
+REVIEWED_LINE = (1, 6)
 BLOCKED_ARTIFACTS = {"logback-classic", "logback-core"}
 UNREVIEWED_QUALIFIER = re.compile(r"(?:^|[.-])(alpha|beta|snapshot|rc|b\d+|m\d+|mr)(?:[.-]|\d|$)", re.IGNORECASE)
 
@@ -1534,7 +1539,7 @@ for pom in sorted(Path(".").rglob("pom.xml")):
         parsed = parse_version(resolved)
         if parsed is not None and parsed[:len(REVIEWED_LINE)] != REVIEWED_LINE:
             display_version = version if version == resolved else f"{version}={resolved}"
-            failures.append(f"{pom}: {group}:{artifact}:{display_version} is outside the reviewed Logback 1.5.x runtime line")
+            failures.append(f"{pom}: {group}:{artifact}:{display_version} is outside the reviewed Logback 1.6.x runtime line")
         elif parsed is not None and parsed < FLOOR:
             display_version = version if version == resolved else f"{version}={resolved}"
             failures.append(f"{pom}: {group}:{artifact}:{display_version} < {FLOOR_TEXT}")
@@ -1547,7 +1552,7 @@ sys.exit(0)
 PY
 )
 if [ -n "$logback_security_floor_dependencies" ]; then
-    echo "Blocked Logback dependency outside the reviewed stable line found in Maven POMs; keep Logback 1.5.34+ on the reviewed 1.5.x runtime line for current CVE fixes" >&2
+    echo "Blocked Logback dependency outside the reviewed stable line found in Maven POMs; keep Logback 1.6.3+ on the reviewed 1.6.x runtime line for current CVE fixes" >&2
     echo "$logback_security_floor_dependencies" >&2
     fail=1
 fi
@@ -1754,7 +1759,7 @@ FLOORS = {
     ("org.codehaus.janino", "janino"): ((3, 1, 12), "3.1.12", "Janino", (3,)),
     ("org.codehaus.janino", "commons-compiler"): ((3, 1, 12), "3.1.12", "Janino commons-compiler", (3,)),
     ("org.javassist", "javassist"): ((3, 32, 0), "3.32.0-GA", "Javassist", (3,)),
-    ("net.logstash.logback", "logstash-logback-encoder"): ((8, 1, 0), "8.1", "logstash-logback-encoder", (8,)),
+    ("net.logstash.logback", "logstash-logback-encoder"): ((9, 0, 0), "9.0", "logstash-logback-encoder", (9,)),
 }
 UNREVIEWED_QUALIFIER = re.compile(r"(?:^|[.-])(alpha|beta|snapshot|rc|b\d+|m\d+|mr)(?:[.-]|\d|$)", re.IGNORECASE)
 
@@ -1821,7 +1826,7 @@ sys.exit(0)
 PY
 )
 if [ -n "$helper_runtime_floor_dependencies" ]; then
-    echo "Blocked helper runtime dependency outside reviewed stable lines found in Maven POMs; keep AspectJ 1.9.25+, Janino 3.1.12+, Javassist 3.32.0-GA+, and logstash-logback-encoder on the Jackson 2-compatible 8.x line at 8.1+ without unreviewed qualifiers" >&2
+    echo "Blocked helper runtime dependency outside reviewed stable lines found in Maven POMs; keep AspectJ 1.9.25+, Janino 3.1.12+, Javassist 3.32.0-GA+, and logstash-logback-encoder on the Jackson 3-compatible 9.x line at 9.0+ without unreviewed qualifiers" >&2
     echo "$helper_runtime_floor_dependencies" >&2
     fail=1
 fi
@@ -4093,7 +4098,7 @@ FLOORS = {
     "commons-compress": ((1, 28, 0, 999), "1.28.0", (1,), re.compile(r"^commons-compress-([^/]+)\.jar$")),
     "commons-text": ((1, 15, 0, 999), "1.15.0", (1,), re.compile(r"^commons-text-([^/]+)\.jar$")),
     "commons-lang3": ((3, 20, 0, 999), "3.20.0", (3,), re.compile(r"^commons-lang3-([^/]+)\.jar$")),
-    "commons-collections4": ((4, 5, 0, 999), "4.5.0", (4,), re.compile(r"^commons-collections4-([^/]+)\.jar$")),
+    "commons-collections4": ((4, 6, 0, 999), "4.6.0", (4,), re.compile(r"^commons-collections4-([^/]+)\.jar$")),
     "commons-beanutils2": ((2, 0, 0, 2), "2.0.0-M2", (2,), re.compile(r"^commons-beanutils2-([^/]+)\.jar$")),
     "commons-fileupload2-jakarta-servlet6": ((2, 0, 0, 5), "2.0.0-M5", (2,), re.compile(r"^commons-fileupload2-jakarta-servlet6-([^/]+)\.jar$")),
 }
@@ -4150,7 +4155,7 @@ sys.exit(0)
 PY
 )
 if [ -n "$commons_core_floor_jars" ]; then
-    echo "Blocked Commons core jar outside reviewed floors packaged in app; keep Commons IO 2.22.0+, Compress 1.28.0+, Text 1.15.0+, Lang3 3.20.0+, Collections4 4.5.0+, BeanUtils2 2.0.0-M2+, and FileUpload2 Jakarta Servlet6 2.0.0-M5+" >&2
+    echo "Blocked Commons core jar outside reviewed floors packaged in app; keep Commons IO 2.22.0+, Compress 1.28.0+, Text 1.15.0+, Lang3 3.20.0+, Collections4 4.6.0+, BeanUtils2 2.0.0-M2+, and FileUpload2 Jakarta Servlet6 2.0.0-M5+" >&2
     echo "$commons_core_floor_jars" >&2
     fail=1
 fi
@@ -4234,7 +4239,12 @@ import re
 import sys
 from pathlib import Path
 
-FLOOR = (1, 85, 0)
+DEFAULT_FLOOR = ((1, 85, 0), "1.85")
+FLOORS = {
+    "bcprov-jdk18on": ((1, 85, 2), "1.85.2"),
+    "bcpkix-jdk18on": ((1, 85, 0), "1.85"),
+    "bcutil-jdk18on": ((1, 85, 0), "1.85"),
+}
 REVIEWED_LINE = (1,)
 UNREVIEWED_QUALIFIER = re.compile(r"(?:^|[.-])(alpha|beta|snapshot|rc|b\d+|m\d+|mr)(?:[.-]|\d|$)", re.IGNORECASE)
 root = Path("code/packaging/app/target")
@@ -4259,13 +4269,14 @@ if root.exists():
         if not match:
             continue
         artifact, version_text = match.groups()
+        floor, floor_text = FLOORS.get(artifact, DEFAULT_FLOOR)
         version = parse_version(version_text)
         if version is None:
             failures.append(f"{path}: {artifact} has an unparsable version")
         elif version[:len(REVIEWED_LINE)] != REVIEWED_LINE:
             failures.append(f"{path}: {artifact} is outside the reviewed BC-JAVA 1.x compatibility line")
-        elif version < FLOOR:
-            failures.append(f"{path}: {artifact} < 1.85")
+        elif version < floor:
+            failures.append(f"{path}: {artifact} < {floor_text}")
         elif UNREVIEWED_QUALIFIER.search(version_text):
             failures.append(f"{path}: {artifact} uses an unreviewed qualifier")
 
@@ -4274,7 +4285,7 @@ sys.exit(0)
 PY
 )
 if [ -n "$bouncycastle_jdk18on_security_floor_jars" ]; then
-    echo "Blocked Bouncy Castle jdk18on jar outside the reviewed stable line packaged in app; keep BC-JAVA 1.85+ on the reviewed 1.x line for current CVE fixes" >&2
+    echo "Blocked Bouncy Castle jdk18on jar outside the reviewed stable line packaged in app; keep each artifact at its latest published floor (bcprov 1.85.2, bcpkix/bcutil 1.85)" >&2
     echo "$bouncycastle_jdk18on_security_floor_jars" >&2
     fail=1
 fi
@@ -4285,7 +4296,7 @@ import re
 import sys
 from pathlib import Path
 
-FLOOR = (5, 0, 3)
+FLOOR = (5, 0, 4)
 REVIEWED_LINE = (5,)
 UNREVIEWED_QUALIFIER = re.compile(r"(?:^|[.-])(alpha|beta|snapshot|rc|b\d+|m\d+|mr)(?:[.-]|\d|$)", re.IGNORECASE)
 root = Path("code/packaging/app/target")
@@ -4316,7 +4327,7 @@ if root.exists():
         elif version[:len(REVIEWED_LINE)] != REVIEWED_LINE:
             failures.append(f"{path}: {artifact} is outside the reviewed Liquibase 5.x compatibility line")
         elif version < FLOOR:
-            failures.append(f"{path}: {artifact} < 5.0.3")
+            failures.append(f"{path}: {artifact} < 5.0.4")
         elif UNREVIEWED_QUALIFIER.search(version_text):
             failures.append(f"{path}: {artifact} uses an unreviewed qualifier")
 
@@ -4325,7 +4336,7 @@ sys.exit(0)
 PY
 )
 if [ -n "$liquibase_core_security_floor_jars" ]; then
-    echo "Blocked Liquibase Core jar outside the reviewed stable line packaged in app; keep Liquibase 5.0.3+ on the reviewed 5.x line for current security fixes" >&2
+    echo "Blocked Liquibase Core jar outside the reviewed stable line packaged in app; keep Liquibase 5.0.4+ on the reviewed 5.x line for current security fixes" >&2
     echo "$liquibase_core_security_floor_jars" >&2
     fail=1
 fi
@@ -4591,8 +4602,8 @@ import re
 import sys
 from pathlib import Path
 
-FLOOR = (33, 6, 0)
-FLOOR_TEXT = "33.6.0-jre"
+FLOOR = (33, 7, 1)
+FLOOR_TEXT = "33.7.1-jre"
 LINE = (33,)
 UNREVIEWED_QUALIFIER = re.compile(r"(?:^|[.-])(alpha|beta|snapshot|rc|b\d+|m\d+|mr|milestone)(?:[.-]|\d|$)", re.IGNORECASE)
 root = Path("code/packaging/app/target")
@@ -4621,7 +4632,7 @@ sys.exit(0)
 PY
 )
 if [ -n "$guava_stable_line_jars" ]; then
-    echo "Blocked Guava jar outside the reviewed stable JRE line packaged in app; keep Guava on stable 33.x at 33.6.0-jre+ without unreviewed qualifiers" >&2
+    echo "Blocked Guava jar outside the reviewed stable JRE line packaged in app; keep Guava on stable 33.x at 33.7.1-jre+ without unreviewed qualifiers" >&2
     echo "$guava_stable_line_jars" >&2
     fail=1
 fi
@@ -4716,9 +4727,9 @@ import re
 import sys
 from pathlib import Path
 
-FLOOR = (1, 5, 34)
-FLOOR_TEXT = "1.5.34"
-REVIEWED_LINE = (1, 5)
+FLOOR = (1, 6, 3)
+FLOOR_TEXT = "1.6.3"
+REVIEWED_LINE = (1, 6)
 UNREVIEWED_QUALIFIER = re.compile(r"(?:^|[.-])(alpha|beta|snapshot|rc|b\d+|m\d+|mr)(?:[.-]|\d|$)", re.IGNORECASE)
 root = Path("code/packaging/app/target")
 failures = []
@@ -4745,7 +4756,7 @@ if root.exists():
         if version is None:
             failures.append(f"{path}: {artifact} has an unparsable version")
         elif version[:len(REVIEWED_LINE)] != REVIEWED_LINE:
-            failures.append(f"{path}: {artifact} is outside the reviewed Logback 1.5.x runtime line")
+            failures.append(f"{path}: {artifact} is outside the reviewed Logback 1.6.x runtime line")
         elif version < FLOOR:
             failures.append(f"{path}: {artifact} < {FLOOR_TEXT}")
         elif UNREVIEWED_QUALIFIER.search(version_text):
@@ -4756,7 +4767,7 @@ sys.exit(0)
 PY
 )
 if [ -n "$logback_security_floor_jars" ]; then
-    echo "Blocked Logback jar outside the reviewed stable line packaged in app; keep Logback 1.5.34+ on the reviewed 1.5.x runtime line for current CVE fixes" >&2
+    echo "Blocked Logback jar outside the reviewed stable line packaged in app; keep Logback 1.6.3+ on the reviewed 1.6.x runtime line for current CVE fixes" >&2
     echo "$logback_security_floor_jars" >&2
     fail=1
 fi
@@ -4856,7 +4867,7 @@ FLOORS = {
     "janino": ((3, 1, 12), "3.1.12", (3,), re.compile(r"^janino-(\d+)\.(\d+)(?:[.-](\d+))?([^/]*)\.jar$")),
     "commons-compiler": ((3, 1, 12), "3.1.12", (3,), re.compile(r"^commons-compiler-(\d+)\.(\d+)(?:[.-](\d+))?([^/]*)\.jar$")),
     "javassist": ((3, 32, 0), "3.32.0-GA", (3,), re.compile(r"^javassist-(\d+)\.(\d+)(?:[.-](\d+))?([^/]*)\.jar$")),
-    "logstash-logback-encoder": ((8, 1, 0), "8.1", (8,), re.compile(r"^logstash-logback-encoder-(\d+)\.(\d+)(?:[.-](\d+))?([^/]*)\.jar$")),
+    "logstash-logback-encoder": ((9, 0, 0), "9.0", (9,), re.compile(r"^logstash-logback-encoder-(\d+)\.(\d+)(?:[.-](\d+))?([^/]*)\.jar$")),
 }
 UNREVIEWED_QUALIFIER = re.compile(r"(?:^|[.-])(alpha|beta|snapshot|rc|b\d+|m\d+|mr)(?:[.-]|\d|$)", re.IGNORECASE)
 root = Path("code/packaging/app/target")
@@ -4888,7 +4899,7 @@ sys.exit(0)
 PY
 )
 if [ -n "$helper_runtime_floor_jars" ]; then
-    echo "Blocked helper runtime jar outside reviewed stable lines packaged in app; keep AspectJ 1.9.25+, Janino 3.1.12+, Javassist 3.32.0-GA+, and logstash-logback-encoder on the Jackson 2-compatible 8.x line at 8.1+ without unreviewed qualifiers" >&2
+    echo "Blocked helper runtime jar outside reviewed stable lines packaged in app; keep AspectJ 1.9.25+, Janino 3.1.12+, Javassist 3.32.0-GA+, and logstash-logback-encoder on the Jackson 3-compatible 9.x line at 9.0+ without unreviewed qualifiers" >&2
     echo "$helper_runtime_floor_jars" >&2
     fail=1
 fi
@@ -6821,14 +6832,14 @@ echo "Resolved in the logging compatibility slice:"
 echo "- Direct Log4j/reload4j dependencies, imports, and packaged runtime jars are blocked; SLF4J bridges feed Logback instead."
 echo "- Direct Commons Logging and competing SLF4J binding dependencies, imports, and packaged jars are blocked; jcl-over-slf4j plus Logback owns legacy JCL bridging."
 echo "- SLF4J API/bridges stay on stable 2.0.x at 2.0.18+; 2.1.0-alpha metadata requires an explicit compatibility slice."
-echo "- Logback stays on reviewed stable 1.5.x at 1.5.34+; current CVE fixes own runtime logging."
+echo "- Logback stays on reviewed stable 1.6.x at 1.6.3+; current CVE fixes own runtime logging."
 echo "Resolved in the metrics compatibility slice:"
 echo "- Dropwizard Metrics stays on the maintained 4.2.x com.codahale.metrics API line and cannot drop below 4.2.39; Metrics 5 requires explicit compatibility review."
 echo "- Legacy metrics-servlets artifacts are blocked; metrics-jakarta-servlets is the only servlet metrics artifact allowed after the Jakarta migration."
 echo "- Packaged runtime jar uniqueness prevents duplicate annotation, logging, and metrics servlet payloads from hiding legacy jars."
 echo "- Metrics JMX reporter startup is owned by Spring SmartLifecycle; eager @PostConstruct/@PreDestroy startup in MetricsStartup is blocked to avoid Spring early-bean warnings."
 echo "Resolved in the helper runtime compatibility slice:"
-echo "- AspectJ, Janino, Javassist, and logstash-logback-encoder stay on reviewed stable helper runtime floors; logstash-logback-encoder remains on the Jackson 2-compatible 8.x line until a dedicated Jackson 3 runtime migration."
+echo "- AspectJ, Janino, Javassist, and logstash-logback-encoder stay on reviewed stable helper runtime floors; logstash-logback-encoder stays on the reviewed Jackson 3-compatible 9.x line at 9.0+."
 echo "Resolved in the Maven build-plugin compatibility slice:"
 echo "- Enforcer, Compiler, Clean, Resources, and Surefire stay on reviewed stable Maven 3.x plugin floors; unreviewed qualifiers and Maven 4 beta plugins require an explicit compatibility slice."
 echo "- Dependency, WAR, JAR, Checkstyle, Exec, and Buildnumber packaging plugins stay on reviewed stable 3.x plugin floors; unreviewed qualifiers, Maven 4 beta, and legacy MojoHaus plugin lines require explicit compatibility slices."
@@ -6858,7 +6869,7 @@ echo "- jOOQ runtime, metadata, codegen, and JPA extension artifacts stay on rev
 echo "Resolved in the Jackson compatibility slice:"
 echo "- Legacy Codehaus Jackson 1.x dependencies, imports, and packaged jars are blocked; maintained Jackson 2/3 artifacts own JSON processing."
 echo "- Jackson 2 cannot drop below stable 2.22.0 with annotations 2.22, and Jackson 3 cannot drop below stable 3.2.1; unreviewed qualifiers require explicit JSON compatibility review."
-echo "- The platform remains on com.fasterxml Jackson 2; only WebAuthn4J may use the pinned tools.jackson 3.2 line, and packaged gates verify the two generations have exact, disjoint class namespaces."
+echo "- The platform remains on com.fasterxml Jackson 2; WebAuthn4J and logstash-logback-encoder use the pinned tools.jackson 3.2 line, and packaged gates verify the two generations have exact, disjoint class namespaces."
 echo "Resolved in the serialization helper compatibility slice:"
 echo "- Legacy XStream/json-lib/EZMorph/cglib-nodep/asm-all dependencies, imports, and packaged jars are blocked; maintained Jackson/JDK/modern ASM-family paths require explicit compatibility review."
 echo "Resolved in the YAML compatibility slice:"
@@ -6869,7 +6880,7 @@ echo "- Legacy MySQL Connector/J and pre-jdk18on BouncyCastle dependencies, impo
 echo "- PostgreSQL JDBC stays on reviewed stable pgJDBC 42.7.x at 42.7.11+; current driver CVE fixes own optional PostgreSQL connectivity."
 echo "- MariaDB Connector/J, PostgreSQL JDBC, H2, and HSQLDB drivers stay runtime/test scoped so driver APIs do not become compile-surface dependencies."
 echo "Resolved in the Guava compatibility slice:"
-echo "- Legacy Google Collections, guava-jdk5, and Guava 31-and-older dependencies and packaged jars are blocked; Guava stays on the reviewed stable 33.x JRE line at 33.6.0-jre+."
+echo "- Legacy Google Collections, guava-jdk5, and Guava 31-and-older dependencies and packaged jars are blocked; Guava stays on the reviewed stable 33.x JRE line at 33.7.1-jre+."
 echo "Resolved in the runtime framework compatibility slice:"
 echo "- Spring 6 and older are blocked; the maintained JDK25/Jakarta runtime requires stable Spring 7.0.9+ without an opt-in compatibility path."
 echo "- Jetty stays on the reviewed stable 12.1.x EE10 runtime line at 12.1.12+; unreviewed qualifiers and line jumps require explicit compatibility review."
@@ -6979,8 +6990,8 @@ echo "- Api-logic main sources are suppression-free; InstanceManager count>1 lis
 echo "- DataAccessor.getData preserves backing data map identity through CollectionUtils.castMap without local unchecked/raw suppression."
 echo "- CertSet writes PEM zip entries with a flush-only writer and must not regain resource suppression."
 echo "- GenericMapDaoImpl keeps generic map list queries record-backed and blocks the live-rejected fetchInto(mapType) path."
-echo "- Bouncy Castle jdk18on artifacts stay on reviewed stable BC-JAVA 1.x at 1.85+; current CVE fixes own cryptography providers."
-echo "- Liquibase Core stays on reviewed stable 5.x at 5.0.3+; current security fixes own schema migration runtime."
+echo "- Bouncy Castle jdk18on artifacts stay on reviewed stable BC-JAVA 1.x at their latest published floors: bcprov 1.85.2 and bcpkix/bcutil 1.85."
+echo "- Liquibase Core stays on reviewed stable 5.x at 5.0.4+; current security fixes own schema migration runtime."
 echo "- Liquibase SLF4J bridge stays on reviewed stable 5.x at 5.1.0+; unreviewed qualifiers and line jumps require explicit schema-migration logging review."
 echo "- MariaDB Connector/J, H2, and HSQLDB stay on reviewed stable DB runtime lines at MariaDB 3.5.10+ on 3.5.x, H2 2.4.240+ on 2.4.x, and HSQLDB 2.7.4+ on 2.7.x."
 echo "- AbstractObjectManager.toObjectsToWrite converts nested reference maps through CollectionUtils.castMap without local unchecked/raw suppression."

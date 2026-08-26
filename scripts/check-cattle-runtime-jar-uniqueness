@@ -99,12 +99,12 @@ legacy_metrics_servlets = {"metrics-servlets", "metrics-servlet"}
 
 reviewed_dual_namespace_artifacts = {
     "jackson-core": {
-        "jackson-core-2.22.1.jar": "com/fasterxml/jackson/core/",
-        "jackson-core-3.2.1.jar": "tools/jackson/core/",
+        "jackson-core-2.22.2.jar": "com/fasterxml/jackson/core/",
+        "jackson-core-3.2.2.jar": "tools/jackson/core/",
     },
     "jackson-databind": {
-        "jackson-databind-2.22.1.jar": "com/fasterxml/jackson/databind/",
-        "jackson-databind-3.2.1.jar": "tools/jackson/databind/",
+        "jackson-databind-2.22.2.jar": "com/fasterxml/jackson/databind/",
+        "jackson-databind-3.2.2.jar": "tools/jackson/databind/",
     },
 }
 
@@ -219,7 +219,7 @@ print(
     f"legacy_metrics_servlet_count={legacy_metrics_servlet_count} "
     f"max_logging_binding_count={max_logging_bindings}"
 )
-print("This gate blocks duplicate runtime payloads while admitting only the exact, class-disjoint Jackson 2 platform and Jackson 3 WebAuthn namespace pair.")
+print("This gate blocks duplicate runtime payloads while admitting only the exact, class-disjoint Jackson 2 platform and reviewed Jackson 3 consumers.")
 print(f"failure_count={len(failures)}")
 if failures:
     sys.exit(1)
