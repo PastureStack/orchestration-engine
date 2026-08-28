@@ -1,28 +1,20 @@
-# Patched Hazelcast Build
+# PastureStack Hazelcast Runtime
 
-The orchestration engine uses Hazelcast as an embedded third-party dependency. Release builds reproduce a patched artifact locally instead of publishing or trusting an opaque replacement binary.
+The orchestration engine embeds the reviewed runtime produced by the dedicated `distributed-cache-runtime` repository. It does not rebuild a second, diverging Hazelcast fork during every orchestration build.
 
 ## Provenance
 
-- Upstream project: [`hazelcast/hazelcast`](https://github.com/hazelcast/hazelcast)
-- Upstream version: `5.7.0`
-- Pinned upstream commit: `60c31e3750cbad64f5720e2e02f0a9830973193c`
-- Source archive SHA-256: `e44d7ebeb6400309a7b672f2190180925f81cdbedab44f2247cd266d03f4fa88`
-- Local artifact version: `5.7.2`
+- Source project: [`PastureStack/distributed-cache-runtime`](https://github.com/PastureStack/distributed-cache-runtime)
+- Signed release tag: `v5.7.3-pasturestack.4`
+- Source commit: `daab0b34f0fce46e5be79c56e80dab769183aa83`
+- Runtime artifact: `hazelcast-5.7.3-pasturestack.4.jar`
+- Artifact SHA-256: `9fa751998ce3cc1f17692e21933b24646c39a7142ca387af772e43f49dc77764`
+- Embedded Jackson 3 / Jackson 2: `3.2.2` / `2.22.2`
 
-The build downloads the archive for the exact commit, verifies its SHA-256 checksum and safe paths, applies [`hazelcast-5.7.0-jackson-security.patch`](hazelcast-5.7.0-jackson-security.patch) with cross-platform line-ending tolerance, verifies the exact resulting dependency coordinates, builds the Hazelcast core module, normalizes JAR metadata to the release source timestamp, and installs the result only into the build-local Maven repository.
+The source project owns the Java 25 build, focused legitimate and malicious regression suite, SBOM, source and artifact scanning, and release artifact. This repository downloads that exact release asset over HTTPS, verifies the pinned bytes, safe JAR paths, license and notice, Maven identities, Jackson versions, and embedded source revision before installing it into the build-local Maven repository.
 
-Because a GitHub source archive intentionally contains no `.git` directory, the reproducible build also applies [`hazelcast-5.7.0-archive-build.patch`](hazelcast-5.7.0-archive-build.patch). That build-only patch disables the obsolete Git metadata Mojo which otherwise attempts to inspect a repository that is not present. It does not change runtime code, dependency coordinates, attribution, or license material; the pinned upstream commit is recorded and verified independently above.
-
-## Patch scope
-
-The runtime security patch changes only Hazelcast's pinned Jackson versions:
-
-- Jackson 3: `3.1.2` to `3.2.1`
-- Jackson 2: `2.21.2` to `2.22.1`
-
-It does not remove upstream attribution, authorship, notices, or licensing information.
+This removes the former duplicate source-download, patch, and rebuild path. Dependency changes are reviewed and tested once in the source project; orchestration consumes only the corresponding pinned release bytes.
 
 ## License
 
-Hazelcast remains third-party software licensed by its upstream authors under Apache License 2.0. The original license and notice materials are preserved in the built artifact and in the Server runtime license bundle. PastureStack claims authorship only for the tracked compatibility and security patch.
+Hazelcast remains third-party software licensed by its upstream authors under Apache License 2.0. The original license and notice materials are preserved in the release artifact and in the Server runtime license bundle. PastureStack claims authorship only for its compatibility and security changes.

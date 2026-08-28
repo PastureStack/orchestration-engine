@@ -6681,8 +6681,8 @@ import xml.etree.ElementTree as ET
 from pathlib import Path
 
 NS = {"m": "http://maven.apache.org/POM/4.0.0"}
-FLOOR = (5, 7, 0)
-FLOOR_TEXT = "5.7.0"
+FLOOR = (5, 7, 3)
+FLOOR_TEXT = "5.7.3"
 UNREVIEWED_QUALIFIER = re.compile(r"(?:^|[.-])(alpha|beta|snapshot|rc|b\d+|m\d+|mr|milestone)(?:[.-]|\d|$)", re.IGNORECASE)
 
 def local_name(tag):
@@ -6756,7 +6756,7 @@ sys.exit(0)
 PY
 )
 if [ -n "$hazelcast_floor_dependencies" ]; then
-    echo "Blocked Hazelcast dependency outside reviewed stable floor found in Maven POMs; keep com.hazelcast:hazelcast 5.7.0+ on the reviewed 5.7.x Java 25 line without unreviewed qualifiers" >&2
+    echo "Blocked Hazelcast dependency outside reviewed stable floor found in Maven POMs; keep com.hazelcast:hazelcast 5.7.3+ on the reviewed 5.7.x Java 25 line without unreviewed qualifiers" >&2
     echo "$hazelcast_floor_dependencies" >&2
     fail=1
 fi
@@ -6767,8 +6767,8 @@ import re
 import sys
 from pathlib import Path
 
-FLOOR = (5, 7, 0)
-FLOOR_TEXT = "5.7.0"
+FLOOR = (5, 7, 3)
+FLOOR_TEXT = "5.7.3"
 UNREVIEWED_QUALIFIER = re.compile(r"(?:^|[.-])(alpha|beta|snapshot|rc|b\d+|m\d+|mr|milestone)(?:[.-]|\d|$)", re.IGNORECASE)
 root = Path("code/packaging/app/target")
 failures = []
@@ -6797,7 +6797,7 @@ sys.exit(0)
 PY
 )
 if [ -n "$hazelcast_floor_jars" ]; then
-    echo "Blocked Hazelcast jar outside reviewed stable floor packaged in app; keep com.hazelcast:hazelcast 5.7.0+ on the reviewed 5.7.x Java 25 line without unreviewed qualifiers" >&2
+    echo "Blocked Hazelcast jar outside reviewed stable floor packaged in app; keep com.hazelcast:hazelcast 5.7.3+ on the reviewed 5.7.x Java 25 line without unreviewed qualifiers" >&2
     echo "$hazelcast_floor_jars" >&2
     fail=1
 fi
@@ -6817,7 +6817,7 @@ echo "- Jakarta Servlet API stays provided/test scoped and cannot leak into pack
 echo "Resolved in the Docker client compatibility slice:"
 echo "- docker-java artifacts stay on reviewed stable 3.7.x at 3.7.1+; unreviewed qualifiers require explicit Docker API compatibility review, and old Java EE transitives remain excluded by the Jakarta boundary."
 echo "Resolved in the Hazelcast Java 25 compatibility slice:"
-echo "- Hazelcast core stays on reviewed stable 5.7.x at 5.7.0+; unreviewed qualifiers require explicit clustering/SPI compatibility review, and retired hazelcast-client metadata and packaged jars are blocked."
+echo "- Hazelcast core stays on reviewed stable 5.7.x at 5.7.3+; unreviewed qualifiers require explicit clustering/SPI compatibility review, and retired hazelcast-client metadata and packaged jars are blocked."
 echo "Resolved in the JAX-RS runtime compatibility slice:"
 echo "- Legacy Jersey 1.x com.sun.jersey dependencies, imports, and packaged jars are blocked; maintained Jakarta REST/JDK client paths own REST integration."
 echo "Resolved in the HTTP client compatibility slice:"

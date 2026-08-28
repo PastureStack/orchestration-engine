@@ -31,7 +31,7 @@ jobs:
           test -z "$(git status --porcelain)"
           git merge-base --is-ancestor origin/main HEAD
           test "$(git rev-list --count origin/main..HEAD)" -eq 1
-          grep -Fxq '    <version>0.183.285</version>' code/meta-parent/pom.xml
+          grep -Fxq '    <version>0.183.286</version>' code/meta-parent/pom.xml
 
       - name: Initialize CodeQL
         uses: github/codeql-action/init@db488ddef3bf6cb639b32c2e9a7c0a7ea8271d28 # v4.37.8

@@ -63,7 +63,7 @@ public class SafePathsTest {
 
     @Test
     public void acceptsNumericMaintenanceVersion() throws Exception {
-        assertEquals("0.183.285", SafePaths.version("0.183.285"));
+        assertEquals("0.183.286", SafePaths.version("0.183.286"));
     }
 
     @Test
