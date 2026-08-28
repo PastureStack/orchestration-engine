@@ -15,7 +15,7 @@ dependency line. The existing platform JSON surface remains on
 `com.fasterxml.jackson` 2.22. Packaging gates admit only the reviewed,
 version-pinned pair and verify that their class namespaces are disjoint.
 
-Host compatibility is evidence-based. The default policy recognizes the preserved legacy ranges plus only the modern Docker Engine releases that have completed the PastureStack host matrix: `24.0.9`, `29.4.1`, and `29.7.2`. It does not imply support for untested intervening releases.
+Host compatibility is evidence-based. The default policy recognizes the preserved legacy ranges, Docker Engine `24.0.9`, and every stable Docker 29 release from `29.4.1` through `29.7.2` inclusive. The bounded Docker 29 interval includes `29.6.2`; Docker 25 through 28 and versions outside that interval remain unsupported.
 
 The build and Dapper images compile the Docker `29.7.2` CLI from the pinned official tag commit with Go `1.27.0`; they do not import Docker's precompiled Go `1.26.5` binary. The source archive SHA-256 and Go builder image digest are enforced by the source gate and the resulting images are scanned before release.
 
