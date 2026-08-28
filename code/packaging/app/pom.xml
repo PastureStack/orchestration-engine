@@ -4,7 +4,7 @@
     <parent>
         <artifactId>cattle-parent</artifactId>
         <groupId>io.cattle</groupId>
-        <version>0.183.286</version>
+        <version>0.183.287</version>
         <relativePath>../../parent/pom.xml</relativePath>
     </parent>
     <packaging>war</packaging>
