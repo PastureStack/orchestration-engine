@@ -4,7 +4,7 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 artifact=${1:-dist/artifacts/cattle.jar}
-expected_version=${EXPECTED_ENGINE_VERSION:-0.183.287}
+expected_version=${EXPECTED_ENGINE_VERSION:-0.183.288}
 
 test -f "$artifact"
 artifact=$(realpath "$artifact")

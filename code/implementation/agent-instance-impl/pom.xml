@@ -3,7 +3,7 @@
     <parent>
         <artifactId>cattle-parent</artifactId>
         <groupId>io.cattle</groupId>
-        <version>0.183.287</version>
+        <version>0.183.288</version>
         <relativePath>../../parent/pom.xml</relativePath>
     </parent>
     <artifactId>cattle-agent-instance-impl</artifactId>
