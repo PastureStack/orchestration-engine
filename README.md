@@ -8,7 +8,7 @@ PastureStack is an independent community effort to preserve, audit, and moderniz
 
 ## Project status
 
-This source tree produces engine version `0.183.287`. It retains the existing Java 25, Ubuntu 26.04, Maven, Liquibase, MariaDB/MySQL, WebSocket, dependency, concurrency, and runtime-hardening work from the maintained compatibility line. Release builds consume the exact `5.7.3-pasturestack.4` runtime JAR published by [`distributed-cache-runtime`](https://github.com/PastureStack/distributed-cache-runtime/releases/tag/v5.7.3-pasturestack.4), verify its pinned SHA-256 and embedded dependency metadata, and install it only into the build-local Maven repository. Provenance and scope are documented in [`third-party/HAZELCAST.md`](third-party/HAZELCAST.md).
+This source tree produces engine version `0.183.288`. It retains the existing Java 25, Ubuntu 26.04, Maven, Liquibase, MariaDB/MySQL, WebSocket, dependency, concurrency, and runtime-hardening work from the maintained compatibility line. Release builds consume the exact `5.7.3-pasturestack.4` runtime JAR published by [`distributed-cache-runtime`](https://github.com/PastureStack/distributed-cache-runtime/releases/tag/v5.7.3-pasturestack.4), verify its pinned SHA-256 and embedded dependency metadata, and install it only into the build-local Maven repository. Provenance and scope are documented in [`third-party/HAZELCAST.md`](third-party/HAZELCAST.md).
 
 WebAuthn verification uses WebAuthn4J's maintained `tools.jackson` 3.2
 dependency line. The existing platform JSON surface remains on
@@ -56,7 +56,7 @@ The gate performs dependency-hygiene checks, builds every Maven module with JDK 
 To create the complete release archive after the gate passes:
 
 ```sh
-ENGINE_VERSION=0.183.287 bash scripts/build --release
+ENGINE_VERSION=0.183.288 bash scripts/build --release
 bash scripts/check-release-artifact dist/artifacts/cattle.jar
 ```
 
