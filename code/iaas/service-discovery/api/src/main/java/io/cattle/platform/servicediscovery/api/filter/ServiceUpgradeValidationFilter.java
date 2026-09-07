@@ -94,6 +94,14 @@ public class ServiceUpgradeValidationFilter extends AbstractDefaultResourceManag
         if (strategy instanceof InServiceUpgradeStrategy) {
             InServiceUpgradeStrategy inServiceStrategy = (InServiceUpgradeStrategy) strategy;
             inServiceStrategy = finalizeUpgradeStrategy(service, inServiceStrategy);
+            if (inServiceStrategy.getLaunchConfig() != null) {
+                io.cattle.platform.core.util.HardwareOptions.validate(CollectionUtils.toMap(inServiceStrategy.getLaunchConfig()));
+            }
+            if (inServiceStrategy.getSecondaryLaunchConfigs() != null) {
+                for (Object config : inServiceStrategy.getSecondaryLaunchConfigs()) {
+                    io.cattle.platform.core.util.HardwareOptions.validate(CollectionUtils.toMap(config));
+                }
+            }
 
             assertUpgradePortsAvailable(service, inServiceStrategy);
 

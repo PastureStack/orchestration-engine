@@ -238,6 +238,8 @@ public class DockerTransformerImpl implements DockerTransformer {
             setField(instance, FIELD_CPU_REALTIME_RUNTIME, fromInspect, HOST_CONFIG, "CpuRealtimeRuntime");
             setField(instance, FIELD_DNS_OPT, fromInspect, HOST_CONFIG, "DnsOptions");
             setField(instance, FIELD_GROUP_ADD, fromInspect, HOST_CONFIG, "GroupAdd");
+            setField(instance, "runtime", fromInspect, HOST_CONFIG, "Runtime");
+            setDeviceRequests(instance, fromInspect);
             setField(instance, FIELD_KERNEL_MEMORY, fromInspect, HOST_CONFIG, "KernelMemory");
             setField(instance, FIELD_MEMORY_SWAPPINESS, fromInspect, HOST_CONFIG, "MemorySwappiness");
             setField(instance, FIELD_OOMKILL_DISABLE, fromInspect, HOST_CONFIG, "OomKillDisable");
@@ -267,6 +269,30 @@ public class DockerTransformerImpl implements DockerTransformer {
 
         // Currently not implemented: VolumesFrom, Links,
         // Consider: AttachStdin, AttachStdout, AttachStderr, StdinOnce,
+    }
+
+    void setDeviceRequests(Instance instance, Map<String, Object> fromInspect) {
+        Object raw = CollectionUtils.getNestedValue(fromInspect, HOST_CONFIG, "DeviceRequests");
+        if (!(raw instanceof List<?>)) {
+            return;
+        }
+        List<Map<String, Object>> requests = new ArrayList<>();
+        for (Object item : (List<?>) raw) {
+            if (!(item instanceof Map<?, ?>)) {
+                throw new IllegalArgumentException("DeviceRequests must contain objects");
+            }
+            Map<?, ?> source = (Map<?, ?>) item;
+            Map<String, Object> request = new HashMap<>();
+            String[] dockerKeys = {"Driver", "Count", "DeviceIDs", "Capabilities", "Options"};
+            String[] apiKeys = {"driver", "count", "deviceIds", "capabilities", "options"};
+            for (int i = 0; i < dockerKeys.length; i++) {
+                if (source.get(dockerKeys[i]) != null) {
+                    request.put(apiKeys[i], source.get(dockerKeys[i]));
+                }
+            }
+            requests.add(request);
+        }
+        setField(instance, "deviceRequests", requests);
     }
 
     void setMemoryReservation(Map<String, Object> fromInspect, Instance instance) {

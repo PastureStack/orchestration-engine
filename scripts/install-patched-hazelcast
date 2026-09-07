@@ -12,6 +12,9 @@ release_sha256=9fa751998ce3cc1f17692e21933b24646c39a7142ca387af772e43f49dc77764
 jackson3_version=3.2.2
 jackson2_version=2.22.2
 release_url="https://github.com/PastureStack/distributed-cache-runtime/releases/download/${release_tag}/hazelcast-${runtime_version}.jar"
+# Same immutable release asset, for GitHub release-URL gateway outages.
+# Both download paths must pass the identical byte hash and metadata checks.
+release_asset_api="https://api.github.com/repos/PastureStack/distributed-cache-runtime/releases/assets/533138264"
 work_root="$repo_root/target/third-party/hazelcast-${runtime_version}"
 
 case "$work_root" in
@@ -26,9 +29,15 @@ rm -rf "$work_root"
 mkdir -p "$work_root/metadata"
 
 runtime_jar="$work_root/hazelcast-${runtime_version}.jar"
-curl --proto '=https' --tlsv1.2 --fail --silent --show-error --location \
-    --retry 5 --retry-all-errors --retry-delay 2 --connect-timeout 10 --max-time 600 \
-    --output "$runtime_jar" "$release_url"
+if ! curl --proto '=https' --tlsv1.2 --fail --silent --show-error --location \
+    --retry 2 --retry-all-errors --retry-delay 2 --connect-timeout 10 --max-time 600 \
+    --output "$runtime_jar" "$release_url"; then
+    echo "Release URL unavailable; retrieving the same hash-pinned GitHub asset via its API" >&2
+    curl --proto '=https' --tlsv1.2 --fail --silent --show-error --location \
+        --retry 2 --retry-all-errors --retry-delay 2 --connect-timeout 10 --max-time 600 \
+        --header 'Accept: application/octet-stream' \
+        --output "$runtime_jar" "$release_asset_api"
+fi
 printf '%s  %s\n' "$release_sha256" "$runtime_jar" | sha256sum -c -
 
 if jar -tf "$runtime_jar" | grep -E '(^/|(^|/)\.\.(/|$))' >/dev/null; then

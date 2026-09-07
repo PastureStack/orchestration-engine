@@ -206,4 +206,6 @@ jobs:
           docker rm -f $(docker ps -aq --filter ancestor="$DAPPER_IMAGE") 2>/dev/null
           docker image rm -f "$DAPPER_IMAGE" "$TRIVY_IMAGE" 2>/dev/null
           docker builder prune --all --force >/dev/null 2>&1
-          rm -rf dist target runtime code/packaging/app/target
+          # Dapper creates root-owned outputs on this isolated hosted runner.
+          test "$PWD" = "$GITHUB_WORKSPACE" || exit 1
+          sudo rm -rf -- "$GITHUB_WORKSPACE/dist" "$GITHUB_WORKSPACE/target" "$GITHUB_WORKSPACE/runtime" "$GITHUB_WORKSPACE/code/packaging/app/target"

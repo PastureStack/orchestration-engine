@@ -45,6 +45,13 @@ public class InstanceValidationFilter extends AbstractDefaultResourceManagerFilt
     }
 
     @Override
+    public Object create(String type, ApiRequest request, ResourceManager next) {
+        io.cattle.platform.core.util.HardwareOptions.validate(
+                io.cattle.platform.util.type.CollectionUtils.toMap(request.getRequestObject()));
+        return super.create(type, request, next);
+    }
+
+    @Override
     public Object delete(String type, String id, ApiRequest request, ResourceManager next) {
         Object instance = objectManager.loadResource(type, id);
         if (instance == null || !(instance instanceof Instance)) {
