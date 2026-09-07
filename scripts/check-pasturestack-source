@@ -140,7 +140,9 @@ require_line scripts/install-patched-hazelcast 'release_sha256=9fa751998ce3cc1f1
 require_line scripts/install-patched-hazelcast 'jackson3_version=3.2.2'
 require_line scripts/install-patched-hazelcast 'jackson2_version=2.22.2'
 require_line scripts/install-patched-hazelcast 'release_url="https://github.com/PastureStack/distributed-cache-runtime/releases/download/${release_tag}/hazelcast-${runtime_version}.jar"'
-require_line scripts/install-patched-hazelcast 'curl --proto '\''=https'\'' --tlsv1.2 --fail --silent --show-error --location \'
+require_line scripts/install-patched-hazelcast 'if ! curl --proto '\''=https'\'' --tlsv1.2 --fail --silent --show-error --location \'
+require_line scripts/install-patched-hazelcast 'release_asset_api="https://api.github.com/repos/PastureStack/distributed-cache-runtime/releases/assets/533138264"'
+require_line scripts/install-patched-hazelcast '        --header '\''Accept: application/octet-stream'\'' \'
 require_line scripts/install-patched-hazelcast 'printf '\''%s  %s\n'\'' "$release_sha256" "$runtime_jar" | sha256sum -c -'
 require_line scripts/install-patched-hazelcast '"$maven_cmd" ${MAVEN_ARGS:-} org.apache.maven.plugins:maven-install-plugin:3.1.4:install-file \'
 test ! -e third-party/hazelcast-5.7.0-jackson-security.patch || fail obsolete_hazelcast_patch_present
