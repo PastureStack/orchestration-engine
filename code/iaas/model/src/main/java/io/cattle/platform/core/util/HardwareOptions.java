@@ -65,7 +65,8 @@ public final class HardwareOptions {
         if (rawLimits != null) {
             if (!(rawLimits instanceof List<?>)) { return "ulimits must be a list"; }
             Set<Object> names = new HashSet<>();
-            Set<String> allowed = Set.of("as", "core", "cpu", "data", "fsize", "locks", "memlock", "msgqueue", "nice", "nofile", "nproc", "rss", "rtprio", "rttime", "sigpending", "stack");
+            Set<String> allowed = Set.of("as", "core", "cpu", "data", "fsize", "locks", "memlock", "msgqueue",
+                    "nice", "nofile", "nproc", "rss", "rtprio", "rttime", "sigpending", "stack");
             for (Object item : (List<?>) rawLimits) {
                 if (!(item instanceof Map<?, ?>)) { return "ulimits must contain objects"; }
                 Map<?, ?> limit = (Map<?, ?>) item;
