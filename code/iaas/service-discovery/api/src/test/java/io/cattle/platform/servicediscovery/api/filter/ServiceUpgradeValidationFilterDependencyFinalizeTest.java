@@ -15,6 +15,26 @@ import org.junit.Test;
 public class ServiceUpgradeValidationFilterDependencyFinalizeTest {
 
     @Test
+    public void hardwareFieldsSurvivePrimaryAndDependentSidekickFinalization() {
+        ServiceUpgradeValidationFilter filter = new ServiceUpgradeValidationFilter();
+        Map<String, Map<Object, Object>> configs = new HashMap<>();
+        Map<Object, Object> gpu = launchConfig("driver", "nvidia", "count", -1,
+                "capabilities", Arrays.asList(Arrays.asList("gpu")));
+        Map<Object, Object> primary = launchConfig("runtime", "nvidia", "shmSize", 4294967296L,
+                "deviceRequests", Arrays.asList(gpu));
+        Map<Object, Object> sidekick = launchConfig(ServiceConstants.FIELD_NETWORK_LAUNCH_CONFIG, "main",
+                "devices", Arrays.asList("/dev/dri/renderD128:rw"), "groupAdd", Arrays.asList("993"));
+        configs.put("main", primary);
+        configs.put("sidekick", sidekick);
+        Map<String, Map<Object, Object>> result = new HashMap<>();
+        filter.finalizeLCNamesToUpdate(configs, result, Pair.of("main", primary));
+        assertEquals(primary, result.get("main"));
+        assertEquals(sidekick, result.get("sidekick"));
+        io.cattle.platform.core.util.HardwareOptions.validate(result.get("main"));
+        io.cattle.platform.core.util.HardwareOptions.validate(result.get("sidekick"));
+    }
+
+    @Test
     public void finalizeLCNamesToUpdateIncludesNetworkFromDependencies() {
         ServiceUpgradeValidationFilter filter = new ServiceUpgradeValidationFilter();
         Map<String, Map<Object, Object>> serviceLaunchConfigs = new HashMap<>();

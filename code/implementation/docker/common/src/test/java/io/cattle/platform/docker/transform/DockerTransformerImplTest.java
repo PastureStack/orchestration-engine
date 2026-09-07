@@ -21,6 +21,26 @@ import java.util.Map;
 import org.junit.Test;
 
 public class DockerTransformerImplTest {
+    @Test
+    public void hardwareRequestKeepsDockerIdentityAndCapabilities() {
+        InstanceRecord instance = new InstanceRecord();
+        instance.setData(new HashMap<String, Object>());
+        Map<String, Object> request = new HashMap<>();
+        request.put("Driver", "nvidia");
+        request.put("DeviceIDs", Collections.singletonList("GPU-one"));
+        request.put("Capabilities", Collections.singletonList(Collections.singletonList("gpu")));
+        Map<String, Object> host = new HashMap<>();
+        host.put("DeviceRequests", Collections.singletonList(request));
+        Map<String, Object> inspect = new HashMap<>();
+        inspect.put("HostConfig", host);
+        new DockerTransformerImpl().setDeviceRequests(instance, inspect);
+        List<?> result = DataAccessor.field(instance, "deviceRequests", List.class);
+        Map<?, ?> first = (Map<?, ?>) result.get(0);
+        assertEquals("nvidia", first.get("driver"));
+        assertEquals(request.get("DeviceIDs"), first.get("deviceIds"));
+        assertEquals(request.get("Capabilities"), first.get("capabilities"));
+        assertFalse(first.containsKey("DeviceIDs"));
+    }
 
     @Test
     public void setLabelsPreservesLegacyStringConversion() {

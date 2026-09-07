@@ -491,6 +491,9 @@ public class ServiceValidationFilter extends AbstractDefaultResourceManagerFilte
         Object newName = data.get("name");
         String serviceName = newName != null ? newName.toString() : service.getName();
         List<?> launchConfigs = populateLaunchConfigs(service, request);
+        for (Object launchConfig : launchConfigs) {
+            io.cattle.platform.core.util.HardwareOptions.validate(CollectionUtils.toMap(launchConfig));
+        }
         validateLaunchConfigNames(service, serviceName, launchConfigs);
         validateLaunchConfigsCircularRefs(service, serviceName, launchConfigs);
         validateLaunchConfigScale(service, request);

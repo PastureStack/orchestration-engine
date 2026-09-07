@@ -220,6 +220,7 @@ public class ServiceDiscoveryApiServiceImpl implements ServiceDiscoveryApiServic
                     populateLogConfig(cattleServiceData, composeServiceData);
                     populateTmpfs(cattleServiceData, composeServiceData);
                     populateUlimit(cattleServiceData, composeServiceData);
+                    populateDeviceRequests(cattleServiceData, composeServiceData);
                     populateBlkioOptions(cattleServiceData, composeServiceData);
                     populateSecrets(cattleServiceData, composeServiceData, secretsData);
                     translateV1VolumesToV2(cattleServiceData, composeServiceData, volumesData);
@@ -391,6 +392,40 @@ public class ServiceDiscoveryApiServiceImpl implements ServiceDiscoveryApiServic
         }
     }
     
+    void populateDeviceRequests(Map<String, Object> cattleServiceData, Map<String, Object> composeServiceData) {
+        Object raw = cattleServiceData.get("deviceRequests");
+        if (!(raw instanceof List<?>) || ((List<?>) raw).isEmpty()) {
+            return;
+        }
+        List<Map<String, Object>> devices = new ArrayList<>();
+        for (Object item : (List<?>) raw) {
+            Map<?, ?> request = Map.class.cast(item);
+            List<?> capabilities = List.class.cast(request.get("capabilities"));
+            if (capabilities.size() != 1) {
+                throw new IllegalArgumentException("Compose export cannot represent OR capability groups; use the LaunchConfig JSON API");
+            }
+            Map<String, Object> device = new HashMap<>();
+            device.put("capabilities", capabilities.get(0));
+            if (request.get("driver") != null) { device.put("driver", request.get("driver")); }
+            if (request.get("options") != null) { device.put("options", request.get("options")); }
+            Object ids = request.get("deviceIds");
+            if (ids instanceof List<?> && !((List<?>) ids).isEmpty()) {
+                device.put("device_ids", ids);
+            } else {
+                Object count = request.get("count");
+                device.put("count", count instanceof Number && ((Number) count).intValue() == -1 ? "all" : count);
+            }
+            devices.add(device);
+        }
+        Map<String, Object> reservations = new HashMap<>();
+        reservations.put("devices", devices);
+        Map<String, Object> resources = new HashMap<>();
+        resources.put("reservations", reservations);
+        Map<String, Object> deploy = new HashMap<>();
+        deploy.put("resources", resources);
+        composeServiceData.put("deploy", deploy);
+    }
+
     private void populateLogConfig(Map<String, Object> cattleServiceData, Map<String, Object> composeServiceData) {
         Object value = cattleServiceData.get(ServiceConstants.FIELD_LOG_CONFIG);
         if (value instanceof Map) {

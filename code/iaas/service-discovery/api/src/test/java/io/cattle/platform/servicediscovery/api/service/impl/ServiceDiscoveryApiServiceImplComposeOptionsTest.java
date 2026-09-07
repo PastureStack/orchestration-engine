@@ -25,6 +25,44 @@ import org.junit.Test;
 public class ServiceDiscoveryApiServiceImplComposeOptionsTest {
 
     @Test
+    public void hardwareExportKeepsUuidCapabilitiesAndOptions() {
+        Map<String, Object> request = new LinkedHashMap<>();
+        request.put("driver", "nvidia");
+        request.put("deviceIds", Arrays.asList("GPU-one"));
+        request.put("capabilities", Arrays.asList(Arrays.asList("gpu")));
+        request.put("options", Collections.singletonMap("custom", "keep"));
+        Map<String, Object> output = new LinkedHashMap<>();
+        newService().populateDeviceRequests(Collections.singletonMap("deviceRequests", Arrays.asList(request)), output);
+        Map<?, ?> resources = Map.class.cast(Map.class.cast(output.get("deploy")).get("resources"));
+        List<?> devices = List.class.cast(Map.class.cast(resources.get("reservations")).get("devices"));
+        Map<?, ?> device = Map.class.cast(devices.get(0));
+        assertEquals(Arrays.asList("GPU-one"), device.get("device_ids"));
+        assertEquals(Arrays.asList("gpu"), device.get("capabilities"));
+        assertEquals(request.get("options"), device.get("options"));
+        assertFalse(device.containsKey("count"));
+    }
+
+    @Test
+    public void hardwareExportUsesComposeAllCount() {
+        Map<String, Object> request = new LinkedHashMap<>();
+        request.put("count", -1);
+        request.put("capabilities", Arrays.asList(Arrays.asList("gpu")));
+        Map<String, Object> output = new LinkedHashMap<>();
+        newService().populateDeviceRequests(Collections.singletonMap("deviceRequests", Arrays.asList(request)), output);
+        Map<?, ?> resources = Map.class.cast(Map.class.cast(output.get("deploy")).get("resources"));
+        List<?> devices = List.class.cast(Map.class.cast(resources.get("reservations")).get("devices"));
+        assertEquals("all", Map.class.cast(devices.get(0)).get("count"));
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void hardwareExportDoesNotSilentlyFlattenOrCapabilityGroups() {
+        Map<String, Object> request = new LinkedHashMap<>();
+        request.put("count", -1);
+        request.put("capabilities", Arrays.asList(Arrays.asList("gpu"), Arrays.asList("video")));
+        newService().populateDeviceRequests(Collections.singletonMap("deviceRequests", Arrays.asList(request)), new HashMap<>());
+    }
+
+    @Test
     public void populateLogConfigFormatsDriverAndOptions() throws Exception {
         Map<String, Object> cattleServiceData = new HashMap<>();
         Map<Object, Object> config = new LinkedHashMap<>();

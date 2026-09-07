@@ -89,6 +89,7 @@ public class CoreModelConfig {
                 BlkioDeviceOption.class,
                 ScalePolicy.class,
                 Ulimit.class,
+                io.cattle.platform.core.addon.DeviceRequest.class,
                 CatalogTemplate.class,
                 PortRule.class,
                 PortPreflightPort.class,

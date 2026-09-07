@@ -324,6 +324,14 @@
          	"type" : "boolean",
             "nullable" : true
         },
+         "runtime" : {
+            "type" : "string",
+            "nullable" : true
+        },
+         "deviceRequests" : {
+            "type" : "array[deviceRequest]",
+            "nullable" : true
+        },
          "shmSize" : {
          	"type" : "int",
             "nullable" : true

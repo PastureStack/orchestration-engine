@@ -41,7 +41,7 @@ fi
 
 project_version=$(sed -n 's/^[[:space:]]*<version>\([^<]*\)<\/version>[[:space:]]*$/\1/p' code/meta-parent/pom.xml | head -n 1)
 [[ "$project_version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || fail non_numeric_project_version
-require_line code/meta-parent/pom.xml '    <version>0.183.288</version>'
+require_line code/meta-parent/pom.xml '    <version>0.183.289</version>'
 require_line code/meta-parent/pom.xml '    <url>https://github.com/PastureStack/orchestration-engine</url>'
 require_line Dockerfile 'FROM ubuntu:26.04@sha256:2260313b31c8c011cd2eebe728008efac1b3982be73eb71348ea2648d2c0e09b'
 require_line Dockerfile.dapper 'FROM ubuntu:26.04@sha256:2260313b31c8c011cd2eebe728008efac1b3982be73eb71348ea2648d2c0e09b'
@@ -244,15 +244,15 @@ require_line "$settings" 'lb.instance.image=ghcr.io/pasturestack/load-balancer-s
 require_line "$settings" 'bootstrap.required.image=ghcr.io/pasturestack/node-agent:v1.2.30@sha256:5310b748fc52bcd87fdeaa2285f424a07ec13c9b41639692eef96bda53ac8277'
 require_line "$settings" 'bootstrap.required.windows.image='
 
-require_line "$settings" "agent.package.python.agent.url=${release_base}/node-agent-0.13.21.tar.gz"
+require_line "$settings" 'agent.package.python.agent.url=https://github.com/PastureStack/node-agent/releases/download/v0.13.24/node-agent-0.13.24.tar.gz'
 require_line "$settings" "agent.package.host.api.url=${release_base}/host-api-0.38.4.tar.gz"
-require_line "$settings" "agent.package.windows.agent.url=${release_base}/node-agent-0.13.21-windows-amd64.zip"
+require_line "$settings" 'agent.package.windows.agent.url=https://github.com/PastureStack/node-agent/releases/download/v0.13.24/node-agent-0.13.24-windows-amd64.zip'
 require_line "$settings" "agent.package.per.host.subnet.url=${release_base}/per-host-subnet-0.2.4-windows-amd64.zip"
 require_line "$settings" "rancher.compose.linux.url=${release_base}/compose-cli-0.14.30-linux-amd64.tar.gz"
 require_line "$settings" "rancher.compose.darwin.url=${release_base}/compose-cli-0.14.30-darwin-amd64.tar.gz"
 require_line "$settings" "rancher.compose.windows.url=${release_base}/compose-cli-0.14.30-windows-amd64.zip"
 require_line "$settings" "service.package.catalog.url=${release_base}/catalog-service-0.20.6.tar.xz,catalog-service"
-require_line "$settings" "service.package.compose.executor.url=${release_base}/compose-executor-0.14.30-linux-amd64.gz,compose-executor"
+require_line "$settings" 'service.package.compose.executor.url=https://github.com/PastureStack/compose-cli/releases/download/v0.14.35/compose-executor-0.14.35-linux-amd64.gz,compose-executor'
 require_line "$settings" "service.package.websocket.proxy.url=${release_base}/websocket-proxy-0.23.12-linux-amd64.tar.xz,websocket-proxy"
 require_line "$settings" "service.package.go.machine.service.url=${release_base}/host-provisioner-0.39.4-linux-amd64.tar.xz,host-provisioner"
 require_line "$settings" "service.package.docker.machine.url=${release_base}/machine-driver-bundle-0.14.0-linux-amd64.tar.xz,docker-machine"
@@ -293,6 +293,10 @@ if grep -RIn --exclude-dir=target --exclude=check-pasturestack-source \
 fi
 
 if grep -E '=(https?://|ghcr\.io/)' "$settings" \
+    | grep -Fvx \
+        -e 'agent.package.python.agent.url=https://github.com/PastureStack/node-agent/releases/download/v0.13.24/node-agent-0.13.24.tar.gz' \
+        -e 'agent.package.windows.agent.url=https://github.com/PastureStack/node-agent/releases/download/v0.13.24/node-agent-0.13.24-windows-amd64.zip' \
+        -e 'service.package.compose.executor.url=https://github.com/PastureStack/compose-cli/releases/download/v0.14.35/compose-executor-0.14.35-linux-amd64.gz,compose-executor' \
     | grep -Ev "=${release_base}/|=ghcr\\.io/pasturestack/"; then
     fail non_pasturestack_runtime_source
 fi
@@ -300,4 +304,4 @@ fi
 require_line README.md 'PastureStack is an independent community effort to preserve, audit, and modernize the Rancher 1.6 ecosystem. It is not affiliated with or endorsed by Rancher Labs or SUSE.'
 require_line ORIGIN.md '- Preserved upstream boundary: `82d154a53f4089fecfb9f320caad826bb4f6055f`'
 
-printf 'PASTURESTACK_SOURCE_GATE_OK version=0.183.288 runtime_sources=github_release images=digest_pinned ubuntu=26.04 ubuntu_snapshot=20260826T000000Z jdk=25.0.4 maven=3.9.16 patched_hazelcast=5.7.3-pasturestack.4 docker=29.7.2 credential_secret_capacity=mediumtext port_preflight=authoritative volume_preflight=authoritative volume_preflight_project_schema=authorized volume_preflight_type_set=registered\n'
+printf 'PASTURESTACK_SOURCE_GATE_OK version=0.183.289 runtime_sources=github_release images=digest_pinned ubuntu=26.04 ubuntu_snapshot=20260826T000000Z jdk=25.0.4 maven=3.9.16 patched_hazelcast=5.7.3-pasturestack.4 docker=29.7.2 credential_secret_capacity=mediumtext port_preflight=authoritative volume_preflight=authoritative volume_preflight_project_schema=authorized volume_preflight_type_set=registered\n'
