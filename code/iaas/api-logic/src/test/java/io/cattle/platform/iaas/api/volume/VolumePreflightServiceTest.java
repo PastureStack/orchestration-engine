@@ -52,6 +52,35 @@ public class VolumePreflightServiceTest {
     }
 
     @Test
+    public void acceptsEveryDockerBindPropagationMode() {
+        for (String mode : Arrays.asList(
+                "private", "rprivate", "shared", "rshared", "slave", "rslave")) {
+            VolumePreflightService.VolumeSpec spec = VolumePreflightService.parseSpec(
+                    "/var/lib/rancher/volumes:/var/lib/pasturestack/volumes:" + mode, 0);
+
+            assertTrue(mode + " should be accepted for a bind mount", spec.valid);
+        }
+    }
+
+    @Test
+    public void acceptsCombinedAccessAndBindPropagationModes() {
+        assertTrue(VolumePreflightService.parseSpec(
+                "/srv/data:/data:rw,shared", 0).valid);
+        assertTrue(VolumePreflightService.parseSpec(
+                "/srv/config:/config:ro,rslave", 0).valid);
+    }
+
+    @Test
+    public void rejectsBindPropagationForNonBindVolumesAndConflictingPropagation() {
+        assertTrue(VolumePreflightService.parseSpec(
+                "database:/data:shared", 0).errors.contains("invalid_volume_mode"));
+        assertTrue(VolumePreflightService.parseSpec(
+                "/data:shared", 0).errors.contains("invalid_volume_mode"));
+        assertTrue(VolumePreflightService.parseSpec(
+                "/srv/data:/data:shared,rshared", 0).errors.contains("invalid_volume_mode"));
+    }
+
+    @Test
     public void rejectsRelativeAndUnsafePaths() {
         assertTrue(VolumePreflightService.parseSpec("data:relative", 0).errors
                 .contains("target_path_must_be_absolute"));
