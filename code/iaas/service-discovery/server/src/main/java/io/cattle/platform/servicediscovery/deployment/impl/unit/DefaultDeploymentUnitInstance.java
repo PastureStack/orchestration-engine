@@ -23,7 +23,6 @@ import io.cattle.platform.object.resource.ResourcePredicate;
 import io.cattle.platform.object.util.DataAccessor;
 import io.cattle.platform.object.util.TransitioningUtils;
 import io.cattle.platform.process.common.util.ProcessUtils;
-import io.cattle.platform.servicediscovery.api.resource.ServiceDiscoveryConfigItem;
 import io.cattle.platform.servicediscovery.api.util.ServiceDiscoveryDnsUtil;
 import io.cattle.platform.servicediscovery.api.util.ServiceDiscoveryUtil;
 import io.cattle.platform.servicediscovery.deployment.DeploymentUnitInstance;
@@ -149,8 +148,7 @@ public class DefaultDeploymentUnitInstance extends DeploymentUnitInstance implem
     protected Map<String, Object> populateLaunchConfigData(Map<String, Object> deployParams) {
         Map<String, Object> launchConfigData = ServiceDiscoveryUtil.buildServiceInstanceLaunchData(service,
                 deployParams, launchConfigName, context.allocationHelper);
-        launchConfigData.put("name", this.instanceName);
-        launchConfigData.remove(ServiceDiscoveryConfigItem.RESTART.getCattleName());
+        prepareContainerLaunchConfig(launchConfigData, this.instanceName);
         Object labels = launchConfigData.get(InstanceConstants.FIELD_LABELS);
         if (labels != null) {
             String overrideHostName = asStringMap(labels)
@@ -167,6 +165,12 @@ public class DefaultDeploymentUnitInstance extends DeploymentUnitInstance implem
         launchConfigData.put(InstanceConstants.FIELD_SERVICE_INSTANCE_SERVICE_INDEX,
                 this.serviceIndex.getServiceIndex());
         launchConfigData.put(InstanceConstants.FIELD_ALLOCATED_IP_ADDRESS, serviceIndex.getAddress());
+        return launchConfigData;
+    }
+
+    static Map<String, Object> prepareContainerLaunchConfig(Map<String, Object> launchConfigData,
+            String instanceName) {
+        launchConfigData.put("name", instanceName);
         return launchConfigData;
     }
 
