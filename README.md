@@ -56,7 +56,7 @@ The gate performs dependency-hygiene checks, builds every Maven module with JDK 
 To create the complete release archive after the gate passes:
 
 ```sh
-ENGINE_VERSION=0.183.292 bash scripts/build --release
+ENGINE_VERSION=0.183.293 bash scripts/build --release
 bash scripts/check-release-artifact dist/artifacts/cattle.jar
 ```
 

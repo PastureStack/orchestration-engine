@@ -49,6 +49,8 @@ public class VolumePreflightService {
     private static final Pattern CONTROL = Pattern.compile("[\\x00-\\x1f\\x7f]");
     private static final Set<String> ALLOWED_MODES = new HashSet<String>(Arrays.asList(
             "ro", "rw", "z", "Z", "nocopy"));
+    private static final Set<String> BIND_PROPAGATION_MODES = new HashSet<String>(Arrays.asList(
+            "private", "rprivate", "shared", "rshared", "slave", "rslave"));
     private static final Set<String> UNUSABLE_VOLUME_STATES = new HashSet<String>(Arrays.asList(
             "removing", "removed", "purging", "purged", "error", "erroring"));
 
@@ -343,22 +345,31 @@ public class VolumePreflightService {
                 spec.errors.add("unsafe_source_path");
             }
         }
-        if (spec.mode != null && !validMode(spec.mode)) {
+        if (spec.mode != null && !validMode(spec.mode, spec.kind)) {
             spec.errors.add("invalid_volume_mode");
         }
         spec.valid = spec.errors.isEmpty();
         return spec;
     }
 
-    private static boolean validMode(String mode) {
+    private static boolean validMode(String mode, VolumeKind kind) {
         if (mode.length() == 0) {
             return false;
         }
         Set<String> seen = new HashSet<String>();
+        boolean propagationSeen = false;
         for (String value : mode.split(",", -1)) {
-            if (!ALLOWED_MODES.contains(value) || !seen.add(value)) {
+            if (!seen.add(value)) {
                 return false;
             }
+            if (ALLOWED_MODES.contains(value)) {
+                continue;
+            }
+            if (kind != VolumeKind.BIND || !BIND_PROPAGATION_MODES.contains(value)
+                    || propagationSeen) {
+                return false;
+            }
+            propagationSeen = true;
         }
         return true;
     }
