@@ -986,7 +986,7 @@
         "launchConfig.name" : "",
         "launchConfig.networkLaunchConfig" : "cr",
         "launchConfig.dataVolumesFromLaunchConfigs" : "cr",
-        "launchConfig.restartPolicy" : "",
+        "launchConfig.restartPolicy" : "cr",
         "launchConfig.kind" : "cr",
         "launchConfig.vcpu" : "cr",
         "launchConfig.userdata" : "cr",

@@ -123,6 +123,7 @@ def test_activate_single_service(client, context,
                     "port": 200}
 
     labels = {"foo": "bar"}
+    restart_policy = {"maximumRetryCount": 0, "name": "unless-stopped"}
 
     launch_config = {"imageUuid": image_uuid}
 
@@ -149,6 +150,7 @@ def test_activate_single_service(client, context,
                      "entryPoint": ["/bin/sh", "-c"],
                      "cpuShares": 400,
                      "cpuSet": "2",
+                     "restartPolicy": restart_policy,
                      "workingDir": "/",
                      "hostname": "test",
                      "user": "test",
@@ -186,6 +188,7 @@ def test_activate_single_service(client, context,
     assert svc.launchConfig.tty is True
     assert svc.launchConfig.entryPoint == ["/bin/sh", "-c"]
     assert svc.launchConfig.cpuShares == 400
+    assert svc.launchConfig.restartPolicy == restart_policy
     assert svc.launchConfig.workingDir == "/"
     assert svc.launchConfig.hostname == "test"
     assert svc.launchConfig.user == "test"
@@ -238,6 +241,7 @@ def test_activate_single_service(client, context,
     assert container.tty is True
     assert container.entryPoint == ["/bin/sh", "-c"]
     assert container.cpuShares == 400
+    assert container.restartPolicy == restart_policy
     assert container.workingDir == "/"
     assert container.hostname == "test"
     assert container.user == "test"
