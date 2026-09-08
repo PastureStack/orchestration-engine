@@ -1,7 +1,6 @@
 package io.cattle.platform.iaas.api.volume;
 
 import static io.cattle.platform.core.model.tables.StorageDriverTable.STORAGE_DRIVER;
-import static io.cattle.platform.core.model.tables.VolumeTable.VOLUME;
 
 import io.cattle.platform.core.addon.VolumePreflightInput;
 import io.cattle.platform.core.addon.VolumePreflightIssue;
@@ -9,6 +8,7 @@ import io.cattle.platform.core.addon.VolumePreflightResult;
 import io.cattle.platform.core.constants.CommonStatesConstants;
 import io.cattle.platform.core.constants.StorageDriverConstants;
 import io.cattle.platform.core.dao.StoragePoolDao;
+import io.cattle.platform.core.dao.VolumeDao;
 import io.cattle.platform.core.model.Account;
 import io.cattle.platform.core.model.Host;
 import io.cattle.platform.core.model.Instance;
@@ -57,6 +57,9 @@ public class VolumePreflightService {
 
     @Inject
     StoragePoolDao storagePoolDao;
+
+    @Inject
+    VolumeDao volumeDao;
 
     @Inject
     PortPreflightDao hostDao;
@@ -233,27 +236,42 @@ public class VolumePreflightService {
                 continue;
             }
 
-            List<? extends Volume> volumes = objectManager.find(Volume.class,
-                    VOLUME.ACCOUNT_ID, account.getId(),
-                    VOLUME.NAME, spec.source,
-                    VOLUME.REMOVED, null);
-            if (volumes.size() > 1) {
-                issues.add(issue("blocked", "ambiguous_existing_volume",
+            List<? extends Volume> volumes = findResolvableNamedVolumes(account.getId(), spec.source);
+            for (String reason : existingNamedVolumeReasons(volumes, expectedDriverId)) {
+                issues.add(issue("blocked", reason,
                         Integer.valueOf(spec.index), spec.raw, requestedDriver));
-                continue;
-            }
-            if (volumes.size() == 1) {
-                Volume existing = volumes.get(0);
-                if (!equalLong(expectedDriverId, existing.getStorageDriverId())) {
-                    issues.add(issue("blocked", "volume_driver_mismatch",
-                            Integer.valueOf(spec.index), spec.raw, requestedDriver));
-                }
-                if (UNUSABLE_VOLUME_STATES.contains(String.valueOf(existing.getState()).toLowerCase(Locale.ENGLISH))) {
-                    issues.add(issue("blocked", "existing_volume_unusable",
-                            Integer.valueOf(spec.index), spec.raw, requestedDriver));
-                }
             }
         }
+    }
+
+    List<? extends Volume> findResolvableNamedVolumes(long accountId, String volumeName) {
+        /*
+         * Keep preflight aligned with InstanceVolumeLookupPreCreate. Docker-local named
+         * volumes legitimately have one API record per host and remain in dataVolumes
+         * until placement. Only shared or unmapped volumes participate in the
+         * environment-wide name lookup and can therefore be ambiguous here.
+         */
+        return volumeDao.findSharedOrUnmappedVolumes(accountId, volumeName);
+    }
+
+    static List<String> existingNamedVolumeReasons(List<? extends Volume> volumes,
+            Long expectedDriverId) {
+        if (volumes.size() > 1) {
+            return Collections.singletonList("ambiguous_existing_volume");
+        }
+        if (volumes.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        List<String> reasons = new ArrayList<String>();
+        Volume existing = volumes.get(0);
+        if (!equalLong(expectedDriverId, existing.getStorageDriverId())) {
+            reasons.add("volume_driver_mismatch");
+        }
+        if (UNUSABLE_VOLUME_STATES.contains(String.valueOf(existing.getState()).toLowerCase(Locale.ENGLISH))) {
+            reasons.add("existing_volume_unusable");
+        }
+        return reasons;
     }
 
     static List<VolumeSpec> parseSpecs(List<String> values, List<VolumePreflightIssue> issues) {

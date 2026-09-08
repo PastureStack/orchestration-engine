@@ -4,7 +4,14 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
+import io.cattle.platform.core.dao.VolumeDao;
+import io.cattle.platform.core.model.Volume;
+import io.cattle.platform.core.model.tables.records.VolumeRecord;
+
+import java.lang.reflect.Proxy;
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
 
 import org.junit.Test;
 
@@ -91,5 +98,54 @@ public class VolumePreflightServiceTest {
     public void doesNotApplyTheNfsContractToOtherStorageDrivers() {
         assertTrue(VolumePreflightService.nfsContractReasons(
                 "other-driver", false, "singleHostRW", 0, 2).isEmpty());
+    }
+
+    @Test
+    public void usesRuntimeResolvableLookupSoPerHostDockerVolumesAreNotAmbiguous() {
+        final boolean[] called = new boolean[] { false };
+        VolumeDao dao = (VolumeDao) Proxy.newProxyInstance(
+                VolumeDao.class.getClassLoader(), new Class<?>[] { VolumeDao.class },
+                (proxy, method, args) -> {
+                    if ("findSharedOrUnmappedVolumes".equals(method.getName())) {
+                        called[0] = true;
+                        assertEquals(Long.valueOf(7L), args[0]);
+                        assertEquals("rancher-cni-driver", args[1]);
+                        return Collections.emptyList();
+                    }
+                    throw new UnsupportedOperationException(method.getName());
+                });
+        VolumePreflightService service = new VolumePreflightService();
+        service.volumeDao = dao;
+
+        List<? extends Volume> resolved = service.findResolvableNamedVolumes(
+                7L, "rancher-cni-driver");
+
+        assertTrue(called[0]);
+        assertTrue(resolved.isEmpty());
+        assertTrue(VolumePreflightService.existingNamedVolumeReasons(
+                resolved, null).isEmpty());
+    }
+
+    @Test
+    public void stillRejectsMultipleSharedOrUnmappedVolumes() {
+        VolumeRecord first = new VolumeRecord();
+        first.setState("active");
+        VolumeRecord second = new VolumeRecord();
+        second.setState("active");
+
+        assertEquals(Collections.singletonList("ambiguous_existing_volume"),
+                VolumePreflightService.existingNamedVolumeReasons(
+                        Arrays.asList(first, second), null));
+    }
+
+    @Test
+    public void stillRejectsDriverMismatchAndUnusableResolvedVolume() {
+        VolumeRecord existing = new VolumeRecord();
+        existing.setStorageDriverId(Long.valueOf(9L));
+        existing.setState("removing");
+
+        assertEquals(Arrays.asList("volume_driver_mismatch", "existing_volume_unusable"),
+                VolumePreflightService.existingNamedVolumeReasons(
+                        Collections.singletonList(existing), Long.valueOf(10L)));
     }
 }
