@@ -5,10 +5,10 @@ The orchestration engine embeds the reviewed runtime produced by the dedicated `
 ## Provenance
 
 - Source project: [`PastureStack/distributed-cache-runtime`](https://github.com/PastureStack/distributed-cache-runtime)
-- Signed release tag: `v5.7.3-pasturestack.4`
-- Source commit: `daab0b34f0fce46e5be79c56e80dab769183aa83`
-- Runtime artifact: `hazelcast-5.7.3-pasturestack.4.jar`
-- Artifact SHA-256: `9fa751998ce3cc1f17692e21933b24646c39a7142ca387af772e43f49dc77764`
+- Annotated release tag: `v5.7.4`
+- Source commit: `21fe15f85f0eff12d3ba1f68af3e1753e90ca3bd`
+- Runtime artifact: `hazelcast-5.7.4.jar`
+- Artifact SHA-256: `6b768e6cff9e5281e77ad14e609b69bac6856ecd4469af827f566be95553644c`
 - Embedded Jackson 3 / Jackson 2: `3.2.2` / `2.22.2`
 
 The source project owns the Java 25 build, focused legitimate and malicious regression suite, SBOM, source and artifact scanning, and release artifact. This repository downloads that exact release asset over HTTPS, verifies the pinned bytes, safe JAR paths, license and notice, Maven identities, Jackson versions, and embedded source revision before installing it into the build-local Maven repository.
