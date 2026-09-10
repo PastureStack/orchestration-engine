@@ -8,7 +8,18 @@ PastureStack is an independent community effort to preserve, audit, and moderniz
 
 ## Project status
 
-This source tree and its current release produce engine version `0.183.294`. It retains the existing Java 25, Ubuntu 26.04, Maven, Liquibase, MariaDB/MySQL, WebSocket, dependency, concurrency, and runtime-hardening work from the maintained compatibility line. Release builds consume the exact `5.7.4` runtime JAR published by [`distributed-cache-runtime`](https://github.com/PastureStack/distributed-cache-runtime/releases/tag/v5.7.4), verify its pinned SHA-256 and embedded dependency metadata, and install it only into the build-local Maven repository. The current coordinate is pure numeric; product identity and provenance are carried by the artifact name, metadata, SBOM, and release evidence. Provenance and scope are documented in [`third-party/HAZELCAST.md`](third-party/HAZELCAST.md).
+This source tree and its current public GitHub Release
+[`v0.183.294`](https://github.com/PastureStack/orchestration-engine/releases/tag/v0.183.294)
+produce engine version `0.183.294`. It retains the existing Java 25, Ubuntu
+26.04, Maven, Liquibase, MariaDB/MySQL, WebSocket, dependency, concurrency, and
+runtime-hardening work from the maintained compatibility line. Release builds
+consume the exact `5.7.4` runtime JAR published by
+[`distributed-cache-runtime`](https://github.com/PastureStack/distributed-cache-runtime/releases/tag/v5.7.4),
+verify its pinned SHA-256 and embedded dependency metadata, and install it only
+into the build-local Maven repository. The current coordinate is pure numeric;
+product identity and provenance are carried by the artifact name, metadata,
+SBOM, and release evidence. Provenance and scope are documented in
+[`third-party/HAZELCAST.md`](third-party/HAZELCAST.md).
 
 WebAuthn verification uses WebAuthn4J's maintained `tools.jackson` 3.2
 dependency line. The existing platform JSON surface remains on
