@@ -122,7 +122,7 @@ public class WebsocketProxyLauncherSettingsTest {
     }
 
     @Test
-    public void dynamicProxyAddressesNeverEnterChildEnvironment() {
+    public void onlyAllowlistedProxyConfigurationEntersChildEnvironment() {
         WebsocketProxyLauncher launcher = new WebsocketProxyLauncher(new StubWebsocketProxySettings()) {
             @Override
             public Credential getCredential() {
@@ -131,16 +131,36 @@ public class WebsocketProxyLauncherSettingsTest {
         };
         Map<String, String> environment = new HashMap<>();
         environment.put("INHERITED", "must-be-cleared");
+        environment.put("PROXY_PLATFORM_PUBLIC_ORIGIN", "https://stack.example.test");
+        environment.put("PROXY_UNREVIEWED_OPTION", "must-be-cleared");
 
         launcher.setEnvironment(environment);
 
         assertFalse(environment.containsKey("INHERITED"));
+        assertFalse(environment.containsKey("PROXY_UNREVIEWED_OPTION"));
         assertFalse(environment.containsKey("PROXY_LISTEN_ADDRESS"));
         assertFalse(environment.containsKey("PROXY_TLS_LISTEN_ADDRESS"));
         assertFalse(environment.containsKey("PROXY_CATTLE_ADDRESS"));
         assertFalse(environment.containsKey("PROXY_HTTPS_PROXY_PROTOCOL_PORTS"));
+        assertEquals("https://stack.example.test", environment.get("PROXY_PLATFORM_PUBLIC_ORIGIN"));
         assertEquals("public-key", environment.get("PLATFORM_ACCESS_KEY"));
         assertEquals("secret-key", environment.get("PLATFORM_SECRET_KEY"));
+    }
+
+    @Test
+    public void blankPublicOriginDoesNotEnterChildEnvironment() {
+        WebsocketProxyLauncher launcher = new WebsocketProxyLauncher(new StubWebsocketProxySettings()) {
+            @Override
+            public Credential getCredential() {
+                return credential("public-key", "secret-key");
+            }
+        };
+        Map<String, String> environment = new HashMap<>();
+        environment.put("PROXY_PLATFORM_PUBLIC_ORIGIN", "   ");
+
+        launcher.setEnvironment(environment);
+
+        assertFalse(environment.containsKey("PROXY_PLATFORM_PUBLIC_ORIGIN"));
     }
 
     private static Credential credential(String publicValue, String secretValue) {

@@ -110,9 +110,13 @@ public class WebsocketProxyLauncher extends GenericServiceLauncher {
 
     @Override
     protected void setEnvironment(Map<String, String> env) {
+        String platformPublicOrigin = env.get("PROXY_PLATFORM_PUBLIC_ORIGIN");
         env.clear();
         env.put("PROXY_MASTER_FILE", MASTER_CONF);
         env.put("PROXY_API_INTERCEPTOR_CONFIG_FILE", settings.apiInterceptorConfigFile());
+        if (StringUtils.isNotBlank(platformPublicOrigin)) {
+            env.put("PROXY_PLATFORM_PUBLIC_ORIGIN", platformPublicOrigin);
+        }
 
         String processName = ManagementFactory.getRuntimeMXBean().getName();
         if (processName != null) {
