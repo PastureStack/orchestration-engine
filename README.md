@@ -9,8 +9,8 @@ PastureStack is an independent community effort to preserve, audit, and moderniz
 ## Project status
 
 This source tree and its current public GitHub Release
-[`v0.183.294`](https://github.com/PastureStack/orchestration-engine/releases/tag/v0.183.294)
-produce engine version `0.183.294`. It retains the existing Java 25, Ubuntu
+[`v0.183.295`](https://github.com/PastureStack/orchestration-engine/releases/tag/v0.183.295)
+produce engine version `0.183.295`. It retains the existing Java 25, Ubuntu
 26.04, Maven, Liquibase, MariaDB/MySQL, WebSocket, dependency, concurrency, and
 runtime-hardening work from the maintained compatibility line. Release builds
 consume the exact `5.7.4` runtime JAR published by
@@ -44,6 +44,13 @@ System-administrator workflows support verified identity reassignment,
 permission transfer, disabled-account restoration, safe provider switching,
 and MFA-protected local recovery.
 
+When TLS terminates in front of the Server, the Engine forwards only the
+explicitly allowlisted `PROXY_PLATFORM_PUBLIC_ORIGIN` deployment setting to the
+WebSocket Proxy child process. The proxy validates that value as an HTTP(S)
+origin and uses it only for requests whose authority matches, so generated API
+links retain the operator's public HTTPS origin without trusting arbitrary
+client forwarding headers.
+
 Interactive MFA supports RFC 6238 six-digit TOTP, WebAuthn passkeys including
 Windows Hello, phones, and hardware security keys, hashed single-use recovery
 codes, and verified email account recovery. Email is not treated as an MFA
@@ -67,7 +74,7 @@ The gate performs dependency-hygiene checks, builds every Maven module with JDK 
 To create the complete release archive after the gate passes:
 
 ```sh
-ENGINE_VERSION=0.183.294 bash scripts/build --release
+ENGINE_VERSION=0.183.295 bash scripts/build --release
 bash scripts/check-release-artifact dist/artifacts/cattle.jar
 ```
 
