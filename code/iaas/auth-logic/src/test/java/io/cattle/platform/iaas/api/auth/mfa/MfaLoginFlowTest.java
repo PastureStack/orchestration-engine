@@ -283,6 +283,36 @@ public class MfaLoginFlowTest {
         throw new AssertionError("A security confirmation ticket was accepted more than once");
     }
 
+    @Test
+    public void securityConfirmationRejectsExpiredAndWrongAccountTickets() {
+        for (boolean expired : new boolean[] {true, false}) {
+            Account account = account(42L);
+            InMemoryMfaDao dao = new InMemoryMfaDao();
+            byte[] secretBytes = "12345678901234567890".getBytes(StandardCharsets.US_ASCII);
+            dao.create(account.getId(), CredentialConstants.KIND_MFA_TOTP, "totp-factor",
+                    "encrypt:" + new Base32().encodeToString(secretBytes), new HashMap<String, Object>());
+            MfaService service = service(account, dao);
+            Map<String, Object> challenge = service.beginSecurityConfirmation(account);
+            String code = TotpService.calculate(secretBytes,
+                    (NOW / 1000L) / TotpService.PERIOD_SECONDS, TotpService.DIGITS);
+            Map<String, Object> result = service.finishSecurityConfirmation(account,
+                    String.valueOf(challenge.get("challengeId")), MfaService.METHOD_TOTP, code, null, null);
+            Credential ticket = dao.listActive(account.getId(), CredentialConstants.KIND_MFA_SECURITY_TICKET).get(0);
+            if (expired) {
+                ticket.getData().put("expiresAt", NOW);
+            }
+            boolean rejected = false;
+            try {
+                service.consumeSecurityConfirmation(expired ? account : account(43L),
+                        String.valueOf(result.get("securityConfirmation")));
+            } catch (ClientVisibleException expected) {
+                assertEquals("MfaReauthenticationRequired", expected.getCode());
+                rejected = true;
+            }
+            assertTrue(expired ? "expired ticket" : "wrong account", rejected);
+        }
+    }
+
     private MfaService service(final Account account, InMemoryMfaDao dao) {
         MfaService service = new MfaService() {
             @Override
