@@ -48,6 +48,23 @@ public class FrozenHardwareSchemaTest {
                         shmSize.isUpdate(), deviceRequests.isUpdate());
                 assertEquals("array[deviceRequest]", deviceRequests.getType());
 
+                Schema launchConfig = find(schemas, "launchConfig");
+                assertNotNull(schemaFile + " is missing launchConfig", launchConfig);
+                for (String fieldName : new String[] {"runtime", "shmSize", "deviceRequests"}) {
+                    Field containerField = container.getResourceFields().get(fieldName);
+                    Field launchConfigField = launchConfig.getResourceFields().get(fieldName);
+                    assertNotNull(schemaFile + " is missing launchConfig." + fieldName,
+                            launchConfigField);
+                    assertEquals(schemaFile + " changed launchConfig." + fieldName
+                                    + " create authorization",
+                            containerField.isCreate(), launchConfigField.isCreate());
+                    assertEquals(schemaFile + " changed launchConfig." + fieldName
+                                    + " update authorization",
+                            containerField.isUpdate(), launchConfigField.isUpdate());
+                    assertEquals(schemaFile + " changed launchConfig." + fieldName + " type",
+                            containerField.getType(), launchConfigField.getType());
+                }
+
                 Schema deviceRequest = find(schemas, "deviceRequest");
                 assertNotNull(schemaFile + " is missing the deviceRequest schema", deviceRequest);
                 for (String fieldName : new String[] {
