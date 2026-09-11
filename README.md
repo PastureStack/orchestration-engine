@@ -9,8 +9,8 @@ PastureStack is an independent community effort to preserve, audit, and moderniz
 ## Project status
 
 This source tree and its current public GitHub Release
-[`v0.183.296`](https://github.com/PastureStack/orchestration-engine/releases/tag/v0.183.296)
-produce engine version `0.183.296`. It retains the existing Java 25, Ubuntu
+[`v0.183.297`](https://github.com/PastureStack/orchestration-engine/releases/tag/v0.183.297)
+produce engine version `0.183.297`. It retains the existing Java 25, Ubuntu
 26.04, Maven, Liquibase, MariaDB/MySQL, WebSocket, dependency, concurrency, and
 runtime-hardening work from the maintained compatibility line. Release builds
 consume the exact `5.7.4` runtime JAR published by
@@ -21,12 +21,13 @@ product identity and provenance are carried by the artifact name, metadata,
 SBOM, and release evidence. Provenance and scope are documented in
 [`third-party/HAZELCAST.md`](third-party/HAZELCAST.md).
 
-Release `0.183.296` synchronizes the frozen `v1` authorization schemas with
-the already-supported container hardware model. Clients using `/v1` can now
-discover and submit `runtime` and typed `deviceRequests` alongside `shmSize`;
-the existing `/v2-beta` contract and Docker conversion path are unchanged.
-Packaging regression coverage loads every shipped role snapshot and verifies
-the container fields, nested GPU request type, and create/update permissions.
+Release `0.183.297` completes the frozen `v1` hardware contract for both
+direct containers and service `launchConfig` payloads. Clients using `/v1` can
+discover and submit `runtime` and typed `deviceRequests` alongside `shmSize`
+through the same service create and upgrade shape already exposed by
+`/v2-beta`; the Docker conversion path is unchanged. Packaging regression
+coverage loads every shipped role snapshot and verifies both schema surfaces,
+the nested GPU request type, and create/update permissions.
 
 WebAuthn verification uses WebAuthn4J's maintained `tools.jackson` 3.2
 dependency line. The existing platform JSON surface remains on
@@ -81,7 +82,7 @@ The gate performs dependency-hygiene checks, builds every Maven module with JDK 
 To create the complete release archive after the gate passes:
 
 ```sh
-ENGINE_VERSION=0.183.296 bash scripts/build --release
+ENGINE_VERSION=0.183.297 bash scripts/build --release
 bash scripts/check-release-artifact dist/artifacts/cattle.jar
 ```
 
