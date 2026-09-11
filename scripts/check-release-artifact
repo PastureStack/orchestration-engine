@@ -4,7 +4,7 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 artifact=${1:-dist/artifacts/cattle.jar}
-expected_version=${EXPECTED_ENGINE_VERSION:-0.183.297}
+expected_version=${EXPECTED_ENGINE_VERSION:-0.183.298}
 
 test -f "$artifact"
 artifact=$(realpath "$artifact")
@@ -106,6 +106,22 @@ unzip -p "$workdir/$resources_entry" schema/base/mfaSettings.json |
     grep -F '"collectionMethods": [ "GET" ]' >/dev/null
 unzip -p "$workdir/$resources_entry" schema/base/mfaSettings.json |
     grep -F '"resourceMethods": [ "GET", "PUT" ]' >/dev/null
+for authorization in \
+    '"mfaSettings": "ru",' \
+    '"mfaSettings.securityConfirmation": "ruo",' \
+    '"mfaSettings.maximumFailedAttempts": "ru",' \
+    '"mfaSettings.localAdministratorRecoveryStatus": "r",' \
+    '"mfaOperation.methods": "r",'; do
+    unzip -p "$workdir/$resources_entry" schema/admin/admin-auth.json |
+        grep -F "$authorization" >/dev/null
+done
+for authorization in \
+    '"mfaOperation.method": "cr",' \
+    '"mfaOperation.securityConfirmation": "cro",' \
+    '"mfaOperation.webAuthnOptions": "r",'; do
+    unzip -p "$workdir/$resources_entry" schema/user/user-auth.json |
+        grep -F "$authorization" >/dev/null
+done
 unzip -p "$workdir/$resources_entry" db/changelog.xml |
     grep -F '<include file="db/core-125.xml"/>' >/dev/null
 unzip -p "$workdir/$resources_entry" db/core-125.xml |
