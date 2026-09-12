@@ -4,6 +4,23 @@ The migration preserves established `io.cattle.*` Java packages, Maven coordinat
 
 New operator-facing names use PastureStack and `PASTURESTACK_*`. Compatibility identifiers must be changed only with an explicit data migration, a dual-read or dual-write transition, a rollback plan, and cross-repository verification.
 
+## Docker host policy
+
+The unreleased candidate adds Docker Engine `29.8.0` as an exact supported
+version alongside the preserved legacy ranges, `24.0.9`, and the existing
+`29.4.1` through `29.7.2` interval. It does not widen the interval to admit
+untested patch versions. `newest.docker.version` is `v29.8.0` so the host UI
+classifies versions above it as untested rather than misreporting them as
+supported.
+
+Host Docker version classification and host firewall backend selection are
+different contracts. Ubuntu version does not determine whether an operator
+uses `iptables-legacy`, `iptables-nft`, or Docker's native nftables backend.
+Network components must detect the host's actual active backend before
+installing only their owned rules, without switching the host default or
+modifying another backend. Each of those modes needs runtime acceptance on
+the relevant host before this candidate is published as fully supported.
+
 The `rancher.compose.*` setting keys and inherited executable aliases remain compatibility contracts for existing launchers. Public artifact URLs and container images are hosted under the PastureStack GitHub organization; remove an alias only after its launcher and rollback fixtures accept the replacement name.
 
 ## Host API token rollout

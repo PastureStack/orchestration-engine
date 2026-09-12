@@ -41,7 +41,7 @@ fi
 
 project_version=$(sed -n 's/^[[:space:]]*<version>\([^<]*\)<\/version>[[:space:]]*$/\1/p' code/meta-parent/pom.xml | head -n 1)
 [[ "$project_version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || fail non_numeric_project_version
-require_line code/meta-parent/pom.xml '    <version>0.183.298</version>'
+require_line code/meta-parent/pom.xml '    <version>0.183.299</version>'
 require_line code/meta-parent/pom.xml '    <url>https://github.com/PastureStack/orchestration-engine</url>'
 require_line Dockerfile 'FROM ubuntu:26.04@sha256:2260313b31c8c011cd2eebe728008efac1b3982be73eb71348ea2648d2c0e09b'
 require_line Dockerfile.dapper 'FROM ubuntu:26.04@sha256:2260313b31c8c011cd2eebe728008efac1b3982be73eb71348ea2648d2c0e09b'
@@ -94,8 +94,8 @@ require_line Dockerfile.dapper 'COPY --from=docker-cli-build /go/src/github.com/
 if grep -Fq 'download.docker.com/linux/static/stable' Dockerfile Dockerfile.dapper; then
     fail vulnerable_prebuilt_docker_cli
 fi
-require_line code/packaging/app-config/src/main/resources/META-INF/cattle/api-server/defaults.properties 'supported.docker.range=~v1.12.3 || ~v1.13.0 || ~v17.03.0 || ~v17.06.0 || ~v17.09.0 || ~v17.12.0 || ~v18.03.0 || ~v18.06.0 || ~v18.09.0 || ~v19.03.2 || v24.0.9 || >=v29.4.1 <=v29.7.2'
-require_line code/packaging/app-config/src/main/resources/META-INF/cattle/api-server/defaults.properties 'newest.docker.version=v29.7.2'
+require_line code/packaging/app-config/src/main/resources/META-INF/cattle/api-server/defaults.properties 'supported.docker.range=~v1.12.3 || ~v1.13.0 || ~v17.03.0 || ~v17.06.0 || ~v17.09.0 || ~v17.12.0 || ~v18.03.0 || ~v18.06.0 || ~v18.09.0 || ~v19.03.2 || v24.0.9 || >=v29.4.1 <=v29.7.2 || v29.8.0'
+require_line code/packaging/app-config/src/main/resources/META-INF/cattle/api-server/defaults.properties 'newest.docker.version=v29.8.0'
 require_line code/meta-parent/pom.xml '        <jackson.version>2.22.2</jackson.version>'
 require_line code/meta-parent/pom.xml '        <hazelcast.version>5.7.4</hazelcast.version>'
 require_line code/meta-parent/pom.xml '        <jetty.version>12.1.12</jetty.version>'
@@ -318,4 +318,4 @@ fi
 require_line README.md 'PastureStack is an independent community effort to preserve, audit, and modernize the Rancher 1.6 ecosystem. It is not affiliated with or endorsed by Rancher Labs or SUSE.'
 require_line ORIGIN.md '- Preserved upstream boundary: `82d154a53f4089fecfb9f320caad826bb4f6055f`'
 
-printf 'PASTURESTACK_SOURCE_GATE_OK version=0.183.298 runtime_sources=github_release images=digest_pinned ubuntu=26.04 ubuntu_snapshot=20260826T000000Z jdk=25.0.4 maven=3.9.16 patched_hazelcast=5.7.4 docker=29.7.2 credential_secret_capacity=mediumtext port_preflight=authoritative volume_preflight=runtime_resolution_aligned volume_preflight_project_schema=authorized volume_preflight_type_set=registered v1_hardware_schema=container-and-launchConfig\n'
+printf 'PASTURESTACK_SOURCE_GATE_OK version=0.183.299 runtime_sources=github_release images=digest_pinned ubuntu=26.04 ubuntu_snapshot=20260826T000000Z jdk=25.0.4 maven=3.9.16 patched_hazelcast=5.7.4 docker_cli=29.7.2 docker_host_29_8_0=exact credential_secret_capacity=mediumtext port_preflight=authoritative volume_preflight=runtime_resolution_aligned volume_preflight_project_schema=authorized volume_preflight_type_set=registered v1_hardware_schema=container-and-launchConfig\n'

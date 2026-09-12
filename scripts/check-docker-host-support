@@ -17,10 +17,10 @@ require_line()
 }
 
 defaults=code/packaging/app-config/src/main/resources/META-INF/cattle/api-server/defaults.properties
-supported='supported.docker.range=~v1.12.3 || ~v1.13.0 || ~v17.03.0 || ~v17.06.0 || ~v17.09.0 || ~v17.12.0 || ~v18.03.0 || ~v18.06.0 || ~v18.09.0 || ~v19.03.2 || v24.0.9 || >=v29.4.1 <=v29.7.2'
+supported='supported.docker.range=~v1.12.3 || ~v1.13.0 || ~v17.03.0 || ~v17.06.0 || ~v17.09.0 || ~v17.12.0 || ~v18.03.0 || ~v18.06.0 || ~v18.09.0 || ~v19.03.2 || v24.0.9 || >=v29.4.1 <=v29.7.2 || v29.8.0'
 
 require_line "$defaults" "$supported"
-require_line "$defaults" 'newest.docker.version=v29.7.2'
+require_line "$defaults" 'newest.docker.version=v29.8.0'
 require_line Makefile 'DOCKER_VERSION ?= 29.7.2'
 require_line Dockerfile 'ARG DOCKER_VERSION=29.7.2'
 require_line Dockerfile.dapper 'ARG DOCKER_VERSION=29.7.2'
@@ -39,4 +39,74 @@ if grep -Eq 'supported\.docker\.range=.*(v29\.4\.1 \|\| v29\.7\.2|~v29|v2[5-8]\.
     fail incorrect_modern_range
 fi
 
-printf 'DOCKER_HOST_SUPPORT_GATE_OK newest=29.7.2 exact_legacy_modern=24.0.9 docker_29_range=29.4.1..29.7.2 docker_29_6_2=supported broad_25_to_28=0\n'
+if python3 --version >/dev/null 2>&1; then
+    python_command=python3
+elif python --version >/dev/null 2>&1; then
+    python_command=python
+else
+    fail python_required_for_classification_test
+fi
+
+"$python_command" - "$defaults" <<'PY'
+from pathlib import Path
+import re
+import sys
+
+properties = {}
+for line in Path(sys.argv[1]).read_text(encoding="utf-8").splitlines():
+    if "=" in line and not line.lstrip().startswith("#"):
+        key, value = line.split("=", 1)
+        properties[key] = value.strip()
+
+clauses = [part.strip() for part in properties["supported.docker.range"].split("||")]
+newest = properties["newest.docker.version"]
+version_pattern = re.compile(r"v?(\d+)\.(\d+)\.(\d+)$")
+
+def version(value):
+    match = version_pattern.fullmatch(value)
+    if match is None:
+        raise ValueError(f"invalid test version: {value}")
+    return tuple(int(part) for part in match.groups())
+
+def permitted(candidate):
+    parsed = version(candidate)
+    for clause in clauses:
+        if clause.startswith("~"):
+            # These preserved legacy clauses are frozen by the exact-line gate.
+            continue
+        if clause.startswith(">="):
+            match = re.fullmatch(r">=(v\d+\.\d+\.\d+) <=(v\d+\.\d+\.\d+)", clause)
+            if match is None:
+                raise ValueError(f"unrecognized Docker interval: {clause}")
+            if version(match[1]) <= parsed <= version(match[2]):
+                return True
+        elif parsed == version(clause):
+            return True
+    return False
+
+def host_state(candidate):
+    if permitted(candidate):
+        return "supported"
+    return "untested" if version(candidate) > version(newest) else "unsupported"
+
+expected = {
+    "v24.0.9": "supported",
+    "v25.0.0": "unsupported",
+    "v28.9.9": "unsupported",
+    "v29.4.0": "unsupported",
+    "v29.4.1": "supported",
+    "v29.6.2": "supported",
+    "v29.7.2": "supported",
+    "v29.7.3": "unsupported",
+    "v29.8.0": "supported",
+    "v29.8.1": "untested",
+    "v30.0.0": "untested",
+}
+for candidate, state in expected.items():
+    actual = host_state(candidate)
+    if actual != state:
+        raise SystemExit(f"DOCKER_HOST_CLASSIFICATION_MISMATCH version={candidate} expected={state} actual={actual}")
+print(f"DOCKER_HOST_CLASSIFICATION_OK cases={len(expected)}")
+PY
+
+printf 'DOCKER_HOST_SUPPORT_GATE_OK newest=29.8.0 exact_legacy_modern=24.0.9 docker_29_range=29.4.1..29.7.2 docker_29_8_0=exact broad_25_to_28=0\n'
