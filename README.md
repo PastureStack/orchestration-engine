@@ -8,9 +8,10 @@ PastureStack is an independent community effort to preserve, audit, and moderniz
 
 ## Project status
 
-This source tree and its current public GitHub Release
+The current public GitHub Release
 [`v0.183.298`](https://github.com/PastureStack/orchestration-engine/releases/tag/v0.183.298)
-produce engine version `0.183.298`. It retains the existing Java 25, Ubuntu
+produces engine version `0.183.298`. This branch prepares an unreleased
+`0.183.299` Docker host policy candidate. It retains the existing Java 25, Ubuntu
 26.04, Maven, Liquibase, MariaDB/MySQL, WebSocket, dependency, concurrency, and
 runtime-hardening work from the maintained compatibility line. Release builds
 consume the exact `5.7.4` runtime JAR published by
@@ -44,9 +45,9 @@ dependency line. The existing platform JSON surface remains on
 `com.fasterxml.jackson` 2.22. Packaging gates admit only the reviewed,
 version-pinned pair and verify that their class namespaces are disjoint.
 
-Host compatibility is evidence-based. The default policy recognizes the preserved legacy ranges, Docker Engine `24.0.9`, and every stable Docker 29 release from `29.4.1` through `29.7.2` inclusive. The bounded Docker 29 interval includes `29.6.2`; Docker 25 through 28 and versions outside that interval remain unsupported.
+Host compatibility is evidence-based. The candidate default policy preserves the legacy ranges and Docker Engine `24.0.9`, retains the bounded `29.4.1` through `29.7.2` interval, and adds exactly `29.8.0`. It does not admit unverified `29.7.3` or `29.8.1`, or Docker 25 through 28. The frontend marks versions above the configured newest version as *untested*, not *supported*. The `29.8.0` policy still requires the separate Ubuntu 26.04 host and firewall-backend runtime acceptance gate before release.
 
-The build and Dapper images compile the Docker `29.7.2` CLI from the pinned official tag commit with Go `1.27.0`; they do not import Docker's precompiled Go `1.26.5` binary. The source archive SHA-256 and Go builder image digest are enforced by the source gate and the resulting images are scanned before release.
+The build and Dapper images still compile the Docker `29.7.2` CLI from the pinned official tag commit with Go `1.27.0`; the CLI tool version is separate from the Docker daemon host support setting. They do not import Docker's precompiled Go `1.26.5` binary. The source archive SHA-256 and Go builder image digest are enforced by the source gate and the resulting images are scanned before release.
 
 Container and service port changes expose a read-only `portpreflight` project action. The action evaluates persisted workload ownership, eligible-host capacity, requested scheduling constraints, rolling-upgrade overlap, and live Node Agent socket observations before a change is saved. Primary and sidekick bindings retain their own network modes while sharing one physical-host collision check. Managed-network published ports are unique across the environment even when a workload targets one host; bridge and host-network checks remain scoped to an explicitly requested host, and host networking checks the effective container port rather than a misleading published-port remap. Running owners block the applicable scope, stopped owners remain visible as warnings, and incomplete live inspection is reported as unknown rather than available. During a start-first upgrade, unchanged bindings reserve their current hosts without being reported as self-conflicts; changed bindings are checked as new requests, and runtime probes ignore only the exact containers already represented by those persisted reservations. The allocator and final create/upgrade validation repeat the authoritative check so the browser result is never the only enforcement boundary. Project authorization explicitly exposes the action's nested input and read-only result schemas; regression tests load the shipped authorization overlays and verify the network-scope, upgrade-capacity, self-ownership, and runtime-probe contracts.
 
@@ -92,7 +93,7 @@ The gate performs dependency-hygiene checks, builds every Maven module with JDK 
 To create the complete release archive after the gate passes:
 
 ```sh
-ENGINE_VERSION=0.183.298 bash scripts/build --release
+ENGINE_VERSION=0.183.299 bash scripts/build --release
 bash scripts/check-release-artifact dist/artifacts/cattle.jar
 ```
 
