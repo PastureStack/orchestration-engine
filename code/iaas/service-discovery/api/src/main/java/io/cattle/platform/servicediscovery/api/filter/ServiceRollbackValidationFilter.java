@@ -43,22 +43,30 @@ public class ServiceRollbackValidationFilter extends AbstractDefaultResourceMana
 
     @Override
     public Object resourceAction(String type, ApiRequest request, ResourceManager next) {
-        if (request.getAction().equals(ServiceConstants.ACTION_SERVICE_ROLLBACK)) {
+        if (ServiceConstants.ACTION_SERVICE_ROLLBACK.equals(request.getAction())) {
             Service service = objectManager.loadResource(Service.class, request.getId());
-            ServiceUpgrade upgrade = DataAccessor.field(service, ServiceConstants.FIELD_UPGRADE,
-                    jsonMapper,
-                    ServiceUpgrade.class);
-
-            if (upgrade != null && upgrade.getInServiceStrategy() != null) {
-                InServiceUpgradeStrategy strategy = upgrade.getInServiceStrategy();
-                if (strategy.getPreviousLaunchConfig() != null || strategy.getPreviousSecondaryLaunchConfigs() != null) {
-                    ServiceDiscoveryUtil.upgradeServiceConfigs(service, strategy, true);
-                }
-
+            if (restorePreviousLaunchConfigs(service, jsonMapper)) {
                 objectManager.persist(service);
             }
         }
 
         return super.resourceAction(type, request, next);
+    }
+
+    static boolean restorePreviousLaunchConfigs(Service service, JsonMapper jsonMapper) {
+        ServiceUpgrade upgrade = DataAccessor.field(service, ServiceConstants.FIELD_UPGRADE,
+                jsonMapper,
+                ServiceUpgrade.class);
+        if (upgrade == null || upgrade.getInServiceStrategy() == null) {
+            return false;
+        }
+
+        InServiceUpgradeStrategy strategy = upgrade.getInServiceStrategy();
+        if (strategy.getPreviousLaunchConfig() == null && strategy.getPreviousSecondaryLaunchConfigs() == null) {
+            return false;
+        }
+
+        ServiceDiscoveryUtil.upgradeServiceConfigs(service, strategy, true);
+        return true;
     }
 }
