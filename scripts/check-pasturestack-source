@@ -299,6 +299,11 @@ require_line code/iaas/api-logic/src/main/java/io/cattle/platform/iaas/api/volum
 require_line code/iaas/api-logic/src/test/java/io/cattle/platform/iaas/api/volume/VolumePreflightServiceTest.java '    public void acceptsEveryDockerBindPropagationMode() {'
 require_line code/iaas/api-logic/src/main/java/io/cattle/platform/iaas/api/manager/HaConfigManager.java '        String prefix = "pasturestack-db-dump-" + now;'
 require_line code/framework/api/src/main/java/io/cattle/platform/api/servlet/ApiRequestFilter.java '    private static final String VERSION = "X-PastureStack-Version";'
+require_line code/iaas/config-item/server/src/main/java/io/cattle/platform/configitem/context/dao/impl/MetaDataInfoDaoImpl.java '        NetworkMetaData ntwkMeta = new NetworkMetaData(name, uuid, isDefault, host_ports, meta, dpa, policy, account);'
+if grep -Fq 'new NetworkMetaData(name, uuid, host_ports, isDefault,' code/iaas/config-item/server/src/main/java/io/cattle/platform/configitem/context/dao/impl/MetaDataInfoDaoImpl.java; then
+    echo 'Network Metadata is_default and host_ports arguments are swapped' >&2
+    exit 1
+fi
 
 if grep -RIn --exclude-dir=target --exclude=check-pasturestack-source \
     -E 'IMAGE=rancher/server|AGENT_IMAGE=.*rancher/agent|pull rancher/agent|--name rancher-agent-upgrade|rancher-ha-start\.sh|filename=rancher-ha\.sh|rancher/(dns-service|load-balancer-service|external-service)|ca-certificates/rancher|compose\.executor\.service\.executable=rancher-|catalog\.service\.executable=rancher-|auth\.service\.executable=rancher-|default\.services\.domain=rancher\.io|forums\.rancher\.com|rancher-db-dump-|Waiting for rancher-compose-executor|zipFile\(rancherCompose, zos, "rancher-compose\.yml"\)' \

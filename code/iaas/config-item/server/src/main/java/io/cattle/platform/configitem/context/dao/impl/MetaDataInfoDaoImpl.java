@@ -331,7 +331,7 @@ public class MetaDataInfoDaoImpl extends AbstractJooqDao implements MetaDataInfo
 
     }
 
-    private void fetchNetwork(final MetaHelperInfo helperInfo, final OutputStream os,
+    void fetchNetwork(final MetaHelperInfo helperInfo, final OutputStream os,
             Record5<String, String, Long, Long, Map<String, Object>> record) {
         String name = record.getValue(NETWORK.NAME);
         String uuid = record.getValue(NETWORK.UUID);
@@ -347,7 +347,7 @@ public class MetaDataInfoDaoImpl extends AbstractJooqDao implements MetaDataInfo
         boolean host_ports = DataAccessor.fieldBool(ntwk, NetworkConstants.FIELD_HOST_PORTS);
         Object policy = DataAccessor.field(ntwk, NetworkConstants.FIELD_POLICY, Object.class);
         String dpa = DataAccessor.fieldString(ntwk, NetworkConstants.FIELD_DEFAULT_POLICY_ACTION);
-        NetworkMetaData ntwkMeta = new NetworkMetaData(name, uuid, host_ports, isDefault, meta, dpa, policy, account);
+        NetworkMetaData ntwkMeta = new NetworkMetaData(name, uuid, isDefault, host_ports, meta, dpa, policy, account);
         writeToJson(os, ntwkMeta);
     }
 
