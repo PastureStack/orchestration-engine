@@ -1,9 +1,12 @@
 package io.cattle.platform.servicediscovery.api.filter;
 
 import io.cattle.platform.api.utils.ApiUtils;
+import io.cattle.platform.core.constants.ServiceConstants;
+import io.cattle.platform.core.model.Service;
 import io.cattle.platform.core.model.Stack;
 import io.cattle.platform.iaas.api.filter.common.AbstractDefaultResourceManagerFilter;
 import io.cattle.platform.iaas.api.infrastructure.InfrastructureAccessManager;
+import io.cattle.platform.json.JsonMapper;
 import io.cattle.platform.object.ObjectManager;
 import io.cattle.platform.object.meta.ObjectMetaDataManager;
 import io.github.ibuildthecloud.gdapi.condition.Condition;
@@ -20,6 +23,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import static io.cattle.platform.core.model.tables.ServiceTable.SERVICE;
+
 import jakarta.inject.Inject;
 import jakarta.inject.Named;
 
@@ -32,6 +37,8 @@ public class StackValidationFilter extends AbstractDefaultResourceManagerFilter 
     ObjectManager objMgr;
     @Inject
     InfrastructureAccessManager infraAccess;
+    @Inject
+    JsonMapper jsonMapper;
 
     @Override
     public Class<?>[] getTypeClasses() {
@@ -69,6 +76,22 @@ public class StackValidationFilter extends AbstractDefaultResourceManagerFilter 
         validateInfraAccess(request, stack, "delete");
 
         return super.delete(type, id, request, next);
+    }
+
+    @Override
+    public Object resourceAction(String type, ApiRequest request, ResourceManager next) {
+        if (ServiceConstants.ACTION_SERVICE_ROLLBACK.equals(request.getAction())) {
+            Stack stack = objMgr.loadResource(Stack.class, request.getId());
+            List<? extends Service> services = objMgr.find(Service.class,
+                    SERVICE.STACK_ID, stack.getId(), SERVICE.REMOVED, null);
+            for (Service service : services) {
+                if (ServiceRollbackValidationFilter.restorePreviousLaunchConfigs(service, jsonMapper)) {
+                    objMgr.persist(service);
+                }
+            }
+        }
+
+        return super.resourceAction(type, request, next);
     }
 
     private void validateInfraAccess(ApiRequest request, Stack stack, String action) {
