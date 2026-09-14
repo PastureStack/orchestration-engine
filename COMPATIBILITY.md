@@ -6,7 +6,7 @@ New operator-facing names use PastureStack and `PASTURESTACK_*`. Compatibility i
 
 ## Docker host policy
 
-The unreleased candidate adds Docker Engine `29.8.0` as an exact supported
+Release `0.183.299` adds Docker Engine `29.8.0` as an exact supported
 version alongside the preserved legacy ranges, `24.0.9`, and the existing
 `29.4.1` through `29.7.2` interval. It does not widen the interval to admit
 untested patch versions. `newest.docker.version` is `v29.8.0` so the host UI
@@ -19,7 +19,8 @@ uses `iptables-legacy`, `iptables-nft`, or Docker's native nftables backend.
 Network components must detect the host's actual active backend before
 installing only their owned rules, without switching the host default or
 modifying another backend. Each of those modes needs runtime acceptance on
-the relevant host before this candidate is published as fully supported.
+the relevant host before a Server release that consumes this Engine is
+published as fully supported.
 
 The `rancher.compose.*` setting keys and inherited executable aliases remain compatibility contracts for existing launchers. Public artifact URLs and container images are hosted under the PastureStack GitHub organization; remove an alias only after its launcher and rollback fixtures accept the replacement name.
 

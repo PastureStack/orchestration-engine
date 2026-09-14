@@ -9,9 +9,8 @@ PastureStack is an independent community effort to preserve, audit, and moderniz
 ## Project status
 
 The current public GitHub Release
-[`v0.183.298`](https://github.com/PastureStack/orchestration-engine/releases/tag/v0.183.298)
-produces engine version `0.183.298`. This branch prepares an unreleased
-`0.183.299` Docker host policy candidate. It retains the existing Java 25, Ubuntu
+[`v0.183.299`](https://github.com/PastureStack/orchestration-engine/releases/tag/v0.183.299)
+produces engine version `0.183.299`. It retains the existing Java 25, Ubuntu
 26.04, Maven, Liquibase, MariaDB/MySQL, WebSocket, dependency, concurrency, and
 runtime-hardening work from the maintained compatibility line. Release builds
 consume the exact `5.7.4` runtime JAR published by
@@ -22,7 +21,7 @@ product identity and provenance are carried by the artifact name, metadata,
 SBOM, and release evidence. Provenance and scope are documented in
 [`third-party/HAZELCAST.md`](third-party/HAZELCAST.md).
 
-The `0.183.299` candidate also corrects the network Metadata mapping for
+Release `0.183.299` also corrects the network Metadata mapping for
 `is_default` and `host_ports`. Non-default networks that explicitly enable host
 ports now publish those two independent values without swapping them, allowing
 network plug-ins to expose ports without weakening their ownership boundary.
@@ -50,7 +49,7 @@ dependency line. The existing platform JSON surface remains on
 `com.fasterxml.jackson` 2.22. Packaging gates admit only the reviewed,
 version-pinned pair and verify that their class namespaces are disjoint.
 
-Host compatibility is evidence-based. The candidate default policy preserves the legacy ranges and Docker Engine `24.0.9`, retains the bounded `29.4.1` through `29.7.2` interval, and adds exactly `29.8.0`. It does not admit unverified `29.7.3` or `29.8.1`, or Docker 25 through 28. The frontend marks versions above the configured newest version as *untested*, not *supported*. The `29.8.0` policy still requires the separate Ubuntu 26.04 host and firewall-backend runtime acceptance gate before release.
+Host compatibility is evidence-based. Release `0.183.299` preserves the legacy ranges and Docker Engine `24.0.9`, retains the bounded `29.4.1` through `29.7.2` interval, and adds exactly `29.8.0`. It does not admit unverified `29.7.3` or `29.8.1`, or Docker 25 through 28. The frontend marks versions above the configured newest version as *untested*, not *supported*. Every Server release that consumes this policy must still pass its Ubuntu 26.04 host and installed firewall-backend runtime acceptance gate.
 
 The build and Dapper images still compile the Docker `29.7.2` CLI from the pinned official tag commit with Go `1.27.0`; the CLI tool version is separate from the Docker daemon host support setting. They do not import Docker's precompiled Go `1.26.5` binary. The source archive SHA-256 and Go builder image digest are enforced by the source gate and the resulting images are scanned before release.
 
@@ -104,7 +103,7 @@ bash scripts/check-release-artifact dist/artifacts/cattle.jar
 
 Release packaging uses the exact Git revision and commit timestamp as reproducible build inputs. The selector accepts only a complete web application containing the launcher, Runtime resources, authentication logic, and `WEB-INF/web.xml`.
 
-The build environment is reproducible by construction: Ubuntu `26.04` and all test-service images are digest-pinned, direct Ubuntu packages and base-image security updates are locked to snapshot `20260826T000000Z` in [`ubuntu-apt.lock`](ubuntu-apt.lock), Temurin `25.0.4+7` and Maven `3.9.16` downloads are checksum-verified, and the Maven wrapper distribution is checksum-pinned. The manual GitHub security gate builds and tests the candidate, produces CycloneDX and dependency evidence, scans both the release artifact and Dapper image, and publishes evidence before enforcing zero applicable Critical or High findings. It does not publish a release, container image, catalog entry, or deployment.
+The build environment is reproducible by construction: Ubuntu `26.04` and all test-service images are digest-pinned, direct Ubuntu packages and base-image security updates are locked to snapshot `20260826T000000Z` in [`ubuntu-apt.lock`](ubuntu-apt.lock), Temurin `25.0.4+7` and Maven `3.9.16` downloads are checksum-verified, and the Maven wrapper distribution is checksum-pinned. The manual GitHub security gate builds and tests the release commit, produces CycloneDX and dependency evidence, scans both the release artifact and Dapper image, and publishes evidence before enforcing zero applicable Critical or High findings. It does not publish a release, container image, catalog entry, or deployment.
 
 Database-backed and full-stack suites require isolated MariaDB/MySQL and companion-service fixtures. See [COMPATIBILITY.md](COMPATIBILITY.md), [SECURITY.md](SECURITY.md), and [ORIGIN.md](ORIGIN.md).
 
