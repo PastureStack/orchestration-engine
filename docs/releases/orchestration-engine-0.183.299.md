@@ -8,6 +8,10 @@
 - Check the 11 relevant boundary and host-status cases, and verify both
   settings inside the packaged `cattle-app-config` JAR. The Server must embed
   this new `0.183.299` JAR, not reuse `0.183.298` with documentation changes.
+- Preserve the network Metadata contract by mapping `is_default` and
+  `host_ports` independently. This restores host-port publication for
+  non-default per-host networks without misclassifying them as the project's
+  default network. Regression coverage exercises all four Boolean combinations.
 
 Release remains pending actual Ubuntu 26.04 / Docker 29.8.0 acceptance with
 each installed firewall backend mode (`iptables-legacy`, `iptables-nft`, or

@@ -22,6 +22,11 @@ product identity and provenance are carried by the artifact name, metadata,
 SBOM, and release evidence. Provenance and scope are documented in
 [`third-party/HAZELCAST.md`](third-party/HAZELCAST.md).
 
+The `0.183.299` candidate also corrects the network Metadata mapping for
+`is_default` and `host_ports`. Non-default networks that explicitly enable host
+ports now publish those two independent values without swapping them, allowing
+network plug-ins to expose ports without weakening their ownership boundary.
+
 Release `0.183.298` repairs the live `v2-beta` MFA authorization overlay:
 administrators can update the singleton `mfaSettings/global` with `PUT`,
 without enabling collection creation or deletion. All 37 policy and status
