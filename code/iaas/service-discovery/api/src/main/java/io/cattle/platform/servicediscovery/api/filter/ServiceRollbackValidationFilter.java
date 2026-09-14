@@ -12,6 +12,9 @@ import io.cattle.platform.servicediscovery.api.util.ServiceDiscoveryUtil;
 import io.github.ibuildthecloud.gdapi.request.ApiRequest;
 import io.github.ibuildthecloud.gdapi.request.resource.ResourceManager;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import jakarta.inject.Inject;
 import jakarta.inject.Named;
 
@@ -31,7 +34,11 @@ public class ServiceRollbackValidationFilter extends AbstractDefaultResourceMana
 
     @Override
     public String[] getTypes() {
-        return new String[] { "service", "dnsService", "externalService" };
+        List<String> supportedTypes = new ArrayList<>();
+        supportedTypes.addAll(ServiceConstants.SERVICE_LIKE);
+        supportedTypes.add(ServiceConstants.KIND_DNS_SERVICE);
+        supportedTypes.add(ServiceConstants.KIND_EXTERNAL_SERVICE);
+        return supportedTypes.toArray(new String[supportedTypes.size()]);
     }
 
     @Override

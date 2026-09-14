@@ -6,7 +6,8 @@ New operator-facing names use PastureStack and `PASTURESTACK_*`. Compatibility i
 
 ## Docker host policy
 
-Release `0.183.299` adds Docker Engine `29.8.0` as an exact supported
+Release `0.183.300` preserves the Docker host policy introduced in `0.183.299`,
+which adds Docker Engine `29.8.0` as an exact supported
 version alongside the preserved legacy ranges, `24.0.9`, and the existing
 `29.4.1` through `29.7.2` interval. It does not widen the interval to admit
 untested patch versions. `newest.docker.version` is `v29.8.0` so the host UI
