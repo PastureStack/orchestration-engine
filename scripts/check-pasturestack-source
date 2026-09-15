@@ -197,7 +197,7 @@ require_line resources/content/db/core-126.xml '        <preConditions onFail="H
 require_line resources/content/db/core-126.xml '            <tableExists tableName="auth_token"/>'
 require_line resources/content/db/core-126.xml '            <column name="client_session_id" type="VARCHAR(128)"/>'
 reject_text resources/content/db/mysql/mysql-dump.sql 'client_session_id'
-require_line code/iaas/model/src/main/java/io/cattle/platform/core/model/AuthToken.java '    String getClientSessionId();'
+require_line code/iaas/model/src/main/java/io/cattle/platform/core/model/AuthToken.java '    public String getClientSessionId();'
 require_line code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/identity/TokenResourceManager.java '    public static final String CLIENT_SESSION_HEADER = "X-PastureStack-Client-Session-Id";'
 require_line code/iaas/auth-logic/src/test/java/io/cattle/platform/iaas/api/auth/identity/TokenResourceManagerTest.java '    public void boundTokenRequiresMatchingClientSessionAndNeverEmitsExpiryCookie() {'
 require_line resources/src/test/java/io/cattle/platform/resources/SessionBoundTokenMigrationTest.java '    public void addsSessionOwnershipWithoutRewritingTheHistoricalTokenTable() throws Exception {'
