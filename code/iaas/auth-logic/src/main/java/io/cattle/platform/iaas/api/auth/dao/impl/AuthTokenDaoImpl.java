@@ -42,6 +42,12 @@ public class AuthTokenDaoImpl extends AbstractJooqDao implements AuthTokenDao{
 
     @Override
     public AuthToken createToken(String jwt, String provider, long accountId, long authenticatedAsAccountId) {
+        return createToken(jwt, provider, accountId, authenticatedAsAccountId, null);
+    }
+
+    @Override
+    public AuthToken createToken(String jwt, String provider, long accountId, long authenticatedAsAccountId,
+            String clientSessionId) {
         if (StringUtils.isBlank(jwt)){
             throw new ClientVisibleException(ResponseCodes.INTERNAL_SERVER_ERROR, "NoJwtToSave", "Cannot save a null jwt.",
                     null);
@@ -53,6 +59,7 @@ public class AuthTokenDaoImpl extends AbstractJooqDao implements AuthTokenDao{
         authTokenRecord.setVersion(SecurityConstants.TOKEN_VERSION);
         authTokenRecord.setProvider(provider);
         authTokenRecord.setAuthenticatedAsAccountId(authenticatedAsAccountId);
+        authTokenRecord.setClientSessionId(clientSessionId);
         Date expiry = new Date(System.currentTimeMillis() + SecurityConstants.TOKEN_EXPIRY_MILLIS.get());
         authTokenRecord.setCreated(new Date());
         authTokenRecord.setExpires(expiry);

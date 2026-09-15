@@ -6,7 +6,7 @@ New operator-facing names use PastureStack and `PASTURESTACK_*`. Compatibility i
 
 ## Docker host policy
 
-Release `0.183.301` preserves the Docker host policy introduced in `0.183.299`,
+Release `0.183.302` preserves the Docker host policy introduced in `0.183.299`,
 which adds Docker Engine `29.8.0` as an exact supported
 version alongside the preserved legacy ranges, `24.0.9`, and the existing
 `29.4.1` through `29.7.2` interval. It does not widen the interval to admit
@@ -22,6 +22,21 @@ installing only their owned rules, without switching the host default or
 modifying another backend. Each of those modes needs runtime acceptance on
 the relevant host before a Server release that consumes this Engine is
 published as fully supported.
+
+## Browser token session ownership
+
+Web Console `1.6.117` and newer supplies a high-entropy client session
+generation when creating a token and repeats it only for explicit logout. The
+Engine stores that value in nullable `auth_token.client_session_id`. A bound
+token cannot be revoked by a client that omits or mismatches the value; those
+requests and repeated deletes return `204` without an expiry cookie. Unbound
+tokens created by older consoles retain their established delete behavior so a
+rolling upgrade does not strand legacy sessions.
+
+The generation is an ownership correlation value, not an authentication token:
+it does not replace the cookie, grant access, or appear in URLs. The Web Console
+must keep JWT material out of Web Storage and hold its cross-tab mutex through
+the complete explicit-delete response before clearing its local state.
 
 The `rancher.compose.*` setting keys and inherited executable aliases remain compatibility contracts for existing launchers. Public artifact URLs and container images are hosted under the PastureStack GitHub organization; remove an alias only after its launcher and rollback fixtures accept the replacement name.
 

@@ -23,6 +23,15 @@ require_text()
     tr -d '\r' <"$file" | grep -F -- "$value" >/dev/null || fail "required_text_missing:${file}:${value}"
 }
 
+reject_text()
+{
+    local file=$1
+    local value=$2
+    if tr -d '\r' <"$file" | grep -F -- "$value" >/dev/null; then
+        fail "forbidden_text_present:${file}:${value}"
+    fi
+}
+
 settings=resources/content/cattle-global.properties
 release_base=https://github.com/PastureStack/server/releases/download/v1.6.270
 
@@ -41,7 +50,7 @@ fi
 
 project_version=$(sed -n 's/^[[:space:]]*<version>\([^<]*\)<\/version>[[:space:]]*$/\1/p' code/meta-parent/pom.xml | head -n 1)
 [[ "$project_version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || fail non_numeric_project_version
-require_line code/meta-parent/pom.xml '    <version>0.183.301</version>'
+require_line code/meta-parent/pom.xml '    <version>0.183.302</version>'
 require_line code/meta-parent/pom.xml '    <url>https://github.com/PastureStack/orchestration-engine</url>'
 require_line Dockerfile 'FROM ubuntu:26.04@sha256:2260313b31c8c011cd2eebe728008efac1b3982be73eb71348ea2648d2c0e09b'
 require_line Dockerfile.dapper 'FROM ubuntu:26.04@sha256:2260313b31c8c011cd2eebe728008efac1b3982be73eb71348ea2648d2c0e09b'
@@ -182,6 +191,18 @@ require_line code/iaas/model/src/main/java/io/cattle/platform/core/model/tables/
 require_line resources/src/test/java/io/cattle/platform/resources/CredentialSecretCapacityMigrationTest.java '    public void expandsCredentialSecretsWithoutRewritingTheHistoricalBaseline() throws Exception {'
 require_line scripts/check-release-artifact '    grep -F '"'"'<include file="db/core-125.xml"/>'"'"' >/dev/null'
 require_line scripts/check-release-artifact '    grep -F '"'"'`secret_value` mediumtext,'"'"' >/dev/null'
+require_line resources/content/db/changelog.xml '    <include file="db/core-126.xml"/>'
+require_line resources/content/db/core-126.xml '    <changeSet author="PastureStack" dbms="mysql,mariadb,postgresql" id="pasturestack-session-bound-auth-token">'
+require_line resources/content/db/core-126.xml '        <preConditions onFail="HALT">'
+require_line resources/content/db/core-126.xml '            <tableExists tableName="auth_token"/>'
+require_line resources/content/db/core-126.xml '            <column name="client_session_id" type="VARCHAR(128)"/>'
+reject_text resources/content/db/mysql/mysql-dump.sql 'client_session_id'
+require_line code/iaas/model/src/main/java/io/cattle/platform/core/model/AuthToken.java '    String getClientSessionId();'
+require_line code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/identity/TokenResourceManager.java '    public static final String CLIENT_SESSION_HEADER = "X-PastureStack-Client-Session-Id";'
+require_line code/iaas/auth-logic/src/test/java/io/cattle/platform/iaas/api/auth/identity/TokenResourceManagerTest.java '    public void boundTokenRequiresMatchingClientSessionAndNeverEmitsExpiryCookie() {'
+require_line resources/src/test/java/io/cattle/platform/resources/SessionBoundTokenMigrationTest.java '    public void addsSessionOwnershipWithoutRewritingTheHistoricalTokenTable() throws Exception {'
+require_line scripts/check-release-artifact '    grep -F '"'"'<include file="db/core-126.xml"/>'"'"' >/dev/null'
+require_line scripts/check-release-artifact 'if unzip -p "$workdir/$resources_entry" db/mysql/mysql-dump.sql | grep -F '"'"'client_session_id'"'"' >/dev/null; then'
 require_line resources/pom.xml '            <artifactId>cattle-framework-java-server</artifactId>'
 require_line resources/src/test/java/io/cattle/platform/resources/FrozenIdentitySecuritySchemaTest.java '    public void frozenSchemasExposeAccountScopedIdentitySecurityFilters() throws Exception {'
 require_line resources/src/test/java/io/cattle/platform/resources/FrozenIdentitySecuritySchemaTest.java '                    accountId.getModifiers().contains("eq"));'
@@ -323,4 +344,4 @@ fi
 require_line README.md 'PastureStack is an independent community effort to preserve, audit, and modernize the Rancher 1.6 ecosystem. It is not affiliated with or endorsed by Rancher Labs or SUSE.'
 require_line ORIGIN.md '- Preserved upstream boundary: `82d154a53f4089fecfb9f320caad826bb4f6055f`'
 
-printf 'PASTURESTACK_SOURCE_GATE_OK version=0.183.301 runtime_sources=github_release images=digest_pinned ubuntu=26.04 ubuntu_snapshot=20260826T000000Z jdk=25.0.4 maven=3.9.16 patched_hazelcast=5.7.4 docker_cli=29.7.2 docker_host_29_8_0=exact credential_secret_capacity=mediumtext port_preflight=authoritative volume_preflight=runtime_resolution_aligned volume_preflight_project_schema=authorized volume_preflight_type_set=registered v1_hardware_schema=container-and-launchConfig network_driver_rollback=launch-config-restored stack_driver_rollback=child-launch-config-restored\n'
+printf 'PASTURESTACK_SOURCE_GATE_OK version=0.183.302 runtime_sources=github_release images=digest_pinned ubuntu=26.04 ubuntu_snapshot=20260826T000000Z jdk=25.0.4 maven=3.9.16 patched_hazelcast=5.7.4 docker_cli=29.7.2 docker_host_29_8_0=exact credential_secret_capacity=mediumtext port_preflight=authoritative volume_preflight=runtime_resolution_aligned volume_preflight_project_schema=authorized volume_preflight_type_set=registered v1_hardware_schema=container-and-launchConfig network_driver_rollback=launch-config-restored stack_driver_rollback=child-launch-config-restored auth_token_session_binding=core-126\n'

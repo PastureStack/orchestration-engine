@@ -106,6 +106,11 @@ public class AuthTokenTable extends TableImpl<AuthTokenRecord> {
      */
     public final TableField<AuthTokenRecord, Long> AUTHENTICATED_AS_ACCOUNT_ID = createField(DSL.name("authenticated_as_account_id"), SQLDataType.BIGINT.defaultValue(DSL.inline("NULL", SQLDataType.BIGINT)), this, "");
 
+    /**
+     * The column <code>cattle.auth_token.client_session_id</code>.
+     */
+    public final TableField<AuthTokenRecord, String> CLIENT_SESSION_ID = createField(DSL.name("client_session_id"), SQLDataType.VARCHAR(128).defaultValue(DSL.inline("NULL", SQLDataType.VARCHAR)), this, "");
+
     private AuthTokenTable(Name alias, Table<AuthTokenRecord> aliased) {
         this(alias, aliased, (Field<?>[]) null, null);
     }

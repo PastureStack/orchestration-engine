@@ -197,6 +197,23 @@ public class AuthTokenRecord extends UpdatableRecordImpl<AuthTokenRecord> implem
         return (Long) get(8);
     }
 
+    /**
+     * Setter for <code>cattle.auth_token.client_session_id</code>.
+     */
+    @Override
+    public void setClientSessionId(String value) {
+        set(9, value);
+    }
+
+    /**
+     * Getter for <code>cattle.auth_token.client_session_id</code>.
+     */
+    @Column(name = "client_session_id", length = 128)
+    @Override
+    public String getClientSessionId() {
+        return (String) get(9);
+    }
+
     // -------------------------------------------------------------------------
     // Primary key information
     // -------------------------------------------------------------------------
@@ -221,6 +238,7 @@ public class AuthTokenRecord extends UpdatableRecordImpl<AuthTokenRecord> implem
         setVersion(from.getVersion());
         setProvider(from.getProvider());
         setAuthenticatedAsAccountId(from.getAuthenticatedAsAccountId());
+        setClientSessionId(from.getClientSessionId());
         resetTouchedOnNotNull();
     }
 
@@ -244,7 +262,7 @@ public class AuthTokenRecord extends UpdatableRecordImpl<AuthTokenRecord> implem
     /**
      * Create a detached, initialised AuthTokenRecord
      */
-    public AuthTokenRecord(Long id, Long accountId, Date created, Date expires, String key, String value, String version, String provider, Long authenticatedAsAccountId) {
+    public AuthTokenRecord(Long id, Long accountId, Date created, Date expires, String key, String value, String version, String provider, Long authenticatedAsAccountId, String clientSessionId) {
         super(AuthTokenTable.AUTH_TOKEN);
 
         setId(id);
@@ -256,6 +274,7 @@ public class AuthTokenRecord extends UpdatableRecordImpl<AuthTokenRecord> implem
         setVersion(version);
         setProvider(provider);
         setAuthenticatedAsAccountId(authenticatedAsAccountId);
+        setClientSessionId(clientSessionId);
         resetTouchedOnNotNull();
     }
 }

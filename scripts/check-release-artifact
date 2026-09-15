@@ -4,7 +4,7 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 artifact=${1:-dist/artifacts/cattle.jar}
-expected_version=${EXPECTED_ENGINE_VERSION:-0.183.301}
+expected_version=${EXPECTED_ENGINE_VERSION:-0.183.302}
 
 test -f "$artifact"
 artifact=$(realpath "$artifact")
@@ -139,6 +139,18 @@ unzip -p "$workdir/$resources_entry" db/core-125.xml |
     grep -F '<modifyDataType tableName="credential" columnName="secret_value" newDataType="${mediumtext}"/>' >/dev/null
 unzip -p "$workdir/$resources_entry" db/mysql/mysql-dump.sql |
     grep -F '`secret_value` mediumtext,' >/dev/null
+unzip -p "$workdir/$resources_entry" db/changelog.xml |
+    grep -F '<include file="db/core-126.xml"/>' >/dev/null
+unzip -p "$workdir/$resources_entry" db/core-126.xml |
+    grep -F '<changeSet author="PastureStack" dbms="mysql,mariadb,postgresql" id="pasturestack-session-bound-auth-token">' >/dev/null
+unzip -p "$workdir/$resources_entry" db/core-126.xml |
+    grep -F '<preConditions onFail="HALT">' >/dev/null
+unzip -p "$workdir/$resources_entry" db/core-126.xml |
+    grep -F '<column name="client_session_id" type="VARCHAR(128)"/>' >/dev/null
+if unzip -p "$workdir/$resources_entry" db/mysql/mysql-dump.sql | grep -F 'client_session_id' >/dev/null; then
+    echo "Historical mysql-dump.sql must not pre-create client_session_id before core-126 runs" >&2
+    exit 1
+fi
 
 for marker in \
     authIdentityLink \
