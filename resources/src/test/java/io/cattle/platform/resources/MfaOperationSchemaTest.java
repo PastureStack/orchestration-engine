@@ -28,11 +28,18 @@ public class MfaOperationSchemaTest {
 
         assertTrue(operations.contains("beginSecurityConfirmation"));
         assertTrue(operations.contains("confirmSecurityConfirmation"));
+        assertTrue(operations.contains("consumeSecurityConfirmation"));
         assertSecret(fields, "challengeId");
         assertSecret(fields, "verificationCode");
         assertSecret(fields, "recoveryCode");
         assertSecret(fields, "securityConfirmation");
         assertSecret(fields, "webAuthnResponse");
+        assertEquals("enum", fields.path("purpose").path("type").asText());
+        assertTrue(textValues(fields.path("purpose").path("options"))
+                .contains("oidcAccessPolicyUpdate"));
+        assertEquals("string", fields.path("requestDigest").path("type").asText());
+        assertEquals(64, fields.path("requestDigest").path("minLength").asInt());
+        assertEquals(64, fields.path("requestDigest").path("maxLength").asInt());
 
         JsonNode method = fields.path("method");
         assertEquals("enum", method.path("type").asText());

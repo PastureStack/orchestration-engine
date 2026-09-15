@@ -49,6 +49,7 @@ public class MfaResourceManager extends AbstractNoOpResourceManager {
     private static final String REVOKE_ALL = "revokeAllFactors";
     private static final String BEGIN_SECURITY_CONFIRMATION = "beginSecurityConfirmation";
     private static final String CONFIRM_SECURITY_CONFIRMATION = "confirmSecurityConfirmation";
+    private static final String CONSUME_SECURITY_CONFIRMATION = "consumeSecurityConfirmation";
 
     @Inject
     MfaDao mfaDao;
@@ -104,14 +105,22 @@ public class MfaResourceManager extends AbstractNoOpResourceManager {
         String operation = string(input.get("operation"));
         if (BEGIN_SECURITY_CONFIRMATION.equals(operation)) {
             return result("securityConfirmationStarted",
-                    mfaService.beginSecurityConfirmation(actor));
+                    mfaService.beginSecurityConfirmation(actor,
+                            string(input.get("purpose")), string(input.get("requestDigest"))));
         }
         if (CONFIRM_SECURITY_CONFIRMATION.equals(operation)) {
             return result("securityConfirmed", mfaService.finishSecurityConfirmation(actor,
                     string(input.get("challengeId")), string(input.get("method")),
                     string(input.get("verificationCode")),
                     string(input.get("webAuthnResponse")),
-                    string(input.get("recoveryCode"))));
+                    string(input.get("recoveryCode")),
+                    string(input.get("purpose")), string(input.get("requestDigest"))));
+        }
+        if (CONSUME_SECURITY_CONFIRMATION.equals(operation)) {
+            mfaService.consumeSecurityConfirmation(actor,
+                    string(input.get("securityConfirmation")),
+                    string(input.get("purpose")), string(input.get("requestDigest")));
+            return result("securityConfirmationConsumed", Collections.<String, Object>emptyMap());
         }
         Account target = targetAccount(actor, input.get("accountId"));
         if (requiresAccountHolder(operation)) {

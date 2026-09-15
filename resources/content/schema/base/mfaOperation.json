@@ -16,7 +16,8 @@
                 "revokeFactor",
                 "revokeAllFactors",
                 "beginSecurityConfirmation",
-                "confirmSecurityConfirmation"
+                "confirmSecurityConfirmation",
+                "consumeSecurityConfirmation"
             ],
             "required": true,
             "nullable": false
@@ -29,6 +30,8 @@
         "verificationCode": { "type": "password", "nullable": true },
         "recoveryCode": { "type": "password", "nullable": true },
         "securityConfirmation": { "type": "password", "nullable": true },
+        "purpose": { "type": "enum", "options": [ "oidcAccessPolicyUpdate" ], "nullable": true },
+        "requestDigest": { "type": "string", "nullable": true, "minLength": 64, "maxLength": 64 },
         "email": { "type": "string", "nullable": true },
         "emailCode": { "type": "password", "nullable": true },
         "webAuthnResponse": { "type": "password", "nullable": true },
