@@ -19,6 +19,8 @@ import io.cattle.platform.iaas.api.auth.integration.internal.rancher.TokenAuthLo
 import io.cattle.platform.iaas.api.auth.integration.local.LocalAuthConstants;
 import io.cattle.platform.iaas.api.auth.mfa.MfaService;
 import io.cattle.platform.iaas.event.IaasEvents;
+import io.cattle.platform.lock.LockCallback;
+import io.cattle.platform.lock.LockManager;
 import io.cattle.platform.object.ObjectManager;
 import io.cattle.platform.token.TokenService;
 import io.cattle.platform.util.type.CollectionUtils;
@@ -34,6 +36,9 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.util.regex.Pattern;
 
 import jakarta.inject.Inject;
 import jakarta.servlet.http.HttpServletResponse;
@@ -45,6 +50,8 @@ import org.apache.commons.lang3.StringUtils;
 public class TokenResourceManager extends AbstractNoOpResourceManager {
 
     public static final String PROVIDER_SWITCH = "providerSwitch";
+    public static final String CLIENT_SESSION_HEADER = "X-PastureStack-Client-Session-Id";
+    private static final Pattern CLIENT_SESSION_PATTERN = Pattern.compile("^[0-9]{13}\\.[0-9a-f]{64}$");
 
     @Inject
     ObjectManager objectManager;
@@ -74,6 +81,9 @@ public class TokenResourceManager extends AbstractNoOpResourceManager {
     EventService eventService;
 
     @Inject
+    LockManager lockManager;
+
+    @Inject
     ProviderSwitchTokenService providerSwitchTokenService;
 
     @Inject
@@ -101,6 +111,7 @@ public class TokenResourceManager extends AbstractNoOpResourceManager {
         String requestedProvider = ObjectUtils.toString(requestBody.get("authProvider"));
         String code = ObjectUtils.toString(requestBody.get("code"));
         String providerSwitchCode = ObjectUtils.toString(requestBody.get("providerSwitchCode"));
+        String clientSessionId = normalizeClientSessionId(requestBody.get("clientSessionId"));
         boolean resumedMfa = MfaService.PROVIDER.equalsIgnoreCase(requestedProvider);
         boolean localRecovery = LocalAuthConstants.CONFIG.equalsIgnoreCase(requestedProvider)
                 && !LocalAuthConstants.CONFIG.equalsIgnoreCase(SecurityConstants.AUTH_PROVIDER.get())
@@ -187,15 +198,69 @@ public class TokenResourceManager extends AbstractNoOpResourceManager {
         long authenticatedAsAccountId = token.getAuthenticatedAsAccountId();
         long tokenAccountId = ((Policy) ApiContext.getContext().getPolicy()).getAccountId();
 
-        if (RESTRICT_CONCURRENT_SESSIONS.get()) {
-            authTokenDao.deletePreviousTokens(authenticatedAsAccountId, tokenAccountId);
-            String event = IaasEvents.appendAccount(SubscribeManager.EVENT_DISCONNECT, authenticatedAsAccountId);
-            eventService.publish(EventVO.newEvent(event));
+        return issueToken(token, tokenAccountId, clientSessionId);
+    }
+
+    /**
+     * Persists the final browser token.  With concurrent-session restriction
+     * enabled, generation ordering and token replacement happen under the same
+     * distributed account lock so a delayed older login cannot revoke a newer
+     * session that already completed.
+     */
+    protected Token issueToken(final Token token, final long tokenAccountId, final String clientSessionId) {
+        final long authenticatedAsAccountId = token.getAuthenticatedAsAccountId();
+        if (!restrictConcurrentSessions()) {
+            return persistToken(token, tokenAccountId, authenticatedAsAccountId, clientSessionId);
         }
 
-        token.setJwt(authTokenDao.createToken(token.getJwt(), token.getAuthProvider(),
-                ((Policy) ApiContext.getContext().getPolicy()).getAccountId(), authenticatedAsAccountId).getKey());
+        return lockManager.lock(new TokenIssuanceLock(tokenAccountId, authenticatedAsAccountId),
+                new LockCallback<Token>() {
+                    @Override
+                    public Token doWithLock() {
+                        String newestClientSession = authTokenDao.getNewestClientSessionId(
+                                authenticatedAsAccountId, tokenAccountId);
+                        if (StringUtils.isNotBlank(newestClientSession)
+                                && (StringUtils.isBlank(clientSessionId)
+                                || clientSessionId.compareTo(newestClientSession) < 0)) {
+                            throw new ClientVisibleException(ResponseCodes.CONFLICT,
+                                    "ClientSessionSuperseded",
+                                    "A newer browser session has already completed login.", null);
+                        }
 
+                        io.cattle.platform.core.model.AuthToken created = authTokenDao.createToken(
+                                token.getJwt(), token.getAuthProvider(), tokenAccountId,
+                                authenticatedAsAccountId, clientSessionId);
+                        try {
+                            // Create first, then remove prior sessions.  A failed
+                            // insert can therefore never destroy the last valid
+                            // session for this account.
+                            authTokenDao.deletePreviousTokens(authenticatedAsAccountId,
+                                    tokenAccountId, created.getKey());
+                        } catch (RuntimeException failure) {
+                            authTokenDao.deleteToken(created.getKey());
+                            throw failure;
+                        }
+                        publishSessionDisconnect(authenticatedAsAccountId);
+                        token.setJwt(created.getKey());
+                        return token;
+                    }
+                });
+    }
+
+    protected boolean restrictConcurrentSessions() {
+        return RESTRICT_CONCURRENT_SESSIONS.get();
+    }
+
+    protected void publishSessionDisconnect(long authenticatedAsAccountId) {
+        String event = IaasEvents.appendAccount(SubscribeManager.EVENT_DISCONNECT,
+                authenticatedAsAccountId);
+        eventService.publish(EventVO.newEvent(event));
+    }
+
+    private Token persistToken(Token token, long tokenAccountId,
+            long authenticatedAsAccountId, String clientSessionId) {
+        token.setJwt(authTokenDao.createToken(token.getJwt(), token.getAuthProvider(),
+                tokenAccountId, authenticatedAsAccountId, clientSessionId).getKey());
         return token;
     }
 
@@ -257,25 +322,64 @@ public class TokenResourceManager extends AbstractNoOpResourceManager {
     }
 
     protected Object deleteToken(Object obj, ApiRequest request) {
-        Token token = new Token();
-        String jwt = "";
-
-        token = listToken();
-        jwt = token.getJwt();
-
-        if(StringUtils.isBlank(jwt)) {
-            throw new ClientVisibleException(ResponseCodes.INTERNAL_SERVER_ERROR,
-                    "JWTNotProvided", "Request does not contain JWT cookie", null);
-        }
-
         request.setResponseCode(ResponseCodes.NO_CONTENT);
-        HttpServletResponse response = request.getServletContext().getResponse();
-        String cookieString="token=;Path=/;Expires=Thu, 01 Jan 1970 00:00:00 GMT;Max-Age=0;Secure;HttpOnly;SameSite=Lax";
-        response.addHeader("Set-Cookie", cookieString);
-        request.getServletContext().setResponse(response);
-        if(authTokenDao.deleteToken(jwt)) {
+        Token token = listToken();
+        String jwt = token == null ? null : token.getJwt();
+
+        // DELETE is intentionally idempotent.  A missing or already-revoked
+        // token is not an exceptional condition and must not produce a 500.
+        if (StringUtils.isBlank(jwt)) {
             return obj;
         }
-        return null;
+
+        io.cattle.platform.core.model.AuthToken stored = authTokenDao.getTokenByKey(jwt);
+        if (stored == null) {
+            return obj;
+        }
+
+        String boundSession = stored.getClientSessionId();
+        if (StringUtils.isNotBlank(boundSession)) {
+            String requestedSession = request.getServletContext().getRequest().getHeader(CLIENT_SESSION_HEADER);
+            if (!constantTimeEquals(boundSession, requestedSession)) {
+                // An older tab (including a page running pre-fix JavaScript)
+                // may hold the new shared cookie.  It cannot revoke a token
+                // that belongs to another client generation, and no expiry
+                // cookie is emitted on a mismatch.
+                return obj;
+            }
+            authTokenDao.deleteToken(jwt);
+            return obj;
+        }
+
+        // Preserve legacy behavior only for tokens created by legacy clients.
+        // New clients clear their cookie after the bound DELETE completes and
+        // ownership is rechecked while holding the cross-tab mutex.
+        if (authTokenDao.deleteToken(jwt)) {
+            HttpServletResponse response = request.getServletContext().getResponse();
+            String cookieString = "token=;Path=/;Expires=Thu, 01 Jan 1970 00:00:00 GMT;Max-Age=0;Secure;HttpOnly;SameSite=Lax";
+            response.addHeader("Set-Cookie", cookieString);
+            request.getServletContext().setResponse(response);
+        }
+        return obj;
+    }
+
+    static String normalizeClientSessionId(Object value) {
+        String clientSessionId = value == null ? null : String.valueOf(value);
+        if (StringUtils.isBlank(clientSessionId)) {
+            return null;
+        }
+        if (!CLIENT_SESSION_PATTERN.matcher(clientSessionId).matches()) {
+            throw new ClientVisibleException(ResponseCodes.BAD_REQUEST, "InvalidClientSessionId",
+                    "Client session ID format is invalid.", null);
+        }
+        return clientSessionId;
+    }
+
+    static boolean constantTimeEquals(String expected, String actual) {
+        if (expected == null || actual == null) {
+            return false;
+        }
+        return MessageDigest.isEqual(expected.getBytes(StandardCharsets.UTF_8),
+                actual.getBytes(StandardCharsets.UTF_8));
     }
 }

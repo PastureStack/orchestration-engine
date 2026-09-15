@@ -8,9 +8,14 @@ public interface AuthTokenDao {
 
     AuthToken createToken(String jwt, String provider, long accountId, long authenticatedAsAccountId);
 
+    AuthToken createToken(String jwt, String provider, long accountId, long authenticatedAsAccountId,
+            String clientSessionId);
+
     AuthToken getTokenByAccountId(long accountId);
 
-    void deletePreviousTokens(long authenticatedAsAccountId, long tokenAccountId);
+    String getNewestClientSessionId(long authenticatedAsAccountId, long tokenAccountId);
+
+    void deletePreviousTokens(long authenticatedAsAccountId, long tokenAccountId, String keepKey);
 
     int deleteTokensForAccount(long authenticatedAsAccountId);
 

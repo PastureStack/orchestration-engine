@@ -34,6 +34,7 @@ public class Token {
     private String recoveryCode;
     private String emailCode;
     private String providerSwitchCode;
+    private String clientSessionId;
     private Map<String, Object> webAuthnOptions;
     private String totpProvisioningUri;
     private String totpSecret;
@@ -270,6 +271,15 @@ public class Token {
 
     public void setProviderSwitchCode(String providerSwitchCode) {
         this.providerSwitchCode = providerSwitchCode;
+    }
+
+    @Field(create = true, nullable = true, type = FieldType.PASSWORD, minLength = 78, maxLength = 78)
+    public String getClientSessionId() {
+        return clientSessionId;
+    }
+
+    public void setClientSessionId(String clientSessionId) {
+        this.clientSessionId = clientSessionId;
     }
 
     @Field(nullable = true)

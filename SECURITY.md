@@ -21,6 +21,10 @@ Only artifacts referenced by a published PastureStack release and its checksum m
 - Provider changes keep security enabled and use short-lived, single-use,
   account-and-identity-bound proofs. Active local system administrators retain
   an MFA-gated recovery path when an external provider is unavailable.
+- Browser-token revocation is bound to the client session that created the
+  token. Restricted-session replacement is serialized per effective account;
+  an older or legacy login cannot replace a newer bound session, while legacy
+  unbound tokens retain their established rolling-upgrade behavior.
 - MFA factors and pending challenges are stored as encrypted secrets or
   one-way hashes as appropriate. Challenges are short-lived, attempt-limited,
   account-bound, and single-use. Factor or recovery changes revoke active

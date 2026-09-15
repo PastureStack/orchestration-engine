@@ -130,4 +130,5 @@
     <include file="db/core-123.xml"/>
     <include file="db/core-124.xml"/>
     <include file="db/core-125.xml"/>
+    <include file="db/core-126.xml"/>
 </databaseChangeLog>

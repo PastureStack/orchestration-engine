@@ -135,6 +135,17 @@ public interface AuthToken extends Serializable {
     @Column(name = "authenticated_as_account_id")
     public Long getAuthenticatedAsAccountId();
 
+    /**
+     * Setter for <code>cattle.auth_token.client_session_id</code>.
+     */
+    public void setClientSessionId(String value);
+
+    /**
+     * Getter for <code>cattle.auth_token.client_session_id</code>.
+     */
+    @Column(name = "client_session_id", length = 128)
+    public String getClientSessionId();
+
     // -------------------------------------------------------------------------
     // FROM and INTO
     // -------------------------------------------------------------------------
