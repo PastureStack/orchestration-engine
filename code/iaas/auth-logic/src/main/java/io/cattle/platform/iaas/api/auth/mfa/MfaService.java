@@ -30,6 +30,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.regex.Pattern;
 
 import jakarta.inject.Inject;
 
@@ -45,6 +46,7 @@ public class MfaService {
     public static final String METHOD_TOTP_ENROLLMENT = "totpEnrollment";
     public static final String METHOD_WEBAUTHN_ENROLLMENT = "webauthnEnrollment";
     public static final String METHOD_EMAIL_RECOVERY = "emailRecovery";
+    public static final String PURPOSE_OIDC_ACCESS_POLICY_UPDATE = "oidcAccessPolicyUpdate";
 
     private static final int RANDOM_BYTES = 32;
     private static final int RECOVERY_CODE_BYTES = 12;
@@ -52,6 +54,9 @@ public class MfaService {
     private static final int MAX_ATTEMPTS = 5;
     private static final int MAX_ACTIVE_LOGIN_CHALLENGES = 5;
     private static final long CHALLENGE_TTL_MILLIS = 5L * 60L * 1000L;
+    private static final String SECURITY_CONFIRMATION_PURPOSE = "purpose";
+    private static final String SECURITY_CONFIRMATION_REQUEST_DIGEST = "requestDigest";
+    private static final Pattern SHA256_DIGEST = Pattern.compile("[0-9a-f]{64}");
 
     private final SecureRandom secureRandom = new SecureRandom();
     private final Base32 base32 = new Base32();
@@ -415,7 +420,14 @@ public class MfaService {
      * mechanism, not an already-bound authentication factor.
      */
     public Map<String, Object> beginSecurityConfirmation(Account account) {
+        return beginSecurityConfirmation(account, null, null);
+    }
+
+    public Map<String, Object> beginSecurityConfirmation(Account account,
+                                                         String purpose,
+                                                         String requestDigest) {
         requireActiveAccount(account);
+        SecurityConfirmationBinding binding = securityConfirmationBinding(purpose, requestDigest);
         attemptService.assertAllowed(account.getId());
         List<? extends Credential> totpFactors =
                 mfaDao.listActive(account.getId(), CredentialConstants.KIND_MFA_TOTP);
@@ -453,6 +465,7 @@ public class MfaService {
         data.put("attempts", 0);
         data.put("methods", new ArrayList<>(methods));
         data.put("createdAt", new Date());
+        binding.writeTo(data);
         mfaDao.create(account.getId(), CredentialConstants.KIND_MFA_SECURITY_CHALLENGE,
                 securityChallengeKey(handleCode),
                 transformationService.transform(encode(webAuthnChallenge), EncryptionConstants.ENCRYPT),
@@ -473,7 +486,21 @@ public class MfaService {
                                                           final String code,
                                                           final String webAuthnResponse,
                                                           final String recoveryCode) {
+        return finishSecurityConfirmation(account, challengeId, method, code,
+                webAuthnResponse, recoveryCode, null, null);
+    }
+
+    public Map<String, Object> finishSecurityConfirmation(final Account account,
+                                                          String challengeId,
+                                                          final String method,
+                                                          final String code,
+                                                          final String webAuthnResponse,
+                                                          final String recoveryCode,
+                                                          String purpose,
+                                                          String requestDigest) {
         requireActiveAccount(account);
+        final SecurityConfirmationBinding binding =
+                securityConfirmationBinding(purpose, requestDigest);
         if (StringUtils.isAnyBlank(challengeId, method)) {
             throw invalidChallenge();
         }
@@ -485,14 +512,18 @@ public class MfaService {
                     public Map<String, Object> doWithLock() {
                         Credential challenge = mfaDao.findActive(
                                 CredentialConstants.KIND_MFA_SECURITY_CHALLENGE, key);
-                        if (challenge == null || !account.getId().equals(challenge.getAccountId())
-                                || isExpired(challenge)) {
-                            if (challenge != null) {
+                        boolean ownedByAccount = challenge != null
+                                && account.getId().equals(challenge.getAccountId());
+                        if (!ownedByAccount || isExpired(challenge)) {
+                            if (ownedByAccount && isExpired(challenge)) {
                                 mfaDao.deactivate(challenge, "expired");
                             }
                             throw invalidChallenge();
                         }
                         Map<String, Object> data = mutableData(challenge);
+                        if (!binding.matches(data)) {
+                            throw invalidChallenge();
+                        }
                         if (integer(data.get("attempts"), 0) >= MAX_ATTEMPTS
                                 || !methodAllowed(data, method)) {
                             mfaDao.deactivate(challenge, "attemptLimit");
@@ -527,6 +558,7 @@ public class MfaService {
                         ticketData.put("expiresAt", now()
                                 + policyService.getPolicy().getSecurityConfirmationTtlSeconds() * 1000L);
                         ticketData.put("createdAt", new Date());
+                        binding.writeTo(ticketData);
                         mfaDao.create(account.getId(), CredentialConstants.KIND_MFA_SECURITY_TICKET,
                                 securityTicketKey(ticket), null, ticketData);
                         Map<String, Object> result = new HashMap<>();
@@ -538,7 +570,14 @@ public class MfaService {
     }
 
     public void consumeSecurityConfirmation(final Account account, String ticket) {
+        consumeSecurityConfirmation(account, ticket, null, null);
+    }
+
+    public void consumeSecurityConfirmation(final Account account, String ticket,
+                                            String purpose, String requestDigest) {
         requireActiveAccount(account);
+        final SecurityConfirmationBinding binding =
+                securityConfirmationBinding(purpose, requestDigest);
         if (StringUtils.isBlank(ticket)) {
             throw reauthenticationRequired();
         }
@@ -549,18 +588,74 @@ public class MfaService {
                     public Object doWithLock() {
                         Credential confirmation = mfaDao.findActive(
                                 CredentialConstants.KIND_MFA_SECURITY_TICKET, key);
-                        if (confirmation == null
-                                || !account.getId().equals(confirmation.getAccountId())
-                                || isExpired(confirmation)) {
-                            if (confirmation != null) {
+                        boolean ownedByAccount = confirmation != null
+                                && account.getId().equals(confirmation.getAccountId());
+                        if (!ownedByAccount || isExpired(confirmation)) {
+                            if (ownedByAccount && isExpired(confirmation)) {
                                 mfaDao.deactivate(confirmation, "expired");
                             }
+                            throw reauthenticationRequired();
+                        }
+                        if (!binding.matches(confirmation.getData())) {
                             throw reauthenticationRequired();
                         }
                         mfaDao.deactivate(confirmation, "consumed");
                         return null;
                     }
                 });
+    }
+
+    private SecurityConfirmationBinding securityConfirmationBinding(String purpose,
+                                                                     String requestDigest) {
+        String normalizedPurpose = StringUtils.trimToEmpty(purpose);
+        String normalizedDigest = StringUtils.trimToEmpty(requestDigest);
+        if (normalizedPurpose.isEmpty() && normalizedDigest.isEmpty()) {
+            return SecurityConfirmationBinding.unbound();
+        }
+        if (!PURPOSE_OIDC_ACCESS_POLICY_UPDATE.equals(normalizedPurpose)
+                || !SHA256_DIGEST.matcher(normalizedDigest).matches()) {
+            throw invalidChallenge();
+        }
+        return new SecurityConfirmationBinding(normalizedPurpose, normalizedDigest);
+    }
+
+    private static final class SecurityConfirmationBinding {
+        private final String purpose;
+        private final String requestDigest;
+
+        private SecurityConfirmationBinding(String purpose, String requestDigest) {
+            this.purpose = purpose;
+            this.requestDigest = requestDigest;
+        }
+
+        private static SecurityConfirmationBinding unbound() {
+            return new SecurityConfirmationBinding("", "");
+        }
+
+        private void writeTo(Map<String, Object> data) {
+            if (!purpose.isEmpty()) {
+                data.put(SECURITY_CONFIRMATION_PURPOSE, purpose);
+                data.put(SECURITY_CONFIRMATION_REQUEST_DIGEST, requestDigest);
+            }
+        }
+
+        private boolean matches(Map<String, Object> data) {
+            String storedPurpose = data == null ? ""
+                    : StringUtils.trimToEmpty(String.valueOf(
+                            data.get(SECURITY_CONFIRMATION_PURPOSE) == null ? ""
+                                    : data.get(SECURITY_CONFIRMATION_PURPOSE)));
+            String storedDigest = data == null ? ""
+                    : StringUtils.trimToEmpty(String.valueOf(
+                            data.get(SECURITY_CONFIRMATION_REQUEST_DIGEST) == null ? ""
+                                    : data.get(SECURITY_CONFIRMATION_REQUEST_DIGEST)));
+            return constantTimeEquals(purpose, storedPurpose)
+                    && constantTimeEquals(requestDigest, storedDigest);
+        }
+
+        private static boolean constantTimeEquals(String expected, String actual) {
+            return MessageDigest.isEqual(expected.getBytes(StandardCharsets.UTF_8),
+                    actual.getBytes(StandardCharsets.UTF_8));
+        }
     }
 
     private void limitActiveLoginChallenges(long accountId) {

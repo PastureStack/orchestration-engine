@@ -86,13 +86,17 @@ public class FrozenMfaPolicySchemaTest {
 
             assertTrue(schemaFile, operations.contains("beginSecurityConfirmation"));
             assertTrue(schemaFile, operations.contains("confirmSecurityConfirmation"));
+            assertTrue(schemaFile, operations.contains("consumeSecurityConfirmation"));
             assertEnum(fields, "method", null, "totp", "webauthn", "recoveryCode");
             assertInput(fields, "recoveryCode", "password", true);
             assertInput(fields, "securityConfirmation", "password", true);
+            assertEnum(fields, "purpose", null, "oidcAccessPolicyUpdate");
+            assertInput(fields, "requestDigest", "string", true);
             assertReadOnly(fields, "methods", "array[string]", true);
             assertReadOnly(fields, "webAuthnOptions", "map[json]", true);
             for (String name : Arrays.asList(
-                    "operation", "method", "recoveryCode", "securityConfirmation")) {
+                    "operation", "method", "recoveryCode", "securityConfirmation",
+                    "purpose", "requestDigest")) {
                 Field field = fields.get(name);
                 assertNotNull(name, field);
                 assertTrue(name, field.isCreate());

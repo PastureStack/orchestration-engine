@@ -6,7 +6,7 @@ New operator-facing names use PastureStack and `PASTURESTACK_*`. Compatibility i
 
 ## Docker host policy
 
-Release `0.183.302` preserves the Docker host policy introduced in `0.183.299`,
+Release `0.183.303` preserves the Docker host policy introduced in `0.183.299`,
 which adds Docker Engine `29.8.0` as an exact supported
 version alongside the preserved legacy ranges, `24.0.9`, and the existing
 `29.4.1` through `29.7.2` interval. It does not widen the interval to admit
@@ -45,6 +45,21 @@ The generation is an ownership correlation value, not an authentication token:
 it does not replace the cookie, grant access, or appear in URLs. The Web Console
 must keep JWT material out of Web Storage and hold its cross-tab mutex through
 the complete explicit-delete response before clearing its local state.
+
+## Bound MFA security confirmation
+
+Authentication Service `v0.4.37` and newer can request an MFA confirmation for
+purpose `oidcAccessPolicyUpdate` and a canonical lower-case SHA-256 digest of
+the normalized policy request. The Engine binds both the pending challenge and
+completed ticket to that purpose, digest, and authenticated account. Finishing
+or consuming with a different account, purpose, or digest fails without
+altering the valid owner's challenge; successful consumption is atomic and
+single-use.
+
+The new binding fields are optional so established unbound confirmation flows
+remain compatible. They are correlation inputs, not bearer credentials, and do
+not weaken the existing CSRF, Origin, MFA, ticket-expiry, or account ownership
+checks.
 
 The `rancher.compose.*` setting keys and inherited executable aliases remain compatibility contracts for existing launchers. Public artifact URLs and container images are hosted under the PastureStack GitHub organization; remove an alias only after its launcher and rollback fixtures accept the replacement name.
 

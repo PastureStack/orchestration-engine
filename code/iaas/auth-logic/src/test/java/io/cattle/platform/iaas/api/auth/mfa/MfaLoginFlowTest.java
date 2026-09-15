@@ -313,6 +313,98 @@ public class MfaLoginFlowTest {
         }
     }
 
+    @Test
+    public void securityConfirmationBindingIsPurposeDigestActorAndSingleUseBound() {
+        Account account = account(42L);
+        InMemoryMfaDao dao = new InMemoryMfaDao();
+        byte[] secretBytes = "12345678901234567890".getBytes(StandardCharsets.US_ASCII);
+        dao.create(account.getId(), CredentialConstants.KIND_MFA_TOTP, "totp-factor",
+                "encrypt:" + new Base32().encodeToString(secretBytes), new HashMap<String, Object>());
+        MfaService service = service(account, dao);
+        String digest = repeat("a", 64);
+        String otherDigest = repeat("b", 64);
+
+        Map<String, Object> challenge = service.beginSecurityConfirmation(account,
+                MfaService.PURPOSE_OIDC_ACCESS_POLICY_UPDATE, digest);
+        String code = TotpService.calculate(secretBytes,
+                (NOW / 1000L) / TotpService.PERIOD_SECONDS, TotpService.DIGITS);
+
+        try {
+            service.finishSecurityConfirmation(account(43L),
+                    String.valueOf(challenge.get("challengeId")), MfaService.METHOD_TOTP,
+                    code, null, null, MfaService.PURPOSE_OIDC_ACCESS_POLICY_UPDATE, digest);
+            throw new AssertionError("A different account completed another account's challenge");
+        } catch (ClientVisibleException expected) {
+            assertEquals("MfaVerificationFailed", expected.getCode());
+        }
+
+        try {
+            service.finishSecurityConfirmation(account,
+                    String.valueOf(challenge.get("challengeId")), MfaService.METHOD_TOTP,
+                    code, null, null, MfaService.PURPOSE_OIDC_ACCESS_POLICY_UPDATE,
+                    otherDigest);
+            throw new AssertionError("A mismatched request digest completed the challenge");
+        } catch (ClientVisibleException expected) {
+            assertEquals("MfaVerificationFailed", expected.getCode());
+        }
+
+        Map<String, Object> result = service.finishSecurityConfirmation(account,
+                String.valueOf(challenge.get("challengeId")), MfaService.METHOD_TOTP,
+                code, null, null, MfaService.PURPOSE_OIDC_ACCESS_POLICY_UPDATE, digest);
+        String ticket = String.valueOf(result.get("securityConfirmation"));
+
+        assertRejectedConfirmation(() -> service.consumeSecurityConfirmation(account, ticket));
+        assertRejectedConfirmation(() -> service.consumeSecurityConfirmation(account, ticket,
+                MfaService.PURPOSE_OIDC_ACCESS_POLICY_UPDATE, otherDigest));
+        assertRejectedConfirmation(() -> service.consumeSecurityConfirmation(account(43L), ticket,
+                MfaService.PURPOSE_OIDC_ACCESS_POLICY_UPDATE, digest));
+
+        service.consumeSecurityConfirmation(account, ticket,
+                MfaService.PURPOSE_OIDC_ACCESS_POLICY_UPDATE, digest);
+        assertRejectedConfirmation(() -> service.consumeSecurityConfirmation(account, ticket,
+                MfaService.PURPOSE_OIDC_ACCESS_POLICY_UPDATE, digest));
+    }
+
+    @Test
+    public void securityConfirmationBindingRejectsPartialUnknownOrMalformedBinding() {
+        Account account = account(42L);
+        InMemoryMfaDao dao = new InMemoryMfaDao();
+        dao.create(account.getId(), CredentialConstants.KIND_MFA_TOTP, "totp-factor",
+                "encrypt:unused", new HashMap<String, Object>());
+        MfaService service = service(account, dao);
+
+        for (String[] input : Arrays.asList(
+                new String[] {MfaService.PURPOSE_OIDC_ACCESS_POLICY_UPDATE, ""},
+                new String[] {"unknownPurpose", repeat("a", 64)},
+                new String[] {MfaService.PURPOSE_OIDC_ACCESS_POLICY_UPDATE, repeat("A", 64)},
+                new String[] {MfaService.PURPOSE_OIDC_ACCESS_POLICY_UPDATE, "abc"})) {
+            try {
+                service.beginSecurityConfirmation(account, input[0], input[1]);
+                throw new AssertionError("Invalid security-confirmation binding was accepted");
+            } catch (ClientVisibleException expected) {
+                assertEquals("MfaVerificationFailed", expected.getCode());
+            }
+        }
+    }
+
+    private void assertRejectedConfirmation(Runnable action) {
+        try {
+            action.run();
+        } catch (ClientVisibleException expected) {
+            assertEquals("MfaReauthenticationRequired", expected.getCode());
+            return;
+        }
+        throw new AssertionError("A security confirmation was accepted with the wrong binding");
+    }
+
+    private static String repeat(String value, int count) {
+        StringBuilder result = new StringBuilder(value.length() * count);
+        for (int i = 0; i < count; i++) {
+            result.append(value);
+        }
+        return result.toString();
+    }
+
     private MfaService service(final Account account, InMemoryMfaDao dao) {
         MfaService service = new MfaService() {
             @Override

@@ -48,6 +48,8 @@
         "mfaOperation.method": "cr",
         "mfaOperation.recoveryCode": "cro",
         "mfaOperation.securityConfirmation": "cro",
+        "mfaOperation.purpose": "cr",
+        "mfaOperation.requestDigest": "cr",
         "mfaOperation.email": "cr",
         "mfaOperation.challengeId": "cro",
         "mfaOperation.verificationCode": "cro",

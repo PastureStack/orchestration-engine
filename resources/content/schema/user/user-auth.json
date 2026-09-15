@@ -32,6 +32,8 @@
         "mfaOperation.method": "cr",
         "mfaOperation.recoveryCode": "cro",
         "mfaOperation.securityConfirmation": "cro",
+        "mfaOperation.purpose": "cr",
+        "mfaOperation.requestDigest": "cr",
         "mfaOperation.verificationCode": "cro",
         "mfaOperation.email": "cr",
         "mfaOperation.emailCode": "cro",
