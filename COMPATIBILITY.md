@@ -33,6 +33,14 @@ requests and repeated deletes return `204` without an expiry cookie. Unbound
 tokens created by older consoles retain their established delete behavior so a
 rolling upgrade does not strand legacy sessions.
 
+When `api.auth.restrict.concurrent.sessions=true`, replacement is protected by
+one distributed lock per token account and authenticated account. The Engine
+compares the fixed-format generations, rejects a delayed older or unbound
+legacy login while a newer bound session is active, creates the replacement
+before removing older tokens, and publishes the established disconnect event
+only after replacement succeeds. When the setting is `false`, tokens are
+created independently and the replacement path is not entered.
+
 The generation is an ownership correlation value, not an authentication token:
 it does not replace the cookie, grant access, or appear in URLs. The Web Console
 must keep JWT material out of Web Storage and hold its cross-tab mutex through

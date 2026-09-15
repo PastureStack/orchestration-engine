@@ -213,7 +213,12 @@ public class TokenResourceManagerTest {
         }
 
         @Override
-        public void deletePreviousTokens(long authenticatedAsAccountId, long tokenAccountId) {
+        public String getNewestClientSessionId(long authenticatedAsAccountId, long tokenAccountId) {
+            return token == null ? null : token.getClientSessionId();
+        }
+
+        @Override
+        public void deletePreviousTokens(long authenticatedAsAccountId, long tokenAccountId, String keepKey) {
         }
 
         @Override

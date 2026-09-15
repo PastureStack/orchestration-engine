@@ -13,7 +13,9 @@ public interface AuthTokenDao {
 
     AuthToken getTokenByAccountId(long accountId);
 
-    void deletePreviousTokens(long authenticatedAsAccountId, long tokenAccountId);
+    String getNewestClientSessionId(long authenticatedAsAccountId, long tokenAccountId);
+
+    void deletePreviousTokens(long authenticatedAsAccountId, long tokenAccountId, String keepKey);
 
     int deleteTokensForAccount(long authenticatedAsAccountId);
 

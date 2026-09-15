@@ -19,6 +19,8 @@ import io.cattle.platform.iaas.api.auth.integration.internal.rancher.TokenAuthLo
 import io.cattle.platform.iaas.api.auth.integration.local.LocalAuthConstants;
 import io.cattle.platform.iaas.api.auth.mfa.MfaService;
 import io.cattle.platform.iaas.event.IaasEvents;
+import io.cattle.platform.lock.LockCallback;
+import io.cattle.platform.lock.LockManager;
 import io.cattle.platform.object.ObjectManager;
 import io.cattle.platform.token.TokenService;
 import io.cattle.platform.util.type.CollectionUtils;
@@ -77,6 +79,9 @@ public class TokenResourceManager extends AbstractNoOpResourceManager {
 
     @Inject
     EventService eventService;
+
+    @Inject
+    LockManager lockManager;
 
     @Inject
     ProviderSwitchTokenService providerSwitchTokenService;
@@ -193,16 +198,69 @@ public class TokenResourceManager extends AbstractNoOpResourceManager {
         long authenticatedAsAccountId = token.getAuthenticatedAsAccountId();
         long tokenAccountId = ((Policy) ApiContext.getContext().getPolicy()).getAccountId();
 
-        if (RESTRICT_CONCURRENT_SESSIONS.get()) {
-            authTokenDao.deletePreviousTokens(authenticatedAsAccountId, tokenAccountId);
-            String event = IaasEvents.appendAccount(SubscribeManager.EVENT_DISCONNECT, authenticatedAsAccountId);
-            eventService.publish(EventVO.newEvent(event));
+        return issueToken(token, tokenAccountId, clientSessionId);
+    }
+
+    /**
+     * Persists the final browser token.  With concurrent-session restriction
+     * enabled, generation ordering and token replacement happen under the same
+     * distributed account lock so a delayed older login cannot revoke a newer
+     * session that already completed.
+     */
+    protected Token issueToken(final Token token, final long tokenAccountId, final String clientSessionId) {
+        final long authenticatedAsAccountId = token.getAuthenticatedAsAccountId();
+        if (!restrictConcurrentSessions()) {
+            return persistToken(token, tokenAccountId, authenticatedAsAccountId, clientSessionId);
         }
 
-        token.setJwt(authTokenDao.createToken(token.getJwt(), token.getAuthProvider(),
-                ((Policy) ApiContext.getContext().getPolicy()).getAccountId(), authenticatedAsAccountId,
-                clientSessionId).getKey());
+        return lockManager.lock(new TokenIssuanceLock(tokenAccountId, authenticatedAsAccountId),
+                new LockCallback<Token>() {
+                    @Override
+                    public Token doWithLock() {
+                        String newestClientSession = authTokenDao.getNewestClientSessionId(
+                                authenticatedAsAccountId, tokenAccountId);
+                        if (StringUtils.isNotBlank(newestClientSession)
+                                && (StringUtils.isBlank(clientSessionId)
+                                || clientSessionId.compareTo(newestClientSession) < 0)) {
+                            throw new ClientVisibleException(ResponseCodes.CONFLICT,
+                                    "ClientSessionSuperseded",
+                                    "A newer browser session has already completed login.", null);
+                        }
 
+                        io.cattle.platform.core.model.AuthToken created = authTokenDao.createToken(
+                                token.getJwt(), token.getAuthProvider(), tokenAccountId,
+                                authenticatedAsAccountId, clientSessionId);
+                        try {
+                            // Create first, then remove prior sessions.  A failed
+                            // insert can therefore never destroy the last valid
+                            // session for this account.
+                            authTokenDao.deletePreviousTokens(authenticatedAsAccountId,
+                                    tokenAccountId, created.getKey());
+                        } catch (RuntimeException failure) {
+                            authTokenDao.deleteToken(created.getKey());
+                            throw failure;
+                        }
+                        publishSessionDisconnect(authenticatedAsAccountId);
+                        token.setJwt(created.getKey());
+                        return token;
+                    }
+                });
+    }
+
+    protected boolean restrictConcurrentSessions() {
+        return RESTRICT_CONCURRENT_SESSIONS.get();
+    }
+
+    protected void publishSessionDisconnect(long authenticatedAsAccountId) {
+        String event = IaasEvents.appendAccount(SubscribeManager.EVENT_DISCONNECT,
+                authenticatedAsAccountId);
+        eventService.publish(EventVO.newEvent(event));
+    }
+
+    private Token persistToken(Token token, long tokenAccountId,
+            long authenticatedAsAccountId, String clientSessionId) {
+        token.setJwt(authTokenDao.createToken(token.getJwt(), token.getAuthProvider(),
+                tokenAccountId, authenticatedAsAccountId, clientSessionId).getKey());
         return token;
     }
 

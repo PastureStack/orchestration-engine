@@ -27,8 +27,13 @@ explicit logout carries the matching generation; missing, malformed, stale,
 and repeated deletes are idempotent `204` responses and do not emit an expiry
 cookie. Tokens created by older clients remain on the legacy logout path for
 upgrade compatibility. Database migration `core-126` adds the nullable binding
-column without rewriting the historical fresh-install dump, so both existing
-databases and clean installations apply the same ordered Liquibase change.
+column and its account-scoped lookup index without rewriting the historical
+fresh-install dump, so both existing databases and clean installations apply
+the same ordered Liquibase change. When concurrent sessions are restricted,
+token replacement is serialized per effective account: a delayed older login
+receives `409 ClientSessionSuperseded`, while the new token is created before
+prior tokens are removed. With concurrent sessions enabled, each token remains
+independent and no replacement lock or disconnect event is used.
 
 Release `0.183.301` extends rollback symmetry to the Stack action used by
 Catalog upgrades. Before scheduling the Stack rollback process, the Engine now

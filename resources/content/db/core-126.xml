@@ -10,5 +10,10 @@
         <addColumn tableName="auth_token">
             <column name="client_session_id" type="VARCHAR(128)"/>
         </addColumn>
+        <createIndex indexName="idx_auth_token_client_session" tableName="auth_token">
+            <column name="authenticated_as_account_id"/>
+            <column name="account_id"/>
+            <column name="client_session_id"/>
+        </createIndex>
     </changeSet>
 </databaseChangeLog>

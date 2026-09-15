@@ -88,11 +88,28 @@ public class AuthTokenDaoImpl extends AbstractJooqDao implements AuthTokenDao{
     }
 
     @Override
-    public void deletePreviousTokens(long authenticatedAsAccountId, long tokenAccountId) {
+    public String getNewestClientSessionId(long authenticatedAsAccountId, long tokenAccountId) {
+        AuthTokenRecord record = create()
+                .selectFrom(AUTH_TOKEN)
+                .where(AUTH_TOKEN.AUTHENTICATED_AS_ACCOUNT_ID.eq(authenticatedAsAccountId))
+                        .and(AUTH_TOKEN.ACCOUNT_ID.eq(tokenAccountId))
+                        .and(AUTH_TOKEN.VERSION.eq(SecurityConstants.TOKEN_VERSION))
+                        .and(AUTH_TOKEN.EXPIRES.greaterThan(new Date()))
+                        .and(AUTH_TOKEN.CLIENT_SESSION_ID.isNotNull())
+                        .and(AUTH_TOKEN.CLIENT_SESSION_ID.ne(""))
+                .orderBy(AUTH_TOKEN.CLIENT_SESSION_ID.desc(), AUTH_TOKEN.ID.desc())
+                .limit(1)
+                .fetchOne();
+        return record == null ? null : record.getClientSessionId();
+    }
+
+    @Override
+    public void deletePreviousTokens(long authenticatedAsAccountId, long tokenAccountId, String keepKey) {
         create().delete(AUTH_TOKEN)
                 .where(AUTH_TOKEN.AUTHENTICATED_AS_ACCOUNT_ID.eq(authenticatedAsAccountId))
                         .and(AUTH_TOKEN.ACCOUNT_ID.eq(tokenAccountId))
                         .and(AUTH_TOKEN.EXPIRES.greaterThan(new Date()))
+                        .and(AUTH_TOKEN.KEY.ne(keepKey))
                 .execute();
 
     }

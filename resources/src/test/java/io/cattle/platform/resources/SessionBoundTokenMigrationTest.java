@@ -28,6 +28,10 @@ public class SessionBoundTokenMigrationTest {
                 "<columnExists tableName=\"auth_token\" columnName=\"client_session_id\"/>"));
         assertTrue(migration.contains(
                 "<column name=\"client_session_id\" type=\"VARCHAR(128)\"/>"));
+        assertTrue(migration.contains(
+                "<createIndex indexName=\"idx_auth_token_client_session\" tableName=\"auth_token\">"));
+        assertTrue(migration.contains("<column name=\"authenticated_as_account_id\"/>"));
+        assertTrue(migration.contains("<column name=\"account_id\"/>"));
 
         String historical = read("content", "db", "core-058.xml");
         assertFalse(historical.contains("client_session_id"));
