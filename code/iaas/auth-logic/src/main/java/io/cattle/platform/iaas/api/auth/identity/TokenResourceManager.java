@@ -324,7 +324,7 @@ public class TokenResourceManager extends AbstractNoOpResourceManager {
     protected Object deleteToken(Object obj, ApiRequest request) {
         request.setResponseCode(ResponseCodes.NO_CONTENT);
         Token token = listToken();
-        String jwt = token == null ? null : token.getJwt();
+        String jwt = normalizeTokenKey(token == null ? null : token.getJwt());
 
         // DELETE is intentionally idempotent.  A missing or already-revoked
         // token is not an exceptional condition and must not produce a 500.
@@ -361,6 +361,27 @@ public class TokenResourceManager extends AbstractNoOpResourceManager {
             request.getServletContext().setResponse(response);
         }
         return obj;
+    }
+
+    /**
+     * Current-token discovery preserves the original transport value. Cookie
+     * authentication therefore yields a bare key while Authorization headers
+     * yield "Bearer <key>". Database ownership checks must use the key in both
+     * cases without accepting another authentication scheme.
+     */
+    static String normalizeTokenKey(String value) {
+        if (StringUtils.isBlank(value)) {
+            return null;
+        }
+        String[] parts = StringUtils.trim(value).split("\\s+");
+        if (parts.length == 1) {
+            return parts[0];
+        }
+        if (parts.length == 2 && Strings.CI.equals("bearer", parts[0])
+                && StringUtils.isNotBlank(parts[1])) {
+            return parts[1];
+        }
+        return null;
     }
 
     static String normalizeClientSessionId(Object value) {
