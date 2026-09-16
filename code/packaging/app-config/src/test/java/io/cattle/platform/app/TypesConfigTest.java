@@ -10,8 +10,10 @@ import io.github.ibuildthecloud.gdapi.annotation.Type;
 import io.github.ibuildthecloud.gdapi.factory.impl.SchemaFactoryImpl;
 import io.github.ibuildthecloud.gdapi.json.JacksonMapper;
 import io.github.ibuildthecloud.gdapi.model.Schema;
+import java.io.IOException;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Properties;
 import org.junit.After;
 import org.junit.Test;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
@@ -54,9 +56,13 @@ public class TypesConfigTest {
 
         @Bean(name = "ArchaiusStartup")
         @Lazy
-        Object ArchaiusStartup() {
-            ConfigurationManager.getConfigInstance().setProperty(EXTERNAL_ID_TYPES,
-                    "oidc_user,oidc_group,oidc_user");
+        Object ArchaiusStartup() throws IOException {
+            Properties defaults = new ConfigConfig().GlobalProperties();
+            String externalIdTypes = defaults.getProperty(EXTERNAL_ID_TYPES);
+            if (externalIdTypes == null) {
+                throw new IllegalStateException(EXTERNAL_ID_TYPES + " is missing from packaged defaults");
+            }
+            ConfigurationManager.getConfigInstance().setProperty(EXTERNAL_ID_TYPES, externalIdTypes);
             return new Object();
         }
 
