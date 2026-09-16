@@ -6,7 +6,7 @@ New operator-facing names use PastureStack and `PASTURESTACK_*`. Compatibility i
 
 ## Docker host policy
 
-Release `0.183.303` preserves the Docker host policy introduced in `0.183.299`,
+Release `0.183.304` preserves the Docker host policy introduced in `0.183.299`,
 which adds Docker Engine `29.8.0` as an exact supported
 version alongside the preserved legacy ranges, `24.0.9`, and the existing
 `29.4.1` through `29.7.2` interval. It does not widen the interval to admit
@@ -45,6 +45,20 @@ The generation is an ownership correlation value, not an authentication token:
 it does not replace the cookie, grant access, or appear in URLs. The Web Console
 must keep JWT material out of Web Storage and hold its cross-tab mutex through
 the complete explicit-delete response before clearing its local state.
+
+The token authorization overlay must retain `clientSessionId` as a
+read-on-create-only input. Removing it from the public token schema turns every
+new login into an unbound legacy token even when the Web Console supplies a
+valid generation, so schema authorization is covered by a shipped-overlay
+regression test.
+
+## External identity types
+
+The reviewed external identity list includes `oidc_user` and `oidc_group` in
+addition to the established GitHub, Shibboleth, and LDAP types. The same
+dynamic setting drives project-member schema options and Engine validation;
+environment overrides may replace the list for compatible deployments, but an
+active external provider does not authorize arbitrary identity type strings.
 
 ## Bound MFA security confirmation
 

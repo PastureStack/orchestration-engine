@@ -2,6 +2,8 @@ package io.cattle.platform.iaas.api.auth.identity;
 
 import io.cattle.platform.api.auth.Identity;
 import io.cattle.platform.api.auth.Policy;
+import io.cattle.platform.archaius.util.ArchaiusUtil;
+import io.cattle.platform.archaius.util.ConfigListProperty;
 import io.cattle.platform.core.constants.IdentityConstants;
 import io.cattle.platform.core.constants.ProjectConstants;
 import io.cattle.platform.core.model.ProjectMember;
@@ -44,6 +46,8 @@ import org.slf4j.LoggerFactory;
 public class IdentityManager extends AbstractNoOpResourceManager {
 
     private static final Logger logger = LoggerFactory.getLogger(IdentityManager.class);
+    private static final ConfigListProperty<String> SUPPORTED_EXTERNAL_ID_TYPES =
+            ArchaiusUtil.getStringListProperty("auth.service.external.id.types");
 
     private Map<String, IdentityProvider> identityProviders;
 
@@ -239,7 +243,7 @@ public class IdentityManager extends AbstractNoOpResourceManager {
         }
         if (!scopeMatch) {
             //get from external auth service
-            if (externalAuthProvider.isConfigured()) {
+            if (externalAuthProvider.isConfigured() && isSupportedExternalIdentityType(identity)) {
                 newIdentity = externalAuthProvider.untransform(identity);
             }
         }
@@ -276,7 +280,7 @@ public class IdentityManager extends AbstractNoOpResourceManager {
         }
         if (!scopeMatch) {
             //get from external auth service
-            if (externalAuthProvider.isConfigured()) {
+            if (externalAuthProvider.isConfigured() && isSupportedExternalIdentityType(identity)) {
                 newIdentity = externalAuthProvider.transform(identity);
             }
         }
@@ -284,5 +288,9 @@ public class IdentityManager extends AbstractNoOpResourceManager {
             throw new ClientVisibleException(ResponseCodes.BAD_REQUEST, IdentityConstants.INVALID_TYPE, "Identity externalIdType is invalid", null);
         }
         return newIdentity;
+    }
+
+    protected boolean isSupportedExternalIdentityType(Identity identity) {
+        return identity != null && SUPPORTED_EXTERNAL_ID_TYPES.get().contains(identity.getExternalIdType());
     }
 }

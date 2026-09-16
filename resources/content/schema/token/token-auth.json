@@ -28,6 +28,7 @@
         "token.recoveryCode": "cro",
         "token.emailCode": "cro",
         "token.providerSwitchCode": "cro",
+        "token.clientSessionId": "cro",
         "token.webAuthnOptions": "r",
         "token.totpProvisioningUri": "r",
         "token.totpSecret": "r",
