@@ -235,11 +235,11 @@ public class GenericWhitelistedProxy extends AbstractResponseGenerator implement
         if (authHeader != null) {
             temp.setHeader("Authorization", authHeader);
         } else {
-            if (uri.getPath() != null && uri.getPath().startsWith("/v1-auth/")) {
+            if (shouldUseExternalAccessToken(method, uri.getPath())) {
                 //set the auth service access token
                 String externalAccessToken = (String) request.getAttribute(AUTH_ACCESS_TOKEN);
-                if(!StringUtils.isBlank(externalAccessToken)) {
-                    String bearerToken = " Bearer "+ externalAccessToken;
+                if (!StringUtils.isBlank(externalAccessToken)) {
+                    String bearerToken = "Bearer " + externalAccessToken;
                     temp.setHeader("Authorization", bearerToken);
                 }
             }
@@ -309,6 +309,19 @@ public class GenericWhitelistedProxy extends AbstractResponseGenerator implement
 
     static boolean shouldFollowRedirects(Object redirectsAttribute) {
         return Boolean.TRUE.equals(redirectsAttribute);
+    }
+
+    static boolean shouldUseExternalAccessToken(String method, String path) {
+        if (path == null || !path.startsWith("/v1-auth/")) {
+            return false;
+        }
+
+        // Updating authentication configuration is authorized by the control
+        // plane and can require a session-bound MFA confirmation. Preserve the
+        // caller's platform Authorization header so the authentication service
+        // can consume that confirmation as the same operator. Provider access
+        // tokens remain necessary for read-only identity/config enrichment.
+        return !("POST".equalsIgnoreCase(method) && "/v1-auth/config".equals(path));
     }
 
     static boolean isProxyableScheme(String scheme) {

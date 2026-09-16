@@ -6,7 +6,7 @@ New operator-facing names use PastureStack and `PASTURESTACK_*`. Compatibility i
 
 ## Docker host policy
 
-Release `0.183.308` preserves the Docker host policy introduced in `0.183.299`,
+Release `0.183.309` preserves the Docker host policy introduced in `0.183.299`,
 which adds Docker Engine `29.8.0` as an exact supported
 version alongside the preserved legacy ranges, `24.0.9`, and the existing
 `29.4.1` through `29.7.2` interval. It does not widen the interval to admit
@@ -96,6 +96,14 @@ The new binding fields are optional so established unbound confirmation flows
 remain compatible. They are correlation inputs, not bearer credentials, and do
 not weaken the existing CSRF, Origin, MFA, ticket-expiry, or account ownership
 checks.
+
+Authentication configuration updates must preserve the caller's platform
+authorization credential through the Engine-to-Authentication-Service proxy.
+The provider access token remains appropriate for read-only identity and
+configuration enrichment, but cannot substitute for the operator session when
+the Authentication Service consumes a bound MFA confirmation. Server release
+gates must exercise the public `/v1-auth/config` path rather than validating
+only the Authentication Service's loopback endpoint.
 
 The `rancher.compose.*` setting keys and inherited executable aliases remain compatibility contracts for existing launchers. Public artifact URLs and container images are hosted under the PastureStack GitHub organization; remove an alias only after its launcher and rollback fixtures accept the replacement name.
 

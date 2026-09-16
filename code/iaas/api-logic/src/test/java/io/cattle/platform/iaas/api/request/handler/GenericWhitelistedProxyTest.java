@@ -49,6 +49,28 @@ public class GenericWhitelistedProxyTest {
     }
 
     @Test
+    public void preservesPlatformAuthorizationForAuthenticationConfigUpdates() {
+        assertFalse(GenericWhitelistedProxy.shouldUseExternalAccessToken(
+                "POST", "/v1-auth/config"));
+        assertFalse(GenericWhitelistedProxy.shouldUseExternalAccessToken(
+                "post", "/v1-auth/config"));
+    }
+
+    @Test
+    public void keepsProviderAccessTokensForAuthenticationReadsAndOtherRoutes() {
+        assertTrue(GenericWhitelistedProxy.shouldUseExternalAccessToken(
+                "GET", "/v1-auth/config"));
+        assertTrue(GenericWhitelistedProxy.shouldUseExternalAccessToken(
+                "GET", "/v1-auth/identities"));
+        assertTrue(GenericWhitelistedProxy.shouldUseExternalAccessToken(
+                "POST", "/v1-auth/token"));
+        assertFalse(GenericWhitelistedProxy.shouldUseExternalAccessToken(
+                "POST", "/v2-beta/mfaOperation"));
+        assertFalse(GenericWhitelistedProxy.shouldUseExternalAccessToken(
+                "POST", null));
+    }
+
+    @Test
     public void onlyAllowsHttpAndHttpsProxySchemes() {
         assertTrue(GenericWhitelistedProxy.isProxyableScheme("http"));
         assertTrue(GenericWhitelistedProxy.isProxyableScheme("https"));
