@@ -8,11 +8,13 @@ import io.github.ibuildthecloud.gdapi.factory.impl.SchemaFactoryImpl;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.DependsOn;
 
 @Configuration
 public class TypesConfig {
 
     @Bean
+    @DependsOn("ArchaiusStartup")
     SchemaFactoryImpl CoreSchemaFactory() {
         return new SchemaFactoryImpl();
     }

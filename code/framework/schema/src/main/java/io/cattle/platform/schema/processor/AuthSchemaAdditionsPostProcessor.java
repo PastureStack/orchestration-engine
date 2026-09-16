@@ -10,6 +10,10 @@ import io.github.ibuildthecloud.gdapi.model.Field;
 import io.github.ibuildthecloud.gdapi.model.impl.FieldImpl;
 import io.github.ibuildthecloud.gdapi.model.impl.SchemaImpl;
 
+import java.util.ArrayList;
+import java.util.LinkedHashSet;
+import java.util.List;
+
 public class AuthSchemaAdditionsPostProcessor extends AbstractSchemaPostProcessor implements SchemaPostProcessor, Priority {
 
     private static final ConfigListProperty<String> AUTH_SERVICE_EXTERNAL_ID_TYPES = ArchaiusUtil.getStringListProperty("auth.service.external.id.types");
@@ -19,7 +23,15 @@ public class AuthSchemaAdditionsPostProcessor extends AbstractSchemaPostProcesso
       if(schema.getId().equals("projectMember")) {
             FieldImpl field = getField(schema, "externalIdType");
             if(field != null){
-                field.getOptions().addAll(AUTH_SERVICE_EXTERNAL_ID_TYPES.get());
+                List<String> configured = AUTH_SERVICE_EXTERNAL_ID_TYPES.get();
+                LinkedHashSet<String> options = new LinkedHashSet<String>();
+                if (field.getOptions() != null) {
+                    options.addAll(field.getOptions());
+                }
+                if (configured != null) {
+                    options.addAll(configured);
+                }
+                field.setOptions(new ArrayList<String>(options));
             }
         }
         return schema;
