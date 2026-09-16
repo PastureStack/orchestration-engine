@@ -7,12 +7,32 @@ import io.github.ibuildthecloud.gdapi.model.impl.SchemaImpl;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
+import java.util.Properties;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.io.InputStream;
 
 import org.junit.Test;
 
 import com.netflix.config.ConfigurationManager;
 
 public class AuthSchemaAdditionsPostProcessorTest {
+
+    @Test
+    public void shippedDefaultsExposeOnlyReviewedExternalIdentityTypesIncludingOidc() throws Exception {
+        Properties properties = new Properties();
+        try (InputStream input = Files.newInputStream(
+                Paths.get("../../../resources/content/cattle-global.properties"))) {
+            properties.load(input);
+        }
+        List<String> types = Arrays.asList(
+                properties.getProperty("auth.service.external.id.types").split(","));
+
+        assertEquals(Arrays.asList("github_user", "github_org", "github_team",
+                "shibboleth_user", "shibboleth_group", "ldap_user", "ldap_group",
+                "oidc_user", "oidc_group"), types);
+    }
 
     @Test
     public void externalIdTypesReadDynamicListThroughWrapper() {

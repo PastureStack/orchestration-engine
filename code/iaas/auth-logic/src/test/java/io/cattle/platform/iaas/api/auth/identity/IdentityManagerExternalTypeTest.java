@@ -1,0 +1,72 @@
+package io.cattle.platform.iaas.api.auth.identity;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
+
+import com.netflix.config.ConfigurationManager;
+import io.cattle.platform.api.auth.Identity;
+import io.cattle.platform.iaas.api.auth.integration.external.ExternalServiceAuthProvider;
+import io.github.ibuildthecloud.gdapi.exception.ClientVisibleException;
+import java.util.Collections;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Test;
+
+public class IdentityManagerExternalTypeTest {
+    private static final String TYPES = "auth.service.external.id.types";
+    private IdentityManager manager;
+
+    @Before
+    public void setUp() {
+        ConfigurationManager.getConfigInstance().setProperty(TYPES, "oidc_user,oidc_group");
+        manager = new IdentityManager();
+        manager.setIdentityProviders(Collections.emptyMap());
+        manager.externalAuthProvider = new ExternalServiceAuthProvider() {
+            @Override
+            public boolean isConfigured() {
+                return true;
+            }
+
+            @Override
+            public Identity transform(Identity identity) {
+                return identity;
+            }
+
+            @Override
+            public Identity untransform(Identity identity) {
+                return identity;
+            }
+        };
+    }
+
+    @After
+    public void tearDown() {
+        ConfigurationManager.getConfigInstance().clearProperty(TYPES);
+    }
+
+    @Test
+    public void acceptsSupportedOidcUserAndGroupTypes() {
+        for (String type : new String[] {"oidc_user", "oidc_group"}) {
+            Identity identity = new Identity(type, "subject");
+            assertEquals(identity, manager.projectMemberToIdentity(identity));
+            assertEquals(identity, manager.untransform(identity, true));
+        }
+    }
+
+    @Test
+    public void rejectsUnknownExternalTypeEvenWhenProviderIsConfigured() {
+        Identity identity = new Identity("arbitrary_external_type", "subject");
+        assertInvalidType(() -> manager.projectMemberToIdentity(identity));
+        assertInvalidType(() -> manager.untransform(identity, true));
+    }
+
+    private void assertInvalidType(Runnable action) {
+        try {
+            action.run();
+            fail("Expected unsupported external identity type to be rejected");
+        } catch (ClientVisibleException e) {
+            assertEquals(400, e.getStatus());
+            assertEquals("invalidIdentityType", e.getCode());
+        }
+    }
+}
