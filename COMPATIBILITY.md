@@ -6,7 +6,7 @@ New operator-facing names use PastureStack and `PASTURESTACK_*`. Compatibility i
 
 ## Docker host policy
 
-Release `0.183.307` preserves the Docker host policy introduced in `0.183.299`,
+Release `0.183.308` preserves the Docker host policy introduced in `0.183.299`,
 which adds Docker Engine `29.8.0` as an exact supported
 version alongside the preserved legacy ranges, `24.0.9`, and the existing
 `29.4.1` through `29.7.2` interval. It does not widen the interval to admit
@@ -33,10 +33,19 @@ requests and repeated deletes return `204` without an expiry cookie. Unbound
 tokens created by older consoles retain their established delete behavior so a
 rolling upgrade does not strand legacy sessions.
 
-Release `0.183.307` normalizes the authenticated current-token representation
+Release `0.183.308` normalizes the authenticated current-token representation
 before the ownership lookup, so both a cookie's bare key and an
 `Authorization: Bearer <key>` header revoke the same matching session. It does
 not accept another authorization scheme or a malformed multipart value.
+
+The same release updates every shipped frozen v1 schema that exposes `token`
+(`base`, `superadmin`, and `token`). Each snapshot retains `clientSessionId` as
+a nullable password field with exact length 78, create access only, no update
+access, and read-on-create-only semantics. This closes the v1-specific gap in
+which authorization was correct in the dynamic schema but the frozen snapshot
+silently removed the generation before token creation. Server release gates
+must exercise session-bound creation and deletion through both `/v1/token` and
+`/v2-beta/token`; a v2-only runtime check is not sufficient.
 
 When `api.auth.restrict.concurrent.sessions=true`, replacement is protected by
 one distributed lock per token account and authenticated account. The Engine
@@ -51,11 +60,11 @@ it does not replace the cookie, grant access, or appear in URLs. The Web Console
 must keep JWT material out of Web Storage and hold its cross-tab mutex through
 the complete explicit-delete response before clearing its local state.
 
-The token authorization overlay must retain `clientSessionId` as a
-read-on-create-only input. Removing it from the public token schema turns every
-new login into an unbound legacy token even when the Web Console supplies a
-valid generation, so schema authorization is covered by a shipped-overlay
-regression test.
+The token authorization overlay and every frozen token schema must retain
+`clientSessionId` as a read-on-create-only input. Removing it from either API
+surface turns new logins on that path into unbound legacy tokens even when the
+Web Console supplies a valid generation. Separate regression tests therefore
+cover both the dynamic overlay and the deserialized frozen snapshots.
 
 ## External identity types
 

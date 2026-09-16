@@ -4,7 +4,7 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 artifact=${1:-dist/artifacts/cattle.jar}
-expected_version=${EXPECTED_ENGINE_VERSION:-0.183.307}
+expected_version=${EXPECTED_ENGINE_VERSION:-0.183.308}
 
 test -f "$artifact"
 artifact=$(realpath "$artifact")
@@ -153,6 +153,10 @@ if unzip -p "$workdir/$resources_entry" db/mysql/mysql-dump.sql | grep -F 'clien
 fi
 unzip -p "$workdir/$resources_entry" schema/token/token-auth.json |
     grep -F '"token.clientSessionId": "cro",' >/dev/null
+for frozen_token_schema in base.ser superadmin.ser token.ser; do
+    unzip -p "$workdir/$resources_entry" "schema/v1/$frozen_token_schema" |
+        grep -aF 'clientSessionId' >/dev/null
+done
 unzip -p "$workdir/$resources_entry" cattle-global.properties |
     grep -Fx 'auth.service.external.id.types=github_user,github_org,github_team,shibboleth_user,shibboleth_group,ldap_user,ldap_group,oidc_user,oidc_group' >/dev/null
 
