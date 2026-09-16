@@ -6,7 +6,7 @@ New operator-facing names use PastureStack and `PASTURESTACK_*`. Compatibility i
 
 ## Docker host policy
 
-Release `0.183.306` preserves the Docker host policy introduced in `0.183.299`,
+Release `0.183.307` preserves the Docker host policy introduced in `0.183.299`,
 which adds Docker Engine `29.8.0` as an exact supported
 version alongside the preserved legacy ranges, `24.0.9`, and the existing
 `29.4.1` through `29.7.2` interval. It does not widen the interval to admit
@@ -32,6 +32,11 @@ token cannot be revoked by a client that omits or mismatches the value; those
 requests and repeated deletes return `204` without an expiry cookie. Unbound
 tokens created by older consoles retain their established delete behavior so a
 rolling upgrade does not strand legacy sessions.
+
+Release `0.183.307` normalizes the authenticated current-token representation
+before the ownership lookup, so both a cookie's bare key and an
+`Authorization: Bearer <key>` header revoke the same matching session. It does
+not accept another authorization scheme or a malformed multipart value.
 
 When `api.auth.restrict.concurrent.sessions=true`, replacement is protected by
 one distributed lock per token account and authenticated account. The Engine

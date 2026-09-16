@@ -31,7 +31,7 @@ public class TokenResourceManagerTest {
     @Test
     public void boundTokenRequiresMatchingClientSessionAndNeverEmitsExpiryCookie() {
         FakeAuthTokenDao dao = new FakeAuthTokenDao(record("token-key", VALID_SESSION));
-        TestManager manager = manager(dao, "token-key");
+        TestManager manager = manager(dao, "Bearer token-key");
 
         RequestState missing = request(null);
         assertSame(missing.object, manager.deleteToken(missing.object, missing.request));
@@ -108,6 +108,17 @@ public class TokenResourceManagerTest {
         } catch (ClientVisibleException expected) {
             assertEquals(400, expected.getStatus());
         }
+    }
+
+    @Test
+    public void normalizesCookieAndBearerTransportsWithoutAcceptingOtherSchemes() {
+        assertEquals("token-key", TokenResourceManager.normalizeTokenKey("token-key"));
+        assertEquals("token-key", TokenResourceManager.normalizeTokenKey("Bearer token-key"));
+        assertEquals("token-key", TokenResourceManager.normalizeTokenKey("bearer   token-key"));
+        assertNull(TokenResourceManager.normalizeTokenKey(null));
+        assertNull(TokenResourceManager.normalizeTokenKey(""));
+        assertNull(TokenResourceManager.normalizeTokenKey("Basic token-key"));
+        assertNull(TokenResourceManager.normalizeTokenKey("Bearer token-key extra"));
     }
 
     private static TestManager manager(FakeAuthTokenDao dao, String jwt) {
