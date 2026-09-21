@@ -9,8 +9,8 @@ PastureStack is an independent community effort to preserve, audit, and moderniz
 ## Project status
 
 The current public GitHub Release
-[`v0.183.314`](https://github.com/PastureStack/orchestration-engine/releases/tag/v0.183.314)
-produces engine version `0.183.314`. It retains the existing Java 25, Ubuntu
+[`v0.183.315`](https://github.com/PastureStack/orchestration-engine/releases/tag/v0.183.315)
+produces engine version `0.183.315`. It retains the existing Java 25, Ubuntu
 26.04, Maven, Liquibase, MariaDB/MySQL, WebSocket, dependency, concurrency, and
 runtime-hardening work from the maintained compatibility line. Release builds
 consume the exact `5.7.4` runtime JAR published by
@@ -20,6 +20,16 @@ into the build-local Maven repository. The current coordinate is pure numeric;
 product identity and provenance are carried by the artifact name, metadata,
 SBOM, and release evidence. Provenance and scope are documented in
 [`third-party/HAZELCAST.md`](third-party/HAZELCAST.md).
+
+Release `0.183.315` fixes repeated OpenID Connect login after an upgrade. An
+internal credential lifecycle could replace the explicitly verified user with
+the request's built-in `token` account while an `authIdentity` link was being
+created. The Engine now verifies the stored owner, excludes internal accounts
+from login-identity resolution, and repairs a legacy misowned link only when
+the built-in token account, provider, identity type, external ID, link digest,
+and target account all match. Every other ownership conflict still fails
+closed. This keeps a second incognito or browser login on the same user account
+instead of issuing a session for the internal account.
 
 Release `0.183.314` keeps the frozen v1 `projectMember.externalIdType` options
 aligned with the reviewed core schema. Upgraded installations could accept an
@@ -151,7 +161,7 @@ dependency line. The existing platform JSON surface remains on
 `com.fasterxml.jackson` 2.22. Packaging gates admit only the reviewed,
 version-pinned pair and verify that their class namespaces are disjoint.
 
-Host compatibility is evidence-based. Release `0.183.314` preserves the legacy ranges and Docker Engine `24.0.9`, retains the bounded `29.4.1` through `29.7.2` interval, and supports exactly `29.8.0`. It does not admit unverified `29.7.3` or `29.8.1`, or Docker 25 through 28. The frontend marks versions above the configured newest version as *untested*, not *supported*. Every Server release that consumes this policy must still pass its Ubuntu 26.04 host and installed firewall-backend runtime acceptance gate.
+Host compatibility is evidence-based. Release `0.183.315` preserves the legacy ranges and Docker Engine `24.0.9`, retains the bounded `29.4.1` through `29.7.2` interval, and supports exactly `29.8.0`. It does not admit unverified `29.7.3` or `29.8.1`, or Docker 25 through 28. The frontend marks versions above the configured newest version as *untested*, not *supported*. Every Server release that consumes this policy must still pass its Ubuntu 26.04 host and installed firewall-backend runtime acceptance gate.
 
 The build and Dapper images still compile the Docker `29.7.2` CLI from the pinned official tag commit with Go `1.27.0`; the CLI tool version is separate from the Docker daemon host support setting. They do not import Docker's precompiled Go `1.26.5` binary. The source archive SHA-256 and Go builder image digest are enforced by the source gate and the resulting images are scanned before release.
 
@@ -199,7 +209,7 @@ The gate performs dependency-hygiene checks, builds every Maven module with JDK 
 To create the complete release archive after the gate passes:
 
 ```sh
-ENGINE_VERSION=0.183.314 bash scripts/build --release
+ENGINE_VERSION=0.183.315 bash scripts/build --release
 bash scripts/check-release-artifact dist/artifacts/cattle.jar
 ```
 

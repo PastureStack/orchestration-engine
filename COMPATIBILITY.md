@@ -6,7 +6,7 @@ New operator-facing names use PastureStack and `PASTURESTACK_*`. Compatibility i
 
 ## Docker host policy
 
-Release `0.183.314` preserves the Docker host policy introduced in `0.183.299`,
+Release `0.183.315` preserves the Docker host policy introduced in `0.183.299`,
 which adds Docker Engine `29.8.0` as an exact supported
 version alongside the preserved legacy ranges, `24.0.9`, and the existing
 `29.4.1` through `29.7.2` interval. It does not widen the interval to admit
@@ -61,6 +61,17 @@ core options into `projectMember.externalIdType`, de-duplicates them, and
 retains the historical provider options. The merge is deliberately limited to
 that field: unrelated frozen enums are not widened, and runtime identity
 validation continues to reject unknown types.
+
+Release `0.183.315` corrects an upgraded-installation identity ownership bug.
+An `authIdentity` credential created during unauthenticated OIDC login could be
+owned by the built-in `token` account even though the verified user account was
+supplied explicitly. Subsequent logins could therefore authenticate as that
+internal account and lose normal API visibility. New credentials now verify
+their persisted owner. Login lookup accepts only user and administrator owners;
+a legacy link is moved only when its existing owner is the built-in token
+account and its provider, type, external ID, digest, and target account all
+match exactly. Valid links are never reassigned automatically, so collision and
+account-takeover protection remains fail-closed.
 
 ## Browser token session ownership
 
