@@ -6,7 +6,7 @@ New operator-facing names use PastureStack and `PASTURESTACK_*`. Compatibility i
 
 ## Docker host policy
 
-Release `0.183.312` preserves the Docker host policy introduced in `0.183.299`,
+Release `0.183.313` preserves the Docker host policy introduced in `0.183.299`,
 which adds Docker Engine `29.8.0` as an exact supported
 version alongside the preserved legacy ranges, `24.0.9`, and the existing
 `29.4.1` through `29.7.2` interval. It does not widen the interval to admit
@@ -46,6 +46,12 @@ identity as a separate internal boundary. Only a `rancher_id` that resolves to
 the account authenticated by that token is accepted; a mismatched or
 provider-supplied platform identity is rejected. This preserves upgraded OIDC
 login without allowing an external identity to claim another platform account.
+
+Release `0.183.313` preserves that identity boundary and makes the external
+account lifecycle ordering explicit. A newly created account completes its
+synchronous `account.create` process and reaches `active` before MFA begins.
+The MFA service continues to reject every non-active account; this release
+does not bypass that safety check or change the existing-account login path.
 
 ## Browser token session ownership
 
