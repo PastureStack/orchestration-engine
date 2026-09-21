@@ -234,6 +234,24 @@ public class IdentityManager extends AbstractNoOpResourceManager {
         }
     }
 
+    /**
+     * Validates and normalizes an identity returned by the external
+     * authentication service for the token currently being created.
+     *
+     * The successful external token exchange is the provider boundary for
+     * this path. Rechecking the asynchronously propagated platform setting
+     * here can reject the identity that the provider just authenticated. The
+     * reviewed identity-type allowlist remains mandatory, while project-member
+     * input continues to use {@link #projectMemberToIdentity(Identity)} and its
+     * configured-provider requirement.
+     */
+    Identity untransformExternalTokenIdentity(Identity identity) {
+        if (!isSupportedExternalIdentityType(identity)) {
+            throw invalidIdentityType(identity, "external token");
+        }
+        return externalAuthProvider.untransform(identity);
+    }
+
     public Identity untransform(Identity identity, boolean error) {
         Identity newIdentity = null;
         boolean scopeMatch = false;
@@ -288,9 +306,16 @@ public class IdentityManager extends AbstractNoOpResourceManager {
             }
         }
         if (newIdentity == null){
-            throw new ClientVisibleException(ResponseCodes.BAD_REQUEST, IdentityConstants.INVALID_TYPE, "Identity externalIdType is invalid", null);
+            throw invalidIdentityType(identity, "project member");
         }
         return newIdentity;
+    }
+
+    private ClientVisibleException invalidIdentityType(Identity identity, String operation) {
+        String externalIdType = identity == null ? null : identity.getExternalIdType();
+        logger.warn("Rejecting unsupported external identity type [{}] during {}", externalIdType, operation);
+        return new ClientVisibleException(ResponseCodes.BAD_REQUEST, IdentityConstants.INVALID_TYPE,
+                "Identity externalIdType is invalid", null);
     }
 
     protected boolean isSupportedExternalIdentityType(Identity identity) {

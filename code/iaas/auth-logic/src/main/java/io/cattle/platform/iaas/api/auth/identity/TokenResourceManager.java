@@ -107,6 +107,7 @@ public class TokenResourceManager extends AbstractNoOpResourceManager {
 
     private Token createToken(ApiRequest request) {
         Token token = null;
+        boolean externalProviderLogin = false;
         Map<String, Object> requestBody = CollectionUtils.toMap(request.getRequestObject());
         String requestedProvider = ObjectUtils.toString(requestBody.get("authProvider"));
         String code = ObjectUtils.toString(requestBody.get("code"));
@@ -164,6 +165,7 @@ public class TokenResourceManager extends AbstractNoOpResourceManager {
             }
         } else {
             //call external service
+            externalProviderLogin = true;
             token = externalAuthProvider.getToken(request);
             if (token != null) {
                 token.setLoginMethod("primary");
@@ -178,10 +180,14 @@ public class TokenResourceManager extends AbstractNoOpResourceManager {
             Identity[] identities = token.getIdentities();
             List<Identity> transFormedIdentities = new ArrayList<>();
             for (Identity identity : identities) {
-                transFormedIdentities.add(identityManager.untransform(identity, true));
+                transFormedIdentities.add(externalProviderLogin
+                        ? identityManager.untransformExternalTokenIdentity(identity)
+                        : identityManager.untransform(identity, true));
             }
             token.setIdentities(transFormedIdentities);
-            token.setUserIdentity(identityManager.untransform(token.getUserIdentity(), true));
+            token.setUserIdentity(externalProviderLogin
+                    ? identityManager.untransformExternalTokenIdentity(token.getUserIdentity())
+                    : identityManager.untransform(token.getUserIdentity(), true));
 
             if (StringUtils.isNotBlank(providerSwitchCode)) {
                 providerSwitchTokenService.authorizeActivation(providerSwitchCode, token);
