@@ -2,8 +2,6 @@ package io.cattle.platform.iaas.api.auth.identity;
 
 import io.cattle.platform.api.auth.Identity;
 import io.cattle.platform.api.auth.Policy;
-import io.cattle.platform.archaius.util.ArchaiusUtil;
-import io.cattle.platform.archaius.util.ConfigListProperty;
 import io.cattle.platform.core.constants.IdentityConstants;
 import io.cattle.platform.core.constants.ProjectConstants;
 import io.cattle.platform.core.model.ProjectMember;
@@ -24,12 +22,12 @@ import io.github.ibuildthecloud.gdapi.request.resource.impl.AbstractNoOpResource
 import io.github.ibuildthecloud.gdapi.util.ResponseCodes;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
@@ -47,11 +45,6 @@ import org.slf4j.LoggerFactory;
 public class IdentityManager extends AbstractNoOpResourceManager {
 
     private static final Logger logger = LoggerFactory.getLogger(IdentityManager.class);
-    private static final ConfigListProperty<String> SUPPORTED_EXTERNAL_ID_TYPES =
-            ArchaiusUtil.getStringListProperty("auth.service.external.id.types");
-    private static final Set<String> REQUIRED_OIDC_IDENTITY_TYPES = Collections.unmodifiableSet(
-            new HashSet<String>(Arrays.asList("oidc_user", "oidc_group")));
-
     private Map<String, IdentityProvider> identityProviders;
 
     ExecutorService executorService;
@@ -245,11 +238,30 @@ public class IdentityManager extends AbstractNoOpResourceManager {
      * input continues to use {@link #projectMemberToIdentity(Identity)} and its
      * configured-provider requirement.
      */
-    Identity untransformExternalTokenIdentity(Identity identity) {
-        if (!isSupportedExternalIdentityType(identity)) {
+    Identity untransformExternalTokenIdentity(Identity identity, Long authenticatedAsAccountId) {
+        if (identity != null && ProjectConstants.RANCHER_ID.equals(identity.getExternalIdType())) {
+            Identity stableIdentity = ownedStableAccountIdentity(identity, authenticatedAsAccountId);
+            if (stableIdentity == null) {
+                throw invalidIdentityType(identity, "external token stable account identity");
+            }
+            return stableIdentity;
+        }
+        if (!tokenUtil.isSupportedExternalIdentityType(identity)) {
             throw invalidIdentityType(identity, "external token");
         }
         return externalAuthProvider.untransform(identity);
+    }
+
+    private Identity ownedStableAccountIdentity(Identity identity, Long authenticatedAsAccountId) {
+        ApiContext context = ApiContext.getContext();
+        IdFormatter formatter = context == null ? null : context.getIdFormatter();
+        Long identityAccountId = localAccountId(identity.getExternalId(), formatter);
+        if (authenticatedAsAccountId == null || !Objects.equals(authenticatedAsAccountId, identityAccountId)) {
+            return null;
+        }
+        Identity displayIdentity = authDao.getIdentityForDisplay(identityAccountId, formatter);
+        return displayIdentity == null ? null
+                : new Identity(displayIdentity, identity.getRole(), identity.getProjectId());
     }
 
     public Identity untransform(Identity identity, boolean error) {
@@ -264,7 +276,7 @@ public class IdentityManager extends AbstractNoOpResourceManager {
         }
         if (!scopeMatch) {
             //get from external auth service
-            if (externalAuthProvider.isConfigured() && isSupportedExternalIdentityType(identity)) {
+            if (externalAuthProvider.isConfigured() && tokenUtil.isSupportedExternalIdentityType(identity)) {
                 newIdentity = externalAuthProvider.untransform(identity);
             }
         }
@@ -301,7 +313,7 @@ public class IdentityManager extends AbstractNoOpResourceManager {
         }
         if (!scopeMatch) {
             //get from external auth service
-            if (externalAuthProvider.isConfigured() && isSupportedExternalIdentityType(identity)) {
+            if (externalAuthProvider.isConfigured() && tokenUtil.isSupportedExternalIdentityType(identity)) {
                 newIdentity = externalAuthProvider.transform(identity);
             }
         }
@@ -318,15 +330,4 @@ public class IdentityManager extends AbstractNoOpResourceManager {
                 "Identity externalIdType is invalid", null);
     }
 
-    protected boolean isSupportedExternalIdentityType(Identity identity) {
-        if (identity == null || identity.getExternalIdType() == null) {
-            return false;
-        }
-        String externalIdType = identity.getExternalIdType();
-        if (REQUIRED_OIDC_IDENTITY_TYPES.contains(externalIdType)) {
-            return true;
-        }
-        List<String> configured = SUPPORTED_EXTERNAL_ID_TYPES.get();
-        return configured != null && configured.contains(externalIdType);
-    }
 }
