@@ -615,7 +615,13 @@ public class AuthDaoImpl extends AbstractJooqDao implements AuthDao {
         if (StringUtils.isNotEmpty(externalType)) {
             properties.put(ACCOUNT.EXTERNAL_ID_TYPE, externalType);
         }
-        return resourceDao.createAndSchedule(Account.class, objectManager.convertToPropertiesFor(Account.class,
+        // A login token enters the MFA gate immediately after this method
+        // returns.  Scheduling account.create in the background exposes the
+        // transient registering state to MfaService, which must reject every
+        // non-active account.  Execute the account lifecycle synchronously so
+        // the authorization principal is active before MFA or session
+        // issuance begins; do not weaken the MFA active-account boundary.
+        return resourceDao.create(Account.class, objectManager.convertToPropertiesFor(Account.class,
                 properties));
     }
 
