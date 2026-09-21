@@ -21,22 +21,7 @@ public class IdentityManagerExternalTypeTest {
         ConfigurationManager.getConfigInstance().setProperty(TYPES, "oidc_user,oidc_group");
         manager = new IdentityManager();
         manager.setIdentityProviders(Collections.emptyMap());
-        manager.externalAuthProvider = new ExternalServiceAuthProvider() {
-            @Override
-            public boolean isConfigured() {
-                return true;
-            }
-
-            @Override
-            public Identity transform(Identity identity) {
-                return identity;
-            }
-
-            @Override
-            public Identity untransform(Identity identity) {
-                return identity;
-            }
-        };
+        manager.externalAuthProvider = externalProvider(true);
     }
 
     @After
@@ -72,6 +57,24 @@ public class IdentityManagerExternalTypeTest {
         assertInvalidType(() -> manager.untransform(identity, true));
     }
 
+    @Test
+    public void externalTokenBoundaryDoesNotRecheckAStaleProviderFlag() {
+        manager.externalAuthProvider = externalProvider(false);
+
+        for (String type : new String[] {"oidc_user", "oidc_group"}) {
+            Identity identity = new Identity(type, "subject");
+            assertEquals(identity, manager.untransformExternalTokenIdentity(identity));
+            assertInvalidType(() -> manager.untransform(identity, true));
+        }
+    }
+
+    @Test
+    public void externalTokenBoundaryStillRejectsUnknownTypes() {
+        manager.externalAuthProvider = externalProvider(false);
+        assertInvalidType(() -> manager.untransformExternalTokenIdentity(
+                new Identity("arbitrary_external_type", "subject")));
+    }
+
     private void assertInvalidType(Runnable action) {
         try {
             action.run();
@@ -80,5 +83,24 @@ public class IdentityManagerExternalTypeTest {
             assertEquals(400, e.getStatus());
             assertEquals("invalidIdentityType", e.getCode());
         }
+    }
+
+    private ExternalServiceAuthProvider externalProvider(final boolean configured) {
+        return new ExternalServiceAuthProvider() {
+            @Override
+            public boolean isConfigured() {
+                return configured;
+            }
+
+            @Override
+            public Identity transform(Identity identity) {
+                return identity;
+            }
+
+            @Override
+            public Identity untransform(Identity identity) {
+                return identity;
+            }
+        };
     }
 }

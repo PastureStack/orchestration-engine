@@ -6,7 +6,7 @@ New operator-facing names use PastureStack and `PASTURESTACK_*`. Compatibility i
 
 ## Docker host policy
 
-Release `0.183.310` preserves the Docker host policy introduced in `0.183.299`,
+Release `0.183.311` preserves the Docker host policy introduced in `0.183.299`,
 which adds Docker Engine `29.8.0` as an exact supported
 version alongside the preserved legacy ranges, `24.0.9`, and the existing
 `29.4.1` through `29.7.2` interval. It does not widen the interval to admit
@@ -31,6 +31,14 @@ them, so release `0.183.310` always unions these two reviewed types into API
 schema options and Engine validation. Other configured provider types remain
 dynamic, unknown identity types remain rejected, and the external provider
 must still be configured before any external identity can be transformed.
+
+Release `0.183.311` treats a successful external Authentication Service token
+exchange as the provider boundary for the identities returned by that same
+exchange. This avoids rejecting a valid login because a separately propagated
+provider-state flag is stale. It does not broaden the identity contract:
+`oidc_user` and `oidc_group` remain explicitly reviewed, unknown types still
+fail closed, and project-member transformations still require the active
+external provider.
 
 ## Browser token session ownership
 
