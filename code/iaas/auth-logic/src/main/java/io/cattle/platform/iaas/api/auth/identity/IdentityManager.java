@@ -24,6 +24,7 @@ import io.github.ibuildthecloud.gdapi.request.resource.impl.AbstractNoOpResource
 import io.github.ibuildthecloud.gdapi.util.ResponseCodes;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
@@ -48,6 +49,8 @@ public class IdentityManager extends AbstractNoOpResourceManager {
     private static final Logger logger = LoggerFactory.getLogger(IdentityManager.class);
     private static final ConfigListProperty<String> SUPPORTED_EXTERNAL_ID_TYPES =
             ArchaiusUtil.getStringListProperty("auth.service.external.id.types");
+    private static final Set<String> REQUIRED_OIDC_IDENTITY_TYPES = Collections.unmodifiableSet(
+            new HashSet<String>(Arrays.asList("oidc_user", "oidc_group")));
 
     private Map<String, IdentityProvider> identityProviders;
 
@@ -291,6 +294,14 @@ public class IdentityManager extends AbstractNoOpResourceManager {
     }
 
     protected boolean isSupportedExternalIdentityType(Identity identity) {
-        return identity != null && SUPPORTED_EXTERNAL_ID_TYPES.get().contains(identity.getExternalIdType());
+        if (identity == null || identity.getExternalIdType() == null) {
+            return false;
+        }
+        String externalIdType = identity.getExternalIdType();
+        if (REQUIRED_OIDC_IDENTITY_TYPES.contains(externalIdType)) {
+            return true;
+        }
+        List<String> configured = SUPPORTED_EXTERNAL_ID_TYPES.get();
+        return configured != null && configured.contains(externalIdType);
     }
 }
