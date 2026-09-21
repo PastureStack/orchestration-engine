@@ -86,7 +86,7 @@ public class ExternalServiceAuthProvider {
             {
                 for(Object identity : identityList) {
                     Map<String, Object> jsonIdentity = CollectionUtils.toMap(identity);
-                    identities.add(tokenUtil.jsonToIdentity(jsonIdentity));
+                    identities.add(tokenUtil.jsonToValidatedExternalIdentity(jsonIdentity));
                 }
             }
 
@@ -139,7 +139,7 @@ public class ExternalServiceAuthProvider {
             {
                 for(Object identity : identityList) {
                     Map<String, Object> jsonIdentity = CollectionUtils.toMap(identity);
-                    identities.add(tokenUtil.jsonToIdentity(jsonIdentity));
+                    identities.add(tokenUtil.jsonToValidatedExternalIdentity(jsonIdentity));
                 }
             }
             Token token = tokenUtil.createToken(identities, null, null);
@@ -180,7 +180,7 @@ public class ExternalServiceAuthProvider {
             {
                 for(Object identity : identityList) {
                     Map<String, Object> jsonIdentity = CollectionUtils.toMap(identity);
-                    identities.add(tokenUtil.jsonToIdentity(jsonIdentity));
+                    identities.add(tokenUtil.jsonToValidatedExternalIdentity(jsonIdentity));
                 }
             }
 
@@ -234,7 +234,7 @@ public class ExternalServiceAuthProvider {
             if (jsonData == null) {
                 return null;
             }
-            return tokenUtil.jsonToIdentity(jsonData);
+            return tokenUtil.jsonToValidatedExternalIdentity(jsonData);
 
         } catch (IOException e) {
             if (!isAuthServiceConnectionFailure(e)) {

@@ -181,12 +181,13 @@ public class TokenResourceManager extends AbstractNoOpResourceManager {
             List<Identity> transFormedIdentities = new ArrayList<>();
             for (Identity identity : identities) {
                 transFormedIdentities.add(externalProviderLogin
-                        ? identityManager.untransformExternalTokenIdentity(identity)
+                        ? identityManager.untransformExternalTokenIdentity(identity, token.getAuthenticatedAsAccountId())
                         : identityManager.untransform(identity, true));
             }
             token.setIdentities(transFormedIdentities);
             token.setUserIdentity(externalProviderLogin
-                    ? identityManager.untransformExternalTokenIdentity(token.getUserIdentity())
+                    ? identityManager.untransformExternalTokenIdentity(token.getUserIdentity(),
+                            token.getAuthenticatedAsAccountId())
                     : identityManager.untransform(token.getUserIdentity(), true));
 
             if (StringUtils.isNotBlank(providerSwitchCode)) {

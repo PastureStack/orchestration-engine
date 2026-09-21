@@ -5,8 +5,12 @@ import static org.junit.Assert.fail;
 
 import com.netflix.config.ConfigurationManager;
 import io.cattle.platform.api.auth.Identity;
+import io.cattle.platform.core.constants.ProjectConstants;
+import io.cattle.platform.iaas.api.auth.dao.AuthDao;
 import io.cattle.platform.iaas.api.auth.integration.external.ExternalServiceAuthProvider;
+import io.cattle.platform.iaas.api.auth.integration.external.ExternalServiceTokenUtil;
 import io.github.ibuildthecloud.gdapi.exception.ClientVisibleException;
+import java.lang.reflect.Proxy;
 import java.util.Collections;
 import org.junit.After;
 import org.junit.Before;
@@ -22,6 +26,8 @@ public class IdentityManagerExternalTypeTest {
         manager = new IdentityManager();
         manager.setIdentityProviders(Collections.emptyMap());
         manager.externalAuthProvider = externalProvider(true);
+        manager.tokenUtil = new ExternalServiceTokenUtil();
+        manager.authDao = authDao();
     }
 
     @After
@@ -63,7 +69,7 @@ public class IdentityManagerExternalTypeTest {
 
         for (String type : new String[] {"oidc_user", "oidc_group"}) {
             Identity identity = new Identity(type, "subject");
-            assertEquals(identity, manager.untransformExternalTokenIdentity(identity));
+            assertEquals(identity, manager.untransformExternalTokenIdentity(identity, 42L));
             assertInvalidType(() -> manager.untransform(identity, true));
         }
     }
@@ -72,7 +78,22 @@ public class IdentityManagerExternalTypeTest {
     public void externalTokenBoundaryStillRejectsUnknownTypes() {
         manager.externalAuthProvider = externalProvider(false);
         assertInvalidType(() -> manager.untransformExternalTokenIdentity(
-                new Identity("arbitrary_external_type", "subject")));
+                new Identity("arbitrary_external_type", "subject"), 42L));
+    }
+
+    @Test
+    public void externalTokenBoundaryKeepsOnlyTheAuthenticatedAccountsStableIdentity() {
+        manager.externalAuthProvider = externalProvider(false);
+
+        Identity stable = manager.untransformExternalTokenIdentity(
+                new Identity(ProjectConstants.RANCHER_ID, "42"), 42L);
+        assertEquals(ProjectConstants.RANCHER_ID, stable.getExternalIdType());
+        assertEquals("42", stable.getExternalId());
+
+        assertInvalidType(() -> manager.untransformExternalTokenIdentity(
+                new Identity(ProjectConstants.RANCHER_ID, "41"), 42L));
+        assertInvalidType(() -> manager.untransformExternalTokenIdentity(
+                new Identity(ProjectConstants.RANCHER_ID, "42"), null));
     }
 
     private void assertInvalidType(Runnable action) {
@@ -102,5 +123,17 @@ public class IdentityManagerExternalTypeTest {
                 return identity;
             }
         };
+    }
+
+    private AuthDao authDao() {
+        return (AuthDao) Proxy.newProxyInstance(
+                IdentityManagerExternalTypeTest.class.getClassLoader(),
+                new Class<?>[] {AuthDao.class},
+                (proxy, method, args) -> {
+                    if ("getIdentityForDisplay".equals(method.getName())) {
+                        return new Identity(ProjectConstants.RANCHER_ID, String.valueOf(args[0]));
+                    }
+                    return null;
+                });
     }
 }
