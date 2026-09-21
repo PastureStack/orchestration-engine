@@ -21,6 +21,7 @@ import io.cattle.platform.core.model.tables.records.ProjectMemberRecord;
 import io.cattle.platform.db.jooq.dao.impl.AbstractJooqDao;
 import io.cattle.platform.iaas.api.auth.SecurityConstants;
 import io.cattle.platform.iaas.api.auth.dao.AuthDao;
+import io.cattle.platform.iaas.api.auth.identity.IdentityLinkKey;
 import io.cattle.platform.iaas.api.auth.identity.IdentityLinkLock;
 import io.cattle.platform.iaas.api.auth.identity.IdentityProofLock;
 import io.cattle.platform.iaas.api.auth.identity.ProviderSwitchLock;
@@ -258,6 +259,7 @@ public class AuthDaoImpl extends AbstractJooqDao implements AuthDao {
                         .and(CREDENTIAL.STATE.eq(CommonStatesConstants.ACTIVE))
                         .and(CREDENTIAL.REMOVED.isNull())
                         .and(ACCOUNT.STATE.in(getActiveStates()))
+                        .and(ACCOUNT.KIND.in(AccountConstants.USER_KIND, AccountConstants.ADMIN_KIND))
                         .and(ACCOUNT.REMOVED.isNull()))
                 .orderBy(ACCOUNT.ID.asc())
                 .limit(1)
@@ -307,8 +309,10 @@ public class AuthDaoImpl extends AbstractJooqDao implements AuthDao {
                 Credential existing = getIdentityLink(linkKey);
                 if (existing != null) {
                     if (!account.getId().equals(existing.getAccountId())) {
-                        throw new ClientVisibleException(ResponseCodes.CONFLICT, "IdentityAlreadyLinked",
-                                "The verified login identity is already linked to another account.", null);
+                        if (!repairLegacyTokenAccountLink(existing, account, identity, provider, linkKey)) {
+                            throw new ClientVisibleException(ResponseCodes.CONFLICT, "IdentityAlreadyLinked",
+                                    "The verified login identity is already linked to another account.", null);
+                        }
                     }
                     return existing;
                 }
@@ -328,10 +332,67 @@ public class AuthDaoImpl extends AbstractJooqDao implements AuthDao {
                 properties.put(CREDENTIAL.PUBLIC_VALUE, linkKey);
                 properties.put(CREDENTIAL.STATE, CommonStatesConstants.ACTIVE);
                 properties.put(CREDENTIAL.DATA, data);
-                return resourceDao.create(Credential.class,
-                        objectManager.convertToPropertiesFor(Credential.class, properties));
+                return createCredentialForAccount(account.getId(), properties);
             }
         });
+    }
+
+    private boolean repairLegacyTokenAccountLink(Credential credential, Account target, Identity identity,
+                                                  String provider, String linkKey) {
+        Account currentOwner = getAccountById(credential.getAccountId());
+        Map<String, Object> data = credential.getData();
+        if (currentOwner == null || !"token".equalsIgnoreCase(currentOwner.getKind())
+                || !"token".equalsIgnoreCase(currentOwner.getUuid())
+                || !isExternalLoginAccount(target)
+                || !same(target.getExternalId(), identity.getExternalId())
+                || !sameIgnoreCase(target.getExternalIdType(), identity.getExternalIdType())
+                || data == null
+                || !sameIgnoreCase(provider, String.valueOf(data.get("provider")))
+                || !same(identity.getExternalId(), String.valueOf(data.get("externalId")))
+                || !sameIgnoreCase(identity.getExternalIdType(),
+                        String.valueOf(data.get("externalIdType")))
+                || !same(linkKey,
+                        IdentityLinkKey.create(provider, identity.getExternalIdType(), identity.getExternalId()))) {
+            return false;
+        }
+
+        Map<String, Object> repairedData = new HashMap<>(data);
+        repairedData.put("repairedFromAccountId", currentOwner.getId());
+        repairedData.put("repairedAt", new Date());
+        credential.setAccountId(target.getId());
+        credential.setData(repairedData);
+        Credential repaired = objectManager.persist(credential);
+        return repaired != null && target.getId().equals(repaired.getAccountId());
+    }
+
+    private boolean isExternalLoginAccount(Account account) {
+        return account != null && (AccountConstants.USER_KIND.equalsIgnoreCase(account.getKind())
+                || AccountConstants.ADMIN_KIND.equalsIgnoreCase(account.getKind()));
+    }
+
+    private boolean same(String left, String right) {
+        return left == null ? right == null : left.equals(right);
+    }
+
+    private boolean sameIgnoreCase(String left, String right) {
+        return left == null ? right == null : left.equalsIgnoreCase(right);
+    }
+
+    private Credential createCredentialForAccount(long accountId, Map<Object, Object> properties) {
+        properties.put(CREDENTIAL.ACCOUNT_ID, accountId);
+        Credential created = objectManager.create(Credential.class,
+                objectManager.convertToPropertiesFor(Credential.class, properties));
+        if (created == null) {
+            throw new IllegalStateException("Unable to create the authentication credential");
+        }
+        if (!Long.valueOf(accountId).equals(created.getAccountId())) {
+            created.setAccountId(accountId);
+            created = objectManager.persist(created);
+        }
+        if (created == null || !Long.valueOf(accountId).equals(created.getAccountId())) {
+            throw new IllegalStateException("Unable to assign the authentication credential to its account");
+        }
+        return created;
     }
 
     @Override
@@ -410,8 +471,7 @@ public class AuthDaoImpl extends AbstractJooqDao implements AuthDao {
                 properties.put(CREDENTIAL.PUBLIC_VALUE, proofKey);
                 properties.put(CREDENTIAL.STATE, CommonStatesConstants.ACTIVE);
                 properties.put(CREDENTIAL.DATA, data);
-                resourceDao.create(Credential.class,
-                        objectManager.convertToPropertiesFor(Credential.class, properties));
+                createCredentialForAccount(actorAccountId, properties);
                 return null;
             }
         });
@@ -437,8 +497,7 @@ public class AuthDaoImpl extends AbstractJooqDao implements AuthDao {
                 properties.put(CREDENTIAL.PUBLIC_VALUE, ticketKey);
                 properties.put(CREDENTIAL.STATE, CommonStatesConstants.ACTIVE);
                 properties.put(CREDENTIAL.DATA, new HashMap<>(data));
-                return resourceDao.create(Credential.class,
-                        objectManager.convertToPropertiesFor(Credential.class, properties));
+                return createCredentialForAccount(account.getId(), properties);
             }
         });
     }

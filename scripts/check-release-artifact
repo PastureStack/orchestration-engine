@@ -4,7 +4,7 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 artifact=${1:-dist/artifacts/cattle.jar}
-expected_version=${EXPECTED_ENGINE_VERSION:-0.183.314}
+expected_version=${EXPECTED_ENGINE_VERSION:-0.183.315}
 
 test -f "$artifact"
 artifact=$(realpath "$artifact")
@@ -107,6 +107,12 @@ done
 unzip -p "$workdir/$auth_logic_entry" \
     io/cattle/platform/iaas/api/auth/mfa/MfaResourceManager.class |
     grep -aF MfaAccountHolderRequired >/dev/null
+unzip -p "$workdir/$auth_logic_entry" \
+    io/cattle/platform/iaas/api/auth/dao/impl/AuthDaoImpl.class |
+    grep -aF repairedFromAccountId >/dev/null
+unzip -p "$workdir/$auth_logic_entry" \
+    io/cattle/platform/iaas/api/auth/dao/impl/AuthDaoImpl.class |
+    grep -aF 'Unable to assign the authentication credential to its account' >/dev/null
 unzip -p "$workdir/$resources_entry" schema/base/mfaStatus.json |
     grep -F '"recoveryEmailEnrollmentAvailable"' >/dev/null
 unzip -p "$workdir/$resources_entry" schema/base/mfaSettings.json |
