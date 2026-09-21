@@ -6,7 +6,7 @@ New operator-facing names use PastureStack and `PASTURESTACK_*`. Compatibility i
 
 ## Docker host policy
 
-Release `0.183.315` preserves the Docker host policy introduced in `0.183.299`,
+Release `0.183.316` preserves the Docker host policy introduced in `0.183.299`,
 which adds Docker Engine `29.8.0` as an exact supported
 version alongside the preserved legacy ranges, `24.0.9`, and the existing
 `29.4.1` through `29.7.2` interval. It does not widen the interval to admit
@@ -72,6 +72,15 @@ a legacy link is moved only when its existing owner is the built-in token
 account and its provider, type, external ID, digest, and target account all
 match exactly. Valid links are never reassigned automatically, so collision and
 account-takeover protection remains fail-closed.
+
+Release `0.183.316` preserves the emergency local-administrator recovery path
+under external `required` site access. A recovery session bypasses the external
+allow-list only when the server-encrypted payload is a local-auth token, local
+recovery and platform security remain enabled, and the stable principal still
+resolves to an active administrator. Durable sessions remain bound to the
+active external provider, so provider switches continue to invalidate them.
+External OIDC sessions, inactive accounts, non-administrators, malformed
+payloads, and disabled recovery remain subject to the normal access policy.
 
 ## Browser token session ownership
 

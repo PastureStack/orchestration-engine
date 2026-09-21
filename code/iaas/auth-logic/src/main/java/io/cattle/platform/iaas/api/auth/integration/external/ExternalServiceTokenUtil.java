@@ -111,6 +111,14 @@ public class ExternalServiceTokenUtil extends AbstractTokenUtil {
         return false;
     }
 
+    @Override
+    protected boolean isAllowed(Map<String, Object> jsonData) {
+        if (isVerifiedLocalRecoveryToken(jsonData)) {
+            return true;
+        }
+        return super.isAllowed(jsonData);
+    }
+
     public List<String> fromSeparatedString(String identities, String identitySeparator) {
         if (StringUtils.isEmpty(identities)) {
             return new ArrayList<>();
