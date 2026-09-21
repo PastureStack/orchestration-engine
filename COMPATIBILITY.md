@@ -6,7 +6,7 @@ New operator-facing names use PastureStack and `PASTURESTACK_*`. Compatibility i
 
 ## Docker host policy
 
-Release `0.183.309` preserves the Docker host policy introduced in `0.183.299`,
+Release `0.183.310` preserves the Docker host policy introduced in `0.183.299`,
 which adds Docker Engine `29.8.0` as an exact supported
 version alongside the preserved legacy ranges, `24.0.9`, and the existing
 `29.4.1` through `29.7.2` interval. It does not widen the interval to admit
@@ -22,6 +22,15 @@ installing only their owned rules, without switching the host default or
 modifying another backend. Each of those modes needs runtime acceptance on
 the relevant host before a Server release that consumes this Engine is
 published as fully supported.
+
+## External identity type upgrades
+
+`oidc_user` and `oidc_group` are built-in OpenID Connect identity types. An
+older database setting may replace the packaged external-type list and omit
+them, so release `0.183.310` always unions these two reviewed types into API
+schema options and Engine validation. Other configured provider types remain
+dynamic, unknown identity types remain rejected, and the external provider
+must still be configured before any external identity can be transformed.
 
 ## Browser token session ownership
 
@@ -71,8 +80,9 @@ cover both the dynamic overlay and the deserialized frozen snapshots.
 The reviewed external identity list includes `oidc_user` and `oidc_group` in
 addition to the established GitHub, Shibboleth, and LDAP types. The same
 dynamic setting drives project-member schema options and Engine validation;
-environment overrides may replace the list for compatible deployments, but an
-active external provider does not authorize arbitrary identity type strings.
+environment overrides may extend or narrow provider-specific compatibility
+types, but cannot remove the two built-in OIDC types. An active external
+provider still does not authorize arbitrary identity type strings.
 The reviewed default list must be present in a `META-INF/cattle` defaults file
 that production Archaius startup actually loads; the installer-facing root
 `cattle-global.properties` alone is not a Java runtime configuration source.

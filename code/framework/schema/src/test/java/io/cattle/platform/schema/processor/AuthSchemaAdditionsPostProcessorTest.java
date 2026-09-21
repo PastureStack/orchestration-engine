@@ -49,7 +49,7 @@ public class AuthSchemaAdditionsPostProcessorTest {
 
             new AuthSchemaAdditionsPostProcessor().postProcess(schema, null);
 
-            assertEquals(Arrays.asList("rancher_id", "ldap", "github"), field.getOptions());
+            assertEquals(Arrays.asList("rancher_id", "ldap", "github", "oidc_user", "oidc_group"), field.getOptions());
         } finally {
             if (ConfigurationManager.getConfigInstance().containsKey(key)) {
                 ConfigurationManager.getConfigInstance().clearProperty(key);

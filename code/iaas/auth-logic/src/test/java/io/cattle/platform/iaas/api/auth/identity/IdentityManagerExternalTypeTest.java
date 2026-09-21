@@ -54,6 +54,18 @@ public class IdentityManagerExternalTypeTest {
     }
 
     @Test
+    public void acceptsOidcTypesWhenAnOlderDatabaseOverrideOmitsThem() {
+        ConfigurationManager.getConfigInstance().setProperty(TYPES,
+                "github_user,github_org,github_team,shibboleth_user,shibboleth_group,ldap_user,ldap_group");
+
+        for (String type : new String[] {"oidc_user", "oidc_group"}) {
+            Identity identity = new Identity(type, "subject");
+            assertEquals(identity, manager.projectMemberToIdentity(identity));
+            assertEquals(identity, manager.untransform(identity, true));
+        }
+    }
+
+    @Test
     public void rejectsUnknownExternalTypeEvenWhenProviderIsConfigured() {
         Identity identity = new Identity("arbitrary_external_type", "subject");
         assertInvalidType(() -> manager.projectMemberToIdentity(identity));
