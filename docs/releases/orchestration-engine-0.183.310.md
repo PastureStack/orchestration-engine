@@ -4,8 +4,9 @@
   identity types even when an older database setting overrides the packaged
   external identity list and omits them.
 - Union the same built-in types into the `projectMember.externalIdType` options
-  published by both API generations, preserving stable order and eliminating
-  the runtime/schema mismatch.
+  published by the dynamic API schema and add them to the frozen v1 base
+  schema, preserving stable order and eliminating the runtime/schema mismatch
+  in both API generations.
 - Retain the configured external-provider requirement and reject every unknown
   external identity type. This is an upgrade compatibility repair, not a broad
   identity-type bypass.

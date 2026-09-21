@@ -164,6 +164,8 @@ require_line code/implementation/docker/machine/src/test/java/io/cattle/platform
 require_line resources/content/schema/token/token-auth.json '        "token.authProvider": "cr",'
 require_line resources/content/schema/token/token-auth.json '        "token.clientSessionId": "cro",'
 require_line resources/content/cattle-global.properties 'auth.service.external.id.types=github_user,github_org,github_team,shibboleth_user,shibboleth_group,ldap_user,ldap_group,oidc_user,oidc_group'
+require_line resources/content/schema/base/projectMember.json '        "oidc_user",'
+require_line resources/content/schema/base/projectMember.json '        "oidc_group"'
 require_line code/packaging/app-config/src/main/java/io/cattle/platform/app/TypesConfig.java '    @DependsOn("ArchaiusStartup")'
 require_line code/framework/schema/src/test/java/io/cattle/platform/schema/processor/TokenSessionAuthOverlayTest.java '    public void clientSessionIdSurvivesAuthorizationAsCreateOnlyInput() throws Exception {'
 require_line resources/src/test/java/io/cattle/platform/resources/FrozenTokenSessionSchemaTest.java '    public void everyFrozenSchemaWithTokenAcceptsClientSessionIdOnlyOnCreate()'

@@ -23,7 +23,9 @@
         "openldap_user",
         "openldap_group",
         "azuread_user",
-        "azuread_group"
+        "azuread_group",
+        "oidc_user",
+        "oidc_group"
       ]
     }
   }
