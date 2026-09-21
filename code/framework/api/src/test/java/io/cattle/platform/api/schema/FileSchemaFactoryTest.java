@@ -3,8 +3,10 @@ package io.cattle.platform.api.schema;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertSame;
 
+import io.github.ibuildthecloud.gdapi.factory.SchemaFactory;
 import io.github.ibuildthecloud.gdapi.factory.impl.AbstractSchemaFactory;
 import io.github.ibuildthecloud.gdapi.model.Schema;
+import io.github.ibuildthecloud.gdapi.model.impl.FieldImpl;
 import io.github.ibuildthecloud.gdapi.model.impl.SchemaImpl;
 import io.github.ibuildthecloud.gdapi.url.UrlBuilder;
 
@@ -14,6 +16,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.ObjectOutputStream;
 import java.net.URL;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.LinkedHashMap;
@@ -66,10 +69,63 @@ public class FileSchemaFactoryTest {
         factory(resourceName).start();
     }
 
+    @Test
+    public void enrichesFrozenV1ProjectMemberIdentityTypesFromCoreSchema() throws Exception {
+        String resourceName = "schemas/v1-project-member.bin";
+        SchemaImpl frozen = schema("projectMember", "projectMembers");
+        FieldImpl frozenField = new FieldImpl();
+        frozenField.setOptions(new ArrayList<String>(Arrays.asList(
+                "rancher_id", "openldap_user", "openldap_group")));
+        frozen.getResourceFields().put("externalIdType", frozenField);
+
+        SchemaImpl core = schema("projectMember", "projectMembers");
+        FieldImpl coreField = new FieldImpl();
+        coreField.setOptions(new ArrayList<String>(Arrays.asList(
+                "rancher_id", "oidc_user", "oidc_group")));
+        core.getResourceFields().put("externalIdType", coreField);
+
+        Thread.currentThread().setContextClassLoader(new ResourceClassLoader(resourceName,
+                serialize(Arrays.<Object>asList(frozen))));
+        FileSchemaFactory factory = factory(resourceName, new SingleSchemaFactory(core));
+
+        factory.start();
+
+        assertEquals(Arrays.asList("rancher_id", "openldap_user", "openldap_group",
+                "oidc_user", "oidc_group"), factory.getSchema("projectMember")
+                .getResourceFields().get("externalIdType").getOptions());
+    }
+
+    @Test
+    public void doesNotWidenOptionsOnUnrelatedFrozenSchemas() throws Exception {
+        String resourceName = "schemas/v1-account.bin";
+        SchemaImpl frozen = schema("account", "accounts");
+        FieldImpl frozenField = new FieldImpl();
+        frozenField.setOptions(new ArrayList<String>(Arrays.asList("legacy")));
+        frozen.getResourceFields().put("kind", frozenField);
+
+        SchemaImpl core = schema("account", "accounts");
+        FieldImpl coreField = new FieldImpl();
+        coreField.setOptions(new ArrayList<String>(Arrays.asList("legacy", "new")));
+        core.getResourceFields().put("kind", coreField);
+
+        Thread.currentThread().setContextClassLoader(new ResourceClassLoader(resourceName,
+                serialize(Arrays.<Object>asList(frozen))));
+        FileSchemaFactory factory = factory(resourceName, new SingleSchemaFactory(core));
+
+        factory.start();
+
+        assertEquals(Arrays.asList("legacy"), factory.getSchema("account")
+                .getResourceFields().get("kind").getOptions());
+    }
+
     private FileSchemaFactory factory(String resourceName) {
+        return factory(resourceName, new EmptySchemaFactory());
+    }
+
+    private FileSchemaFactory factory(String resourceName, SchemaFactory schemaFactory) {
         FileSchemaFactory factory = new FileSchemaFactory();
         factory.setFile(resourceName);
-        factory.setSchemaFactory(new EmptySchemaFactory());
+        factory.setSchemaFactory(schemaFactory);
         return factory;
     }
 
@@ -144,6 +200,19 @@ public class FileSchemaFactoryTest {
         @Override
         public Schema parseSchema(String name) {
             return null;
+        }
+    }
+
+    private static class SingleSchemaFactory extends EmptySchemaFactory {
+        private final Schema schema;
+
+        SingleSchemaFactory(Schema schema) {
+            this.schema = schema;
+        }
+
+        @Override
+        public Schema getSchema(String type) {
+            return schema.getId().equalsIgnoreCase(type) ? schema : null;
         }
     }
 }

@@ -6,7 +6,7 @@ New operator-facing names use PastureStack and `PASTURESTACK_*`. Compatibility i
 
 ## Docker host policy
 
-Release `0.183.313` preserves the Docker host policy introduced in `0.183.299`,
+Release `0.183.314` preserves the Docker host policy introduced in `0.183.299`,
 which adds Docker Engine `29.8.0` as an exact supported
 version alongside the preserved legacy ranges, `24.0.9`, and the existing
 `29.4.1` through `29.7.2` interval. It does not widen the interval to admit
@@ -52,6 +52,15 @@ account lifecycle ordering explicit. A newly created account completes its
 synchronous `account.create` process and reaches `active` before MFA begins.
 The MFA service continues to reject every non-active account; this release
 does not bypass that safety check or change the existing-account login path.
+
+Release `0.183.314` closes the remaining v1 compatibility gap. The serialized
+v1 `projectMember` schema predates OpenID Connect and can otherwise reject
+`oidc_user` and `oidc_group` even though the current core schema and login path
+accept them. When loading that frozen schema, the Engine merges the current
+core options into `projectMember.externalIdType`, de-duplicates them, and
+retains the historical provider options. The merge is deliberately limited to
+that field: unrelated frozen enums are not widened, and runtime identity
+validation continues to reject unknown types.
 
 ## Browser token session ownership
 

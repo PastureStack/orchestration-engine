@@ -15,6 +15,7 @@ import java.io.InputStream;
 import java.io.ObjectInputStream;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
@@ -88,6 +89,7 @@ public class FileSchemaFactory extends AbstractSchemaFactory implements Initiali
 
     protected void copyAccessors(Schema schema) {
         SchemaFactory parentSchemaFactory = schemaFactory;
+        mergeProjectMemberExternalIdTypeOptions(schema, parentSchemaFactory.getSchema(schema.getId()));
         Class<?> clz =  parentSchemaFactory.getSchemaClass(schema.getId());
         if (clz == null) {
             return;
@@ -104,6 +106,27 @@ public class FileSchemaFactory extends AbstractSchemaFactory implements Initiali
             }
             ((FieldImpl) entry.getValue()).setReadMethod(((FieldImpl) parentField).getReadMethod());
         }
+    }
+
+    protected void mergeProjectMemberExternalIdTypeOptions(Schema schema, Schema parentSchema) {
+        if (parentSchema == null || !"projectMember".equals(schema.getId())) {
+            return;
+        }
+
+        Field field = schema.getResourceFields().get("externalIdType");
+        Field parentField = parentSchema.getResourceFields().get("externalIdType");
+        if (!(field instanceof FieldImpl) || parentField == null) {
+            return;
+        }
+
+        LinkedHashSet<String> options = new LinkedHashSet<String>();
+        if (field.getOptions() != null) {
+            options.addAll(field.getOptions());
+        }
+        if (parentField.getOptions() != null) {
+            options.addAll(parentField.getOptions());
+        }
+        ((FieldImpl) field).setOptions(new ArrayList<String>(options));
     }
 
     public String getFile() {
