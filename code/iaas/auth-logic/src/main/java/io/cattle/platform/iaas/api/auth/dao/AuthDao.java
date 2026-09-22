@@ -86,6 +86,8 @@ public interface AuthDao {
 
     ProjectMember createProjectMember(Account project, Member member);
 
+    ProjectMember ensureProjectMember(Account project, Member member);
+
     void ensureAllProjectsHaveNonRancherIdMembers(Identity identity);
 
     List<Account> searchUsers(String name);

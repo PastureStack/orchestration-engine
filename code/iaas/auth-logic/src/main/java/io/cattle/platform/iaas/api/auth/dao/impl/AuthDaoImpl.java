@@ -960,6 +960,26 @@ public class AuthDaoImpl extends AbstractJooqDao implements AuthDao {
     }
 
     @Override
+    public ProjectMember ensureProjectMember(final Account project, final Member member) {
+        return lockManager.lock(new ProjectLock(project), new LockCallback<ProjectMember>() {
+            @Override
+            public ProjectMember doWithLock() {
+                ProjectMember existing = create()
+                        .selectFrom(PROJECT_MEMBER)
+                        .where(PROJECT_MEMBER.PROJECT_ID.eq(project.getId()))
+                        .and(PROJECT_MEMBER.EXTERNAL_ID.eq(member.getExternalId()))
+                        .and(PROJECT_MEMBER.EXTERNAL_ID_TYPE.eq(member.getExternalIdType()))
+                        .and(PROJECT_MEMBER.STATE.eq(CommonStatesConstants.ACTIVE))
+                        .and(PROJECT_MEMBER.REMOVED.isNull())
+                        .orderBy(PROJECT_MEMBER.ID.asc())
+                        .limit(1)
+                        .fetchOne();
+                return existing == null ? createProjectMember(project, member) : existing;
+            }
+        });
+    }
+
+    @Override
     public void ensureAllProjectsHaveNonRancherIdMembers(Identity identity) {
         //This operation is expensive if there are alot of projects and members however this is
         //only called when auth is being turned on. In most cases this will only be called once.

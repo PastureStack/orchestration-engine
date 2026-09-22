@@ -61,6 +61,8 @@ public abstract class AbstractTokenUtil implements TokenUtil {
 
     private static final Logger log = LoggerFactory.getLogger(AbstractTokenUtil.class);
     private static final ConfigProperty<Boolean> CREATE_PROJECT = ArchaiusUtil.getBooleanProperty("project.create.default");
+    private static final ConfigProperty<String> DEFAULT_PROJECT_PROVISIONING =
+            ArchaiusUtil.getStringProperty("project.default.provisioning");
 
     @Inject
     protected AuthDao authDao;
@@ -375,10 +377,24 @@ public abstract class AbstractTokenUtil implements TokenUtil {
             }
             addStableAccountIdentities(account, identities);
             Object hasLoggedIn = DataAccessor.fields(account).withKey(SecurityConstants.HAS_LOGGED_IN).get();
-            if (((hasLoggedIn == null || !((Boolean) hasLoggedIn)) &&
-                    !authDao.hasAccessToAnyProject(identities, false, null)) &&
-                    (CREATE_PROJECT.get())) {
-                projectResourceManager.createProjectForUser(user);
+            boolean firstLogin = !Boolean.TRUE.equals(hasLoggedIn);
+            if (CREATE_PROJECT.get()) {
+                String provisioning = DEFAULT_PROJECT_PROVISIONING.get();
+                if ("shared".equalsIgnoreCase(provisioning)) {
+                    // Reconcile on every login so accounts created by an older
+                    // release also adopt the shared Default environment.  The
+                    // operation is idempotent and never removes a user's
+                    // existing environments or overrides an explicit role.
+                    projectResourceManager.ensureDefaultProjectMembership(account, identities);
+                } else if ("personal".equalsIgnoreCase(provisioning)) {
+                    if (firstLogin && !authDao.hasAccessToAnyProject(identities, false, null)) {
+                        projectResourceManager.createProjectForUser(user);
+                    }
+                } else if (!"none".equalsIgnoreCase(provisioning)) {
+                    throw new ClientVisibleException(ResponseCodes.INTERNAL_SERVER_ERROR,
+                            "InvalidDefaultProjectProvisioning",
+                            "project.default.provisioning must be shared, personal, or none.", null);
+                }
             }
         } else {
             if (account == null) {
