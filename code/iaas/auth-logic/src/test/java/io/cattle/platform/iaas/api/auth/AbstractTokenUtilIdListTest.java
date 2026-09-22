@@ -5,11 +5,19 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
+import com.netflix.config.ConfigurationManager;
 import io.cattle.platform.api.auth.Identity;
+import io.cattle.platform.core.constants.ProjectConstants;
+import io.cattle.platform.core.dao.AccountDao;
 import io.cattle.platform.core.model.Account;
+import io.cattle.platform.core.model.tables.records.AccountRecord;
+import io.cattle.platform.iaas.api.auth.dao.AuthDao;
 
+import java.lang.reflect.Proxy;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -73,8 +81,115 @@ public class AbstractTokenUtilIdListTest {
         assertFalse(util.linkMatchesProvider(link, null));
     }
 
+    @Test
+    public void restrictedModeSeesAResolvedStableAccountBeforeProjectAccessCheck() {
+        assertStableIdentityAtAuthorization(AbstractTokenUtil.RESTRICTED_ACCESSMODE, true);
+    }
+
+    @Test
+    public void requiredModeDoesNotTurnStableMembershipIntoAnAllowlistBypass() {
+        assertStableIdentityAtAuthorization(AbstractTokenUtil.REQUIRED_ACCESSMODE, false);
+    }
+
+    private void assertStableIdentityAtAuthorization(String mode, boolean expected) {
+        ConfigurationManager.getConfigInstance().setProperty(SecurityConstants.SECURITY_SETTING, true);
+        ConfigurationManager.getConfigInstance().setProperty(SecurityConstants.AUTH_PROVIDER_SETTING, "oidcconfig");
+        try {
+            AccountRecord account = new AccountRecord();
+            account.setId(42L);
+            account.setName("matrix-user");
+            account.setState("active");
+
+            TestTokenUtil util = new TestTokenUtil(mode);
+            util.setDependencies(authDao(account), accountDao(account));
+            util.stopAfterAuthorization = true;
+            Set<Identity> identities = new HashSet<Identity>();
+            Identity user = new Identity("oidc_user", "matrix-subject");
+            identities.add(user);
+
+            try {
+                util.getOrCreateAccount(user, identities, null);
+                fail("Expected the authorization probe to stop the login flow");
+            } catch (AuthorizationProbe expectedProbe) {
+                // The assertion below inspects the exact identity set observed
+                // by the access decision, before later account mutation.
+            }
+
+            assertEquals(expected, util.seenIdentities.contains(
+                    new Identity(ProjectConstants.RANCHER_ID, "42")));
+        } finally {
+            ConfigurationManager.getConfigInstance().clearProperty(SecurityConstants.SECURITY_SETTING);
+            ConfigurationManager.getConfigInstance().clearProperty(SecurityConstants.AUTH_PROVIDER_SETTING);
+        }
+    }
+
+    private static AuthDao authDao(Account expected) {
+        return (AuthDao) Proxy.newProxyInstance(
+                AbstractTokenUtilIdListTest.class.getClassLoader(),
+                new Class<?>[]{AuthDao.class},
+                (proxy, method, args) -> {
+                    if ("getAccountByIdentityLink".equals(method.getName())) {
+                        return expected;
+                    }
+                    if ("getIdentityLinks".equals(method.getName())) {
+                        return Collections.emptyList();
+                    }
+                    return null;
+                });
+    }
+
+    private static AccountDao accountDao(Account expected) {
+        return (AccountDao) Proxy.newProxyInstance(
+                AbstractTokenUtilIdListTest.class.getClassLoader(),
+                new Class<?>[]{AccountDao.class},
+                (proxy, method, args) -> {
+                    if ("isActiveAccount".equals(method.getName())) {
+                        return args != null && args.length == 1 && args[0] == expected;
+                    }
+                    Class<?> type = method.getReturnType();
+                    if (type.equals(boolean.class)) {
+                        return false;
+                    }
+                    if (type.equals(int.class)) {
+                        return 0;
+                    }
+                    if (type.equals(long.class)) {
+                        return 0L;
+                    }
+                    return null;
+                });
+    }
+
+    private static class AuthorizationProbe extends RuntimeException {
+        private static final long serialVersionUID = 1L;
+    }
+
     private static class TestTokenUtil extends AbstractTokenUtil {
         private List<String> seenIdList;
+        private Set<Identity> seenIdentities;
+        private String mode = REQUIRED_ACCESSMODE;
+        private boolean stopAfterAuthorization;
+
+        TestTokenUtil() {
+        }
+
+        TestTokenUtil(String mode) {
+            this.mode = mode;
+        }
+
+        void setDependencies(AuthDao authDao, AccountDao accountDao) {
+            this.authDao = authDao;
+            this.accountDao = accountDao;
+        }
+
+        @Override
+        public boolean isAllowed(List<String> idList, Set<Identity> identities) {
+            seenIdentities = new HashSet<Identity>(identities);
+            if (stopAfterAuthorization) {
+                throw new AuthorizationProbe();
+            }
+            return super.isAllowed(idList, identities);
+        }
 
         @Override
         protected boolean isWhitelisted(List<String> idList) {
@@ -84,7 +199,7 @@ public class AbstractTokenUtilIdListTest {
 
         @Override
         protected String accessMode() {
-            return REQUIRED_ACCESSMODE;
+            return mode;
         }
 
         @Override

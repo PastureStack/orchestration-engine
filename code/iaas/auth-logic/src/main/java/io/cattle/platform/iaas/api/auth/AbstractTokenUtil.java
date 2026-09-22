@@ -349,7 +349,6 @@ public abstract class AbstractTokenUtil implements TokenUtil {
     @Override
     public Account getOrCreateAccount(Identity user, Set<Identity> identities, Account account) {
         if (SecurityConstants.SECURITY.get()) {
-            isAllowed(identitiesToIdList(identities), identities);
             String providerName = SecurityConstants.AUTH_PROVIDER.get();
             String identityLinkKey = null;
             if (!ProjectConstants.RANCHER_ID.equalsIgnoreCase(user.getExternalIdType())) {
@@ -366,6 +365,7 @@ public abstract class AbstractTokenUtil implements TokenUtil {
             if (account != null && !accountDao.isActiveAccount(account)) {
                 throw new ClientVisibleException(ResponseCodes.UNAUTHORIZED);
             }
+            boolean stableIdentitiesAdded = authorizeAccountAccess(account, identities);
             if (account == null && createAccount()) {
                 account = authDao.createAccount(user.getName(), AccountConstants.USER_KIND, user
                                 .getExternalId(),
@@ -375,7 +375,9 @@ public abstract class AbstractTokenUtil implements TokenUtil {
                 Credential link = authDao.linkIdentity(account, user, providerName, identityLinkKey);
                 authDao.recordIdentityLogin(link);
             }
-            addStableAccountIdentities(account, identities);
+            if (!stableIdentitiesAdded) {
+                addStableAccountIdentities(account, identities);
+            }
             Object hasLoggedIn = DataAccessor.fields(account).withKey(SecurityConstants.HAS_LOGGED_IN).get();
             boolean firstLogin = !Boolean.TRUE.equals(hasLoggedIn);
             if (CREATE_PROJECT.get()) {
@@ -414,6 +416,22 @@ public abstract class AbstractTokenUtil implements TokenUtil {
             objectManager.persist(account);
         }
         return account;
+    }
+
+    protected boolean authorizeAccountAccess(Account account, Set<Identity> identities) {
+        boolean stableIdentitiesAdded = false;
+        // Restricted mode deliberately permits an existing project member even
+        // when that principal is no longer on the site allowlist. Shared
+        // Default membership is stored against the stable rancher_id account,
+        // so add only a previously resolved active account before evaluating
+        // project access. Required mode must continue to use only the explicit
+        // external allowlist and therefore never receives this pre-check.
+        if (account != null && isRestrictedAccess(accessMode())) {
+            addStableAccountIdentities(account, identities);
+            stableIdentitiesAdded = true;
+        }
+        isAllowed(identitiesToIdList(identities), identities);
+        return stableIdentitiesAdded;
     }
 
     protected void addStableAccountIdentities(Account account, Set<Identity> identities) {
