@@ -6,7 +6,7 @@ New operator-facing names use PastureStack and `PASTURESTACK_*`. Compatibility i
 
 ## Docker host policy
 
-Release `0.183.316` preserves the Docker host policy introduced in `0.183.299`,
+Release `0.183.317` preserves the Docker host policy introduced in `0.183.299`,
 which adds Docker Engine `29.8.0` as an exact supported
 version alongside the preserved legacy ranges, `24.0.9`, and the existing
 `29.4.1` through `29.7.2` interval. It does not widen the interval to admit
@@ -22,6 +22,24 @@ installing only their owned rules, without switching the host default or
 modifying another backend. Each of those modes needs runtime acceptance on
 the relevant host before a Server release that consumes this Engine is
 published as fully supported.
+
+## Shared Default environment
+
+Release `0.183.317` changes only the default-environment provisioning policy.
+When `project.create.default=true` and `project.default.provisioning=shared`, a
+successful external login reconciles the account into the project whose stable
+UUID is `adminProject`. The membership identity is the internal `rancher_id`
+for that exact account and the baseline role is `member`.
+
+Reconciliation is idempotent and serialized by the existing project lock. If
+any identity in the authenticated set already has an active direct or group
+membership, that role is authoritative and no baseline membership is added.
+This preserves explicit owner, restricted, read-only, or no-access decisions.
+The migration does not delete the personal environments made by older releases
+or move their stacks; returning accounts gain the shared Default on the next
+successful login. Operators can retain the former first-login behavior with
+`project.default.provisioning=personal`, or disable default provisioning with
+`none`.
 
 ## External identity type upgrades
 

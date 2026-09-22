@@ -37,6 +37,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.TreeMap;
 
 import jakarta.inject.Inject;
@@ -169,6 +170,22 @@ public class ProjectResourceManager extends AbstractObjectResourceManager {
     public Account createProjectForUser(Identity identity) {
         Account project = authDao.createProject(identity.getLogin() + ProjectConstants.PROJECT_DEFAULT_NAME, null);
         authDao.createProjectMember(project, new Member(identity, ProjectConstants.OWNER));
+        return project;
+    }
+
+    public Account ensureDefaultProjectMembership(Account account, Set<Identity> identities) {
+        Account project = authDao.getAccountByUuid(ProjectConstants.DEFAULT_PROJECT_UUID);
+        if (project == null || !ProjectConstants.TYPE.equalsIgnoreCase(project.getKind())) {
+            throw new ClientVisibleException(ResponseCodes.INTERNAL_SERVER_ERROR,
+                    "DefaultProjectUnavailable",
+                    "The shared default environment is unavailable.", null);
+        }
+        if (identities != null && !authDao.getProjectMembersByIdentity(project.getId(), identities).isEmpty()) {
+            return project;
+        }
+        Identity stableAccountIdentity = new Identity(ProjectConstants.RANCHER_ID,
+                String.valueOf(account.getId()), account.getName(), null, null, null, true);
+        authDao.ensureProjectMember(project, new Member(stableAccountIdentity, ProjectConstants.MEMBER));
         return project;
     }
 

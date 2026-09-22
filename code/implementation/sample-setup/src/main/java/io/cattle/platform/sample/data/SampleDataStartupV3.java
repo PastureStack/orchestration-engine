@@ -19,7 +19,7 @@ public class SampleDataStartupV3 extends AbstractSampleData {
     @Override
     protected void populatedData(Account system, List<Object> toCreate) {
         toCreate.add(createByUuid(Account.class, "token", ACCOUNT.KIND, "token", ACCOUNT.NAME, "token"));
-        Account adminProject = createByUuid(Account.class, "adminProject",
+        Account adminProject = createByUuid(Account.class, ProjectConstants.DEFAULT_PROJECT_UUID,
                 ACCOUNT.KIND, "project",
                 ACCOUNT.NAME, "Default",
                 "orchestration", "cattle");

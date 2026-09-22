@@ -9,11 +9,13 @@ public class ProjectConstants {
 
     public static final String TYPE = "project";
     public static final String PROJECT_DEFAULT_NAME = "-Default";
+    public static final String DEFAULT_PROJECT_UUID = "adminProject";
 
     public static final String RANCHER_ID = "rancher_id";
     public static final String NAME = "rancher";
 
     public static final String OWNER = "owner";
+    public static final String MEMBER = "member";
     public static final String SET_MEMBERS = "setMembers";
 
 
