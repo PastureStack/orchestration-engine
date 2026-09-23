@@ -58,6 +58,12 @@ being weakened by a later `member` grant. The release gate exercises this
 ordering with a deterministic barrier for 100 iterations and separately covers
 `shared`, `personal`, `none`, invalid-mode, and legacy-disabled behavior.
 
+Release `0.183.320` preserves these roles and membership-write semantics. It
+only requires the token policy to authorize the *queried* project before a
+`projectMembers?projectId=` collection is loaded. A selected-project request
+header cannot authorize reading another project's member list; both v1 and
+v2-beta use the same check.
+
 ## External identity type upgrades
 
 `oidc_user` and `oidc_group` are built-in OpenID Connect identity types. An

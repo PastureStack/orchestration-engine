@@ -65,10 +65,7 @@ public class ProjectMemberResourceManager extends AbstractObjectResourceManager 
             if (projectMember == null) {
                 throw new ClientVisibleException(ResponseCodes.NOT_FOUND);
             }
-            if (!authDao.hasAccessToProject(projectMember.getProjectId(), policy.getAccountId(),
-                    policy.isOption(Policy.AUTHORIZED_FOR_ALL_ACCOUNTS), policy.getIdentities())) {
-                throw new ClientVisibleException(ResponseCodes.NOT_FOUND);
-            }
+            requireProjectAccess(projectMember.getProjectId(), policy);
             Identity identity = identityManager.projectMemberToIdentity(projectMember);
             policy.grantObjectAccess(identity);
             return Collections.singletonList(identity);
@@ -77,7 +74,14 @@ public class ProjectMemberResourceManager extends AbstractObjectResourceManager 
         String projectId = RequestUtils.makeSingularStringIfCan(criteria.get("projectId"));
         List<? extends ProjectMember> members;
         if (StringUtils.isNotEmpty(projectId)) {
-            members = authDao.getActiveProjectMembers(Long.valueOf(projectId));
+            long requestedProjectId;
+            try {
+                requestedProjectId = Long.parseLong(projectId);
+            } catch (NumberFormatException e) {
+                throw new ClientVisibleException(ResponseCodes.NOT_FOUND);
+            }
+            requireProjectAccess(requestedProjectId, policy);
+            members = authDao.getActiveProjectMembers(requestedProjectId);
         } else {
             members = authDao.getActiveProjectMembers(policy.getAccountId());
         }
@@ -88,6 +92,13 @@ public class ProjectMemberResourceManager extends AbstractObjectResourceManager 
             policy.grantObjectAccess(identity);
         }
         return identities;
+    }
+
+    private void requireProjectAccess(long projectId, Policy policy) {
+        if (!authDao.hasAccessToProject(projectId, policy.getAccountId(),
+                policy.isOption(Policy.AUTHORIZED_FOR_ALL_ACCOUNTS), policy.getIdentities())) {
+            throw new ClientVisibleException(ResponseCodes.NOT_FOUND);
+        }
     }
 
     @Override
