@@ -380,24 +380,7 @@ public abstract class AbstractTokenUtil implements TokenUtil {
             }
             Object hasLoggedIn = DataAccessor.fields(account).withKey(SecurityConstants.HAS_LOGGED_IN).get();
             boolean firstLogin = !Boolean.TRUE.equals(hasLoggedIn);
-            if (CREATE_PROJECT.get()) {
-                String provisioning = DEFAULT_PROJECT_PROVISIONING.get();
-                if ("shared".equalsIgnoreCase(provisioning)) {
-                    // Reconcile on every login so accounts created by an older
-                    // release also adopt the shared Default environment.  The
-                    // operation is idempotent and never removes a user's
-                    // existing environments or overrides an explicit role.
-                    projectResourceManager.ensureDefaultProjectMembership(account, identities);
-                } else if ("personal".equalsIgnoreCase(provisioning)) {
-                    if (firstLogin && !authDao.hasAccessToAnyProject(identities, false, null)) {
-                        projectResourceManager.createProjectForUser(user);
-                    }
-                } else if (!"none".equalsIgnoreCase(provisioning)) {
-                    throw new ClientVisibleException(ResponseCodes.INTERNAL_SERVER_ERROR,
-                            "InvalidDefaultProjectProvisioning",
-                            "project.default.provisioning must be shared, personal, or none.", null);
-                }
-            }
+            provisionDefaultProject(account, user, identities, firstLogin);
         } else {
             if (account == null) {
                 account = authDao.getAccountByExternalId(user.getExternalId(), user.getExternalIdType());
@@ -416,6 +399,37 @@ public abstract class AbstractTokenUtil implements TokenUtil {
             objectManager.persist(account);
         }
         return account;
+    }
+
+    protected void provisionDefaultProject(Account account, Identity user, Set<Identity> identities,
+            boolean firstLogin) {
+        if (!defaultProjectCreationEnabled()) {
+            return;
+        }
+        String provisioning = defaultProjectProvisioning();
+        if ("shared".equalsIgnoreCase(provisioning)) {
+            // Reconcile on every login so accounts created by an older
+            // release also adopt the shared Default environment.  The
+            // operation is idempotent and never removes a user's existing
+            // environments or overrides an explicit role.
+            projectResourceManager.ensureDefaultProjectMembership(account, identities);
+        } else if ("personal".equalsIgnoreCase(provisioning)) {
+            if (firstLogin && !authDao.hasAccessToAnyProject(identities, false, null)) {
+                projectResourceManager.createProjectForUser(user);
+            }
+        } else if (!"none".equalsIgnoreCase(provisioning)) {
+            throw new ClientVisibleException(ResponseCodes.INTERNAL_SERVER_ERROR,
+                    "InvalidDefaultProjectProvisioning",
+                    "project.default.provisioning must be shared, personal, or none.", null);
+        }
+    }
+
+    protected boolean defaultProjectCreationEnabled() {
+        return CREATE_PROJECT.get();
+    }
+
+    protected String defaultProjectProvisioning() {
+        return DEFAULT_PROJECT_PROVISIONING.get();
     }
 
     protected boolean authorizeAccountAccess(Account account, Set<Identity> identities) {

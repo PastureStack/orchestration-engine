@@ -6,7 +6,7 @@ New operator-facing names use PastureStack and `PASTURESTACK_*`. Compatibility i
 
 ## Docker host policy
 
-Release `0.183.318` preserves the Docker host policy introduced in `0.183.299`,
+Release `0.183.319` preserves the Docker host policy introduced in `0.183.299`,
 which adds Docker Engine `29.8.0` as an exact supported
 version alongside the preserved legacy ranges, `24.0.9`, and the existing
 `29.4.1` through `29.7.2` interval. It does not widen the interval to admit
@@ -49,6 +49,14 @@ claim is not on the site allow-list. This enrichment occurs only after exact
 identity-to-account resolution. `required` remains allow-list only and never
 receives the stable identity before authorization; inactive or unknown
 accounts therefore gain no new path into the platform.
+
+Release `0.183.319` closes the concurrent reconciliation gap. The authenticated
+identity set is rechecked and any baseline stable-account membership is created
+under the same project lock used by membership replacement. A simultaneous
+direct or group role assignment therefore remains authoritative instead of
+being weakened by a later `member` grant. The release gate exercises this
+ordering with a deterministic barrier for 100 iterations and separately covers
+`shared`, `personal`, `none`, invalid-mode, and legacy-disabled behavior.
 
 ## External identity type upgrades
 

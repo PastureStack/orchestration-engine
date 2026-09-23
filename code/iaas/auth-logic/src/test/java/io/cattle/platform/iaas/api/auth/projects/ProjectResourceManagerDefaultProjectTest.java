@@ -105,12 +105,13 @@ public class ProjectResourceManagerDefaultProjectTest {
                     case "getAccountByUuid":
                         assertEquals(ProjectConstants.DEFAULT_PROJECT_UUID, args[0]);
                         return project;
-                    case "getProjectMembersByIdentity":
-                        return existing;
-                    case "ensureProjectMember":
-                        ensures.incrementAndGet();
-                        ensured.set((Member) args[1]);
-                        return new ProjectMemberRecord();
+                    case "ensureProjectMemberIfNoIdentityMembership":
+                        if (existing.isEmpty()) {
+                            ensures.incrementAndGet();
+                            ensured.set((Member) args[2]);
+                            return new ProjectMemberRecord();
+                        }
+                        return existing.get(0);
                     default:
                         return defaultValue(method.getReturnType());
                     }
