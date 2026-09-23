@@ -180,12 +180,10 @@ public class ProjectResourceManager extends AbstractObjectResourceManager {
                     "DefaultProjectUnavailable",
                     "The shared default environment is unavailable.", null);
         }
-        if (identities != null && !authDao.getProjectMembersByIdentity(project.getId(), identities).isEmpty()) {
-            return project;
-        }
         Identity stableAccountIdentity = new Identity(ProjectConstants.RANCHER_ID,
                 String.valueOf(account.getId()), account.getName(), null, null, null, true);
-        authDao.ensureProjectMember(project, new Member(stableAccountIdentity, ProjectConstants.MEMBER));
+        authDao.ensureProjectMemberIfNoIdentityMembership(project, identities,
+                new Member(stableAccountIdentity, ProjectConstants.MEMBER));
         return project;
     }
 
