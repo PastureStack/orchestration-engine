@@ -8,6 +8,7 @@ expected_version=${EXPECTED_ENGINE_VERSION:-0.183.321}
 
 test -f "$artifact"
 artifact=$(realpath "$artifact")
+python3 scripts/check-release-artifact-no-dev.py "$artifact"
 # The Windows JDK writes CRLF through Git Bash even though mapfile removes only
 # LF. Normalize the listing so the same exact-entry gate works on Linux and
 # Windows release hosts.
