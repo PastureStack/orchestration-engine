@@ -8,9 +8,10 @@ PastureStack is an independent community effort to preserve, audit, and moderniz
 
 ## Project status
 
-The current public GitHub Release
-[`v0.183.321`](https://github.com/PastureStack/orchestration-engine/releases/tag/v0.183.321)
-produces engine version `0.183.321`. It retains the existing Java 25, Ubuntu
+This source revision prepares Engine `0.183.322`. Until it is published, the
+latest public GitHub Release remains
+[`v0.183.321`](https://github.com/PastureStack/orchestration-engine/releases/tag/v0.183.321),
+which produces Engine `0.183.321`. It retains the existing Java 25, Ubuntu
 26.04, Maven, Liquibase, MariaDB/MySQL, WebSocket, dependency, concurrency, and
 runtime-hardening work from the maintained compatibility line. Release builds
 consume the exact `5.7.4` runtime JAR published by
@@ -20,6 +21,13 @@ into the build-local Maven repository. The current coordinate is pure numeric;
 product identity and provenance are carried by the artifact name, metadata,
 SBOM, and release evidence. Provenance and scope are documented in
 [`third-party/HAZELCAST.md`](third-party/HAZELCAST.md).
+
+Engine `0.183.322` resumes an interrupted account purge when a network is
+already `removing` and has a removal timestamp. It also makes CI package the
+release profile and rejects a distributable archive containing `cattle-dev`
+or `dev-defaults.properties`, including a defaults file inside any bundled
+JAR. See [the release note](docs/releases/orchestration-engine-0.183.322.md)
+for the scope and focused checks.
 
 Release `0.183.321` also hides inactive or removed project-member records on
 direct ID reads. Previously those records disappeared from the collection but
@@ -256,7 +264,7 @@ The gate performs dependency-hygiene checks, builds every Maven module with JDK 
 To create the complete release archive after the gate passes:
 
 ```sh
-ENGINE_VERSION=0.183.321 bash scripts/build --release
+ENGINE_VERSION=0.183.322 bash scripts/build --release
 bash scripts/check-release-artifact dist/artifacts/cattle.jar
 ```
 
