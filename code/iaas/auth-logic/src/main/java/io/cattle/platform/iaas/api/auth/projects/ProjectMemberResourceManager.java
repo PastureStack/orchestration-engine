@@ -3,6 +3,7 @@ package io.cattle.platform.iaas.api.auth.projects;
 import io.cattle.platform.api.auth.Identity;
 import io.cattle.platform.api.auth.Policy;
 import io.cattle.platform.api.resource.AbstractObjectResourceManager;
+import io.cattle.platform.core.constants.CommonStatesConstants;
 import io.cattle.platform.core.constants.ProjectConstants;
 import io.cattle.platform.core.dao.GenericResourceDao;
 import io.cattle.platform.core.model.Account;
@@ -62,7 +63,8 @@ public class ProjectMemberResourceManager extends AbstractObjectResourceManager 
             } catch (NumberFormatException e) {
                 throw new ClientVisibleException(ResponseCodes.NOT_FOUND);
             }
-            if (projectMember == null) {
+            if (projectMember == null || !CommonStatesConstants.ACTIVE.equals(projectMember.getState())
+                    || projectMember.getRemoved() != null) {
                 throw new ClientVisibleException(ResponseCodes.NOT_FOUND);
             }
             requireProjectAccess(projectMember.getProjectId(), policy);

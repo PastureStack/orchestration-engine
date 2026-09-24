@@ -9,8 +9,8 @@ PastureStack is an independent community effort to preserve, audit, and moderniz
 ## Project status
 
 The current public GitHub Release
-[`v0.183.320`](https://github.com/PastureStack/orchestration-engine/releases/tag/v0.183.320)
-produces engine version `0.183.320`. It retains the existing Java 25, Ubuntu
+[`v0.183.321`](https://github.com/PastureStack/orchestration-engine/releases/tag/v0.183.321)
+produces engine version `0.183.321`. It retains the existing Java 25, Ubuntu
 26.04, Maven, Liquibase, MariaDB/MySQL, WebSocket, dependency, concurrency, and
 runtime-hardening work from the maintained compatibility line. Release builds
 consume the exact `5.7.4` runtime JAR published by
@@ -20,6 +20,13 @@ into the build-local Maven repository. The current coordinate is pure numeric;
 product identity and provenance are carried by the artifact name, metadata,
 SBOM, and release evidence. Provenance and scope are documented in
 [`third-party/HAZELCAST.md`](third-party/HAZELCAST.md).
+
+Release `0.183.321` also hides inactive or removed project-member records on
+direct ID reads. Previously those records disappeared from the collection but
+remained readable by ID within an accessible project. The direct path now
+returns 404 before identity conversion, while active members remain visible
+to authorized readers. See [the release note](docs/releases/orchestration-engine-0.183.321.md)
+for the focused regression and runtime checks.
 
 Release `0.183.320` checks the requested project against the token's project
 access before loading a `projectMembers?projectId=` collection. This closes a
@@ -249,7 +256,7 @@ The gate performs dependency-hygiene checks, builds every Maven module with JDK 
 To create the complete release archive after the gate passes:
 
 ```sh
-ENGINE_VERSION=0.183.320 bash scripts/build --release
+ENGINE_VERSION=0.183.321 bash scripts/build --release
 bash scripts/check-release-artifact dist/artifacts/cattle.jar
 ```
 
