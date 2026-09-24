@@ -69,6 +69,13 @@ reads with collection visibility: only active, non-removed membership rows are
 returned. Historical rows remain in the database; neither membership writes
 nor role semantics change. v1 and v2-beta share this resource manager.
 
+Release `0.183.322` adds an account-purge retry for networks whose removal
+timestamp was recorded while the network is still `removing`. It does not
+change network creation, ordinary removal, API schema, project roles, or
+membership behavior. Release archives now exclude the development-only
+`cattle-dev` module and its defaults; CI builds the release profile and
+checks every bundled JAR before a package can pass its artifact gate.
+
 ## External identity type upgrades
 
 `oidc_user` and `oidc_group` are built-in OpenID Connect identity types. An

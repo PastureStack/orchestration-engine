@@ -157,7 +157,7 @@ test_failed()
 
 CI_PLAN=${CI_PLAN:-unit}
 DEFAULT_UNIT_MAVEN_ARGS='-B -q'
-CI=true MAVEN_ARGS="${MAVEN_ARGS:-$DEFAULT_UNIT_MAVEN_ARGS}" MAVEN_TARGET="${MAVEN_TARGET:-clean package}" run ./build
+CI=true MAVEN_ARGS="${MAVEN_ARGS:-$DEFAULT_UNIT_MAVEN_ARGS}" MAVEN_TARGET="${MAVEN_TARGET:-clean package}" run ./build --release
 ./check-cattle-jdk25-bytecode
 
 if [ "$CI_PLAN" = "unit" ]; then
