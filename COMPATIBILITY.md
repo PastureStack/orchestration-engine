@@ -64,6 +64,11 @@ only requires the token policy to authorize the *queried* project before a
 header cannot authorize reading another project's member list; both v1 and
 v2-beta use the same check.
 
+Release `0.183.321` keeps that project boundary and aligns direct member-ID
+reads with collection visibility: only active, non-removed membership rows are
+returned. Historical rows remain in the database; neither membership writes
+nor role semantics change. v1 and v2-beta share this resource manager.
+
 ## External identity type upgrades
 
 `oidc_user` and `oidc_group` are built-in OpenID Connect identity types. An

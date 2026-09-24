@@ -7,6 +7,7 @@ import static org.junit.Assert.fail;
 import io.cattle.platform.api.auth.Identity;
 import io.cattle.platform.api.auth.impl.DefaultPolicy;
 import io.cattle.platform.api.auth.impl.NoPolicyOptions;
+import io.cattle.platform.core.constants.CommonStatesConstants;
 import io.cattle.platform.core.model.ProjectMember;
 import io.cattle.platform.core.model.tables.records.ProjectMemberRecord;
 import io.cattle.platform.iaas.api.auth.dao.AuthDao;
@@ -17,6 +18,7 @@ import io.github.ibuildthecloud.gdapi.request.ApiRequest;
 
 import java.lang.reflect.Proxy;
 import java.util.Collections;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -111,14 +113,47 @@ public class ProjectMemberResourceManagerAuthorizationTest {
         assertSame(expectedIdentity, identities.get(0));
     }
 
+    @Test
+    public void directMemberLookupHidesInactiveMembershipInAccessibleProject() {
+        ProjectMemberResourceManager manager = manager(true, new AtomicInteger(),
+                CommonStatesConstants.INACTIVE, null);
+
+        try {
+            manager.listInternal(null, "projectMember", criteria("id", String.valueOf(MEMBER_ID)), null);
+            fail("Expected an inactive project member to be hidden");
+        } catch (ClientVisibleException e) {
+            assertEquals(404, e.getStatus());
+        }
+    }
+
+    @Test
+    public void directMemberLookupHidesRemovedMembershipInAccessibleProject() {
+        ProjectMemberResourceManager manager = manager(true, new AtomicInteger(),
+                CommonStatesConstants.ACTIVE, new Date());
+
+        try {
+            manager.listInternal(null, "projectMember", criteria("id", String.valueOf(MEMBER_ID)), null);
+            fail("Expected a removed project member to be hidden");
+        } catch (ClientVisibleException e) {
+            assertEquals(404, e.getStatus());
+        }
+    }
+
     private final Identity expectedIdentity = new Identity("rancher_id", "member-77");
 
     private ProjectMemberResourceManager manager(boolean canAccess, AtomicInteger memberLoads) {
+        return manager(canAccess, memberLoads, CommonStatesConstants.ACTIVE, null);
+    }
+
+    private ProjectMemberResourceManager manager(boolean canAccess, AtomicInteger memberLoads,
+                                                 String state, Date removed) {
         ProjectMemberRecord member = new ProjectMemberRecord();
         member.setId(MEMBER_ID);
         member.setProjectId(OTHER_PROJECT_ID);
         member.setExternalIdType("rancher_id");
         member.setExternalId("member-77");
+        member.setState(state);
+        member.setRemoved(removed);
 
         AuthDao authDao = AuthDao.class.cast(Proxy.newProxyInstance(
                 AuthDao.class.getClassLoader(), new Class<?>[] {AuthDao.class},
