@@ -120,13 +120,7 @@ public class AccountPurge extends AbstractDefaultProcessHandler {
             deactivateThenRemove(volume, state.getData());
         }
 
-        for (Network network : list(account, Network.class)) {
-            if (network.getRemoved() != null) {
-                continue;
-            }
-
-            deactivateThenRemove(network, state.getData());
-        }
+        removeNetworks(account, state.getData());
 
         for (GenericObject gobject : list(account, GenericObject.class)) {
             if (gobject.getRemoved() != null) {
@@ -159,6 +153,26 @@ public class AccountPurge extends AbstractDefaultProcessHandler {
         return objectManager.find(type,
                 ObjectMetaDataManager.STATE_FIELD, new Condition(ConditionType.NE, CommonStatesConstants.PURGED),
                 ObjectMetaDataManager.ACCOUNT_FIELD, account.getId());
+    }
+
+    void removeNetworks(Account account, Map<String, Object> data) {
+        for (Network network : list(account, Network.class)) {
+            if (network.getRemoved() != null) {
+                continue;
+            }
+
+            deactivateThenRemove(network, data);
+        }
+
+        // SetRemovedFields can set removed before network.remove finishes. A retried
+        // account.purge must revisit only those incomplete networks, not removed ones.
+        for (Network network : objectManager.find(Network.class,
+                ObjectMetaDataManager.STATE_FIELD, CommonStatesConstants.REMOVING,
+                ObjectMetaDataManager.ACCOUNT_FIELD, account.getId())) {
+            if (network.getRemoved() != null) {
+                deactivateThenRemove(network, data);
+            }
+        }
     }
 
     protected void deleteAgentAccount(Long agentId, Map<String, Object> data) {
