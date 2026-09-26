@@ -1,7 +1,8 @@
 # Orchestration Engine 0.183.323
 
-This release updates FreeMarker from 2.3.34 to 2.3.35. The older version was
-reported as CRITICAL CVE-2026-84939 in the Server v1.6.470 final rootfs scan.
+This release updates FreeMarker from 2.3.34 to 2.3.35.
+The older version was reported as CRITICAL CVE-2026-84939 in the Server
+v1.6.470 final rootfs scan.
 The dependency is owned by Engine and was already updated on Engine main;
 this release gives the corrected build a new numeric version and rejects the
 older JAR at the Engine artifact gate. No runtime JAR is patched and no finding
