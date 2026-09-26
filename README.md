@@ -1,283 +1,64 @@
 # PastureStack Orchestration Engine
 
-Orchestration Engine provides the metadata, process, API, scheduling, storage, networking, and lifecycle coordination layer for the preserved control platform.
+Orchestration Engine coordinates metadata, API, scheduling, storage,
+networking, and resource lifecycle for the preserved control platform.
+PastureStack is an independent community effort to preserve, audit, and
+modernize the Rancher 1.6 ecosystem. It is not affiliated with or endorsed
+by Rancher Labs or SUSE.
 
-PastureStack is an independent community effort to preserve, audit, and modernize the Rancher 1.6 ecosystem. It is not affiliated with or endorsed by Rancher Labs or SUSE.
+**Upstream:** [`rancher/cattle`](https://github.com/rancher/cattle). This fork
+preserves upstream history, authorship, dates, tags, licenses, and bundled
+dependency notices. PastureStack maintenance is consolidated after the
+preserved upstream boundary.
 
-**Upstream:** [`rancher/cattle`](https://github.com/rancher/cattle). This GitHub fork preserves upstream history, authorship, dates, tags, licenses, and bundled dependency notices. PastureStack maintenance is consolidated into one commit after the preserved upstream boundary.
+## Current release
 
-## Project status
+The latest public Engine release is
+[`v0.183.322`](https://github.com/PastureStack/orchestration-engine/releases/tag/v0.183.322).
+It resumes an interrupted account purge when a network is already removing,
+and its release archive gate rejects development-only Engine files. See the
+[release note](docs/releases/orchestration-engine-0.183.322.md) for behavior,
+tests, and compatibility details. Previous release notes remain in
+[`docs/releases`](docs/releases), and the
+[GitHub release history](https://github.com/PastureStack/orchestration-engine/releases)
+records published artifacts.
 
-This source revision prepares Engine `0.183.322`. Until it is published, the
-latest public GitHub Release remains
-[`v0.183.321`](https://github.com/PastureStack/orchestration-engine/releases/tag/v0.183.321),
-which produces Engine `0.183.321`. It retains the existing Java 25, Ubuntu
-26.04, Maven, Liquibase, MariaDB/MySQL, WebSocket, dependency, concurrency, and
-runtime-hardening work from the maintained compatibility line. Release builds
-consume the exact `5.7.4` runtime JAR published by
-[`distributed-cache-runtime`](https://github.com/PastureStack/distributed-cache-runtime/releases/tag/v5.7.4),
-verify its pinned SHA-256 and embedded dependency metadata, and install it only
-into the build-local Maven repository. The current coordinate is pure numeric;
-product identity and provenance are carried by the artifact name, metadata,
-SBOM, and release evidence. Provenance and scope are documented in
-[`third-party/HAZELCAST.md`](third-party/HAZELCAST.md).
+The build retains Java 25, Ubuntu 26.04, Maven, Liquibase, MariaDB/MySQL,
+WebSocket, concurrency, and runtime maintenance. It consumes the exact
+`5.7.4` JAR from
+[`distributed-cache-runtime`](https://github.com/PastureStack/distributed-cache-runtime/releases/tag/v5.7.4)
+and verifies its pinned digest and dependency metadata before installing it
+into the build-local Maven repository. See
+[`third-party/HAZELCAST.md`](third-party/HAZELCAST.md) for provenance.
 
-Engine `0.183.322` resumes an interrupted account purge when a network is
-already `removing` and has a removal timestamp. It also makes CI package the
-release profile and rejects a distributable archive containing `cattle-dev`
-or `dev-defaults.properties`, including a defaults file inside any bundled
-JAR. See [the release note](docs/releases/orchestration-engine-0.183.322.md)
-for the scope and focused checks.
+## Build and validation
 
-Release `0.183.321` also hides inactive or removed project-member records on
-direct ID reads. Previously those records disappeared from the collection but
-remained readable by ID within an accessible project. The direct path now
-returns 404 before identity conversion, while active members remain visible
-to authorized readers. See [the release note](docs/releases/orchestration-engine-0.183.321.md)
-for the focused regression and runtime checks.
-
-Release `0.183.320` checks the requested project against the token's project
-access before loading a `projectMembers?projectId=` collection. This closes a
-cross-project read path when a valid `X-API-Project-Id` header and a different
-query `projectId` are supplied together. Both v1 and v2 API routes share the
-same resource manager; malformed project IDs fail without loading members.
-See [the release note](docs/releases/orchestration-engine-0.183.320.md) for
-scope and verification.
-
-Release `0.183.319` makes shared Default membership reconciliation atomic. The
-Engine now checks every authenticated direct and group identity and creates the
-stable account membership while holding the same project lock, so a concurrent
-administrator role update cannot be followed by an unintended baseline
-`member` grant. Deterministic barrier tests repeat the race 100 times, and
-configuration tests preserve the explicit `shared`, `personal`, and `none`
-provisioning modes plus the legacy disable switch.
-
-Release `0.183.318` restores `restricted` OpenID Connect login for an existing
-active account whose project membership is recorded against its stable
-`rancher_id`, including membership in the shared Default environment. The
-stable identity is introduced only after the external identity resolves to
-that exact account. `required` access remains explicit allow-list only and
-cannot use project membership as a bypass; unknown and inactive accounts still
-fail closed.
-
-Release `0.183.317` gives every eligible external account access to the one
-shared Default environment instead of creating a new personal environment on
-first login. Provisioning uses the stable platform account identity and is
-idempotent under the existing project lock. An existing direct or group role,
-including `noaccess`, is preserved and never replaced by the baseline `member`
-role; existing environments and workloads are not removed. Returning accounts
-created by earlier releases are reconciled on their next successful login.
-
-Release `0.183.316` keeps the documented local-administrator recovery path
-usable when OpenID Connect uses `required` site access. A completed local
-password and MFA recovery login is represented by a server-encrypted local
-token but stored against the active external provider. The Engine now accepts
-that session only while local recovery is enabled and its stable principal is
-an active administrator. Normal OIDC sessions still require their configured
-user or group identity, so this does not weaken the external allow-list.
-
-Release `0.183.315` fixes repeated OpenID Connect login after an upgrade. An
-internal credential lifecycle could replace the explicitly verified user with
-the request's built-in `token` account while an `authIdentity` link was being
-created. The Engine now verifies the stored owner, excludes internal accounts
-from login-identity resolution, and repairs a legacy misowned link only when
-the built-in token account, provider, identity type, external ID, link digest,
-and target account all match. Every other ownership conflict still fails
-closed. This keeps a second incognito or browser login on the same user account
-instead of issuing a session for the internal account.
-
-Release `0.183.314` keeps the frozen v1 `projectMember.externalIdType` options
-aligned with the reviewed core schema. Upgraded installations could accept an
-OpenID Connect login through v2, then reject the same `oidc_user` or
-`oidc_group` when v1 created an environment membership. The compatibility
-loader now unions only that field with the core options, preserving legacy
-provider types without widening unrelated schemas or accepting unknown types.
-
-Release `0.183.313` completes a newly provisioned external account's
-`account.create` lifecycle before the login flow enters its MFA gate. Earlier
-releases scheduled that lifecycle in the background and could hand a
-transient `registering` account to MFA, which correctly rejected the account
-as inactive after a successful OpenID Connect exchange. Existing accounts and
-the MFA active-account requirement are unchanged; only the account-creation
-ordering is corrected.
-
-Release `0.183.312` completes the OpenID Connect token boundary introduced in
-`0.183.311`. The Authentication Service response is now type-validated before
-access-policy evaluation or account mutation. After account creation, the
-Engine separately accepts only the platform-generated `rancher_id` that
-matches that authenticated account; a missing, unknown, or forged platform
-identity still fails closed. This prevents a valid incognito OIDC login from
-being rejected when the Engine adds its own stable account identity, without
-broadening the external identity contract or the project-member path.
-
-Release `0.183.310` makes the two built-in OpenID Connect identity types
-upgrade-safe. An older database can override the packaged external-type list
-without `oidc_user` or `oidc_group`; token creation and project membership then
-fail after the provider has already authenticated the user. Engine validation
-and both API schema generations now union those two reviewed built-in types
-with the dynamic list. Unknown types are still rejected, and no external
-identity is accepted unless the external provider is configured.
-
-Release `0.183.309` preserves the authenticated PastureStack operator
-credential when an administrator posts `/v1-auth/config`. Earlier releases
-replaced that credential with the external identity provider's access token;
-Authentication Service could parse the requested OIDC access policy, but its
-session-bound MFA confirmation call back to the control plane was rejected
-before the ticket consumer ran. Read-only authentication configuration and
-identity enrichment continue to receive the provider access token, so this
-fix does not weaken or remove the established provider lookup path.
-
-Release `0.183.308` completes session-bound logout for both v1 and v2 API
-clients. The frozen v1 `base`, `superadmin`, and `token` schema snapshots now
-publish the same fixed-format, sensitive, create-only `clientSessionId` input as
-the live schema. Without that snapshot update, `/v1/token` silently discarded a
-valid browser generation and created an unbound legacy token even though the
-dynamic authorization overlay was correct. A regression test deserializes every
-frozen schema that exposes `token` and checks the complete field contract.
-
-Current-token discovery also preserves the transport representation, so the
-delete path normalizes both cookie keys and standard `Authorization: Bearer`
-values to the database key before checking session ownership; other schemes and
-malformed multipart values remain fail-closed. It also retains the integrated project-member
-identity fix from `0.183.306`. The reviewed external identity list lives in the
-IAAS API packaged defaults
-that production Archaius startup actually loads, and the core schema factory
-waits for that initialization before parsing schemas. The shipped `oidc_user`
-and `oidc_group` options therefore appear in both public API generations in a
-clean runtime without a Compose override. Base and configured options are
-merged in stable order without duplicates. `0.183.305` contained the schema
-ordering fix but left the reviewed list only in the installer resource, so it
-is superseded for this contract. This release retains
-the browser-session ownership and fixed-format generation validation,
-unknown identity rejection, and provider-state restoration introduced in
-`0.183.304`; deployment overrides remain dynamic without becoming required
-defaults.
-
-Release `0.183.303` adds an operation-bound MFA security-confirmation contract
-for OIDC site-access expansion. Challenges and completed tickets are bound to
-the authenticated account, fixed purpose `oidcAccessPolicyUpdate`, and a
-canonical lower-case SHA-256 request digest. Consumption is atomic and
-single-use; expired, replayed, wrong-account, wrong-purpose, and wrong-digest
-attempts fail without invalidating a valid owner's challenge. Existing unbound
-confirmation flows retain their compatibility behavior. The live and frozen
-authorization schemas expose the binding fields for both administrator and user
-roles, with focused schema and deterministic lifecycle tests.
-
-Release `0.183.302` binds newly created browser tokens to the Web Console's
-high-entropy client session generation. A bound token is revoked only when an
-explicit logout carries the matching generation; missing, malformed, stale,
-and repeated deletes are idempotent `204` responses and do not emit an expiry
-cookie. Tokens created by older clients remain on the legacy logout path for
-upgrade compatibility. Database migration `core-126` adds the nullable binding
-column and its account-scoped lookup index without rewriting the historical
-fresh-install dump, so both existing databases and clean installations apply
-the same ordered Liquibase change. When concurrent sessions are restricted,
-token replacement is serialized per effective account: a delayed older login
-receives `409 ClientSessionSuperseded`, while the new token is created before
-prior tokens are removed. With concurrent sessions enabled, each token remains
-independent and no replacement lock or disconnect event is used.
-
-Release `0.183.301` extends rollback symmetry to the Stack action used by
-Catalog upgrades. Before scheduling the Stack rollback process, the Engine now
-restores each upgraded child service's persisted primary and sidekick launch
-configuration through the same helper as a direct service rollback. Rolling a
-network or storage stack back and then forward can no longer report success
-while retaining containers from the previous image.
-
-Release `0.183.300` restores rollback symmetry for every directly upgradeable
-service kind. Network and storage driver services restore their persisted
-launch configuration during direct service rollback.
-
-Release `0.183.299` corrects the network Metadata mapping for
-`is_default` and `host_ports`. Non-default networks that explicitly enable host
-ports now publish those two independent values without swapping them, allowing
-network plug-ins to expose ports without weakening their ownership boundary.
-
-Release `0.183.298` repairs the live `v2-beta` MFA authorization overlay:
-administrators can update the singleton `mfaSettings/global` with `PUT`,
-without enabling collection creation or deletion. All 37 policy and status
-fields remain visible with explicit update/read-only permissions. SMTP
-password and security-confirmation inputs are not returned by the settings
-resource. Ordinary users still cannot access global settings. The shared
-MFA operation schema now retains every step-up input and read-only result
-for both administrators and account holders. Tests exercise the real user
-and administrator overlay order, plus confirmation expiry and single use.
-
-Release `0.183.297` completed the frozen `v1` hardware contract for both
-direct containers and service `launchConfig` payloads. Clients using `/v1` can
-discover and submit `runtime` and typed `deviceRequests` alongside `shmSize`
-through the same service create and upgrade shape already exposed by
-`/v2-beta`; the Docker conversion path is unchanged. Packaging regression
-coverage loads every shipped role snapshot and verifies both schema surfaces,
-the nested GPU request type, and create/update permissions.
-
-WebAuthn verification uses WebAuthn4J's maintained `tools.jackson` 3.2
-dependency line. The existing platform JSON surface remains on
-`com.fasterxml.jackson` 2.22. Packaging gates admit only the reviewed,
-version-pinned pair and verify that their class namespaces are disjoint.
-
-Host compatibility is evidence-based. Release `0.183.319` preserves the legacy ranges and Docker Engine `24.0.9`, retains the bounded `29.4.1` through `29.7.2` interval, and supports exactly `29.8.0`. It does not admit unverified `29.7.3` or `29.8.1`, or Docker 25 through 28. The frontend marks versions above the configured newest version as *untested*, not *supported*. Every Server release that consumes this policy must still pass its Ubuntu 26.04 host and installed firewall-backend runtime acceptance gate.
-
-The build and Dapper images still compile the Docker `29.7.2` CLI from the pinned official tag commit with Go `1.27.0`; the CLI tool version is separate from the Docker daemon host support setting. They do not import Docker's precompiled Go `1.26.5` binary. The source archive SHA-256 and Go builder image digest are enforced by the source gate and the resulting images are scanned before release.
-
-Container and service port changes expose a read-only `portpreflight` project action. The action evaluates persisted workload ownership, eligible-host capacity, requested scheduling constraints, rolling-upgrade overlap, and live Node Agent socket observations before a change is saved. Primary and sidekick bindings retain their own network modes while sharing one physical-host collision check. Managed-network published ports are unique across the environment even when a workload targets one host; bridge and host-network checks remain scoped to an explicitly requested host, and host networking checks the effective container port rather than a misleading published-port remap. Running owners block the applicable scope, stopped owners remain visible as warnings, and incomplete live inspection is reported as unknown rather than available. During a start-first upgrade, unchanged bindings reserve their current hosts without being reported as self-conflicts; changed bindings are checked as new requests, and runtime probes ignore only the exact containers already represented by those persisted reservations. The allocator and final create/upgrade validation repeat the authoritative check so the browser result is never the only enforcement boundary. Project authorization explicitly exposes the action's nested input and read-only result schemas; regression tests load the shipped authorization overlays and verify the network-scope, upgrade-capacity, self-ownership, and runtime-probe contracts.
-
-Container and service volume changes expose a read-only `volumepreflight` project action. The Engine registers the input, result, and issue types in the core add-on TypeSet, and project authorization explicitly preserves their create or read-only permissions so the browser can perform the same storage-driver, path, access-mode, eligible-host, and `pasturestack-nfs` coverage checks enforced again during create and upgrade. Packaging regression tests verify both the real TypeSet registration and the shipped user and project authorization overlays; the release-artifact gate checks the same registration inside the packaged application.
-
-Product-facing names use PastureStack terminology. Established Java packages, Maven coordinates, database identifiers, settings, API schemas, event names, Docker labels, and executable aliases remain where changing them would break compatible installations.
-
-Authentication keeps a platform account as the stable authorization
-principal. Local credentials and external identities are explicit login links;
-provider changes do not recreate accounts. External OpenID Connect identities
-are matched by exact issuer and subject rather than username or email.
-System-administrator workflows support verified identity reassignment,
-permission transfer, disabled-account restoration, safe provider switching,
-and MFA-protected local recovery.
-
-When TLS terminates in front of the Server, the Engine forwards only the
-explicitly allowlisted `PROXY_PLATFORM_PUBLIC_ORIGIN` deployment setting to the
-WebSocket Proxy child process. The proxy validates that value as an HTTP(S)
-origin and uses it only for requests whose authority matches, so generated API
-links retain the operator's public HTTPS origin without trusting arbitrary
-client forwarding headers.
-
-Interactive MFA supports RFC 6238 six-digit TOTP, WebAuthn passkeys including
-Windows Hello, phones, and hardware security keys, hashed single-use recovery
-codes, and verified email account recovery. Email is not treated as an MFA
-factor. Passkey limits, enforcement, WebAuthn relying-party settings, and
-encrypted SMTP configuration are administrator-controlled.
-Enrollment, recovery-code generation, and recovery-address verification
-require the account holder's authenticated session. Administrators can inspect
-and revoke another account's security material, but cannot create factors or
-retrieve recovery codes on that account holder's behalf.
-
-## Build and test
-
-Run the complete JDK 25 package gate before publishing an engine artifact or Server image:
+Before publishing an Engine artifact or a Server image, run the complete
+JDK 25 package gate:
 
 ```sh
 bash scripts/check-cattle-jdk25-full-package
 ```
 
-The gate performs dependency-hygiene checks, builds every Maven module with JDK 25, rejects retired packaged libraries, verifies class-file major version `69`, and starts the standalone application against an isolated H2 database.
-
-To create the complete release archive after the gate passes:
+After the gate passes, package and check the release artifact:
 
 ```sh
 ENGINE_VERSION=0.183.322 bash scripts/build --release
 bash scripts/check-release-artifact dist/artifacts/cattle.jar
 ```
 
-Release packaging uses the exact Git revision and commit timestamp as reproducible build inputs. The selector accepts only a complete web application containing the launcher, Runtime resources, authentication logic, and `WEB-INF/web.xml`.
+The gate builds every Maven module, checks dependency hygiene and packaged
+classes, and starts the standalone application against isolated H2. Full
+database and platform checks require isolated MariaDB/MySQL and companion
+services. See [COMPATIBILITY.md](COMPATIBILITY.md), [SECURITY.md](SECURITY.md),
+and [ORIGIN.md](ORIGIN.md) for those boundaries and source provenance.
 
-The build environment is reproducible by construction: Ubuntu `26.04` and all test-service images are digest-pinned, direct Ubuntu packages and base-image security updates are locked to snapshot `20260826T000000Z` in [`ubuntu-apt.lock`](ubuntu-apt.lock), Temurin `25.0.4+7` and Maven `3.9.16` downloads are checksum-verified, and the Maven wrapper distribution is checksum-pinned. The manual GitHub security gate builds and tests the release commit, produces CycloneDX and dependency evidence, scans both the release artifact and Dapper image, and publishes evidence before enforcing zero applicable Critical or High findings. It does not publish a release, container image, catalog entry, or deployment.
+## Language and licensing
 
-Database-backed and full-stack suites require isolated MariaDB/MySQL and companion-service fixtures. See [COMPATIBILITY.md](COMPATIBILITY.md), [SECURITY.md](SECURITY.md), and [ORIGIN.md](ORIGIN.md).
+The web console supplies user-facing translations. API fields, persisted
+values, event names, identifiers, and remote error payloads remain
+compatibility data and are not translated.
 
-## Language support
-
-User-facing translations are supplied by the PastureStack web console. API field names, persisted values, event names, identifiers, and remote error payloads are compatibility data and are not translated.
-
-## License and attribution
-
-The inherited project remains licensed under [Apache License 2.0](LICENSE). Copyright and attribution for inherited work and bundled dependencies remain with their respective authors and contributors. PastureStack contributors claim authorship only for their own changes.
+The inherited project remains under the [Apache License 2.0](LICENSE).
+Inherited work and bundled dependencies retain their own attribution and
+licenses.
