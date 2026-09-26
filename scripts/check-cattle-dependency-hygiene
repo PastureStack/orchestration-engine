@@ -3947,7 +3947,7 @@ FLOORS = {
     ("org.apache.commons", "commons-dbcp2"): ((2, 14, 0), "2.14.0", "Commons DBCP2", (2,)),
     ("org.apache.commons", "commons-pool2"): ((2, 13, 1), "2.13.1", "Commons Pool2", (2,)),
     ("commons-codec", "commons-codec"): ((1, 22, 1), "1.22.1", "Commons Codec", (1,)),
-    ("org.freemarker", "freemarker"): ((2, 3, 34), "2.3.34", "FreeMarker", (2, 3)),
+    ("org.freemarker", "freemarker"): ((2, 3, 35), "2.3.35", "FreeMarker", (2, 3)),
     ("com.nimbusds", "nimbus-jose-jwt"): ((10, 9, 1), "10.9.1", "Nimbus JOSE JWT", (10,)),
     ("org.yaml", "snakeyaml"): ((2, 6, 0), "2.6", "SnakeYAML", (2,)),
 }
@@ -4016,7 +4016,7 @@ sys.exit(0)
 PY
 )
 if [ -n "$commons_template_token_yaml_floor_dependencies" ]; then
-    echo "Blocked commons/template/token/YAML dependency outside reviewed stable floors found in Maven POMs; keep Commons DBCP2 2.14.0+, Commons Pool2 2.13.1+, Commons Codec 1.22.1+, FreeMarker 2.3.34+, Nimbus JOSE JWT 10.9.1+, and SnakeYAML 2.6+ without unreviewed qualifiers" >&2
+    echo "Blocked commons/template/token/YAML dependency outside reviewed stable floors found in Maven POMs; keep Commons DBCP2 2.14.0+, Commons Pool2 2.13.1+, Commons Codec 1.22.1+, FreeMarker 2.3.35+, Nimbus JOSE JWT 10.9.1+, and SnakeYAML 2.6+ without unreviewed qualifiers" >&2
     echo "$commons_template_token_yaml_floor_dependencies" >&2
     fail=1
 fi
@@ -4961,7 +4961,7 @@ FLOORS = {
     "commons-dbcp2": ((2, 14, 0), "2.14.0", (2,), re.compile(r"^commons-dbcp2-(\d+)\.(\d+)(?:[.-](\d+))?([^/]*)\.jar$")),
     "commons-pool2": ((2, 13, 1), "2.13.1", (2,), re.compile(r"^commons-pool2-(\d+)\.(\d+)(?:[.-](\d+))?([^/]*)\.jar$")),
     "commons-codec": ((1, 22, 1), "1.22.1", (1,), re.compile(r"^commons-codec-(\d+)\.(\d+)(?:[.-](\d+))?([^/]*)\.jar$")),
-    "freemarker": ((2, 3, 34), "2.3.34", (2, 3), re.compile(r"^freemarker-(\d+)\.(\d+)(?:[.-](\d+))?([^/]*)\.jar$")),
+    "freemarker": ((2, 3, 35), "2.3.35", (2, 3), re.compile(r"^freemarker-(\d+)\.(\d+)(?:[.-](\d+))?([^/]*)\.jar$")),
     "nimbus-jose-jwt": ((10, 9, 1), "10.9.1", (10,), re.compile(r"^nimbus-jose-jwt-(\d+)\.(\d+)(?:[.-](\d+))?([^/]*)\.jar$")),
     "snakeyaml": ((2, 6, 0), "2.6", (2,), re.compile(r"^snakeyaml-(\d+)\.(\d+)(?:[.-](\d+))?([^/]*)\.jar$")),
 }
@@ -4995,7 +4995,7 @@ sys.exit(0)
 PY
 )
 if [ -n "$commons_template_token_yaml_floor_jars" ]; then
-    echo "Blocked commons/template/token/YAML jar outside reviewed stable floors packaged in app; keep Commons DBCP2 2.14.0+, Commons Pool2 2.13.1+, Commons Codec 1.22.1+, FreeMarker 2.3.34+, Nimbus JOSE JWT 10.9.1+, and SnakeYAML 2.6+ without unreviewed qualifiers" >&2
+    echo "Blocked commons/template/token/YAML jar outside reviewed stable floors packaged in app; keep Commons DBCP2 2.14.0+, Commons Pool2 2.13.1+, Commons Codec 1.22.1+, FreeMarker 2.3.35+, Nimbus JOSE JWT 10.9.1+, and SnakeYAML 2.6+ without unreviewed qualifiers" >&2
     echo "$commons_template_token_yaml_floor_jars" >&2
     fail=1
 fi
@@ -6888,7 +6888,7 @@ echo "Resolved in the URL charset compatibility slice:"
 echo "- URL encoder/decoder call sites use StandardCharsets.UTF_8 instead of legacy string charset overloads."
 echo "Resolved in the FreeMarker compatibility slice:"
 echo "- FreeMarker Configuration construction pins legacy VERSION_2_3_0 semantics; deprecated no-arg construction and DEFAULT_INCOMPATIBLE_IMPROVEMENTS are blocked."
-echo "- FreeMarker stays on reviewed stable 2.3.x at 2.3.34+; unreviewed qualifiers and line jumps require explicit template-compatibility review."
+echo "- FreeMarker stays on reviewed stable 2.3.x at 2.3.35+; unreviewed qualifiers and line jumps require explicit template-compatibility review."
 echo "Resolved in the token compatibility slice:"
 echo "- Nimbus JOSE JWT stays on reviewed stable 10.x at 10.9.1+; unreviewed qualifiers and line jumps require explicit token-compatibility review."
 echo "Tracked in the deprecation-burn-down slice:"

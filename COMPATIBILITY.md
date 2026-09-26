@@ -76,6 +76,11 @@ membership behavior. Release archives now exclude the development-only
 `cattle-dev` module and its defaults; CI builds the release profile and
 checks every bundled JAR before a package can pass its artifact gate.
 
+Engine `0.183.323` updates FreeMarker to `2.3.35` for CVE-2026-84939. The
+template configuration retains its explicit `VERSION_2_3_0` compatibility
+setting. This dependency update does not change API, database schema, or
+template configuration.
+
 ## External identity type upgrades
 
 `oidc_user` and `oidc_group` are built-in OpenID Connect identity types. An
