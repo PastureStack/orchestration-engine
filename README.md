@@ -14,18 +14,14 @@ preserved upstream boundary.
 ## Current release
 
 The latest public Engine release is
-[`v0.183.322`](https://github.com/PastureStack/orchestration-engine/releases/tag/v0.183.322).
-It resumes an interrupted account purge when a network is already removing,
-and its release archive gate rejects development-only Engine files. See the
-[release note](docs/releases/orchestration-engine-0.183.322.md) for behavior,
+[`v0.183.323`](https://github.com/PastureStack/orchestration-engine/releases/tag/v0.183.323).
+It updates packaged FreeMarker to `2.3.35` for CVE-2026-84939 while retaining
+the explicit `VERSION_2_3_0` template compatibility setting. See the
+[release note](docs/releases/orchestration-engine-0.183.323.md) for behavior,
 tests, and compatibility details. Previous release notes remain in
 [`docs/releases`](docs/releases), and the
 [GitHub release history](https://github.com/PastureStack/orchestration-engine/releases)
 records published artifacts.
-
-The next Engine candidate is `0.183.323`. It updates the packaged FreeMarker
-dependency to `2.3.35` for CVE-2026-84939. See the
-[candidate release note](docs/releases/orchestration-engine-0.183.323.md).
 
 The build retains Java 25, Ubuntu 26.04, Maven, Liquibase, MariaDB/MySQL,
 WebSocket, concurrency, and runtime maintenance. It consumes the exact
