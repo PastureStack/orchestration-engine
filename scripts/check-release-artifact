@@ -4,7 +4,7 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 artifact=${1:-dist/artifacts/cattle.jar}
-expected_version=${EXPECTED_ENGINE_VERSION:-0.183.322}
+expected_version=${EXPECTED_ENGINE_VERSION:-0.183.323}
 
 test -f "$artifact"
 artifact=$(realpath "$artifact")
@@ -49,6 +49,8 @@ require_single_versioned_entry()
 
 require_exact_entry WEB-INF/web.xml
 require_exact_entry io/cattle/platform/launcher/Main.class
+require_single_versioned_entry WEB-INF/lib/freemarker- .jar
+require_exact_entry WEB-INF/lib/freemarker-2.3.35.jar
 require_single_versioned_entry WEB-INF/lib/cattle-resources- .jar
 require_single_versioned_entry WEB-INF/lib/cattle-iaas-auth-logic- .jar
 require_single_versioned_entry WEB-INF/lib/cattle-app-config- .jar
