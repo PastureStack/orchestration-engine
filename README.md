@@ -14,19 +14,15 @@ preserved upstream boundary.
 ## Current release
 
 The latest public Engine release is
-[`v0.183.323`](https://github.com/PastureStack/orchestration-engine/releases/tag/v0.183.323).
-It updates packaged FreeMarker to `2.3.35` for CVE-2026-84939 while retaining
-the explicit `VERSION_2_3_0` template compatibility setting. See the
-[release note](docs/releases/orchestration-engine-0.183.323.md) for behavior,
+[`v0.183.325`](https://github.com/PastureStack/orchestration-engine/releases/tag/v0.183.325).
+It exposes `projectTemplate.isPublic` to non-admin readers as a read-only field
+and omits unavailable remove actions on non-owned templates. See the
+[release note](docs/releases/orchestration-engine-0.183.325.md) for behavior,
 tests, and compatibility details. Previous release notes remain in
 [`docs/releases`](docs/releases), and the
 [GitHub release history](https://github.com/PastureStack/orchestration-engine/releases)
 records published artifacts.
 
-The next Engine candidate is `0.183.325`. It exposes the public state of
-project templates to non-admin readers and omits the unavailable remove action
-on templates they do not own. See the
-[candidate release note](docs/releases/orchestration-engine-0.183.325.md).
 The `v0.183.324` tag is source-only and has no published release artifact.
 
 The build retains Java 25, Ubuntu 26.04, Maven, Liquibase, MariaDB/MySQL,
