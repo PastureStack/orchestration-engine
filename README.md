@@ -23,10 +23,11 @@ tests, and compatibility details. Previous release notes remain in
 [GitHub release history](https://github.com/PastureStack/orchestration-engine/releases)
 records published artifacts.
 
-The next Engine candidate is `0.183.324`. It exposes the public state of
+The next Engine candidate is `0.183.325`. It exposes the public state of
 project templates to non-admin readers and omits the unavailable remove action
 on templates they do not own. See the
-[candidate release note](docs/releases/orchestration-engine-0.183.324.md).
+[candidate release note](docs/releases/orchestration-engine-0.183.325.md).
+The `v0.183.324` tag is source-only and has no published release artifact.
 
 The build retains Java 25, Ubuntu 26.04, Maven, Liquibase, MariaDB/MySQL,
 WebSocket, concurrency, and runtime maintenance. It consumes the exact
@@ -48,7 +49,7 @@ bash scripts/check-cattle-jdk25-full-package
 After the gate passes, package and check the release artifact:
 
 ```sh
-ENGINE_VERSION=0.183.324 bash scripts/build --release
+ENGINE_VERSION=0.183.325 bash scripts/build --release
 bash scripts/check-release-artifact dist/artifacts/cattle.jar
 ```
 

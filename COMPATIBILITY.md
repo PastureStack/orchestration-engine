@@ -81,12 +81,13 @@ template configuration retains its explicit `VERSION_2_3_0` compatibility
 setting. This dependency update does not change API, database schema, or
 template configuration.
 
-Engine `0.183.324` includes `projectTemplate.isPublic` in non-admin v1 API
+Engine `0.183.325` includes `projectTemplate.isPublic` in non-admin v1 API
 responses as a read-only field. The admin create and update permission remains
 unchanged. Public templates still have no owning `accountId`; their `remove`
 action link is omitted for non-admin callers, while private template owners
 and admins retain it. Direct update and delete authorization remains enforced
 by the existing policy. There is no database migration.
+The `v0.183.324` tag is source-only and has no published release artifact.
 
 ## External identity type upgrades
 
