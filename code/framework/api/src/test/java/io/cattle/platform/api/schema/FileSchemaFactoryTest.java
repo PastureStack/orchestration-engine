@@ -1,7 +1,11 @@
 package io.cattle.platform.api.schema;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNotSame;
 import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertTrue;
 
 import io.github.ibuildthecloud.gdapi.factory.SchemaFactory;
 import io.github.ibuildthecloud.gdapi.factory.impl.AbstractSchemaFactory;
@@ -16,6 +20,9 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.ObjectOutputStream;
 import java.net.URL;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -93,6 +100,89 @@ public class FileSchemaFactoryTest {
         assertEquals(Arrays.asList("rancher_id", "openldap_user", "openldap_group",
                 "oidc_user", "oidc_group"), factory.getSchema("projectMember")
                 .getResourceFields().get("externalIdType").getOptions());
+    }
+
+    @Test
+    public void exposesFrozenV1ProjectTemplatePublicStateWithoutGrantingWrites() throws Exception {
+        String resourceName = "schemas/v1-project-template-user.bin";
+        SchemaImpl frozen = schema("projectTemplate", "projectTemplates");
+        SchemaImpl core = schema("projectTemplate", "projectTemplates");
+        FieldImpl coreField = new FieldImpl();
+        coreField.setName("isPublic");
+        coreField.setType("boolean");
+        coreField.setCreate(true);
+        coreField.setUpdate(true);
+        core.getResourceFields().put("isPublic", coreField);
+
+        Thread.currentThread().setContextClassLoader(new ResourceClassLoader(resourceName,
+                serialize(Arrays.<Object>asList(frozen))));
+        FileSchemaFactory factory = factory(resourceName, new SingleSchemaFactory(core));
+        factory.start();
+
+        FieldImpl loaded = (FieldImpl) factory.getSchema("projectTemplate")
+                .getResourceFields().get("isPublic");
+        assertNotNull(loaded);
+        assertNotSame(coreField, loaded);
+        assertEquals("boolean", loaded.getType());
+        assertTrue(loaded.isIncludeInList());
+        assertFalse(loaded.isCreate());
+        assertFalse(loaded.isUpdate());
+        assertFalse(loaded.isReadOnCreateOnly());
+        assertTrue("The current core schema must not be modified", coreField.isCreate());
+        assertTrue(coreField.isUpdate());
+    }
+
+    @Test
+    public void preservesExistingFrozenV1AdminProjectTemplatePermissions() throws Exception {
+        String resourceName = "schemas/v1-project-template-admin.bin";
+        SchemaImpl frozen = schema("projectTemplate", "projectTemplates");
+        FieldImpl frozenField = new FieldImpl();
+        frozenField.setCreate(true);
+        frozenField.setUpdate(true);
+        frozen.getResourceFields().put("isPublic", frozenField);
+        SchemaImpl core = schema("projectTemplate", "projectTemplates");
+        core.getResourceFields().put("isPublic", new FieldImpl());
+
+        Thread.currentThread().setContextClassLoader(new ResourceClassLoader(resourceName,
+                serialize(Arrays.<Object>asList(frozen))));
+        FileSchemaFactory factory = factory(resourceName, new SingleSchemaFactory(core));
+        factory.start();
+
+        FieldImpl loaded = (FieldImpl) factory.getSchema("projectTemplate")
+                .getResourceFields().get("isPublic");
+        assertTrue(loaded.isCreate());
+        assertTrue(loaded.isUpdate());
+    }
+
+    @Test
+    public void repairsThePackagedFrozenV1UserSchemaNotOnlySyntheticFixtures() throws Exception {
+        String resourceName = "schema/v1/user.ser";
+        Path current = Paths.get("").toAbsolutePath();
+        while (current != null && !Files.isRegularFile(
+                current.resolve("resources/content/").resolve(resourceName))) {
+            current = current.getParent();
+        }
+        assertNotNull("Unable to locate the packaged frozen v1 schema", current);
+
+        SchemaImpl core = schema("projectTemplate", "projectTemplates");
+        FieldImpl coreField = new FieldImpl();
+        coreField.setName("isPublic");
+        coreField.setType("boolean");
+        coreField.setCreate(true);
+        coreField.setUpdate(true);
+        core.getResourceFields().put("isPublic", coreField);
+
+        Thread.currentThread().setContextClassLoader(new ResourceClassLoader(resourceName,
+                Files.readAllBytes(current.resolve("resources/content/").resolve(resourceName))));
+        FileSchemaFactory factory = factory(resourceName, new SingleSchemaFactory(core));
+        factory.start();
+
+        FieldImpl loaded = (FieldImpl) factory.getSchema("projectTemplate")
+                .getResourceFields().get("isPublic");
+        assertNotNull(loaded);
+        assertFalse(loaded.isCreate());
+        assertFalse(loaded.isUpdate());
+        assertEquals("boolean", loaded.getType());
     }
 
     @Test

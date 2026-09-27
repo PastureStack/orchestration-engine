@@ -14,10 +14,11 @@ preserved upstream boundary.
 ## Current release
 
 The latest public Engine release is
-[`v0.183.325`](https://github.com/PastureStack/orchestration-engine/releases/tag/v0.183.325).
-It exposes `projectTemplate.isPublic` to non-admin readers as a read-only field
-and omits unavailable remove actions on non-owned templates. See the
-[release note](docs/releases/orchestration-engine-0.183.325.md) for behavior,
+[`v0.183.326`](https://github.com/PastureStack/orchestration-engine/releases/tag/v0.183.326).
+It restores read-only `projectTemplate.isPublic` in both v1 and v2-beta
+responses for non-admin readers and omits unavailable remove actions on
+non-owned templates. See the
+[release note](docs/releases/orchestration-engine-0.183.326.md) for behavior,
 tests, and compatibility details. Previous release notes remain in
 [`docs/releases`](docs/releases), and the
 [GitHub release history](https://github.com/PastureStack/orchestration-engine/releases)
@@ -45,7 +46,7 @@ bash scripts/check-cattle-jdk25-full-package
 After the gate passes, package and check the release artifact:
 
 ```sh
-ENGINE_VERSION=0.183.325 bash scripts/build --release
+ENGINE_VERSION=0.183.326 bash scripts/build --release
 bash scripts/check-release-artifact dist/artifacts/cattle.jar
 ```
 
