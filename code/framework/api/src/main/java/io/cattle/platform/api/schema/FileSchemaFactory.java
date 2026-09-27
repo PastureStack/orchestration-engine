@@ -89,7 +89,9 @@ public class FileSchemaFactory extends AbstractSchemaFactory implements Initiali
 
     protected void copyAccessors(Schema schema) {
         SchemaFactory parentSchemaFactory = schemaFactory;
-        mergeProjectMemberExternalIdTypeOptions(schema, parentSchemaFactory.getSchema(schema.getId()));
+        Schema coreSchema = parentSchemaFactory.getSchema(schema.getId());
+        mergeProjectMemberExternalIdTypeOptions(schema, coreSchema);
+        mergeProjectTemplatePublicReadField(schema, coreSchema);
         Class<?> clz =  parentSchemaFactory.getSchemaClass(schema.getId());
         if (clz == null) {
             return;
@@ -127,6 +129,28 @@ public class FileSchemaFactory extends AbstractSchemaFactory implements Initiali
             options.addAll(parentField.getOptions());
         }
         ((FieldImpl) field).setOptions(new ArrayList<String>(options));
+    }
+
+    protected void mergeProjectTemplatePublicReadField(Schema schema, Schema parentSchema) {
+        if (parentSchema == null || !"projectTemplate".equals(schema.getId()) ||
+                schema.getResourceFields().containsKey("isPublic")) {
+            return;
+        }
+
+        Field parentField = parentSchema.getResourceFields().get("isPublic");
+        if (!(parentField instanceof FieldImpl)) {
+            return;
+        }
+
+        // v1 loads frozen .ser schemas. The current user auth overlay grants
+        // read access, but cannot add a field missing from those snapshots.
+        // Copy only this public-state field and keep mutation admin-only.
+        FieldImpl readOnly = new FieldImpl(parentField);
+        readOnly.setName("isPublic");
+        readOnly.setCreate(false);
+        readOnly.setUpdate(false);
+        readOnly.setReadOnCreateOnly(false);
+        schema.getResourceFields().put("isPublic", readOnly);
     }
 
     public String getFile() {
