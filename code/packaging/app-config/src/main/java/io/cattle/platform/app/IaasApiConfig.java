@@ -96,6 +96,7 @@ import io.cattle.platform.iaas.api.filter.instance.InstanceVolumesValidationFilt
 import io.cattle.platform.iaas.api.filter.instance.InstanceValidationFilter;
 import io.cattle.platform.iaas.api.filter.instance.InstanceVolumeCleanupStrategyValidationFilter;
 import io.cattle.platform.iaas.api.filter.machinedriver.MachineDriverFilter;
+import io.cattle.platform.iaas.api.filter.projecttemplate.ProjectTemplateActionOutputFilter;
 import io.cattle.platform.iaas.api.filter.registry.RegistryServerAddressFilter;
 import io.cattle.platform.iaas.api.filter.secret.SecretValidationFilter;
 import io.cattle.platform.iaas.api.filter.service.ServiceOutputFilter;
@@ -1014,6 +1015,11 @@ public class IaasApiConfig {
     @Bean
     VolumeRevertRestoreActionOutputFilter VolumeRevertRestoreActionOutputFilter() {
         return new VolumeRevertRestoreActionOutputFilter();
+    }
+
+    @Bean
+    ProjectTemplateActionOutputFilter ProjectTemplateActionOutputFilter() {
+        return new ProjectTemplateActionOutputFilter();
     }
 
     @Bean
