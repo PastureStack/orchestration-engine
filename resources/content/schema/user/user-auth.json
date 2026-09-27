@@ -584,6 +584,7 @@
         "project.scheduledUpgradeDelay": "cru",
 
         "projectTemplate" : "crud",
+        "projectTemplate.isPublic" : "r",
         "projectTemplate.stacks" : "cru",
         "projectTemplate.externalId" : "cru",
 
