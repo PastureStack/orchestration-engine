@@ -12,7 +12,7 @@ import io.cattle.platform.core.model.tables.records.ProjectTemplateRecord;
 import io.github.ibuildthecloud.gdapi.context.ApiContext;
 import io.github.ibuildthecloud.gdapi.model.impl.ResourceImpl;
 
-import java.net.URL;
+import java.net.URI;
 import java.util.Collections;
 
 import org.junit.After;
@@ -73,7 +73,7 @@ public class ProjectTemplateActionOutputFilterTest {
 
     private static ResourceImpl resourceWithRemove() throws Exception {
         ResourceImpl resource = new ResourceImpl();
-        resource.getActions().put("remove", new URL("http://localhost/projecttemplates/1pt5?action=remove"));
+        resource.getActions().put("remove", URI.create("http://localhost/projecttemplates/1pt5?action=remove").toURL());
         return resource;
     }
 

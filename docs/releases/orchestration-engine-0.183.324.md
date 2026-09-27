@@ -1,5 +1,8 @@
 # Orchestration Engine 0.183.324
 
+This tag contains source only; no GitHub Release artifact was published.
+The corrected packaging candidate is `0.183.325`.
+
 This patch exposes `projectTemplate.isPublic` to non-admin API readers as a
 read-only field. The admin-only create and update permission for that field is
 unchanged. It also removes the misleading `remove` action link on a template
