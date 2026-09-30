@@ -5,6 +5,7 @@ import io.cattle.platform.core.model.Instance;
 import io.cattle.platform.iaas.api.filter.common.AbstractDefaultResourceManagerFilter;
 import io.cattle.platform.object.util.DataUtils;
 import io.cattle.platform.ssh.common.SslCertificateUtils;
+import io.cattle.platform.util.type.CollectionUtils;
 import io.github.ibuildthecloud.gdapi.exception.ClientVisibleException;
 import io.github.ibuildthecloud.gdapi.request.ApiRequest;
 import io.github.ibuildthecloud.gdapi.request.resource.ResourceManager;
@@ -39,10 +40,11 @@ public class CertificateCreateValidationFilter extends AbstractDefaultResourceMa
 
     @Override
     public Object update(String type, String id, ApiRequest request, ResourceManager next) {
-        String cert = DataUtils.getFieldFromRequest(request, "cert", String.class);
-
-        Certificate certificate = request.proxyRequestObject(Certificate.class);
-        setCertificateFields(cert, certificate);
+        if (CollectionUtils.toMap(request.getRequestObject()).containsKey("cert")) {
+            String cert = DataUtils.getFieldFromRequest(request, "cert", String.class);
+            Certificate certificate = request.proxyRequestObject(Certificate.class);
+            setCertificateFields(cert, certificate);
+        }
 
         return super.update(type, id, request, next);
     }

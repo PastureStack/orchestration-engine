@@ -83,8 +83,19 @@ RUN set -eux; \
         tox="${UBUNTU_APT_TOX_VERSION}" \
         unzip="${UBUNTU_APT_UNZIP_VERSION}" \
         xz-utils="${UBUNTU_APT_XZ_UTILS_VERSION}"; \
+    printf 'Types: deb\nURIs: https://snapshot.ubuntu.com/ubuntu/%s\nSuites: resolute-security\nComponents: main\nSigned-By: /usr/share/keyrings/ubuntu-archive-keyring.gpg\nSnapshot: no\n' \
+        "${UBUNTU_APT_SECURITY_SNAPSHOT}" > /etc/apt/sources.list.d/pasturestack-security.sources; \
+    apt-get update; \
+    apt-get install -y --no-install-recommends \
+        libssl3t64="${UBUNTU_APT_OPENSSL_VERSION}" \
+        openssl="${UBUNTU_APT_OPENSSL_VERSION}" \
+        openssl-provider-legacy="${UBUNTU_APT_OPENSSL_VERSION}"; \
+    for package in libssl3t64 openssl openssl-provider-legacy; do \
+        test "$(dpkg-query -W -f='${Version}' "${package}")" = "${UBUNTU_APT_OPENSSL_VERSION}"; \
+    done; \
     { \
         printf 'snapshot\t%s\n' "${UBUNTU_APT_SNAPSHOT}"; \
+        printf 'security-snapshot\t%s\n' "${UBUNTU_APT_SECURITY_SNAPSHOT}"; \
         dpkg-query -W -f='${binary:Package}\t${Version}\n' | LC_ALL=C sort; \
     } > /licenses/ORCHESTRATION-ENGINE-UBUNTU-APT-PACKAGES.tsv; \
     apt-get clean; \

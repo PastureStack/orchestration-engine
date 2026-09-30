@@ -77,7 +77,7 @@ public class LoadBalancerServiceCertificateRemoveFilter extends AbstractDefaultR
                 }
                 List<Long> certIds = new ArrayList<>();
                 if (lbConfig.getCertificateIds() != null) {
-                    certIds.addAll(certIds);
+                    certIds.addAll(lbConfig.getCertificateIds());
                 }
                 if (lbConfig.getDefaultCertificateId() != null) {
                     certIds.add(lbConfig.getDefaultCertificateId());
