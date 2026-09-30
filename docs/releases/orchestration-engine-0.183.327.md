@@ -8,8 +8,10 @@ the authorization, private-key masking, and v1 schema changes from 0.183.326.
 The Certificate update filter previously parsed `cert` even when a request
 omitted that field. Name-only and description-only updates therefore failed
 with HTTP 422. The filter now derives certificate metadata only when the
-request explicitly contains `cert`. Explicit null, empty, or malformed values
-still fail with HTTP 422 / InvalidFormat, and create validation is unchanged.
+request explicitly contains `cert`. The shared schema rejects explicit
+`cert: null` with HTTP 422 / `NotNullable` before the certificate filter runs.
+Non-null empty or malformed values reach the filter and fail with HTTP 422 /
+`InvalidFormat`. Create validation is unchanged.
 An omitted certificate or private key is not fetched and resubmitted by the
 filter. No schema, authentication, or private-key output policy is changed.
 
@@ -41,6 +43,8 @@ and unreferenced inputs. Downstream calls and query boundaries are asserted.
 Restoring just the two old implementations makes three omitted-field update
 tests fail with InvalidFormat and the v2 alternate-reference test reach the
 downstream deletion manager. The patched filters pass all 17 focused tests.
+These filter-level tests do not exercise the preceding shared-schema validation
+of explicit null input.
 The normal official build/security and CodeQL gates passed as recorded below.
 
 ## Published artifact evidence
