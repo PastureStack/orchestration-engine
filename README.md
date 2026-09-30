@@ -13,7 +13,7 @@ preserved upstream boundary.
 
 ## Current release
 
-The current release source targets `v0.183.327`.
+The current published release is `v0.183.327`.
 Certificate name/description updates preserve omitted certificate content;
 deleting or removing a certificate referenced by a v2 load balancer's alternate
 list is rejected just like a default certificate. Authorization and private-key
@@ -23,6 +23,19 @@ tests, and compatibility details. Previous release notes remain in
 [`docs/releases`](docs/releases), and the
 [GitHub release history](https://github.com/PastureStack/orchestration-engine/releases)
 records published artifacts.
+
+The official numeric [release `v0.183.327`](https://github.com/PastureStack/orchestration-engine/releases/tag/v0.183.327)
+is published from source commit `dce2f2473ffea1510fe10676a771eb1fe5d0b161`.
+Its `cattle.jar` WAR has SHA-256
+`c6d4c3003a19db19d1be73e69aa52358a0a4166bf726cbefe7e2ab9ed5664b56`;
+the remote published asset's hash was independently read back and matched.
+[Official build/security run `36701559252`](https://github.com/PastureStack/orchestration-engine/actions/runs/36701559252)
+and [CodeQL run `36701559287`](https://github.com/PastureStack/orchestration-engine/actions/runs/36701559287)
+passed, along with all 17 focused Certificate tests. The exact published WAR
+completed standalone startup against isolated H2 with JDK `25.0.3` and exited
+with code 0. Full MariaDB/MySQL integration and Server/browser Certificate QA
+remain separate and pending; the full resource/role matrix is not accepted
+by these component checks.
 
 The `v0.183.324` tag is source-only and has no published release artifact.
 
