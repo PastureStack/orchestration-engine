@@ -1,7 +1,10 @@
 # Ubuntu 26.04 package lock for reproducible PastureStack builds.
-# Refresh the snapshot and every exact direct-package version together.
+# Refresh the base snapshot and its exact direct-package versions together.
+# Security overlays are added after the base install and pin only listed fixes.
 
 UBUNTU_APT_SNAPSHOT='20260826T000000Z'
+UBUNTU_APT_SECURITY_SNAPSHOT='20260930T000000Z'
+UBUNTU_APT_OPENSSL_VERSION='3.5.5-1ubuntu3.6'
 
 UBUNTU_APT_BASH_VERSION='5.3-2ubuntu1'
 UBUNTU_APT_CA_CERTIFICATES_VERSION='20260601~26.04.1'

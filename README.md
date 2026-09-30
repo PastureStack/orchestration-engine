@@ -13,12 +13,12 @@ preserved upstream boundary.
 
 ## Current release
 
-The latest public Engine release is
-[`v0.183.326`](https://github.com/PastureStack/orchestration-engine/releases/tag/v0.183.326).
-It restores read-only `projectTemplate.isPublic` in both v1 and v2-beta
-responses for non-admin readers and omits unavailable remove actions on
-non-owned templates. See the
-[release note](docs/releases/orchestration-engine-0.183.326.md) for behavior,
+The current release source targets `v0.183.327`.
+Certificate name/description updates preserve omitted certificate content;
+deleting or removing a certificate referenced by a v2 load balancer's alternate
+list is rejected just like a default certificate. Authorization and private-key
+masking are unchanged. See the
+[release note](docs/releases/orchestration-engine-0.183.327.md) for behavior,
 tests, and compatibility details. Previous release notes remain in
 [`docs/releases`](docs/releases), and the
 [GitHub release history](https://github.com/PastureStack/orchestration-engine/releases)
@@ -27,7 +27,12 @@ records published artifacts.
 The `v0.183.324` tag is source-only and has no published release artifact.
 
 The build retains Java 25, Ubuntu 26.04, Maven, Liquibase, MariaDB/MySQL,
-WebSocket, concurrency, and runtime maintenance. It consumes the exact
+WebSocket, concurrency, runtime maintenance, and the existing direct tool
+versions. Its signed Ubuntu security snapshot
+pins OpenSSL CLI, library and legacy provider to `3.5.5-1ubuntu3.6`, the
+official fix for [CVE-2026-84782](https://ubuntu.com/security/CVE-2026-84782).
+It retains OpenSSL 3.5 and does not relax the build-image security gate.
+It consumes the exact
 `5.7.4` JAR from
 [`distributed-cache-runtime`](https://github.com/PastureStack/distributed-cache-runtime/releases/tag/v5.7.4)
 and verifies its pinned digest and dependency metadata before installing it
@@ -46,7 +51,7 @@ bash scripts/check-cattle-jdk25-full-package
 After the gate passes, package and check the release artifact:
 
 ```sh
-ENGINE_VERSION=0.183.326 bash scripts/build --release
+ENGINE_VERSION=0.183.327 bash scripts/build --release
 bash scripts/check-release-artifact dist/artifacts/cattle.jar
 ```
 

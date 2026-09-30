@@ -4,6 +4,16 @@ The migration preserves established `io.cattle.*` Java packages, Maven coordinat
 
 New operator-facing names use PastureStack and `PASTURESTACK_*`. Compatibility identifiers must be changed only with an explicit data migration, a dual-read or dual-write transition, a rollback plan, and cross-repository verification.
 
+## Certificate lifecycle
+
+Engine `0.183.327` allows partial Certificate updates that omit `cert`, without
+changing existing certificate or key fields. Explicit invalid `cert` values
+still fail validation. The shared DELETE/remove guard also rejects v2 alternate
+certificate references using the same error contract as default references.
+The v1 helper path, account boundary, removed/kind query constraints, and
+account teardown remain unchanged. No migration is required; rollback restores
+the old partial-update failure and alternate-reference protection gap.
+
 ## Docker host policy
 
 Release `0.183.319` preserves the Docker host policy introduced in `0.183.299`,

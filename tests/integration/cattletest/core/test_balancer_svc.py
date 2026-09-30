@@ -124,6 +124,12 @@ def test_validate_balancer_svc_fields(client, image_uuid):
     assert e.value.error.status == 405
     assert e.value.error.code == 'InvalidAction'
 
+    # Alternate certificates must have the same protection as the default.
+    with pytest.raises(ApiError) as e:
+        cert2.remove()
+    assert e.value.error.status == 405
+    assert e.value.error.code == 'InvalidAction'
+
     # delete balancer service
     client.wait_success(lb_svc.remove())
     cert1.remove()
