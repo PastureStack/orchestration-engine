@@ -41,9 +41,23 @@ and unreferenced inputs. Downstream calls and query boundaries are asserted.
 Restoring just the two old implementations makes three omitted-field update
 tests fail with InvalidFormat and the v2 alternate-reference test reach the
 downstream deletion manager. The patched filters pass all 17 focused tests.
-The complete JDK25 package gate and release-artifact checks remain required.
+The normal official build/security and CodeQL gates passed as recorded below.
 
-Server acceptance must independently verify both v1 and v2-beta name and
+## Published artifact evidence
+
+The official numeric [release `v0.183.327`](https://github.com/PastureStack/orchestration-engine/releases/tag/v0.183.327)
+is published from source commit `dce2f2473ffea1510fe10676a771eb1fe5d0b161`.
+[Official build/security run `36701559252`](https://github.com/PastureStack/orchestration-engine/actions/runs/36701559252)
+and [CodeQL run `36701559287`](https://github.com/PastureStack/orchestration-engine/actions/runs/36701559287)
+passed. The published `cattle.jar` WAR has SHA-256
+`c6d4c3003a19db19d1be73e69aa52358a0a4166bf726cbefe7e2ab9ed5664b56`;
+the remote asset's hash was independently read back and matched. The exact
+published WAR completed standalone startup against isolated H2 with JDK
+`25.0.3` and exited with code 0. This does not establish full MariaDB/MySQL
+integration or the platform resource/role matrix.
+
+Server artifact and browser acceptance remain pending. Server acceptance must
+independently verify both v1 and v2-beta name and
 description edits on fresh, unmounted certificates, unchanged certificate/key
 storage, native UI save/cancel/readback, and denied removal of referenced
 alternate/default certificates. Focused tests alone are not full platform QA.
