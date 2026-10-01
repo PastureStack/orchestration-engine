@@ -43,6 +43,7 @@ ensure_docker()
 
 ensure_docker
 
+python3 ./test-jackson-security-floors.py -v
 ./check-cattle-dependency-hygiene
 ./check-cattle-archaius-boundary
 ./check-cattle-jmx-boundary

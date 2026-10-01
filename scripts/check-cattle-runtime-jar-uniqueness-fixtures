@@ -42,13 +42,13 @@ for jar in \
     metrics-jakarta-servlets-4.2.39.jar; do
     touch_jar "$positive_root" "$jar"
 done
-namespace_jar "$positive_root" jackson-core-2.22.2.jar \
+namespace_jar "$positive_root" jackson-core-2.22.3.jar \
     com/fasterxml/jackson/core/ReviewedJackson2.class
-namespace_jar "$positive_root" jackson-core-3.2.2.jar \
+namespace_jar "$positive_root" jackson-core-3.2.3.jar \
     tools/jackson/core/ReviewedJackson3.class
-namespace_jar "$positive_root" jackson-databind-2.22.2.jar \
+namespace_jar "$positive_root" jackson-databind-2.22.3.jar \
     com/fasterxml/jackson/databind/ReviewedJackson2.class
-namespace_jar "$positive_root" jackson-databind-3.2.2.jar \
+namespace_jar "$positive_root" jackson-databind-3.2.3.jar \
     tools/jackson/databind/ReviewedJackson3.class
 
 positive_output="$workdir/positive.log"
@@ -69,10 +69,14 @@ for expected in \
 done
 
 jackson_negative_root="$workdir/jackson-negative"
-namespace_jar "$jackson_negative_root" jackson-core-2.22.2.jar \
+namespace_jar "$jackson_negative_root" jackson-core-2.22.3.jar \
     com/fasterxml/jackson/core/ReviewedJackson2.class
-namespace_jar "$jackson_negative_root" jackson-core-3.2.2.jar \
+namespace_jar "$jackson_negative_root" jackson-core-3.2.3.jar \
     com/fasterxml/jackson/core/UnexpectedJackson3.class
+namespace_jar "$jackson_negative_root" jackson-databind-2.22.3.jar \
+    com/fasterxml/jackson/databind/ReviewedJackson2.class
+namespace_jar "$jackson_negative_root" jackson-databind-3.2.3.jar \
+    tools/jackson/databind/ReviewedJackson3.class
 jackson_negative_output="$workdir/jackson-negative.log"
 set +e
 RC16_CATTLE_PACKAGED_ROOT="$jackson_negative_root" \
@@ -87,13 +91,53 @@ fi
 for expected in \
     'CATTLE_RUNTIME_JAR_DUPLICATE_ARTIFACT' \
     'artifact=jackson-core' \
-    'reviewed_dual_namespace_count=0' \
+    'reviewed_dual_namespace_count=1' \
     'failure_count=1'; do
     if ! grep -F "$expected" "$jackson_negative_output" >/dev/null; then
         echo "CATTLE_RUNTIME_JAR_UNIQUENESS_JACKSON_NAMESPACE_MISSING=$expected" >&2
         cat "$jackson_negative_output" >&2
         exit 1
     fi
+done
+
+for missing in jackson-core-2.22.3.jar jackson-core-3.2.3.jar \
+    jackson-databind-2.22.3.jar jackson-databind-3.2.3.jar; do
+    missing_root="$workdir/missing-$missing"
+    for expected_jar in jackson-core-2.22.3.jar jackson-core-3.2.3.jar \
+        jackson-databind-2.22.3.jar jackson-databind-3.2.3.jar; do
+        [ "$expected_jar" != "$missing" ] || continue
+        mkdir -p "$missing_root/app/WEB-INF/lib"
+        cp "$positive_root/app/WEB-INF/lib/$expected_jar" "$missing_root/app/WEB-INF/lib/$expected_jar"
+    done
+    missing_output="$workdir/missing-$missing.log"
+    if RC16_CATTLE_PACKAGED_ROOT="$missing_root" scripts/check-cattle-runtime-jar-uniqueness >"$missing_output" 2>&1; then
+        echo "CATTLE_RUNTIME_JAR_UNIQUENESS_MISSING_GENERATION_DID_NOT_FAIL=$missing" >&2
+        exit 1
+    fi
+    grep -F 'CATTLE_RUNTIME_JAR_JACKSON_EXPECTED_PAIR' "$missing_output" >/dev/null
+    grep -F 'failure_count=1' "$missing_output" >/dev/null
+done
+
+for old_major in 2 3; do
+    old_root="$workdir/old-jackson-$old_major"
+    mkdir -p "$old_root/app/WEB-INF/lib"
+    for expected_jar in jackson-databind-2.22.3.jar jackson-databind-3.2.3.jar; do
+        cp "$positive_root/app/WEB-INF/lib/$expected_jar" "$old_root/app/WEB-INF/lib/$expected_jar"
+    done
+    if [ "$old_major" = 2 ]; then
+        namespace_jar "$old_root" jackson-core-2.22.2.jar com/fasterxml/jackson/core/ReviewedJackson2.class
+        cp "$positive_root/app/WEB-INF/lib/jackson-core-3.2.3.jar" "$old_root/app/WEB-INF/lib/jackson-core-3.2.3.jar"
+    else
+        cp "$positive_root/app/WEB-INF/lib/jackson-core-2.22.3.jar" "$old_root/app/WEB-INF/lib/jackson-core-2.22.3.jar"
+        namespace_jar "$old_root" jackson-core-3.2.2.jar tools/jackson/core/ReviewedJackson3.class
+    fi
+    old_output="$workdir/old-jackson-$old_major.log"
+    if RC16_CATTLE_PACKAGED_ROOT="$old_root" scripts/check-cattle-runtime-jar-uniqueness >"$old_output" 2>&1; then
+        echo "CATTLE_RUNTIME_JAR_UNIQUENESS_OLD_PATCH_DID_NOT_FAIL=$old_major" >&2
+        exit 1
+    fi
+    grep -F 'CATTLE_RUNTIME_JAR_DUPLICATE_ARTIFACT' "$old_output" >/dev/null
+    grep -F 'failure_count=1' "$old_output" >/dev/null
 done
 
 negative_root="$workdir/negative"
@@ -107,6 +151,10 @@ for jar in \
     metrics-jakarta-servlets-4.2.39.jar \
     metrics-servlets-4.2.39.jar; do
     touch_jar "$negative_root" "$jar"
+done
+for expected_jar in jackson-core-2.22.3.jar jackson-core-3.2.3.jar \
+    jackson-databind-2.22.3.jar jackson-databind-3.2.3.jar; do
+    cp "$positive_root/app/WEB-INF/lib/$expected_jar" "$negative_root/app/WEB-INF/lib/$expected_jar"
 done
 
 negative_output="$workdir/negative.log"

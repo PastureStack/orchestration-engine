@@ -99,12 +99,12 @@ legacy_metrics_servlets = {"metrics-servlets", "metrics-servlet"}
 
 reviewed_dual_namespace_artifacts = {
     "jackson-core": {
-        "jackson-core-2.22.2.jar": "com/fasterxml/jackson/core/",
-        "jackson-core-3.2.2.jar": "tools/jackson/core/",
+        "jackson-core-2.22.3.jar": "com/fasterxml/jackson/core/",
+        "jackson-core-3.2.3.jar": "tools/jackson/core/",
     },
     "jackson-databind": {
-        "jackson-databind-2.22.2.jar": "com/fasterxml/jackson/databind/",
-        "jackson-databind-3.2.2.jar": "tools/jackson/databind/",
+        "jackson-databind-2.22.3.jar": "com/fasterxml/jackson/databind/",
+        "jackson-databind-3.2.3.jar": "tools/jackson/databind/",
     },
 }
 
@@ -132,10 +132,13 @@ def reviewed_dual_namespace_pair(artifact, jars):
             required_prefix = expected[jar.name]
             with ZipFile(jar) as archive:
                 classes = {
-                    entry
+                    re.sub(r"^META-INF/versions/(?:9|[1-9][0-9]+)/", "", entry)
                     for entry in archive.namelist()
                     if entry.endswith(".class")
                 }
+            # Multi-release entries are the same loadable class names. Module
+            # descriptors name distinct modules, not duplicate runtime classes.
+            classes.discard("module-info.class")
             if not any(entry.startswith(required_prefix) for entry in classes):
                 return False
             forbidden_prefixes = all_prefixes - {required_prefix}
@@ -166,6 +169,14 @@ for lib_dir in lib_dirs:
         artifact = artifact_name(jar.name)
         if artifact:
             artifacts[artifact].append(jar)
+
+    for artifact in sorted(reviewed_dual_namespace_artifacts):
+        jars = artifacts.get(artifact, [])
+        if len(jars) < 2:
+            joined = ",".join(str(jar) for jar in jars)
+            failures.append(
+                f"CATTLE_RUNTIME_JAR_JACKSON_EXPECTED_PAIR lib={lib_dir} artifact={artifact} files={joined}"
+            )
 
     for artifact, jars in sorted(artifacts.items()):
         if len(jars) > 1:

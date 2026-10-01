@@ -3,7 +3,7 @@
     <parent>
         <groupId>io.cattle</groupId>
         <artifactId>cattle-parent</artifactId>
-        <version>0.183.327</version>
+        <version>0.183.328</version>
         <relativePath>code/parent/pom.xml</relativePath>
     </parent>
     <artifactId>cattle</artifactId>

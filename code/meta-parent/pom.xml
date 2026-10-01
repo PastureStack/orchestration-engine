@@ -9,7 +9,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>io.cattle</groupId>
     <artifactId>cattle-meta-parent</artifactId>
-    <version>0.183.327</version>
+    <version>0.183.328</version>
     <packaging>pom</packaging>
     <name>PastureStack Orchestration Engine</name>
     <description>Compatibility orchestration engine for the PastureStack server.</description>
@@ -43,18 +43,18 @@
     <properties>
         <jetty.version>12.1.12</jetty.version>
         <jooq.version>3.21.7</jooq.version>
-        <jackson.version>2.22.2</jackson.version>
+        <jackson.version>2.22.3</jackson.version>
         <jackson.annotations.version>2.22</jackson.annotations.version>
         <spring.version>7.0.9</spring.version>
         <metrics.version>4.2.39</metrics.version>
-        <hazelcast.version>5.7.4</hazelcast.version>
+        <hazelcast.version>5.7.5</hazelcast.version>
         <javassist.version>3.33.0-GA</javassist.version>
         <docker.java.version>3.7.1</docker.java.version>
         <logback.version>1.6.3</logback.version>
         <slf4j.version>2.0.18</slf4j.version>
         <logstash.logback.encoder.version>9.0</logstash.logback.encoder.version>
         <webauthn4j.version>0.31.9.RELEASE</webauthn4j.version>
-        <webauthn.jackson.version>3.2.2</webauthn.jackson.version>
+        <webauthn.jackson.version>3.2.3</webauthn.jackson.version>
         <jakarta.mail.version>2.1.5</jakarta.mail.version>
         <angus.mail.version>2.0.5</angus.mail.version>
         <owasp.encoder.version>1.4.0</owasp.encoder.version>
