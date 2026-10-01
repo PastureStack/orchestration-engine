@@ -47,6 +47,62 @@ jobs:
           cp dist/version evidence/engine-version.txt
           sha256sum dist/artifacts/cattle.jar > evidence/cattle.jar.sha256
 
+      - name: Retain executed unit cases without properties or log content
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          import xml.etree.ElementTree as ET
+
+          required = {
+              'io.github.ibuildthecloud.gdapi.request.handler.BodyParserRequestHandlerTest': {
+                  'mergeMapKeepsRequestParamsAndLetsBodyOverride',
+                  'mergeListRecursivelyMergesAllowedMapItems',
+                  'parsesObjectUnicodeAndAdditionalFieldsWithRealMapper',
+                  'parsesListWithRealMapperAndMergesObjectItems',
+                  'typedMapperIgnoresUnknownFieldsAndRoundTripsUnicode',
+                  'malformedJsonReturnsInvalidBodyContentBadRequest',
+              },
+              'io.cattle.platform.iaas.api.auth.mfa.WebAuthnConfigurationTest': {
+                  'acceptsExactHttpsOriginAndRelyingParty',
+                  'acceptsHttpOnlyForLoopbackDevelopment',
+                  'rejectsInsecureLanOrigin', 'rejectsUnrelatedRelyingParty',
+                  'rejectsPublicSuffixAsRelyingParty',
+                  'objectConverterJsonRoundTripsNormalWebAuthnValues',
+                  'objectConverterCborRoundTripsNormalValuesAndBinaryData',
+                  'credentialDataStorageRoundTripPreservesPublicKeyAndCredentialId',
+              },
+          }
+          suites = []
+          observed = {}
+          for path in sorted(Path('code').glob('**/target/surefire-reports/TEST-*.xml')):
+              root = ET.parse(path).getroot()
+              cases = []
+              for case in root.findall('testcase'):
+                  outcomes = [name for name in ('failure', 'error', 'skipped') if case.find(name) is not None]
+                  record = {'class': case.get('classname'), 'name': case.get('name'),
+                            'status': outcomes[0] if outcomes else 'passed'}
+                  cases.append(record)
+                  if record['class'] in required:
+                      key = (record['class'], record['name'])
+                      assert key not in observed, ('duplicate required case', key)
+                      observed[key] = record['status']
+              counts = {name: int(root.get(name, '0')) for name in ('tests', 'failures', 'errors', 'skipped')}
+              assert counts['tests'] == len(cases), ('report case count', str(path))
+              assert counts['failures'] == counts['errors'] == 0, ('failed unit suite', str(path))
+              suites.append({'report': path.as_posix(), 'counts': counts, 'cases': cases})
+          assert suites, 'No executed Surefire unit reports'
+          expected = {(name, case) for name, cases in required.items() for case in cases}
+          assert set(observed) == expected and set(observed.values()) == {'passed'}, 'Required cases missing, skipped or failed'
+          summary = {'source': Path('evidence/source-revision.txt').read_text().strip(),
+                     'suiteCount': len(suites), 'totals': {name: sum(s['counts'][name] for s in suites)
+                     for name in ('tests', 'failures', 'errors', 'skipped')}, 'suites': suites}
+          Path('evidence/unit-test-results.json').write_text(json.dumps(summary, sort_keys=True, indent=2) + '\n')
+          print('UNIT_CASE_EVIDENCE_OK', summary['suiteCount'], summary['totals'])
+          PY
+
       - name: Record resolved build inputs
         shell: bash
         run: |

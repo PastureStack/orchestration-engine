@@ -196,12 +196,12 @@ import xml.etree.ElementTree as ET
 from pathlib import Path
 
 NS = {"m": "http://maven.apache.org/POM/4.0.0"}
-JACKSON2_FLOOR = (2, 22, 0)
-JACKSON2_FLOOR_TEXT = "2.22.0"
+JACKSON2_FLOOR = (2, 22, 3)
+JACKSON2_FLOOR_TEXT = "2.22.3"
 JACKSON2_ANNOTATIONS_FLOOR = (2, 22, 0)
 JACKSON2_ANNOTATIONS_FLOOR_TEXT = "2.22"
-JACKSON3_WEBAUTHN_FLOOR = (3, 2, 1)
-JACKSON3_WEBAUTHN_FLOOR_TEXT = "3.2.1"
+JACKSON3_WEBAUTHN_FLOOR = (3, 2, 3)
+JACKSON3_WEBAUTHN_FLOOR_TEXT = "3.2.3"
 JACKSON3_WEBAUTHN_COORDINATES = {
     ("tools.jackson.core", "jackson-core"),
     ("tools.jackson.core", "jackson-databind"),
@@ -310,7 +310,7 @@ sys.exit(0)
 PY
 )
 if [ -n "$jackson_security_floor_dependencies" ]; then
-    echo "Blocked Jackson dependency outside the maintained runtime line found in Maven POMs; keep the platform on Jackson 2.22+ and the explicitly pinned WebAuthn tools.jackson boundary on stable 3.2.1+" >&2
+    echo "Blocked Jackson dependency outside the maintained runtime line found in Maven POMs; keep the platform on Jackson 2.22.3+ and the explicitly pinned WebAuthn tools.jackson boundary on stable 3.2.3+" >&2
     echo "$jackson_security_floor_dependencies" >&2
     fail=1
 fi
@@ -4178,8 +4178,9 @@ import re
 import sys
 from pathlib import Path
 
-JACKSON2_FLOOR = (2, 22, 0)
-JACKSON3_FLOOR = (3, 2, 1)
+JACKSON2_FLOOR = (2, 22, 3)
+JACKSON2_ANNOTATIONS_FLOOR = (2, 22, 0)
+JACKSON3_FLOOR = (3, 2, 3)
 UNREVIEWED_QUALIFIER = re.compile(r"(?:^|[.-])(alpha|beta|snapshot|rc|b\d+|m\d+|mr|milestone|pr\d+)(?:[.-]|\d|$)", re.IGNORECASE)
 root = Path("code/packaging/app/target")
 failures = []
@@ -4196,10 +4197,12 @@ if root.exists():
         version = (int(major), int(minor), int(patch or "0"))
         if artifact == "jackson-annotations" and version[0] == 2 and version[1] >= 20 and patch is not None:
             failures.append(f"{path}: Jackson 2 annotations jar uses a patch version; use the patchless 2.20+ annotations line")
-        if version[0] == 2 and version < JACKSON2_FLOOR:
-            failures.append(f"{path}: Jackson 2 < 2.22.0")
+        jackson2_floor = JACKSON2_ANNOTATIONS_FLOOR if artifact == "jackson-annotations" else JACKSON2_FLOOR
+        if version[0] == 2 and version < jackson2_floor:
+            floor_text = "2.22" if artifact == "jackson-annotations" else "2.22.3"
+            failures.append(f"{path}: Jackson 2 < {floor_text}")
         elif version[0] == 3 and version < JACKSON3_FLOOR:
-            failures.append(f"{path}: Jackson 3 < 3.2.1")
+            failures.append(f"{path}: Jackson 3 < 3.2.3")
         elif version[0] not in (2, 3):
             failures.append(f"{path}: unsupported Jackson major {version[0]}")
         if UNREVIEWED_QUALIFIER.search(qualifier):
@@ -4210,7 +4213,7 @@ sys.exit(0)
 PY
 )
 if [ -n "$jackson_security_floor_jars" ]; then
-    echo "Blocked Jackson jar below maintained stable floor packaged in app; keep Jackson 2 at 2.22.0+ and Jackson 3 at 3.2.1+ without unreviewed qualifiers" >&2
+    echo "Blocked Jackson jar below maintained stable floor packaged in app; keep Jackson 2 at 2.22.3+ (annotations 2.22) and Jackson 3 at 3.2.3+ without unreviewed qualifiers" >&2
     echo "$jackson_security_floor_jars" >&2
     fail=1
 fi
@@ -6868,7 +6871,7 @@ echo "Resolved in the jOOQ compatibility slice:"
 echo "- jOOQ runtime, metadata, codegen, and JPA extension artifacts stay on reviewed stable 3.21.x at 3.21.7+; unreviewed qualifiers and line jumps require explicit record-mapping/codegen review."
 echo "Resolved in the Jackson compatibility slice:"
 echo "- Legacy Codehaus Jackson 1.x dependencies, imports, and packaged jars are blocked; maintained Jackson 2/3 artifacts own JSON processing."
-echo "- Jackson 2 cannot drop below stable 2.22.0 with annotations 2.22, and Jackson 3 cannot drop below stable 3.2.1; unreviewed qualifiers require explicit JSON compatibility review."
+echo "- Jackson 2 cannot drop below stable 2.22.3 with annotations 2.22, and Jackson 3 cannot drop below stable 3.2.3; unreviewed qualifiers require explicit JSON compatibility review."
 echo "- The platform remains on com.fasterxml Jackson 2; WebAuthn4J and logstash-logback-encoder use the pinned tools.jackson 3.2 line, and packaged gates verify the two generations have exact, disjoint class namespaces."
 echo "Resolved in the serialization helper compatibility slice:"
 echo "- Legacy XStream/json-lib/EZMorph/cglib-nodep/asm-all dependencies, imports, and packaged jars are blocked; maintained Jackson/JDK/modern ASM-family paths require explicit compatibility review."

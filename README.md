@@ -52,6 +52,22 @@ and verifies its pinned digest and dependency metadata before installing it
 into the build-local Maven repository. See
 [`third-party/HAZELCAST.md`](third-party/HAZELCAST.md) for provenance.
 
+## Unreleased 0.183.328 candidate
+
+The source candidate updates platform Jackson to `2.22.3` and the isolated
+WebAuthn/logging Jackson line to `3.2.3`, with patchless annotations remaining
+`2.22`. These are the official patched versions for CVE-2026-91776 and
+CVE-2026-91777; see the [candidate note](docs/releases/orchestration-engine-0.183.328.md).
+The candidate pins the corresponding officially published
+[`distributed-cache-runtime` `5.7.5` artifact](https://github.com/PastureStack/distributed-cache-runtime/releases/tag/v5.7.5),
+because `5.7.4` embeds both older Jackson versions. The actual release JAR,
+source commit, checksum, and asset ID were read back and verified; see the
+[Cache provenance](third-party/HAZELCAST.md). Engine328 has not yet been built
+or published, and its seven new Java regression cases have not yet been
+compiled or executed. Cache's producer checks are not Engine validation.
+No Engine328 artifact, CI PASS, Server496 digest, or deployment is claimed.
+The published 327 provenance above remains historical and unchanged.
+
 ## Build and validation
 
 Before publishing an Engine artifact or a Server image, run the complete
@@ -64,7 +80,7 @@ bash scripts/check-cattle-jdk25-full-package
 After the gate passes, package and check the release artifact:
 
 ```sh
-ENGINE_VERSION=0.183.327 bash scripts/build --release
+ENGINE_VERSION=0.183.328 bash scripts/build --release
 bash scripts/check-release-artifact dist/artifacts/cattle.jar
 ```
 
