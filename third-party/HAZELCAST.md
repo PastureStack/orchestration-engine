@@ -15,7 +15,7 @@ The source project owns the Java 25 build, focused legitimate and malicious regr
 
 This removes the former duplicate source-download, patch, and rebuild path. Dependency changes are reviewed and tested once in the source project; orchestration consumes only the corresponding pinned release bytes.
 
-## Published 5.7.5 provenance for the unbuilt Engine328 candidate
+## Published 5.7.5 provenance for Engine328
 
 - Official numeric release: [`v5.7.5`](https://github.com/PastureStack/distributed-cache-runtime/releases/tag/v5.7.5), release ID `400661425`, public and non-draft
 - Verified signed tag object: `818592fbf7dd0506862216211edc99b3e009a414`
@@ -37,9 +37,12 @@ passed with the exact Java SARIF showing 120 rules, zero results,
 zero severity-at-least-7 findings, and zero unresolved rule metadata.
 
 The Engine installer and source oracle now pin these exact official identities;
-the old 5.7.4 hash is not reused. Engine328 has not yet been built or published.
-Its Java regression cases and full artifact/SBOM/runtime gates remain pending;
-the producer's results do not stand in for those consumer checks.
+the old 5.7.4 hash is not reused. Engine328 is independently published from
+source `ad43f4b6790c359e248710a39bca2f776d70be62`; official build/security run
+`36818926539` passed 256 suites / 1,104 tests and the exact WAR completed
+isolated H2 startup. See the [Engine release note](../docs/releases/orchestration-engine-0.183.328.md)
+for actual artifact, scan and runtime boundaries. Cache producer results
+do not stand in for Engine consumer checks or Server/browser acceptance.
 
 ## License
 

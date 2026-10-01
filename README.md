@@ -13,7 +13,27 @@ preserved upstream boundary.
 
 ## Current release
 
-The current published release is `v0.183.327`.
+The current published release is `v0.183.328`. It updates platform Jackson to
+`2.22.3` and the isolated WebAuthn/logging runtime to `3.2.3`, and consumes the
+official Cache `5.7.5` artifact. The two Jackson namespaces remain separate.
+See the [release note](docs/releases/orchestration-engine-0.183.328.md).
+The official numeric [release](https://github.com/PastureStack/orchestration-engine/releases/tag/v0.183.328)
+uses source `ad43f4b6790c359e248710a39bca2f776d70be62`; its actual CI WAR is
+`87,690,742` bytes with SHA-256
+`184fb3d4a2b026560e1e60d7b444f693f79bff6c8220cc9354c1284012f6a683`.
+[Build/security run `36818926539`](https://github.com/PastureStack/orchestration-engine/actions/runs/36818926539)
+passed 256 suites / 1,104 tests, with zero failures, errors or skips, including
+all six BodyParser and eight WebAuthnConfiguration cases. The exact CI WAR
+completed standalone JDK `25.0.3` startup against isolated H2 and exited 0.
+Actual artifact and build-image Critical/High findings are zero; Medium/Low
+build-image findings remain recorded. The
+[custom CodeQL run](https://github.com/PastureStack/orchestration-engine/actions/runs/36818926652)
+retains four lower-severity findings, not an all-findings-zero claim.
+Full MariaDB integration, Server consumption, browser authentication and the
+resource/role matrix remain separate acceptance gates.
+
+## Preserved 0.183.327 behavior and provenance
+
 Certificate name/description updates preserve omitted certificate content;
 deleting or removing a certificate referenced by a v2 load balancer's alternate
 list is rejected just like a default certificate. Authorization and private-key
@@ -34,10 +54,12 @@ and [CodeQL run `36701559287`](https://github.com/PastureStack/orchestration-eng
 passed, along with all 17 focused Certificate tests. The exact published WAR
 completed standalone startup against isolated H2 with JDK `25.0.3` and exited
 with code 0. Full MariaDB/MySQL integration and Server/browser Certificate QA
-remain separate and pending; the full resource/role matrix is not accepted
+were separate and pending at that component release; the full resource/role matrix is not accepted
 by these component checks.
 
 The `v0.183.324` tag is source-only and has no published release artifact.
+
+## Current build baseline
 
 The build retains Java 25, Ubuntu 26.04, Maven, Liquibase, MariaDB/MySQL,
 WebSocket, concurrency, runtime maintenance, and the existing direct tool
@@ -46,26 +68,25 @@ pins OpenSSL CLI, library and legacy provider to `3.5.5-1ubuntu3.6`, the
 official fix for [CVE-2026-84782](https://ubuntu.com/security/CVE-2026-84782).
 It retains OpenSSL 3.5 and does not relax the build-image security gate.
 It consumes the exact
-`5.7.4` JAR from
-[`distributed-cache-runtime`](https://github.com/PastureStack/distributed-cache-runtime/releases/tag/v5.7.4)
+`5.7.5` JAR from
+[`distributed-cache-runtime`](https://github.com/PastureStack/distributed-cache-runtime/releases/tag/v5.7.5)
 and verifies its pinned digest and dependency metadata before installing it
 into the build-local Maven repository. See
 [`third-party/HAZELCAST.md`](third-party/HAZELCAST.md) for provenance.
 
-## Unreleased 0.183.328 candidate
+## Jackson and embedded Cache compatibility
 
-The source candidate updates platform Jackson to `2.22.3` and the isolated
+This release updates platform Jackson to `2.22.3` and the isolated
 WebAuthn/logging Jackson line to `3.2.3`, with patchless annotations remaining
 `2.22`. These are the official patched versions for CVE-2026-91776 and
-CVE-2026-91777; see the [candidate note](docs/releases/orchestration-engine-0.183.328.md).
-The candidate pins the corresponding officially published
+CVE-2026-91777; see the [release note](docs/releases/orchestration-engine-0.183.328.md).
+The release pins the corresponding officially published
 [`distributed-cache-runtime` `5.7.5` artifact](https://github.com/PastureStack/distributed-cache-runtime/releases/tag/v5.7.5),
 because `5.7.4` embeds both older Jackson versions. The actual release JAR,
 source commit, checksum, and asset ID were read back and verified; see the
-[Cache provenance](third-party/HAZELCAST.md). Engine328 has not yet been built
-or published, and its seven new Java regression cases have not yet been
-compiled or executed. Cache's producer checks are not Engine validation.
-No Engine328 artifact, CI PASS, Server496 digest, or deployment is claimed.
+[Cache provenance](third-party/HAZELCAST.md). Engine's producer and consumer
+checks are independently recorded; Cache's results are not substitutes for
+Engine or Server acceptance. No Server496 image or deployment is claimed here.
 The published 327 provenance above remains historical and unchanged.
 
 ## Build and validation

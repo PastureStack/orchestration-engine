@@ -1,8 +1,8 @@
-# Orchestration Engine 0.183.328 candidate — not released
+# Orchestration Engine 0.183.328
 
 ## Scope and official correction
 
-This source-only candidate updates the platform `com.fasterxml.jackson`
+This release updates the platform `com.fasterxml.jackson`
 runtime from `2.22.2` to `2.22.3` and the isolated `tools.jackson` runtime from
 `3.2.2` to `3.2.3`. Patchless `jackson-annotations` stays `2.22`.
 The maintainer advisories for
@@ -36,24 +36,36 @@ The installer and source oracle pin those exact identities; see the
 and producer build/security/CodeQL evidence. Engine consumes an official,
 checksum-pinned artifact, not a second local fork.
 
-Engine328 has not yet been built or published. The successful Cache producer
-checks do not establish Engine compatibility or replace its pending consumer
-tests. There is no Engine328 release artifact, source/build/SBOM/runtime PASS,
-or Server496 image digest at this stage.
+The signed numeric `v0.183.328` tag points to tested source
+`ad43f4b6790c359e248710a39bca2f776d70be62`. PR #64 was normally merged after
+required checks passed, and its merged tree matches the tested source tree.
+The official release WAR is the actual CI artifact, not a local rebuild:
+`87,690,742` bytes, SHA-256
+`184fb3d4a2b026560e1e60d7b444f693f79bff6c8220cc9354c1284012f6a683`.
+Server496 assembly and QA remain separate; no Server496 image digest or
+deployment is established by this component release.
 Server496 run `36812661669` remains failed; its original evidence is not changed.
 The published Engine327 and its release notes remain historical records.
 
-## Required Engine328 validation before publication
+## Executed Engine328 validation
 
-Run the dependency and exact dual-namespace fixture gates, then the existing
-`JacksonJsonMapperTest` and MFA/WebAuthn-adjacent tests. Four new
+The dependency and exact dual-namespace fixture gates passed. The official
+[build/security run](https://github.com/PastureStack/orchestration-engine/actions/runs/36818926539)
+passed 256 suites / 1,104 tests, zero failures, errors or skips. All six
+`BodyParserRequestHandlerTest` and eight `WebAuthnConfigurationTest` cases
+passed. Four new
 `BodyParserRequestHandlerTest` cases cover the real gdapi mapper, object/list
 merging, Unicode, unknown fields, and malformed JSON returning 400. Three new
 `WebAuthnConfigurationTest` cases cover WebAuthn4J JSON/CBOR and the credential
-data/base64url storage roundtrip. These seven Java cases have not yet been
-compiled or executed; configuration-only tests are not a full Passkey login.
-Review effective POM
-and dependency tree for both patched lines. Before publishing, the existing
-full package, actual JAR inventory/SBOM/security, and standalone runtime gates
-remain required. No database or QA authentication is part of this candidate
-preparation, and no security gate or VEX exception is relaxed.
+data/base64url storage roundtrip. These configuration/serialization tests are
+not a full Passkey login. Actual packaged inventory checked 191 embedded JAR
+hashes and 204 CycloneDX components. Source secret findings and artifact
+Critical/High findings are zero. The build image has zero Critical/High but
+198 Medium / 22 Low findings, still recorded rather than concealed.
+The [custom Java CodeQL run](https://github.com/PastureStack/orchestration-engine/actions/runs/36818926652)
+passed with actual SARIF containing three severity-4 cookie findings and one
+severity-5 lock finding; Critical/High and unresolved rule metadata are zero.
+The exact CI WAR completed standalone JDK 25.0.3 startup against isolated H2,
+without network or platform data volumes, and exited 0. Full MariaDB and
+Server/browser acceptance remain pending. No security gate or VEX exception
+was relaxed.
