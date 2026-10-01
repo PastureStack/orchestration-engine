@@ -54,10 +54,12 @@ and [CodeQL run `36701559287`](https://github.com/PastureStack/orchestration-eng
 passed, along with all 17 focused Certificate tests. The exact published WAR
 completed standalone startup against isolated H2 with JDK `25.0.3` and exited
 with code 0. Full MariaDB/MySQL integration and Server/browser Certificate QA
-remain separate and pending; the full resource/role matrix is not accepted
+were separate and pending at that component release; the full resource/role matrix is not accepted
 by these component checks.
 
 The `v0.183.324` tag is source-only and has no published release artifact.
+
+## Current build baseline
 
 The build retains Java 25, Ubuntu 26.04, Maven, Liquibase, MariaDB/MySQL,
 WebSocket, concurrency, runtime maintenance, and the existing direct tool
