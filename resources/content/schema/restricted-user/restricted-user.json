@@ -5,6 +5,8 @@
         "physicalHost": "r",
         "physicalHost.resourceActions\\..*": "",
         "registrationToken" : "",
+        "genericObject.key": "",
+        "genericObject.resourceData": "",
 
         "end" : ""
     }
