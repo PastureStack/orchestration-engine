@@ -13,6 +13,13 @@ preserved upstream boundary.
 
 ## Current release
 
+`v0.183.331` is being prepared to correct the stopped-container mapping condition
+in 330. The common selection/update predicate will accept only running/active
+or stopped/inactive pairs; all source-account, unique-mapping, managed-container
+and full-row compare-and-swap guards remain intact. Publication and consuming
+Server/browser acceptance are pending. See the
+[331 preparation note](docs/releases/orchestration-engine-0.183.331.md).
+
 The published release `v0.183.330` is a narrowly scoped imported-container
 name refresh. A ping's UUID/name hint is never written as the authoritative
 name: the Engine inspects the exact full Docker ID through its existing Agent
@@ -160,7 +167,7 @@ bash scripts/check-cattle-jdk25-full-package
 After the gate passes, package and check the release artifact:
 
 ```sh
-ENGINE_VERSION=0.183.330 bash scripts/build --release
+ENGINE_VERSION=0.183.331 bash scripts/build --release
 bash scripts/check-release-artifact dist/artifacts/cattle.jar
 ```
 
