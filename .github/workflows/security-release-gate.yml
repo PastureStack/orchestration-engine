@@ -57,6 +57,20 @@ jobs:
           import xml.etree.ElementTree as ET
 
           required = {
+              'io.cattle.platform.api.schema.FileSchemaFactoryTest': {
+                  'restoresOnlyNativeReadFieldInPackagedFrozenVolumeRoleSchemas',
+              },
+              'io.cattle.platform.schema.processor.VolumeNativeSchemaAuthorizationTest': {
+                  'currentRoleOverlaysExposeNativeClassificationWithoutGrantingMutation',
+                  'readonlyPipelinePreservesCrudWhileRetainingServerOwnedNativeReadField',
+              },
+              'io.github.ibuildthecloud.gdapi.model.impl.VolumeNativeWrappedResourceTest': {
+                  'formatterRetainsTheActualServerTrueAndFalseClassification',
+                  'onlyAnExplicitSchemaContractCanProvideTheServerDefault',
+              },
+              'io.github.ibuildthecloud.gdapi.validation.ValidationHandlerTest': {
+                  'clientCannotSetServerOwnedVolumeNativeClassification',
+              },
               'io.cattle.platform.core.dao.impl.NativeContainerNameRefreshDaoTest': {
                   'exactExistingImportedSnapshotAndNameOnlyCas',
                   'compareAndSwapContainsEveryOriginalColumnIncludingBinaryTextAndJson',
@@ -125,7 +139,7 @@ jobs:
                   record = {'class': case.get('classname'), 'name': case.get('name'),
                             'status': outcomes[0] if outcomes else 'passed'}
                   cases.append(record)
-                  if record['class'] in required:
+                  if record['class'] in required and record['name'] in required[record['class']]:
                       key = (record['class'], record['name'])
                       assert key not in observed, ('duplicate required case', key)
                       observed[key] = record['status']
@@ -135,7 +149,9 @@ jobs:
               suites.append({'report': path.as_posix(), 'counts': counts, 'cases': cases})
           assert suites, 'No executed Surefire unit reports'
           expected = {(name, case) for name, cases in required.items() for case in cases}
-          assert set(observed) == expected and set(observed.values()) == {'passed'}, 'Required cases missing, skipped or failed'
+          assert set(observed) == expected and set(observed.values()) == {'passed'}, (
+              'Required cases missing, skipped or failed', sorted(expected - set(observed)),
+              sorted(key for key, value in observed.items() if value != 'passed'))
           summary = {'source': Path('evidence/source-revision.txt').read_text().strip(),
                      'suiteCount': len(suites), 'totals': {name: sum(s['counts'][name] for s in suites)
                      for name in ('tests', 'failures', 'errors', 'skipped')}, 'suites': suites}

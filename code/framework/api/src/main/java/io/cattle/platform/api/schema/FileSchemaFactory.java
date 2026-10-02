@@ -92,6 +92,7 @@ public class FileSchemaFactory extends AbstractSchemaFactory implements Initiali
         Schema coreSchema = parentSchemaFactory.getSchema(schema.getId());
         mergeProjectMemberExternalIdTypeOptions(schema, coreSchema);
         mergeProjectTemplatePublicReadField(schema, coreSchema);
+        mergeVolumeNativeReadField(schema, coreSchema);
         Class<?> clz =  parentSchemaFactory.getSchemaClass(schema.getId());
         if (clz == null) {
             return;
@@ -155,6 +156,29 @@ public class FileSchemaFactory extends AbstractSchemaFactory implements Initiali
 
     public String getFile() {
         return file;
+    }
+
+    protected void mergeVolumeNativeReadField(Schema schema, Schema parentSchema) {
+        if (parentSchema == null || !"volume".equals(schema.getId()) ||
+                schema.getResourceFields().containsKey("isNative")) {
+            return;
+        }
+
+        Field parentField = parentSchema.getResourceFields().get("isNative");
+        if (!(parentField instanceof FieldImpl)) {
+            return;
+        }
+
+        // v1 reads frozen role schemas, so the current authorization overlay
+        // cannot restore this missing classification. Expose only the existing
+        // server-owned flag; do not grant mutation or replace other fields.
+        FieldImpl readOnly = new FieldImpl(parentField);
+        readOnly.setName("isNative");
+        readOnly.setCreate(false);
+        readOnly.setUpdate(false);
+        readOnly.setReadOnCreateOnly(false);
+        readOnly.setIncludeInList(true);
+        schema.getResourceFields().put("isNative", readOnly);
     }
 
     public void setFile(String file) {

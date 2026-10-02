@@ -19,6 +19,28 @@ import org.junit.Test;
 public class ValidationHandlerTest {
 
     @Test
+    public void clientCannotSetServerOwnedVolumeNativeClassification() {
+        SchemaImpl schema = new SchemaImpl();
+        schema.setId("volume");
+        FieldImpl flag = new FieldImpl();
+        flag.setType("boolean");
+        flag.setDefault(Boolean.FALSE);
+        schema.getResourceFields().put("isNative", flag);
+        ValidationHandler handler = new ValidationHandler();
+        for (Object attempt : Arrays.asList(Boolean.TRUE, Boolean.FALSE, "true", null)) {
+            Map<String, Object> input = new HashMap<String, Object>();
+            input.put("isNative", attempt);
+            ApiRequest request = new ApiRequest(null, null);
+            request.setRequestObject(input);
+            handler.validateOperationField(schema, request, true, new ValidationContext());
+            assertEquals(Boolean.FALSE, RequestUtils.toMap(request.getRequestObject()).get("isNative"));
+            request.setRequestObject(input);
+            handler.validateOperationField(schema, request, false, new ValidationContext());
+            assertFalse(RequestUtils.toMap(request.getRequestObject()).containsKey("isNative"));
+        }
+    }
+
+    @Test
     public void testNullableOption() {
         SchemaImpl schema = new SchemaImpl();
         FieldImpl field = new FieldImpl();
