@@ -57,6 +57,20 @@ jobs:
           import xml.etree.ElementTree as ET
 
           required = {
+              'io.cattle.platform.api.schema.FileSchemaFactoryTest': {
+                  'restoresOnlyNativeReadFieldInPackagedFrozenVolumeRoleSchemas',
+              },
+              'io.cattle.platform.schema.processor.VolumeNativeSchemaAuthorizationTest': {
+                  'currentRoleOverlaysExposeNativeClassificationWithoutGrantingMutation',
+                  'readonlyPipelinePreservesCrudWhileRetainingServerOwnedNativeReadField',
+              },
+              'io.github.ibuildthecloud.gdapi.model.impl.VolumeNativeWrappedResourceTest': {
+                  'formatterRetainsTheActualServerTrueAndFalseClassification',
+                  'onlyAnExplicitSchemaContractCanProvideTheServerDefault',
+              },
+              'io.github.ibuildthecloud.gdapi.validation.ValidationHandlerTest': {
+                  'clientCannotSetServerOwnedVolumeNativeClassification',
+              },
               'io.cattle.platform.core.dao.impl.NativeContainerNameRefreshDaoTest': {
                   'exactExistingImportedSnapshotAndNameOnlyCas',
                   'compareAndSwapContainsEveryOriginalColumnIncludingBinaryTextAndJson',

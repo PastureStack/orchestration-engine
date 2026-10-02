@@ -13,6 +13,14 @@ preserved upstream boundary.
 
 ## Current release
 
+Candidate `v0.183.332` restores the server-owned Volume `isNative` classification
+as a read-only field in both v1 frozen role schemas and v2 role overlays. It does
+not change Volume CRUD permissions, infer missing fields in the browser, or
+allow clients to change native classification. Eighteen targeted local tests
+passed, including six new regressions. Formal artifact publication and native
+Volume UI lifecycle acceptance are pending; see the
+[332 candidate note](docs/releases/orchestration-engine-0.183.332.md).
+
 The published release `v0.183.331` corrects the stopped-container mapping condition
 in 330. The common selection/update predicate accepts only running/active
 or stopped/inactive pairs; all source-account, unique-mapping, managed-container
@@ -206,7 +214,7 @@ bash scripts/check-cattle-jdk25-full-package
 After the gate passes, package and check the release artifact:
 
 ```sh
-ENGINE_VERSION=0.183.331 bash scripts/build --release
+ENGINE_VERSION=0.183.332 bash scripts/build --release
 bash scripts/check-release-artifact dist/artifacts/cattle.jar
 ```
 

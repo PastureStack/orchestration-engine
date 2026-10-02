@@ -4,6 +4,20 @@ The migration preserves established `io.cattle.*` Java packages, Maven coordinat
 
 New operator-facing names use PastureStack and `PASTURESTACK_*`. Compatibility identifiers must be changed only with an explicit data migration, a dual-read or dual-write transition, a rollback plan, and cross-repository verification.
 
+## Volume native classification
+
+Candidate `0.183.332` exposes the existing `volume.isNative` boolean as read-only
+for readable Volume resources. Current role overlays retain the field; the v1
+loader copies only this missing field from the current core schema into frozen
+role schemas. It grants neither create nor update permission on the field and
+does not widen collection/object authorization, methods, actions or other
+fields. The API preserves stored true/false values and applies the established
+server default only through an explicit schema contract. Client input cannot
+set this server-owned classification on POST or PUT. No database migration is
+required. Rolling back removes the field from affected role responses, so the
+strict Web Console unallocated-volume list may again hide eligible volumes.
+Native UI lifecycle acceptance and artifact publication are still pending.
+
 ## Certificate lifecycle
 
 Engine `0.183.327` allows partial Certificate updates that omit `cert`, without
