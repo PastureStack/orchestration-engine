@@ -22,9 +22,18 @@ The signed numeric release binds built source
 Official CI passed 270 suites / 1,150 tests with zero failures, errors or skips;
 the six release assets and three anonymous content readbacks were verified.
 The exact WAR passed isolated JDK25.0.3 / H2 startup with no network, exposed
-ports or platform-data mounts. Server `v1.6.505` is not yet published. Server
-consumption, native Volume UI lifecycle and the full resource/role matrix
-remain pending acceptance, not an overall PASS.
+ports or platform-data mounts. Published Server `v1.6.505` consumes the exact
+WAR with Web Console `1.6.168`, from source
+`400f7dc8d533a5f13a555398c595b9ae42e0c454`, in immutable digest
+`sha256:b3dd402cfd773b4d37ecf06f716187833e56cc6f211b7ab920dccf8dcb7366c5`.
+Publisher 37072151759 and official image/component readback passed. QA8080
+deployment and one restart passed HTTP 200/pong with runtime, environment and
+five database counts preserved; the 504 rollback point remains. Docker health
+is `null`, not `healthy`. Native Volume UI acceptance is in progress and the
+full resource/role matrix remains incomplete, not an overall PASS.
+An unallocated local Volume can legitimately be `inactive`; the native list
+does not require `active`. Removal follows actual actions and empty bindings,
+not an additional activate/deactivate cycle introduced by an acceptance tool.
 
 ## Certificate lifecycle
 
