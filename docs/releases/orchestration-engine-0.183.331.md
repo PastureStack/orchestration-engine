@@ -1,7 +1,7 @@
 # Orchestration Engine 0.183.331
 
-Preparing only. No official CI, release artifact, consuming Server image or
-browser acceptance is claimed yet. Existing numeric tags remain immutable.
+Published immutable numeric release. Consuming Server image and real-host/browser
+acceptance remain separate and pending; existing numeric tags remain immutable.
 
 ## Root cause and minimal correction
 
@@ -35,9 +35,27 @@ not a real database compare-and-swap race or native browser acceptance claim.
 The source-generated SELECT SHA-256 is
 `07c2f72bfdc380df2d8bd706bf20769f98d75ab764da330b8ade5f66af61e1a8`.
 
-Normal release CI must retain all ten DAO cases plus the nine handler, three
-monitor and existing role-schema cases and the generated SELECT. The exact
-CI WAR must be published and consumed by a new immutable Server, then checked
+## Official release evidence
+
+Signed tag `v0.183.331` binds exact source
+`515a5d37a1194f827bc3ffde34db729905ecb2b1`. PR70 merged normally as
+`3249e77c149fb5220022baea01655dbe197c19e4` with the same source tree.
+Build/security run 36972340448 passed 268 suites / 1,144 tests, with zero
+failures, errors or skips. All ten DAO, nine handler, three monitor and six
+retained role-schema cases passed; the production SELECT matches the 84-case
+MariaDB fixture above.
+
+WAR SHA256 `0c8310d9e9a872589972658d2fd8cb88f59f473ab8072a4746df5b0f4ef9e70e`,
+87,700,088 bytes. Six exact CI assets are published; checksum, source revision
+and test-results contents also passed anonymous readback. The exact WAR exited
+0 in isolated JDK25.0.3 / H2 startup, without network, exposed ports, Docker
+socket or platform data. Artifact/build-image Critical and High findings are
+zero. CodeQL run 36972340453 retains four lower-severity findings; this does
+not imply an all-findings-zero scan or full permissions acceptance.
+
+The initial candidate's pre-build gate failure is retained: three expected
+330 version/log lines were corrected to 331 without relaxing any checks.
+The exact CI WAR must be consumed by a new immutable Server, then checked
 on the real QA host and native browser before declaring name acceptance.
 Keep existing environment variables, volumes, AppArmor, restart policy,
 HTTPS origin, OIDC/MFA/session ownership and nftables unchanged. Rollback uses

@@ -13,14 +13,29 @@ preserved upstream boundary.
 
 ## Current release
 
-`v0.183.331` is being prepared to correct the stopped-container mapping condition
-in 330. The common selection/update predicate will accept only running/active
+The published release `v0.183.331` corrects the stopped-container mapping condition
+in 330. The common selection/update predicate accepts only running/active
 or stopped/inactive pairs; all source-account, unique-mapping, managed-container
-and full-row compare-and-swap guards remain intact. Publication and consuming
-Server/browser acceptance are pending. See the
-[331 preparation note](docs/releases/orchestration-engine-0.183.331.md).
+and full-row compare-and-swap guards remain intact. See the
+[331 release note](docs/releases/orchestration-engine-0.183.331.md) and
+[immutable numeric release](https://github.com/PastureStack/orchestration-engine/releases/tag/v0.183.331).
+The signed annotated tag binds exact CI source
+`515a5d37a1194f827bc3ffde34db729905ecb2b1`; PR70 was normally merged as
+`3249e77c149fb5220022baea01655dbe197c19e4` with an identical tree.
+The WAR is `87,700,088` bytes, SHA256
+`0c8310d9e9a872589972658d2fd8cb88f59f473ab8072a4746df5b0f4ef9e70e`.
+Exact-source build 36972340448 passed 268 suites / 1,144 tests, zero failures,
+errors or skips (22 native-name and six frozen-role response cases).
+Six exact CI assets and three anonymous content readbacks passed; the exact
+WAR also completed isolated JDK25.0.3 / H2 startup, with no network, exposed
+ports or platform-data mounts. Artifact/build-image Critical and High findings
+are zero; CodeQL 36972340453 retains four lower-severity findings. These scoped
+checks do not claim zero risk, complete resource/role acceptance or Server500
+and real-host/browser acceptance; the latter remain separate and pending.
 
-The published release `v0.183.330` is a narrowly scoped imported-container
+## Historical 0.183.330 release
+
+The previous release `v0.183.330` is a narrowly scoped imported-container
 name refresh. A ping's UUID/name hint is never written as the authoritative
 name: the Engine inspects the exact full Docker ID through its existing Agent
 contract, and performs a name-only compare-and-swap on an eligible existing
