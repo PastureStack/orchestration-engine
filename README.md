@@ -13,16 +13,37 @@ preserved upstream boundary.
 
 ## Current release
 
-The source tree prepares `v0.183.330`, a narrowly scoped imported-container
+The published release `v0.183.330` is a narrowly scoped imported-container
 name refresh. A ping's UUID/name hint is never written as the authoritative
 name: the Engine inspects the exact full Docker ID through its existing Agent
 contract, and performs a name-only compare-and-swap on an eligible existing
 native container. Managed service/stack names and lifecycle processing are
 unchanged. See the [330 release note](docs/releases/orchestration-engine-0.183.330.md).
-The focused offline checks have passed; a published WAR, consuming Server
-image, and real-host/browser name-refresh acceptance are still required.
+The official numeric [release](https://github.com/PastureStack/orchestration-engine/releases/tag/v0.183.330)
+uses a signed annotated tag pointing to exact CI source
+`3f7320a8063a5471618be5b8be6a168f49559847`.
+[PR #68](https://github.com/PastureStack/orchestration-engine/pull/68) was normally
+squash-merged as `b76ddcc5c24a7683ffe05fba26707b71b3b313eb`; its tree is identical
+to the CI source, and the immutable release tag remains on the CI source.
+The exact WAR is `87,700,053` bytes with SHA-256
+`c01cbbfd63625fc09f39c5494775919aad6db22c92050b217b28b940b57e1de3`.
+[Build/security run `36966573025`](https://github.com/PastureStack/orchestration-engine/actions/runs/36966573025)
+passed 268 suites / 1,141 tests with zero failures, errors or skips, including
+19 native-name cases and six retained GenericObject cases. Artifact and
+build-image Critical/High findings are zero; the
+[CodeQL run `36966573050`](https://github.com/PastureStack/orchestration-engine/actions/runs/36966573050)
+retains four lower-severity findings, not an all-findings-zero claim.
+Six exact CI assets are published. Anonymous content readback checked the
+checksum, source revision and unit-test results; the public WAR was not
+downloaded again. The exact CI WAR completed isolated JDK `25.0.3` / H2 startup
+and exited 0, with no network, exposed ports or platform-data mounts. Consuming
+Server image, real MariaDB concurrency and real-host/browser name-refresh
+acceptance remain separate requirements; this does not establish the complete
+resource/role matrix.
 
-The current published release is `v0.183.329`. It closes a low-role GenericObject
+## Historical 0.183.329 release
+
+The previous published release is `v0.183.329`. It closes a low-role GenericObject
 read bypass for plugin capabilities in both v2-beta and the frozen v1 schemas.
 Readonly/restricted clients retain resource metadata; plugin configuration is
 read through its typed API. Owner/member/service storage remains unchanged.
