@@ -20,6 +20,7 @@ import io.cattle.platform.core.dao.GenericResourceDao;
 import io.cattle.platform.core.dao.InstanceDao;
 import io.cattle.platform.core.dao.NetworkDao;
 import io.cattle.platform.core.model.ContainerEvent;
+import io.cattle.platform.core.model.Agent;
 import io.cattle.platform.core.model.Host;
 import io.cattle.platform.core.model.Instance;
 import io.cattle.platform.engine.handler.HandlerResult;
@@ -27,11 +28,14 @@ import io.cattle.platform.engine.process.ProcessInstance;
 import io.cattle.platform.engine.process.ProcessState;
 import io.cattle.platform.engine.process.impl.ProcessCancelException;
 import io.cattle.platform.eventing.exception.EventExecutionException;
+import io.cattle.platform.eventing.EventService;
 import io.cattle.platform.eventing.model.Event;
 import io.cattle.platform.eventing.model.EventVO;
 import io.cattle.platform.lock.LockCallback;
 import io.cattle.platform.lock.LockManager;
 import io.cattle.platform.object.process.StandardProcess;
+import io.cattle.platform.framework.event.FrameworkEvents;
+import io.cattle.platform.object.meta.ObjectMetaDataManager;
 import io.cattle.platform.object.resource.ResourceMonitor;
 import io.cattle.platform.object.util.DataAccessor;
 import io.cattle.platform.object.util.DataUtils;
@@ -92,6 +96,95 @@ public class ContainerEventCreate extends AbstractDefaultProcessHandler {
 
     @Inject
     GenericResourceDao resourceDao;
+
+    @Inject
+    EventService eventService;
+
+    public enum NativeNameRefreshResult {
+        DISABLED, SOURCE_UNVERIFIED, CANDIDATE_UNVERIFIED, UNCHANGED,
+        INSPECT_UNAVAILABLE, INSPECT_ID_MISMATCH, INSPECT_NAME_INVALID, CAS_MISS,
+        UPDATED, UPDATED_NOTIFICATION_FAILED, FAILED
+    }
+
+    /** The legacy ping UUID is only a hint; inspection by full Docker ID is the name authority. */
+    public NativeNameRefreshResult refreshNativeContainerName(long agentId, long hostId, String hostUuid,
+            String externalId, String nameHint, String reportedState, Map<String, String> reportedLabels) {
+        if (!MANAGE_NONRANCHER_CONTAINERS.get()) {
+            return NativeNameRefreshResult.DISABLED;
+        }
+        if (externalId == null || !externalId.matches("[0-9a-f]{64}") || StringUtils.isBlank(nameHint)
+                || reportedLabels == null || reportedLabels.containsKey(LABEL_RANCHER_UUID)
+                || !java.util.Arrays.asList(STATE_RUNNING, STATE_STOPPED).contains(reportedState)) {
+            return NativeNameRefreshResult.CANDIDATE_UNVERIFIED;
+        }
+        try {
+            Host source = objectManager.loadResource(Host.class, hostId);
+            if (source == null || source.getAccountId() == null || !Long.valueOf(agentId).equals(source.getAgentId())) {
+                return NativeNameRefreshResult.SOURCE_UNVERIFIED;
+            }
+            return lockManager.lock(new ContainerEventInstanceLock(source.getAccountId(), externalId),
+                    new LockCallback<NativeNameRefreshResult>() {
+                @Override
+                public NativeNameRefreshResult doWithLock() {
+                    Agent agent = objectManager.loadResource(Agent.class, agentId);
+                    Host host = objectManager.loadResource(Host.class, hostId);
+                    if (host == null || !source.getAccountId().equals(host.getAccountId())) {
+                        return NativeNameRefreshResult.SOURCE_UNVERIFIED;
+                    }
+                    Instance original = instanceDao.getNativeContainerForNameRefresh(agent, host, hostUuid, externalId);
+                    if (original == null || !externalId.equals(original.getExternalId())
+                            || !reportedState.equals(original.getState())) {
+                        return NativeNameRefreshResult.CANDIDATE_UNVERIFIED;
+                    }
+                    if (nameHint.equals(original.getName())) {
+                        return NativeNameRefreshResult.UNCHANGED;
+                    }
+                    Map<String, Object> inspect = inspectNativeNameById(agentId, externalId);
+                    if (inspect == null || inspect.isEmpty()) {
+                        return NativeNameRefreshResult.INSPECT_UNAVAILABLE;
+                    }
+                    if (!externalId.equals(inspect.get("Id"))) {
+                        return NativeNameRefreshResult.INSPECT_ID_MISMATCH;
+                    }
+                    Object rawName = inspect.get(INSPECT_NAME);
+                    if (!(rawName instanceof String)) {
+                        return NativeNameRefreshResult.INSPECT_NAME_INVALID;
+                    }
+                    String name = ((String) rawName).replaceFirst("^/", "");
+                    if (!name.matches("[A-Za-z0-9][A-Za-z0-9_.-]{0,254}")) {
+                        return NativeNameRefreshResult.INSPECT_NAME_INVALID;
+                    }
+                    if (name.equals(original.getName())) {
+                        return NativeNameRefreshResult.UNCHANGED;
+                    }
+                    if (!instanceDao.updateNativeContainerName(original, agent, host, hostUuid, name)) {
+                        return NativeNameRefreshResult.CAS_MISS;
+                    }
+                    Event changed = EventVO.newEvent(FrameworkEvents.STATE_CHANGE)
+                            .withData(CollectionUtils.asMap(ObjectMetaDataManager.ACCOUNT_FIELD, original.getAccountId()))
+                            .withResourceType(TYPE).withResourceId(original.getId().toString());
+                    try {
+                        if (!eventService.publish(changed)) {
+                            return NativeNameRefreshResult.UPDATED_NOTIFICATION_FAILED;
+                        }
+                    } catch (RuntimeException e) {
+                        return NativeNameRefreshResult.UPDATED_NOTIFICATION_FAILED;
+                    }
+                    return NativeNameRefreshResult.UPDATED;
+                }
+            });
+        } catch (EventExecutionException | TimeoutException e) {
+            return NativeNameRefreshResult.INSPECT_UNAVAILABLE;
+        } catch (RuntimeException e) {
+            // Never log SQL bind values, names or inspect payloads; the caller records only this code and numeric IDs.
+            return NativeNameRefreshResult.FAILED;
+        }
+    }
+
+    protected Map<String, Object> inspectNativeNameById(long agentId, String externalId) {
+        Event result = agentLocator.lookupAgent(agentId).callSync(newInspectEvent(null, externalId));
+        return CollectionUtils.toMap(CollectionUtils.getNestedValue(result.getData(), INSTANCE_INSPECT_DATA_NAME));
+    }
 
     Cache<String, String> scheduled = CacheBuilder.newBuilder()
             .expireAfterWrite(java.time.Duration.ofMinutes(15))

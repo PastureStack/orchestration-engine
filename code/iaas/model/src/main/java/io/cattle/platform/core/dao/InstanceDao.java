@@ -3,6 +3,7 @@ package io.cattle.platform.core.dao;
 import io.cattle.platform.core.addon.PublicEndpoint;
 import io.cattle.platform.core.dao.impl.InstanceDaoImpl.IpAddressToServiceIndex;
 import io.cattle.platform.core.model.Account;
+import io.cattle.platform.core.model.Agent;
 import io.cattle.platform.core.model.Host;
 import io.cattle.platform.core.model.Instance;
 import io.cattle.platform.core.model.InstanceHostMap;
@@ -27,6 +28,12 @@ public interface InstanceDao {
     List<? extends Nic> findBadNics(int count);
 
     Instance getInstanceByUuidOrExternalId(Long accountId, String uuid, String externalId);
+
+    /** Exact existing imported container only; never resolves by name or UUID. */
+    Instance getNativeContainerForNameRefresh(Agent agent, Host host, String hostUuid, String externalId);
+
+    /** Name-only update with the original full instance row and source bindings as a CAS. */
+    boolean updateNativeContainerName(Instance original, Agent agent, Host host, String hostUuid, String name);
 
     /**
      * @param instance
