@@ -26,9 +26,20 @@ failures, errors or skips, including the six Volume regressions. Official
 readback verified all six CI-derived release assets, the exact portable
 checksum transformation and three anonymous content readbacks. The same WAR
 completed isolated JDK25.0.3 / H2 startup with exit 0, no network, exposed ports
-or platform-data mounts. Server `v1.6.505` is not yet published; Server
-consumption and native Volume lifecycle acceptance remain pending. The full
-resource/role matrix remains **INCOMPLETE**; see the
+or platform-data mounts. Published Server `v1.6.505` consumes this exact WAR
+with Web Console `1.6.168`, from Server source
+`400f7dc8d533a5f13a555398c595b9ae42e0c454` and immutable image digest
+`sha256:b3dd402cfd773b4d37ecf06f716187833e56cc6f211b7ab920dccf8dcb7366c5`.
+Official publisher 37072151759 and public image/component readback passed;
+these publication checks are separate from runtime acceptance. QA8080 now runs
+Server505 and passed startup/restart HTTP 200/pong with the deployment runtime,
+environment and five database counts preserved; the 504 rollback point remains.
+Docker health is `null`, not a `healthy` assertion. Native Volume lifecycle
+acceptance is in progress and the full resource/role matrix remains
+**INCOMPLETE**. An unallocated local Volume may legitimately be `inactive`;
+the native list does not require activation, and removal must follow the actual
+advertised action and relation state without an extra activate/deactivate cycle.
+See the
 [332 release note](docs/releases/orchestration-engine-0.183.332.md).
 
 ## Historical 0.183.331 release

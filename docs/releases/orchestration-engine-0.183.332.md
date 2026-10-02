@@ -47,10 +47,25 @@ The exact WAR completed standalone JDK `25.0.3` / H2 startup with exit 0,
 network `none`, no exposed ports and no platform-data mounts. These component
 checks do not establish Server deployment or native browser acceptance.
 
-## Pending acceptance
+## Published Server consumption and pending acceptance
 
-Server `v1.6.505` is not yet published. Server packaging/deployment and actual
-browser create/list/edit/cancel/reload/delete and role denials remain required.
+Published [Server `v1.6.505`](https://github.com/PastureStack/server/releases/tag/v1.6.505)
+consumes this exact WAR with Web Console `1.6.168`. Server source is
+`400f7dc8d533a5f13a555398c595b9ae42e0c454`; the immutable image digest is
+`sha256:b3dd402cfd773b4d37ecf06f716187833e56cc6f211b7ab920dccf8dcb7366c5`.
+[Publisher 37072151759](https://github.com/PastureStack/server/actions/runs/37072151759)
+and official public image/component readback passed. QA8080 deployment and one
+restart passed HTTP 200/pong with runtime, environment and five database counts
+preserved; the 504 rollback point remains. Docker health is `null`, not `healthy`.
+Native Volume create/list/cancel/reload/delete and role denials are
+in progress. The schema omits `nullable=false` per `Field.isNullable()`'s
+`NON_DEFAULT` serialization contract; the acceptance oracle now accepts this
+declared schema default without inferring missing resource classifications.
+Source review also confirmed that an unallocated local Volume can legitimately
+be `inactive`. The native list does not require `active`; remove supports this
+state, while deactivate does not. Acceptance follows the actual state, actions
+and empty host/image/mount/storagePool bindings without modifying the product
+to satisfy an incorrect state oracle.
 The full resource/role matrix remains **INCOMPLETE**; formal component
 publication and isolated startup do not turn those pending checks into PASS.
 
