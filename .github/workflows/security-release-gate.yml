@@ -57,6 +57,16 @@ jobs:
           import xml.etree.ElementTree as ET
 
           required = {
+              'io.cattle.platform.schema.processor.GenericObjectAuthOverlayTest': {
+                  'lowRolesHideCapabilitiesAtTheSharedResponseBoundary',
+                  'inheritedStorageFieldsCannotReintroduceCapabilities',
+                  'privilegedProjectClientsKeepPluginStorage',
+                  'pullTaskStorageRemainsPrivateWithoutRemovingTypedStatus',
+              },
+              'io.cattle.platform.resources.FrozenGenericObjectRoleSchemaTest': {
+                  'lowRoleFrozenSchemasCannotRevealGenericStorageCapabilities',
+                  'privilegedProjectSchemasRetainPluginStorage',
+              },
               'io.github.ibuildthecloud.gdapi.request.handler.BodyParserRequestHandlerTest': {
                   'mergeMapKeepsRequestParamsAndLetsBodyOverride',
                   'mergeListRecursivelyMergesAllowedMapItems',
@@ -77,7 +87,9 @@ jobs:
           }
           suites = []
           observed = {}
-          for path in sorted(Path('code').glob('**/target/surefire-reports/TEST-*.xml')):
+          reports = list(Path('code').glob('**/target/surefire-reports/TEST-*.xml'))
+          reports += list(Path('resources').glob('**/target/surefire-reports/TEST-*.xml'))
+          for path in sorted(reports):
               root = ET.parse(path).getroot()
               cases = []
               for case in root.findall('testcase'):

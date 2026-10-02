@@ -3,6 +3,8 @@
         ".*\\.resourceActions\\..*": "",
         ".*\\.uuid": "r",
         "registrationToken": "",
+        "genericObject.key": "",
+        "genericObject.resourceData": "",
 
         "container.resourceActions.logs": "c",
         "instance.environment": "",

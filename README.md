@@ -13,6 +13,13 @@ preserved upstream boundary.
 
 ## Current release
 
+The source tree prepares `v0.183.329`, which closes a low-role GenericObject
+read bypass for plugin capabilities in both v2-beta and the frozen v1 schemas.
+Readonly/restricted clients retain resource metadata; plugin configuration is
+read through its typed API. Owner/member/service storage remains unchanged.
+See the [329 release note](docs/releases/orchestration-engine-0.183.329.md).
+This source change is not yet a published artifact or accepted Server deployment.
+
 The current published release is `v0.183.328`. It updates platform Jackson to
 `2.22.3` and the isolated WebAuthn/logging runtime to `3.2.3`, and consumes the
 official Cache `5.7.5` artifact. The two Jackson namespaces remain separate.
@@ -101,7 +108,7 @@ bash scripts/check-cattle-jdk25-full-package
 After the gate passes, package and check the release artifact:
 
 ```sh
-ENGINE_VERSION=0.183.328 bash scripts/build --release
+ENGINE_VERSION=0.183.329 bash scripts/build --release
 bash scripts/check-release-artifact dist/artifacts/cattle.jar
 ```
 
@@ -110,6 +117,23 @@ classes, and starts the standalone application against isolated H2. Full
 database and platform checks require isolated MariaDB/MySQL and companion
 services. See [COMPATIBILITY.md](COMPATIBILITY.md), [SECURITY.md](SECURITY.md),
 and [ORIGIN.md](ORIGIN.md) for those boundaries and source provenance.
+
+For a deliberate frozen-schema source migration, first run
+`GenericObjectAuthOverlayTest` with the supported Maven/JDK toolchain. Use its
+Surefire `java.class.path` property to run
+From the repository root, run
+`java --class-path <test-classpath> scripts/java/UpdateFrozenGenericObjectSchemas.java`.
+The one-time producer accepts no path arguments, requires the reviewed 328
+snapshot SHA-256 values before deserialization, and rejects unexpected classes
+with a bounded serialization filter. `--check-filter` verifies the current two
+role snapshots and rejects a graph with a deserialization callback without
+executing it; it does not write files. Already migrated snapshots are rejected
+by the migration path.
+The helper applies only the two declared field denials to the existing v1 role
+snapshots, checks the persisted schema contract for unrelated drift, and then
+writes `readonly.ser` and `restricted.ser`. Run
+`FrozenGenericObjectRoleSchemaTest` afterwards. It is an offline source-generation
+step, never a deployed-runtime patch.
 
 ## Language and licensing
 
