@@ -30,8 +30,32 @@ Six exact CI assets and three anonymous content readbacks passed; the exact
 WAR also completed isolated JDK25.0.3 / H2 startup, with no network, exposed
 ports or platform-data mounts. Artifact/build-image Critical and High findings
 are zero; CodeQL 36972340453 retains four lower-severity findings. These scoped
-checks do not claim zero risk, complete resource/role acceptance or Server500
-and real-host/browser acceptance; the latter remain separate and pending.
+checks do not claim zero risk or complete resource/role acceptance.
+
+Published Server `v1.6.500`, source
+`abdee460eb67c8cd02a2db8e9a55b15f58020d83`, consumes this exact 331 WAR in
+image digest `sha256:7ffd67a7f82da0d374d7846b97b5a2fb71647ad01a159120418544591899f5f5`.
+QA8080 first start/restart (`HTTP 200` / `pong`), preserved runtime/data counts
+and five exact Docker/model/DOM ID-name bindings passed. Native initial/reload
+technical checks passed, but Root's actual PNG review remains **VISUAL HOLD**:
+four retained rollback names are clipped to indistinguishable prefixes.
+
+Published Server `v1.6.501`, source
+`ea97b199801c277efc178430b4aa6a0d4f67d25b`, also consumes the exact 331 WAR,
+with Web Console `1.6.165` and image digest
+`sha256:0a671e2695eecc74d79ef666267a40e81172205f0f8b1d0b12a7dbbed446becd`.
+Publisher 36980705366 and official immutable readback passed. QA8080 first
+start/restart each returned `HTTP 200` / `pong` on attempt 10, with zero runtime
+and data-count differences; Docker health remains `null`, not a healthy claim.
+The separate COUNT-derived proof binds six exact full Docker IDs/names,
+including current `1i25669` and retained Server500 rollback `1i25668`.
+Separate fresh native initial/reload checks and Root's two actual PNG reviews
+passed for Host1 at zh-tw desktop width 1440: all six names and five rollback
+suffixes are readable without overlapping details/actions. One native menu
+open/close cycle and one actual server WebSocket message on reload were observed,
+with zero resource writes. This is not long-term WebSocket, mobile, all-locale
+or full resource/role acceptance. Server500's historical visual HOLD stays
+unchanged; the full resource/role matrix remains **INCOMPLETE**.
 
 ## Historical 0.183.330 release
 

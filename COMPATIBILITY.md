@@ -16,6 +16,33 @@ the old partial-update failure and alternate-reference protection gap.
 
 ## Docker host policy
 
+Engine `0.183.331` preserves imported native-container name synchronization
+through exact full Docker IDs and the existing Host/Agent/account boundary.
+Only running/active or stopped/inactive instance/mapping pairs are eligible;
+unique nonremoved mapping, managed/service/stack exclusions and the name-only
+full-row compare-and-swap remain unchanged. No schema or state-lifecycle
+migration is introduced.
+
+Published Server `v1.6.500` consumes the exact 331 WAR. Its QA8080 first
+start/restart, preserved runtime/data counts and five exact Docker/model/DOM
+ID-name bindings passed. This is not complete visual acceptance: Root's PNG
+review remains VISUAL HOLD because four retained rollback names are clipped.
+Published Server `v1.6.501`, source
+`ea97b199801c277efc178430b4aa6a0d4f67d25b`, consumes that same WAR with Web165
+and digest `sha256:0a671e2695eecc74d79ef666267a40e81172205f0f8b1d0b12a7dbbed446becd`.
+Publisher 36980705366 and immutable readback passed. Its QA8080 first
+start/restart passed with zero runtime/data-count differences and Docker health
+`null`; a separate COUNT-derived proof binds six exact full Docker IDs/names.
+Separate fresh native initial/reload checks and Root's actual PNG review passed
+for the six complete Host1 names and five rollback suffixes at zh-tw desktop
+width 1440, without detail/action overlap. One menu open/close cycle and one
+actual server WebSocket message on reload were observed with zero resource
+writes. This does not cover mobile, all locales or long-term WebSocket behavior.
+Server500's visual HOLD is historical and unchanged; the full resource/role
+matrix is INCOMPLETE. See the
+[331 release note](docs/releases/orchestration-engine-0.183.331.md) for the
+immutable Server source/digest and evidence boundaries.
+
 Release `0.183.319` preserves the Docker host policy introduced in `0.183.299`,
 which adds Docker Engine `29.8.0` as an exact supported
 version alongside the preserved legacy ranges, `24.0.9`, and the existing
