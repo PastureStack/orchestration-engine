@@ -1,7 +1,10 @@
 # Orchestration Engine 0.183.331
 
-Published immutable numeric release. Consuming Server image and real-host/browser
-acceptance remain separate and pending; existing numeric tags remain immutable.
+Published immutable numeric release, consumed by published Server500 and 501.
+Server500's technical checks passed but its historical name readability remains
+VISUAL HOLD. Server501 publication, QA startup/restart, COUNT proof and separate
+scoped native/Root visual checks passed. The full resource/role matrix remains
+INCOMPLETE. Existing numeric tags remain immutable.
 
 ## Root cause and minimal correction
 
@@ -55,8 +58,56 @@ not imply an all-findings-zero scan or full permissions acceptance.
 
 The initial candidate's pre-build gate failure is retained: three expected
 330 version/log lines were corrected to 331 without relaxing any checks.
-The exact CI WAR must be consumed by a new immutable Server, then checked
-on the real QA host and native browser before declaring name acceptance.
+
+## Server consumption and remaining acceptance
+
+Published Server `v1.6.500`, source
+`abdee460eb67c8cd02a2db8e9a55b15f58020d83`, includes the exact 331 WAR above.
+Its immutable image digest is
+`sha256:7ffd67a7f82da0d374d7846b97b5a2fb71647ad01a159120418544591899f5f5`.
+QA8080 first start/restart returned `HTTP 200` / `pong`, with the existing
+runtime contract and account/credential/setting/project-member/host counts
+preserved. The five exact Host1 instance IDs `1i25658`, `1i25659`, `1i25661`,
+`1i25666` and `1i25668` matched their unique full Docker IDs and current names
+in the proof and native initial/reload model/DOM checks; removed records were
+excluded. These technical checks passed without resource writes.
+
+Root separately viewed both actual PNGs and retained **VISUAL HOLD**:
+the four rollback names have different complete names but their distinguishing
+suffixes are clipped to the same visible prefix. The Engine's name adoption
+is not a substitute for readable native UI, and the full resource/role matrix
+remains **INCOMPLETE**. This historical Server500 visual HOLD is not promoted.
+
+Published Server `v1.6.501`, source
+`ea97b199801c277efc178430b4aa6a0d4f67d25b`, packages Web165's layout correction
+while retaining the exact 331 WAR. Its immutable image digest is
+`sha256:0a671e2695eecc74d79ef666267a40e81172205f0f8b1d0b12a7dbbed446becd`.
+Publisher 36980705366 succeeded; official release/image readback passed for
+this source, digest and component binding. QA8080 first start and restart each
+returned `HTTP 200` / `pong` on attempt 10, with zero runtime-contract and
+data-count differences. Docker health remains `null`, not a healthy assertion.
+The current COUNT-derived proof binds six unique full Docker IDs/current names:
+the retained `1i25658`, `1i25659`, `1i25661`, `1i25666`, Server500 rollback
+`1i25668`, and new current `1i25669`. COUNT proof is distinct from browser or
+visual acceptance.
+
+The separate fresh Server501 native run passed with superadministrator actor
+`1a1`, project `1a5` and Host `1h1`, after four Authentik and two platform MFA
+requests. Both initial and reload phases bound all six full Docker IDs/names
+to their native model/DOM entries and excluded the nine removed IDs. Resource
+writes, page/console/loading errors, unexpected native documents and retries
+were zero. One native menu open/close cycle used two trigger clicks and no
+menu-item clicks. Three WebSocket connections and one actual server message
+on reload were observed; this is not long-term subscription acceptance.
+
+Root independently viewed both actual PNGs at zh-tw desktop width 1440 and
+accepted all six complete names, the five distinguishing rollback suffixes,
+and non-overlapping detail/action areas. The separate Root visual receipt is
+PASS; raw browser visual flags remain false and are not rewritten. Server500's
+historical visual HOLD stays unchanged. This scoped Host1 readability/menu
+acceptance does not complete the resource/role, mobile or all-locale matrix,
+which remains **INCOMPLETE**.
+
 Keep existing environment variables, volumes, AppArmor, restart policy,
 HTTPS origin, OIDC/MFA/session ownership and nftables unchanged. Rollback uses
 the prior immutable Server with preserved data; no runtime patch or SQL update.
