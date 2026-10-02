@@ -13,6 +13,15 @@ preserved upstream boundary.
 
 ## Current release
 
+The source tree prepares `v0.183.330`, a narrowly scoped imported-container
+name refresh. A ping's UUID/name hint is never written as the authoritative
+name: the Engine inspects the exact full Docker ID through its existing Agent
+contract, and performs a name-only compare-and-swap on an eligible existing
+native container. Managed service/stack names and lifecycle processing are
+unchanged. See the [330 release note](docs/releases/orchestration-engine-0.183.330.md).
+The focused offline checks have passed; a published WAR, consuming Server
+image, and real-host/browser name-refresh acceptance are still required.
+
 The current published release is `v0.183.329`. It closes a low-role GenericObject
 read bypass for plugin capabilities in both v2-beta and the frozen v1 schemas.
 Readonly/restricted clients retain resource metadata; plugin configuration is
@@ -130,7 +139,7 @@ bash scripts/check-cattle-jdk25-full-package
 After the gate passes, package and check the release artifact:
 
 ```sh
-ENGINE_VERSION=0.183.329 bash scripts/build --release
+ENGINE_VERSION=0.183.330 bash scripts/build --release
 bash scripts/check-release-artifact dist/artifacts/cattle.jar
 ```
 

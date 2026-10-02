@@ -35,9 +35,11 @@ import io.cattle.platform.util.type.CollectionUtils;
 import java.time.Duration;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 
 import jakarta.inject.Inject;
 
@@ -122,12 +124,33 @@ public class PingInstancesMonitorImpl implements PingInstancesMonitor {
             return;
         }
 
+        refreshNativeNames(knownInstances, reportedInstances, agentId, agentAndHost.hostId);
+
         try {
             syncContainers(knownInstances, reportedInstances, agentAndHost.agentAccountId, agentId, agentAndHost.hostId, true);
         } catch (ContainersOutOfSync e) {
             knownInstances = load(agentId);
             instanceCache.put(agentId, knownInstances);
             syncContainers(knownInstances, reportedInstances, agentAndHost.agentAccountId, agentId, agentAndHost.hostId, false);
+        }
+    }
+
+    void refreshNativeNames(Map<String, KnownInstance> knownInstances, ReportedInstances reportedInstances,
+            long agentId, long hostId) {
+        Set<String> knownIds = new HashSet<>();
+        Set<String> ambiguousIds = new HashSet<>();
+        for (KnownInstance known : knownInstances.values()) {
+            if (known.getRemoved() == null && known.getExternalId() != null && !knownIds.add(known.getExternalId())) {
+                ambiguousIds.add(known.getExternalId());
+            }
+        }
+        for (ReportedInstance reported : reportedInstances.byExternalId.values()) {
+            String id = reported.getExternalId();
+            if (knownIds.contains(id) && !ambiguousIds.contains(id)) {
+                ContainerEventCreate.NativeNameRefreshResult result = containerEventCreate.refreshNativeContainerName(
+                        agentId, hostId, reportedInstances.hostUuid, id, reported.getUuid(), reported.getState(), reported.labels);
+                log.debug("Native container name refresh: agent [{}], host [{}], result [{}]", agentId, hostId, result);
+            }
         }
     }
 

@@ -7,11 +7,14 @@ import static org.junit.Assert.*;
 
 import io.cattle.platform.ha.monitor.model.KnownInstance;
 import io.cattle.platform.object.meta.impl.DefaultObjectMetaDataManager;
+import io.cattle.platform.process.containerevent.ContainerEventCreate;
 
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
+import java.util.List;
 import java.util.Set;
 
 import org.junit.Before;
@@ -159,6 +162,50 @@ public class PingInstancesMonitorImplTest {
 
         assertSyncAction(externalIdEE, EVENT_START);
         assertSyncAction(externalIdFF, EVENT_START);
+    }
+
+    @Test
+    public void changedUuidHintUsesExactKnownDockerIdWithoutNamePairing() {
+        String first = "a".repeat(64), second = "b".repeat(64);
+        addKnownInstance("first-logical", first, STATE_STOPPED, null);
+        addKnownInstance("second-logical", second, STATE_RUNNING, null);
+        addReportedInstance("same-new-name", first, STATE_STOPPED).labels = new HashMap<>();
+        addReportedInstance("same-new-name", second, STATE_RUNNING).labels = new HashMap<>();
+        List<String> refreshes = new ArrayList<>();
+        monitor.containerEventCreate = nameRefreshRecorder(refreshes);
+        reportedInstances.hostUuid = "host-uuid";
+        monitor.refreshNativeNames(knownInstances, reportedInstances, 1L, 2L);
+        assertEquals(2, refreshes.size());
+        assertTrue(refreshes.contains(first)); assertTrue(refreshes.contains(second));
+        assertTrue(needsSynced.isEmpty()); assertTrue(syncActions.isEmpty());
+    }
+
+    @Test
+    public void unknownRemovedAndAmbiguousKnownDockerIdsCannotBecomeNameCandidates() {
+        String removed = "a".repeat(64), duplicate = "b".repeat(64), unknown = "c".repeat(64);
+        addKnownInstance("removed", removed, REMOVED, new Date());
+        addKnownInstance("one", duplicate, STATE_STOPPED, null);
+        addKnownInstance("two", duplicate, STATE_STOPPED, null);
+        for (String id : new String[] {removed, duplicate, unknown}) {
+            addReportedInstance("same-name", id, STATE_STOPPED).labels = new HashMap<>();
+        }
+        List<String> refreshes = new ArrayList<>();
+        monitor.containerEventCreate = nameRefreshRecorder(refreshes);
+        monitor.refreshNativeNames(knownInstances, reportedInstances, 1L, 2L);
+        assertTrue(refreshes.isEmpty());
+    }
+
+    private ContainerEventCreate nameRefreshRecorder(List<String> refreshes) {
+        return new ContainerEventCreate() {
+            @Override
+            public NativeNameRefreshResult refreshNativeContainerName(long agentId, long hostId, String hostUuid,
+                    String externalId, String nameHint, String state, Map<String, String> labels) {
+                assertEquals(1L, agentId); assertEquals(2L, hostId);
+                assertEquals("same-new-name", nameHint); assertEquals("host-uuid", hostUuid);
+                refreshes.add(externalId);
+                return NativeNameRefreshResult.UNCHANGED;
+            }
+        };
     }
 
     void assertDoNothing(String externalId, String uuid) {

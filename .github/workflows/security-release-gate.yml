@@ -57,6 +57,31 @@ jobs:
           import xml.etree.ElementTree as ET
 
           required = {
+              'io.cattle.platform.core.dao.impl.NativeContainerNameRefreshDaoTest': {
+                  'exactExistingImportedSnapshotAndNameOnlyCas',
+                  'compareAndSwapContainsEveryOriginalColumnIncludingBinaryTextAndJson',
+                  'zeroRowCasAndSameNameDoNotReportSuccess',
+                  'unknownDuplicateOrWrongExactDockerIdCannotBecomeSnapshot',
+                  'foreignSourceOrWrongResourceAccountNeverReachesQuery',
+                  'managedServiceSystemEnvironmentAndLifecycleRowsAreRejected',
+                  'everyNonremovedMapMustBeUniqueAtSelectionAndAtCas',
+              },
+              'io.cattle.platform.process.containerevent.NativeContainerNameRefreshTest': {
+                  'currentInspectNameNotUuidHintIsWrittenOnceAndNotificationIsScoped',
+                  'runningContainerAndSecondDistinctFullIdUseExactIndependentAuthority',
+                  'absentCandidateOrForeignHostCannotInspectOrCreate',
+                  'sourceAccountChangedAfterLockSelectionCannotRefreshForeignInstance',
+                  'actualAgentInspectRequestUsesOnlyFullDockerIdNeverNameFallback',
+                  'managedLabelShortIdOrDifferentStateCannotReachInspection',
+                  'inspectFailureWrongIdOrMalformedNameNeverWritesHint',
+                  'casMissDoesNotNotifyOrRetryAndDelayedHintCannotRollNameBack',
+                  'notificationFailurePreservesKnownCommittedUpdateWithoutRetry',
+              },
+              'io.cattle.platform.ha.monitor.impl.PingInstancesMonitorImplTest': {
+                  'testDetermineSyncActions',
+                  'changedUuidHintUsesExactKnownDockerIdWithoutNamePairing',
+                  'unknownRemovedAndAmbiguousKnownDockerIdsCannotBecomeNameCandidates',
+              },
               'io.cattle.platform.schema.processor.GenericObjectAuthOverlayTest': {
                   'lowRolesHideCapabilitiesAtTheSharedResponseBoundary',
                   'inheritedStorageFieldsCannotReintroduceCapabilities',

@@ -1,6 +1,7 @@
 package io.cattle.platform.core.dao.impl;
 
 import static io.cattle.platform.core.model.tables.HostIpAddressMapTable.*;
+import static io.cattle.platform.core.model.tables.AgentTable.*;
 import static io.cattle.platform.core.model.tables.HostTable.*;
 import static io.cattle.platform.core.model.tables.InstanceHostMapTable.*;
 import static io.cattle.platform.core.model.tables.InstanceLinkTable.*;
@@ -22,6 +23,7 @@ import io.cattle.platform.core.constants.IpAddressConstants;
 import io.cattle.platform.core.constants.PortConstants;
 import io.cattle.platform.core.dao.InstanceDao;
 import io.cattle.platform.core.model.Account;
+import io.cattle.platform.core.model.Agent;
 import io.cattle.platform.core.model.Host;
 import io.cattle.platform.core.model.Instance;
 import io.cattle.platform.core.model.InstanceHostMap;
@@ -68,6 +70,9 @@ import jakarta.inject.Named;
 
 import org.apache.commons.lang3.StringUtils;
 import org.jooq.Condition;
+import org.jooq.Field;
+import org.jooq.UpdateConditionStep;
+import org.jooq.impl.DSL;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -165,6 +170,135 @@ public class InstanceDaoImpl extends AbstractJooqDao implements InstanceDao, Ann
         }
 
         return instance;
+    }
+
+    @Override
+    public Instance getNativeContainerForNameRefresh(Agent agent, Host host, String hostUuid, String externalId) {
+        if (!validNameRefreshSource(agent, host, hostUuid) || !fullDockerId(externalId)) {
+            return null;
+        }
+        List<InstanceRecord> matches = create().selectFrom(INSTANCE)
+                .where(nativeNameRefreshCondition(agent, host, hostUuid, externalId))
+                .limit(2).fetchInto(InstanceRecord.class);
+        return matches.size() == 1 && unmanagedImportedContainer(matches.get(0))
+                && externalId.equals(matches.get(0).getExternalId()) ? matches.get(0) : null;
+    }
+
+    @Override
+    public boolean updateNativeContainerName(Instance original, Agent agent, Host host, String hostUuid, String name) {
+        if (!(original instanceof InstanceRecord) || !unmanagedImportedContainer(original)
+                || !validNameRefreshSource(agent, host, hostUuid) || !fullDockerId(original.getExternalId())
+                || name == null || !name.matches("[A-Za-z0-9][A-Za-z0-9_.-]{0,254}")
+                || name.equals(original.getName())) {
+            return false;
+        }
+        return nativeNameRefreshUpdate((InstanceRecord) original, agent, host, hostUuid, name).execute() == 1;
+    }
+
+    protected UpdateConditionStep<InstanceRecord> nativeNameRefreshUpdate(InstanceRecord original,
+            Agent agent, Host host, String hostUuid, String name) {
+        Condition originalRow = DSL.trueCondition();
+        for (Field<?> field : original.fields()) {
+            originalRow = originalRow.and(originalValue(field, original));
+        }
+        return create().update(INSTANCE).set(INSTANCE.NAME, name)
+                .where(nativeNameRefreshCondition(agent, host, hostUuid, original.getExternalId()).and(originalRow));
+    }
+
+    protected Condition nativeNameRefreshCondition(Agent agent, Host host, String hostUuid, String externalId) {
+        return INSTANCE.ACCOUNT_ID.eq(host.getAccountId())
+                .and(binaryEqual(INSTANCE.EXTERNAL_ID, externalId))
+                .and(INSTANCE.KIND.eq(InstanceConstants.KIND_CONTAINER))
+                .and(INSTANCE.NATIVE_CONTAINER.eq(true)).and(INSTANCE.SYSTEM.eq(false))
+                .and(INSTANCE.SERVICE_ID.isNull()).and(INSTANCE.SERVICE_INDEX_ID.isNull()).and(INSTANCE.STACK_ID.isNull())
+                .and(INSTANCE.REMOVED.isNull()).and(INSTANCE.REMOVE_TIME.isNull())
+                .and(INSTANCE.STATE.in(InstanceConstants.STATE_RUNNING, InstanceConstants.STATE_STOPPED))
+                .and(DSL.exists(create().selectOne().from(INSTANCE_HOST_MAP).join(HOST)
+                        .on(HOST.ID.eq(INSTANCE_HOST_MAP.HOST_ID)).join(AGENT).on(AGENT.ID.eq(HOST.AGENT_ID))
+                        .where(INSTANCE_HOST_MAP.INSTANCE_ID.eq(INSTANCE.ID))
+                        .and(INSTANCE_HOST_MAP.HOST_ID.eq(host.getId())).and(INSTANCE_HOST_MAP.REMOVED.isNull())
+                        .and(binaryEqual(INSTANCE_HOST_MAP.STATE, CommonStatesConstants.ACTIVE))
+                        .and(HOST.ACCOUNT_ID.eq(host.getAccountId())).and(HOST.AGENT_ID.eq(agent.getId()))
+                        .and(HOST.REMOVED.isNull()).and(binaryEqual(HOST.STATE, CommonStatesConstants.ACTIVE))
+                        .and(jsonType(HOST.DATA, "$.fields.reportedUuid").eq("STRING"))
+                        .and(binaryEqual(jsonText(HOST.DATA, "$.fields.reportedUuid"), hostUuid))
+                        .and(AGENT.REMOVED.isNull()).and(binaryEqual(AGENT.STATE, CommonStatesConstants.ACTIVE))
+                        .and(jsonType(AGENT.DATA, "$.agentResourcesAccountId").eq("INTEGER"))
+                        .and(jsonText(AGENT.DATA, "$.agentResourcesAccountId").eq(host.getAccountId().toString()))))
+                .and(create().selectCount().from(INSTANCE_HOST_MAP)
+                        .where(INSTANCE_HOST_MAP.INSTANCE_ID.eq(INSTANCE.ID)).and(INSTANCE_HOST_MAP.REMOVED.isNull())
+                        .asField().eq(1))
+                .and(DSL.notExists(create().selectOne().from(SERVICE_EXPOSE_MAP)
+                        .where(SERVICE_EXPOSE_MAP.INSTANCE_ID.eq(INSTANCE.ID)).and(SERVICE_EXPOSE_MAP.REMOVED.isNull())));
+    }
+
+    private static Field<String> jsonText(Field<?> field, String path) {
+        return DSL.field("json_unquote(json_extract({0}, {1}))", String.class, field, DSL.val(path));
+    }
+
+    private static Field<String> jsonType(Field<?> field, String path) {
+        return DSL.field("json_type(json_extract({0}, {1}))", String.class, field, DSL.val(path));
+    }
+
+    private static Condition binaryEqual(Field<String> field, String value) {
+        return DSL.condition("binary {0} = binary {1}", field, DSL.val(value));
+    }
+
+    private static <T> Condition originalValue(Field<T> field, InstanceRecord original) {
+        T value = original.get(field);
+        if (value == null) {
+            return field.isNull();
+        }
+        if (value instanceof String || value instanceof Map) {
+            return DSL.condition("binary {0} = binary {1}", field, DSL.val(value, field.getDataType()));
+        }
+        return field.eq(value);
+    }
+
+    private static boolean fullDockerId(String id) {
+        return id != null && id.matches("[0-9a-f]{64}");
+    }
+
+    private static boolean validNameRefreshSource(Agent agent, Host host, String hostUuid) {
+        if (agent == null || host == null || agent.getId() == null || host.getId() == null
+                || host.getAccountId() == null || host.getAccountId() <= 0 || !agent.getId().equals(host.getAgentId())
+                || agent.getRemoved() != null || host.getRemoved() != null
+                || !CommonStatesConstants.ACTIVE.equals(agent.getState()) || !CommonStatesConstants.ACTIVE.equals(host.getState())
+                || hostUuid == null || !hostUuid.equals(DataAccessor.fields(host).withKey("reportedUuid").get())) {
+            return false;
+        }
+        Object resourceAccount = DataAccessor.fromDataFieldOf(agent).withKey("agentResourcesAccountId").get();
+        return (resourceAccount instanceof Long || resourceAccount instanceof Integer)
+                && ((Number) resourceAccount).longValue() == host.getAccountId();
+    }
+
+    private static boolean unmanagedImportedContainer(Instance instance) {
+        if (!Boolean.TRUE.equals(instance.getNativeContainer()) || !Boolean.FALSE.equals(instance.getSystem())
+                || !InstanceConstants.KIND_CONTAINER.equals(instance.getKind()) || instance.getServiceId() != null
+                || instance.getServiceIndexId() != null || instance.getStackId() != null
+                || instance.getRemoved() != null || instance.getRemoveTime() != null
+                || !java.util.Arrays.asList(InstanceConstants.STATE_RUNNING, InstanceConstants.STATE_STOPPED).contains(instance.getState())
+                || instance.getData() == null || !(instance.getData().get(DataUtils.FIELDS) instanceof Map)) {
+            return false;
+        }
+        Map<String, Object> fields = DataUtils.getFields(instance);
+        Object systemContainer = fields.get(InstanceConstants.FIELD_SYSTEM_CONTAINER);
+        if (systemContainer != null && !"".equals(systemContainer)) {
+            return false;
+        }
+        if (fields.get("serviceIndexId") != null || fields.get("serviceIndex") != null
+                || !(fields.get(InstanceConstants.FIELD_LABELS) instanceof Map)) {
+            return false;
+        }
+        Map<?, ?> labels = (Map<?, ?>) fields.get(InstanceConstants.FIELD_LABELS);
+        for (String marker : new String[] {"io.rancher.container.uuid", "io.rancher.container.display_name",
+                "io.rancher.container.name", "io.rancher.container.system", "io.rancher.stack_service.name",
+                "io.rancher.service.deployment.unit", "io.rancher.service.launch.config"}) {
+            if (labels.containsKey(marker)) {
+                return false;
+            }
+        }
+        return labels.entrySet().stream().allMatch(e -> e.getKey() instanceof String && e.getValue() instanceof String);
     }
 
     @Override
