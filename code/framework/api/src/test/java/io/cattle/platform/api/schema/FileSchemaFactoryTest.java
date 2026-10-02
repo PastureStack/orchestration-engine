@@ -212,6 +212,71 @@ public class FileSchemaFactoryTest {
         return factory(resourceName, new EmptySchemaFactory());
     }
 
+    @Test
+    public void restoresOnlyNativeReadFieldInPackagedFrozenVolumeRoleSchemas() throws Exception {
+        SchemaImpl core = schema("volume", "volumes");
+        FieldImpl coreField = new FieldImpl();
+        coreField.setName("isNative");
+        coreField.setType("boolean");
+        coreField.setDefault(Boolean.FALSE);
+        // Even a more permissive parent cannot grant writes through this merge.
+        coreField.setCreate(true);
+        coreField.setUpdate(true);
+        core.getResourceFields().put("isNative", coreField);
+        Path root = Paths.get("").toAbsolutePath();
+        while (root != null && !Files.isRegularFile(root.resolve("resources/content/schema/v1/owner.ser"))) {
+            root = root.getParent();
+        }
+        assertNotNull("Packaged frozen role schemas are required", root);
+        for (String role : Arrays.asList("owner", "member", "readonly", "restricted", "user", "admin")) {
+            String resourceName = "schema/v1/" + role + ".ser";
+            byte[] bytes = Files.readAllBytes(root.resolve("resources/content/").resolve(resourceName));
+            Thread.currentThread().setContextClassLoader(new ResourceClassLoader(resourceName, bytes));
+            FileSchemaFactory original = factory(resourceName);
+            original.start();
+            Thread.currentThread().setContextClassLoader(new ResourceClassLoader(resourceName, bytes));
+            FileSchemaFactory repaired = factory(resourceName, new SingleSchemaFactory(core));
+            repaired.start();
+
+            Schema before = original.getSchema("volume"), after = repaired.getSchema("volume");
+            assertNotNull(role, before);
+            assertNotNull(role, after);
+            Map<String, FieldImpl> originalFields = new LinkedHashMap<String, FieldImpl>();
+            for (Map.Entry<String, io.github.ibuildthecloud.gdapi.model.Field> entry : before.getResourceFields().entrySet()) {
+                originalFields.put(entry.getKey(), (FieldImpl) entry.getValue());
+            }
+            FieldImpl actual = (FieldImpl) after.getResourceFields().get("isNative");
+            assertNotNull(role, actual);
+            assertEquals(role, "boolean", actual.getType());
+            assertEquals(role, Boolean.FALSE, actual.getDefault());
+            assertFalse(role, actual.isNullable());
+            assertFalse(role, actual.isCreate());
+            assertFalse(role, actual.isUpdate());
+            assertFalse(role, actual.isReadOnCreateOnly());
+            assertTrue(role, actual.isIncludeInList());
+            assertEquals(role, before.getCollectionMethods(), after.getCollectionMethods());
+            assertEquals(role, before.getResourceMethods(), after.getResourceMethods());
+            assertTrue(role + "/resourceActions", Arrays.equals(
+                    serialize(Arrays.<Object>asList(before.getResourceActions())),
+                    serialize(Arrays.<Object>asList(after.getResourceActions()))));
+            assertTrue(role + "/collectionActions", Arrays.equals(
+                    serialize(Arrays.<Object>asList(before.getCollectionActions())),
+                    serialize(Arrays.<Object>asList(after.getCollectionActions()))));
+            for (Map.Entry<String, FieldImpl> entry : originalFields.entrySet()) {
+                if (!"isNative".equals(entry.getKey())) {
+                    assertTrue(role, after.getResourceFields().containsKey(entry.getKey()));
+                    assertTrue(role + "/" + entry.getKey(), Arrays.equals(
+                            serialize(Arrays.<Object>asList(entry.getValue())),
+                            serialize(Arrays.<Object>asList(after.getResourceFields().get(entry.getKey())))));
+                }
+            }
+            assertEquals(role, originalFields.size() + (originalFields.containsKey("isNative") ? 0 : 1),
+                    after.getResourceFields().size());
+        }
+        assertTrue("Parent permissions must remain unchanged", coreField.isCreate());
+        assertTrue(coreField.isUpdate());
+    }
+
     private FileSchemaFactory factory(String resourceName, SchemaFactory schemaFactory) {
         FileSchemaFactory factory = new FileSchemaFactory();
         factory.setFile(resourceName);

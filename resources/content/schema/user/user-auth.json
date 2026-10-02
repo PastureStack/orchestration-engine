@@ -699,6 +699,7 @@
         "volume.imageId" : "r",
         "volume.instanceId" : "r",
         "volume.isHostPath" : "r",
+        "volume.isNative" : "r",
         "volume.uri" : "r",
         "volume.driver": "cr",
         "volume.driverOpts": "cru",
