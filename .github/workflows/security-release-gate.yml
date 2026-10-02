@@ -65,6 +65,9 @@ jobs:
                   'foreignSourceOrWrongResourceAccountNeverReachesQuery',
                   'managedServiceSystemEnvironmentAndLifecycleRowsAreRejected',
                   'everyNonremovedMapMustBeUniqueAtSelectionAndAtCas',
+                  'lifecyclePairsAreCorrelatedInBothSelectedAndCasSqlAndBindings',
+                  'renderedPairContractTruthTableAcceptsOnlyTheTwoStablePairs',
+                  'emitsReadOnlyLifecycleSelectFromTheActualProductionCondition',
               },
               'io.cattle.platform.process.containerevent.NativeContainerNameRefreshTest': {
                   'currentInspectNameNotUuidHintIsWrittenOnceAndNotificationIsScoped',
@@ -137,6 +140,9 @@ jobs:
                      'suiteCount': len(suites), 'totals': {name: sum(s['counts'][name] for s in suites)
                      for name in ('tests', 'failures', 'errors', 'skipped')}, 'suites': suites}
           Path('evidence/unit-test-results.json').write_text(json.dumps(summary, sort_keys=True, indent=2) + '\n')
+          fixture = Path('code/iaas/model/target/native-name-refresh-lifecycle-select.sql')
+          assert fixture.is_file(), 'Missing source-generated lifecycle SELECT'
+          Path('evidence/native-name-refresh-lifecycle-select.sql').write_bytes(fixture.read_bytes())
           print('UNIT_CASE_EVIDENCE_OK', summary['suiteCount'], summary['totals'])
           PY
 

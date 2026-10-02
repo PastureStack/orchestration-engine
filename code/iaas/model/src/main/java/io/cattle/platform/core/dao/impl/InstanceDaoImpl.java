@@ -217,7 +217,11 @@ public class InstanceDaoImpl extends AbstractJooqDao implements InstanceDao, Ann
                         .on(HOST.ID.eq(INSTANCE_HOST_MAP.HOST_ID)).join(AGENT).on(AGENT.ID.eq(HOST.AGENT_ID))
                         .where(INSTANCE_HOST_MAP.INSTANCE_ID.eq(INSTANCE.ID))
                         .and(INSTANCE_HOST_MAP.HOST_ID.eq(host.getId())).and(INSTANCE_HOST_MAP.REMOVED.isNull())
-                        .and(binaryEqual(INSTANCE_HOST_MAP.STATE, CommonStatesConstants.ACTIVE))
+                        // InstanceStop deactivates the retained map; only stable lifecycle pairs are eligible.
+                        .and(binaryEqual(INSTANCE.STATE, InstanceConstants.STATE_RUNNING)
+                                .and(binaryEqual(INSTANCE_HOST_MAP.STATE, CommonStatesConstants.ACTIVE))
+                                .or(binaryEqual(INSTANCE.STATE, InstanceConstants.STATE_STOPPED)
+                                        .and(binaryEqual(INSTANCE_HOST_MAP.STATE, CommonStatesConstants.INACTIVE))))
                         .and(HOST.ACCOUNT_ID.eq(host.getAccountId())).and(HOST.AGENT_ID.eq(agent.getId()))
                         .and(HOST.REMOVED.isNull()).and(binaryEqual(HOST.STATE, CommonStatesConstants.ACTIVE))
                         .and(jsonType(HOST.DATA, "$.fields.reportedUuid").eq("STRING"))
