@@ -13,14 +13,35 @@ preserved upstream boundary.
 
 ## Current release
 
-The source tree prepares `v0.183.329`, which closes a low-role GenericObject
+The current published release is `v0.183.329`. It closes a low-role GenericObject
 read bypass for plugin capabilities in both v2-beta and the frozen v1 schemas.
 Readonly/restricted clients retain resource metadata; plugin configuration is
 read through its typed API. Owner/member/service storage remains unchanged.
 See the [329 release note](docs/releases/orchestration-engine-0.183.329.md).
-This source change is not yet a published artifact or accepted Server deployment.
 
-The current published release is `v0.183.328`. It updates platform Jackson to
+The official numeric [release](https://github.com/PastureStack/orchestration-engine/releases/tag/v0.183.329)
+uses a signed annotated tag pointing to CI source
+`14e3f0919a33282ff3026c364182f715f5dda634`.
+[PR #66](https://github.com/PastureStack/orchestration-engine/pull/66) was normally
+squash-merged as `b4613763a731398ee091f388ef5c9cd5b88aec9d`; its tree is identical
+to the CI source, without moving the release tag to the squash commit.
+The exact CI WAR is `87,690,873` bytes with SHA-256
+`9f8e5736898b6d9c51cb96d5f7cdbe8e3831a29ce296909108f5f2d5a68f7ec4`.
+[Build/security run `36951856238`](https://github.com/PastureStack/orchestration-engine/actions/runs/36951856238)
+passed 266 suites / 1,123 tests, with zero failures, errors or skips, including
+all six new GenericObject overlay/response and frozen-v1 cases. Actual artifact
+and build-image Critical/High findings are zero. The
+[CodeQL run `36951859325`](https://github.com/PastureStack/orchestration-engine/actions/runs/36951859325)
+retains four lower-severity findings, with zero Critical/High findings; this is
+not an all-findings-zero claim. The exact CI WAR completed standalone JDK
+`25.0.3` startup against isolated H2 and exited 0, with no network, exposed
+ports or platform-data mounts. Server consumption, full MariaDB integration,
+real v1/v2-beta role/browser checks and the whole resource/role matrix remain
+separate, pending acceptance gates.
+
+## Historical 0.183.328 release
+
+The previous published release `v0.183.328` updated platform Jackson to
 `2.22.3` and the isolated WebAuthn/logging runtime to `3.2.3`, and consumes the
 official Cache `5.7.5` artifact. The two Jackson namespaces remain separate.
 See the [release note](docs/releases/orchestration-engine-0.183.328.md).
@@ -83,8 +104,9 @@ into the build-local Maven repository. See
 
 ## Jackson and embedded Cache compatibility
 
-This release updates platform Jackson to `2.22.3` and the isolated
-WebAuthn/logging Jackson line to `3.2.3`, with patchless annotations remaining
+The historical `v0.183.328` release introduced platform Jackson `2.22.3` and the
+isolated WebAuthn/logging Jackson line `3.2.3`; `v0.183.329` retains these versions,
+with patchless annotations remaining
 `2.22`. These are the official patched versions for CVE-2026-91776 and
 CVE-2026-91777; see the [release note](docs/releases/orchestration-engine-0.183.328.md).
 The release pins the corresponding officially published
