@@ -13,13 +13,25 @@ preserved upstream boundary.
 
 ## Current release
 
-Candidate `v0.183.332` restores the server-owned Volume `isNative` classification
+Published `v0.183.332` restores the server-owned Volume `isNative` classification
 as a read-only field in both v1 frozen role schemas and v2 role overlays. It does
 not change Volume CRUD permissions, infer missing fields in the browser, or
-allow clients to change native classification. Eighteen targeted local tests
-passed, including six new regressions. Formal artifact publication and native
-Volume UI lifecycle acceptance are pending; see the
-[332 candidate note](docs/releases/orchestration-engine-0.183.332.md).
+allow clients to change native classification. The signed annotated
+[numeric release](https://github.com/PastureStack/orchestration-engine/releases/tag/v0.183.332)
+binds exact built source `7a625eee58fb2bdba83d2f008bdf7dd3c0ae4295`.
+The WAR is `87,700,267` bytes, SHA256
+`31090699e214f8e357f7fe413ce307e722b9b53177003e5de0bbbca1bc7bc3f5`.
+Exact-source build 37069556952 passed 270 suites / 1,150 tests with zero
+failures, errors or skips, including the six Volume regressions. Official
+readback verified all six CI-derived release assets, the exact portable
+checksum transformation and three anonymous content readbacks. The same WAR
+completed isolated JDK25.0.3 / H2 startup with exit 0, no network, exposed ports
+or platform-data mounts. Server `v1.6.505` is not yet published; Server
+consumption and native Volume lifecycle acceptance remain pending. The full
+resource/role matrix remains **INCOMPLETE**; see the
+[332 release note](docs/releases/orchestration-engine-0.183.332.md).
+
+## Historical 0.183.331 release
 
 The published release `v0.183.331` corrects the stopped-container mapping condition
 in 330. The common selection/update predicate accepts only running/active

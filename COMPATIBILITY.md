@@ -6,7 +6,7 @@ New operator-facing names use PastureStack and `PASTURESTACK_*`. Compatibility i
 
 ## Volume native classification
 
-Candidate `0.183.332` exposes the existing `volume.isNative` boolean as read-only
+Published `0.183.332` exposes the existing `volume.isNative` boolean as read-only
 for readable Volume resources. Current role overlays retain the field; the v1
 loader copies only this missing field from the current core schema into frozen
 role schemas. It grants neither create nor update permission on the field and
@@ -16,7 +16,15 @@ server default only through an explicit schema contract. Client input cannot
 set this server-owned classification on POST or PUT. No database migration is
 required. Rolling back removes the field from affected role responses, so the
 strict Web Console unallocated-volume list may again hide eligible volumes.
-Native UI lifecycle acceptance and artifact publication are still pending.
+The signed numeric release binds built source
+`7a625eee58fb2bdba83d2f008bdf7dd3c0ae4295` and WAR SHA256
+`31090699e214f8e357f7fe413ce307e722b9b53177003e5de0bbbca1bc7bc3f5`.
+Official CI passed 270 suites / 1,150 tests with zero failures, errors or skips;
+the six release assets and three anonymous content readbacks were verified.
+The exact WAR passed isolated JDK25.0.3 / H2 startup with no network, exposed
+ports or platform-data mounts. Server `v1.6.505` is not yet published. Server
+consumption, native Volume UI lifecycle and the full resource/role matrix
+remain pending acceptance, not an overall PASS.
 
 ## Certificate lifecycle
 
