@@ -4,6 +4,21 @@ The migration preserves established `io.cattle.*` Java packages, Maven coordinat
 
 New operator-facing names use PastureStack and `PASTURESTACK_*`. Compatibility identifiers must be changed only with an explicit data migration, a dual-read or dual-write transition, a rollback plan, and cross-repository verification.
 
+## Read-on-create-only responses
+
+Candidate `0.183.333` applies the existing schema `o` flag only to real resource
+creation (`POST` with no action), matching resource-manager dispatch. API Key
+deactivate, activate, remove and other POST actions must not return a stored
+create-only value. Existing null-redaction representation, ordinary readable
+fields, create-time first-secret delivery, v1 frozen schemas and v2 overlays are
+preserved. All three response wrappers share one decision. Legacy constructors
+without action context keep their signatures but fail closed; callers needing a
+creation response must pass the explicit create decision. No database,
+authentication, authorization, proxy or stored-state migration is introduced.
+Rollback restores the older POST-action exposure and is not a security fix.
+Local focused verification passed 19 tests; immutable release and QA8080 native
+API Key lifecycle checks are still pending.
+
 ## Volume native classification
 
 Published `0.183.332` exposes the existing `volume.isNative` boolean as read-only

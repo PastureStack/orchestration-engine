@@ -30,13 +30,21 @@ public class WrappedResource extends ResourceImpl implements Resource {
     Map<String, Object> additionalFields;
     Map<String, Field> resourceFields;
     boolean createTsFields = true;
-    String method;
+    boolean createResponse;
     Set<String> priorityFieldNames = null;
     IdFormatter idFormatter;
 
+    /** Legacy callers without request action context fail closed for create-only fields. */
     public WrappedResource(IdFormatter idFormatter, SchemaFactory schemaFactory,
             Schema schema, Object obj, Map<String, Object> additionalFields,
             Set<String> priorityFieldNames, String method) {
+        this(idFormatter, schemaFactory, schema, obj, additionalFields, priorityFieldNames, method, false);
+    }
+
+    /** A create response requires both POST and the caller's explicit create/action decision. */
+    public WrappedResource(IdFormatter idFormatter, SchemaFactory schemaFactory,
+            Schema schema, Object obj, Map<String, Object> additionalFields,
+            Set<String> priorityFieldNames, String method, boolean createResponse) {
         super();
         this.schemaFactory = schemaFactory;
         this.schema = schema;
@@ -45,12 +53,16 @@ public class WrappedResource extends ResourceImpl implements Resource {
         this.idFormatter = idFormatter;
         this.additionalFields = additionalFields;
         this.priorityFieldNames = priorityFieldNames;
-        this.method = method;
+        this.createResponse = Schema.Method.POST.isMethod(method) && createResponse;
         init();
     }
 
     public WrappedResource(IdFormatter idFormatter, SchemaFactory schemaFactory, Schema schema, Object obj, String method) {
         this(idFormatter, schemaFactory, schema, obj, new HashMap<String, Object>(), null, method);
+    }
+
+    public WrappedResource(IdFormatter idFormatter, SchemaFactory schemaFactory, Schema schema, Object obj, String method, boolean createResponse) {
+        this(idFormatter, schemaFactory, schema, obj, new HashMap<String, Object>(), null, method, createResponse);
     }
 
     protected void addField(String key, Object value) {
@@ -75,7 +87,7 @@ public class WrappedResource extends ResourceImpl implements Resource {
             if (value == null) {
                 value = field.getValue(obj);
             }
-            if (!Schema.Method.POST.isMethod(method) && field.isReadOnCreateOnly()){
+            if (!createResponse && field.isReadOnCreateOnly()){
                 value = null;
             }
             if (StringUtils.isNotBlank(field.getTransform()) && StringUtils.isNotBlank((String) value)){

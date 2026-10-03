@@ -11,6 +11,7 @@ import io.github.ibuildthecloud.gdapi.model.impl.CollectionImpl;
 import io.github.ibuildthecloud.gdapi.model.impl.WrappedResource;
 import io.github.ibuildthecloud.gdapi.request.ApiRequest;
 import io.github.ibuildthecloud.gdapi.request.handler.AbstractApiRequestHandler;
+import io.github.ibuildthecloud.gdapi.util.RequestUtils;
 
 import java.io.BufferedOutputStream;
 import java.io.ByteArrayOutputStream;
@@ -105,7 +106,9 @@ public class JsonResponseWriter extends AbstractApiRequestHandler {
 
         Schema schema = schemaFactory.getSchema(obj.getClass());
         ApiContext apiContext = ApiContext.getContext();
-        return schema == null ? null : new WrappedResource(apiContext.getIdFormatter(), schemaFactory, schema, obj, apiContext.getApiRequest().getMethod());
+        ApiRequest request = apiContext.getApiRequest();
+        return schema == null ? null : new WrappedResource(apiContext.getIdFormatter(), schemaFactory, schema, obj,
+                request.getMethod(), RequestUtils.isCreateRequest(request));
     }
 
     protected void writeJson(JsonMapper jsonMapper, OutputStream os, Object responseObject, ApiRequest request) throws IOException {

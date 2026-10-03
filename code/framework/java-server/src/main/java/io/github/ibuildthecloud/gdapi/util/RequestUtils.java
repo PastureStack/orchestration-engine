@@ -39,6 +39,11 @@ public class RequestUtils {
         return POST.isMethod(method) || PUT.isMethod(method) || DELETE.isMethod(method);
     }
 
+    /** Uses the same create/action distinction as ResourceManagerRequestHandler. */
+    public static boolean isCreateRequest(ApiRequest request) {
+        return request != null && POST.isMethod(request.getMethod()) && request.getAction() == null;
+    }
+
     public static boolean mayHaveBody(String method) {
         return POST.isMethod(method) || PUT.isMethod(method);
     }

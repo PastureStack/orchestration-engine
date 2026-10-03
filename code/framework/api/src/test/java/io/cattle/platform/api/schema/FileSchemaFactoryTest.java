@@ -284,6 +284,27 @@ public class FileSchemaFactoryTest {
         return factory;
     }
 
+    @Test
+    public void preservesCreateOnlyApiKeyFlagInThePackagedFrozenV1UserSchema() throws Exception {
+        String resourceName = "schema/v1/user.ser";
+        Path root = Paths.get("").toAbsolutePath();
+        while (root != null && !Files.isRegularFile(root.resolve("resources/content/").resolve(resourceName))) {
+            root = root.getParent();
+        }
+        assertNotNull("Packaged frozen v1 schema is required", root);
+        Thread.currentThread().setContextClassLoader(new ResourceClassLoader(resourceName,
+                Files.readAllBytes(root.resolve("resources/content/").resolve(resourceName))));
+        FileSchemaFactory factory = factory(resourceName);
+        factory.start();
+
+        Schema keySchema = factory.getSchema("apiKey");
+        assertNotNull(keySchema);
+        FieldImpl field = (FieldImpl) keySchema.getResourceFields().get("secretValue");
+        assertNotNull(field);
+        assertTrue("Frozen v1 must retain the o overlay, not only the dynamic schema", field.isReadOnCreateOnly());
+        assertTrue(field.isIncludeInList());
+    }
+
     private SchemaImpl schema(String id, String pluralName) {
         SchemaImpl schema = new SchemaImpl();
         schema.setId(id);
