@@ -57,8 +57,30 @@ jobs:
           import xml.etree.ElementTree as ET
 
           required = {
+              'io.github.ibuildthecloud.gdapi.model.impl.CreateOnlyWrappedResourceTest': {
+                  'trueCreationRetainsTheFirstSecretInBothApiVersions',
+                  'postActionsCannotRevealCreateOnlyValues',
+                  'readUpdateDeleteAndUnknownMethodsStillRedact',
+                  'rolesWithoutCreateOnlyRestrictionKeepTheirExistingReadContract',
+                  'methodOnlyLegacyConstructorsFailClosedInsteadOfGuessingCreation',
+                  'priorityFieldsCannotBypassTheCreateOnlyBoundary',
+              },
+              'io.github.ibuildthecloud.gdapi.model.impl.CreateOnlyCallerTest': {
+                  'managerConstructResourceUsesTheRequestActionNotOnlyPostMethod',
+                  'responseWriterCreateResourceUsesTheActualContextRequest',
+              },
+              'io.cattle.platform.api.utils.ApiUtilsCreateOnlyTest': {
+                  'trueCreateAllowsBeanAndAdditionalFieldValuesInBothRoots',
+                  'postActionsRedactBothValueSourcesWithoutRedactingUnflaggedNames',
+                  'nullRequestFailsClosedForBothValueSources',
+                  'readUpdateAndDeleteCannotUseTheCreateException',
+              },
+              'io.github.ibuildthecloud.gdapi.util.RequestUtilsTest': {
+                  'creationRequiresPostAndAbsentActionNotAStatusCode',
+              },
               'io.cattle.platform.api.schema.FileSchemaFactoryTest': {
                   'restoresOnlyNativeReadFieldInPackagedFrozenVolumeRoleSchemas',
+                  'preservesCreateOnlyApiKeyFlagInThePackagedFrozenV1UserSchema',
               },
               'io.cattle.platform.schema.processor.VolumeNativeSchemaAuthorizationTest': {
                   'currentRoleOverlaysExposeNativeClassificationWithoutGrantingMutation',

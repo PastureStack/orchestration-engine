@@ -13,6 +13,17 @@ preserved upstream boundary.
 
 ## Current release
 
+Candidate `v0.183.333` corrects a shared response-contract error: a POST action
+such as API Key deactivate is not resource creation. Schema fields marked
+read-on-create-only are now returned only for a genuine POST create, not for
+POST actions. The manager, response writer and attachment helper use the same
+request dispatch distinction. Other readable fields and v1/v2 role schemas are
+unchanged. Nineteen focused local tests passed (14 new regressions and five
+adjacent controls); formal artifact publication and QA8080 native acceptance
+are pending. See the [333 candidate note](docs/releases/orchestration-engine-0.183.333.md).
+
+## Historical 0.183.332 release
+
 Published `v0.183.332` restores the server-owned Volume `isNative` classification
 as a read-only field in both v1 frozen role schemas and v2 role overlays. It does
 not change Volume CRUD permissions, infer missing fields in the browser, or

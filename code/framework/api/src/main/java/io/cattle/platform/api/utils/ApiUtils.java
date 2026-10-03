@@ -14,6 +14,7 @@ import io.github.ibuildthecloud.gdapi.model.Schema;
 import io.github.ibuildthecloud.gdapi.model.impl.WrappedResource;
 import io.github.ibuildthecloud.gdapi.request.ApiRequest;
 import io.github.ibuildthecloud.gdapi.request.resource.ResourceManager;
+import io.github.ibuildthecloud.gdapi.util.RequestUtils;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -224,7 +225,8 @@ public class ApiUtils {
                 additionalFields.putAll(attachments);
             }
             String method = request == null ? null : request.getMethod();
-            return new WrappedResource(idFormatter, schemaFactory, schema, obj, additionalFields, PRIORITY_FIELDS, method);
+            return new WrappedResource(idFormatter, schemaFactory, schema, obj, additionalFields, PRIORITY_FIELDS, method,
+                    RequestUtils.isCreateRequest(request));
         } finally {
             DEPTH.set(depth);
         }
