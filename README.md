@@ -13,14 +13,18 @@ preserved upstream boundary.
 
 ## Current release
 
-Candidate `v0.183.333` corrects a shared response-contract error: a POST action
+Published `v0.183.333` corrects a shared response-contract error: a POST action
 such as API Key deactivate is not resource creation. Schema fields marked
 read-on-create-only are now returned only for a genuine POST create, not for
 POST actions. The manager, response writer and attachment helper use the same
 request dispatch distinction. Other readable fields and v1/v2 role schemas are
 unchanged. Nineteen focused local tests passed (14 new regressions and five
-adjacent controls); formal artifact publication and QA8080 native acceptance
-are pending. See the [333 candidate note](docs/releases/orchestration-engine-0.183.333.md).
+adjacent controls). The immutable [numeric release](https://github.com/PastureStack/orchestration-engine/releases/tag/v0.183.333)
+provides `cattle.jar` with SHA256
+`8c42c0982cbc2f4569fa265ad320b341551758cb4fc0bc6d79ba06d70e20d328`;
+published Server `v1.6.516` includes this component. Publication and Server
+packaging do not establish complete native UI or resource/role acceptance:
+that matrix remains incomplete. See the [333 release note](docs/releases/orchestration-engine-0.183.333.md).
 
 ## Historical 0.183.332 release
 
