@@ -1,4 +1,4 @@
-# Orchestration Engine 0.183.333 — candidate
+# Orchestration Engine 0.183.333 — published
 
 ## Root cause and scope
 
@@ -28,17 +28,22 @@ source review found no confirmed surviving bypass or introduced regression in
 the five changed production files. The formal release gate requires the new
 named regressions in its executed unit-case evidence.
 
-## Pending acceptance
+## Publication and remaining acceptance
 
-This is not yet a published component or Server image. Exact CI artifact
-readback, isolated startup, immutable publication, Server packaging and QA8080
-native API Key lifecycle acceptance remain required. Old failed QA receipts stay
-HOLD; they are not rewritten as PASS. The full resource/role matrix is incomplete.
+The immutable [numeric release](https://github.com/PastureStack/orchestration-engine/releases/tag/v0.183.333)
+was published on 2026-10-03. Its `cattle.jar` SHA256 is
+`8c42c0982cbc2f4569fa265ad320b341551758cb4fc0bc6d79ba06d70e20d328`;
+the release also supplies a SHA256 checksum, source revision, unit-test evidence
+and CycloneDX inventory. Published Server `v1.6.516` packages this component.
+Its isolated QA startup/restart passed, but publication and startup are not
+complete native UI or resource/role acceptance. Old failed QA receipts stay
+HOLD; they are not rewritten as PASS. The full resource/role matrix remains
+incomplete.
 
 ## Upgrade and rollback
 
 No migration is required. Preserve Compose environment, named volumes, restart
 policy, AppArmor, origin and authentication settings. Consume only a new immutable
-Server image after the component gates pass; do not overwrite prior tags. A
+Server image; verify its published tag and digest, and do not overwrite prior tags. A
 rollback restores the old POST-action response behavior and must not be described
-as preserving this fix. No production deployment is authorized by this candidate.
+as preserving this fix. Publication does not authorize production deployment.
