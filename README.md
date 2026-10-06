@@ -11,7 +11,7 @@ upstream history, authorship, licenses, and dependency notices.
 ## Current release
 
 [Engine v0.183.333](https://github.com/PastureStack/orchestration-engine/releases/tag/v0.183.333)
-is included in [Server v1.6.516](https://github.com/PastureStack/server/releases/tag/v1.6.516).
+is included in the [current Server release](https://github.com/PastureStack/server#current-release).
 It returns create-only fields only for actual resource creation, not POST actions
 such as API Key deactivation. Other readable fields and v1/v2 role schemas are
 unchanged. See the [current release note](docs/releases/orchestration-engine-0.183.333.md)
