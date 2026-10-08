@@ -2,6 +2,7 @@
 """Check API Key contracts in the assembled WAR, not just the source tree."""
 import io
 import json
+import re
 import sys
 import zipfile
 
@@ -13,8 +14,8 @@ def require(condition, message):
 
 with zipfile.ZipFile(sys.argv[1]) as war:
     def module(prefix):
-        entries = [name for name in war.namelist()
-                   if name.startswith("WEB-INF/lib/" + prefix + "-") and name.endswith(".jar")]
+        pattern = re.compile(r"WEB-INF/lib/" + re.escape(prefix) + r"-[0-9][^/]*\.jar$")
+        entries = [name for name in war.namelist() if pattern.fullmatch(name)]
         require(len(entries) == 1, "module=" + prefix)
         return zipfile.ZipFile(io.BytesIO(war.read(entries[0])))
 
@@ -48,7 +49,7 @@ with zipfile.ZipFile(sys.argv[1]) as war:
     # v1 keeps the existing frozen role files. The narrowly reviewed factory
     # supplement copies only the new contracts using each frozen role's methods;
     # Server runtime tests verify the effective schemas under both API versions.
-    with module("cattle-api") as api:
+    with module("cattle-framework-api") as api:
         factory = api.read("io/cattle/platform/api/schema/FileSchemaFactory.class")
         for marker in (b"mergeApiKeyPolicyFields", b"addApiKeyPolicySchemas", b"apiKeyPolicyRevision", b"apiKeyPolicyPreview"):
             require(marker in factory, "v1-factory=" + marker.decode())
