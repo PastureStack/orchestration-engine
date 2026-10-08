@@ -2,6 +2,8 @@ package io.cattle.platform.iaas.api.auth.impl;
 
 import static org.junit.Assert.*;
 import io.cattle.platform.iaas.api.auth.apikey.ApiKeyCredentialContext;
+import io.cattle.platform.api.auth.ApiKeyAuditSink;
+import io.cattle.platform.api.auth.Policy;
 import io.github.ibuildthecloud.gdapi.context.ApiContext;
 import io.github.ibuildthecloud.gdapi.exception.ClientVisibleException;
 import io.github.ibuildthecloud.gdapi.id.IdentityFormatter;
@@ -36,6 +38,24 @@ public class ApiKeyAuthenticationBoundaryTest {
         auth.auditSinks = List.of((request, policy) -> { throw new IllegalStateException("private database value"); });
         ClientVisibleException failure = assertThrows(ClientVisibleException.class, () -> auth.handle(new ApiRequest(null, null)));
         assertEquals(503, failure.getStatus()); assertEquals("AuditUnavailable", failure.getCode()); assertNull(failure.getCause());
+    }
+    @Test public void unverifiedFailureProofRecordsAnonymousDenialNeverClaimsAKeyOrOwner() {
+        ApiAuthenticator auth = new ApiAuthenticator(){
+            @Override protected void authenticate(ApiRequest request){throw new ClientVisibleException(403,"DelegatedAuditAgentRequired");}
+        };
+        AtomicInteger records = new AtomicInteger();
+        auth.auditSinks = List.of(new ApiKeyAuditSink(){
+            public void recordDecision(ApiRequest request,Policy policy){fail("Unverified report is not a Key decision");}
+            public void recordAuthenticationDenied(ApiRequest request,String code){
+                assertEquals("DelegatedAuditAgentRequired",code);assertNull(ApiKeyCredentialContext.get(request));
+                assertNull(request.getAttribute("apiKey.audit.keyId"));assertNull(request.getAttribute("apiKey.audit.verifiedPrincipalAccountId"));
+                request.setAttribute("apiKey.audit.admitted",true);records.incrementAndGet();
+            }
+        });
+        ApiRequest request = new ApiRequest(null,null);request.setType("apiKeyDelegationFailure");
+        assertEquals(403,assertThrows(ClientVisibleException.class,()->auth.handle(request)).getStatus());
+        assertThrows(ClientVisibleException.class,()->auth.handle(request));assertEquals(1,records.get());
+        assertNull(ApiContext.getContext().getPolicy());
     }
     private static ApiAuthenticator failing(String code) {
         return new ApiAuthenticator() {

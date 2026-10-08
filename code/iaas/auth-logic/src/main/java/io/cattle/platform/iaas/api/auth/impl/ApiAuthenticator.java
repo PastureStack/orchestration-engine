@@ -73,7 +73,7 @@ public class ApiAuthenticator extends AbstractApiRequestHandler {
         try {
             authenticate(request);
         } catch (RuntimeException failure) {
-            if (ApiKeyCredentialContext.get(request) != null
+            if ((ApiKeyCredentialContext.get(request) != null || "apiKeyDelegationFailure".equals(request.getType()))
                     && !Boolean.TRUE.equals(request.getAttribute("apiKey.audit.admitted"))
                     && !(failure instanceof ClientVisibleException visible && "AuditUnavailable".equals(visible.getCode()))) {
                 ApiKeyAuthenticationAudit.deny(request, auditSinks,
