@@ -432,6 +432,29 @@ public class ApiKeyAuditTest {
     }
 
     @Test
+    public void verifiedWrongRouteIsDenied403HandshakeNotExecution() throws Exception {
+        List<Map<String, Object>> delivered = new ArrayList<>();
+        AuditServiceImpl service = service(delivered);
+        service.recordDelegatedOutcome(new ApiKeyDelegatedAuditEvent("a".repeat(64), "1a99", 2L, 1L, 3L,
+                "logs", "container", "12", "request1", "FAILED", "DelegationRouteDenied", "host-uuid"));
+        assertEquals(1, delivered.size());
+        Map<String, Object> event = delivered.get(0);
+        assertEquals("DENY", event.get("decision")); assertEquals("FAILED", event.get("outcome"));
+        assertEquals("handshake", event.get("phase")); assertEquals(403, event.get("httpStatus"));
+        assertEquals(403, event.get("responseCode")); assertEquals("DelegationRouteDenied", event.get("reason"));
+        assertEquals("logs", event.get("operation")); assertEquals("12", event.get("targetId"));
+        assertEquals("request1", event.get("requestId")); assertEquals(false, event.get("preview"));
+        for (String invalid : List.of("SUCCEEDED", "CANCELLED", "CANCELED")) {
+            try {
+                service.recordDelegatedOutcome(new ApiKeyDelegatedAuditEvent("f".repeat(64), "1a99", 2L, 1L, 3L,
+                        "logs", "container", "12", "request1", invalid, "DelegationRouteDenied", "host-uuid"));
+                fail("Route denial must not claim execution or cancellation");
+            } catch (IllegalStateException expected) { }
+        }
+        assertEquals(1, delivered.size());
+    }
+
+    @Test
     public void fullOutboxRejectsNewAdmissionAndRetainsExistingEvents() throws Exception {
         Path path = temporary.newFolder().toPath();
         ApiKeyAuditOutbox outbox = new ApiKeyAuditOutbox(path, mapper(), 1, 8192);

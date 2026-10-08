@@ -319,11 +319,12 @@ public class AuditServiceImpl implements AuditService, ApiKeyAuditSink, ApiReque
                 || !Set.of("SUCCEEDED", "FAILED", "CANCELLED", "CANCELED").contains(terminal.outcome())) {
             throw new IllegalStateException("Invalid delegated outcome metadata");
         }
-        if (terminal.failureCode() != null && !Set.of("HandshakeDenied", "DockerFailure", "StreamFailed", "AuditUnavailable", "BackendAuditCapabilityUnavailable",
+        if (terminal.failureCode() != null && !Set.of("HandshakeDenied", "DockerFailure", "StreamFailed", "AuditUnavailable", "BackendAuditCapabilityUnavailable", "DelegationRouteDenied",
                 "AuthorizationRevoked", "ClientDisconnected", "StreamCancelled").contains(terminal.failureCode())) {
             throw new IllegalStateException("Invalid delegated outcome code");
         }
-        boolean blockedHandshake = "BackendAuditCapabilityUnavailable".equals(terminal.failureCode());
+        boolean routeDenied = "DelegationRouteDenied".equals(terminal.failureCode());
+        boolean blockedHandshake = routeDenied || "BackendAuditCapabilityUnavailable".equals(terminal.failureCode());
         if (blockedHandshake && !"FAILED".equals(terminal.outcome())) {
             throw new IllegalStateException("Invalid blocked handshake outcome");
         }
@@ -337,14 +338,18 @@ public class AuditServiceImpl implements AuditService, ApiKeyAuditSink, ApiReque
         data.put("hostUuid", requiredMetadata(terminal.hostUuid()));
         data.put("policyRevision", terminal.policyRevision());
         data.put("actor", formattedAccountId(terminal.principalAccountId()));
-        data.put("decision", "ALLOW"); // Original policy admission; operational failure is not a permission denial.
+        // Keep ordinary operational failure distinct from authorization denial.
+        // A wrong-route handshake is denied; the original ticket admission remains
+        // its own ALLOW event and is never rewritten as execution or success.
+        data.put("decision", routeDenied ? "DENY" : "ALLOW");
         data.put("outcome", "CANCELLED".equals(terminal.outcome()) ? "CANCELED" : terminal.outcome());
         data.put("phase", blockedHandshake ? "handshake" : "completion");
         data.put("reason", terminal.failureCode() == null ? "StreamCompleted" : terminal.failureCode());
         if (terminal.failureCode() != null) data.put("failureCode", terminal.failureCode());
         data.put("preview", false);
-        data.put("httpStatus", blockedHandshake ? 503 : 0); // Verified blocked proxy handshake, otherwise a host event.
-        data.put("responseCode", blockedHandshake ? 503 : 0);
+        int handshakeStatus = routeDenied ? 403 : blockedHandshake ? 503 : 0;
+        data.put("httpStatus", handshakeStatus); // Verified proxy status, otherwise a host event.
+        data.put("responseCode", handshakeStatus);
         Map<String, Object> event = new HashMap<>();
         event.put("delegatedEventId", terminal.eventId());
         event.put("resourceType", data.get("targetType"));
