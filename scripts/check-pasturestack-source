@@ -402,11 +402,13 @@ if grep -RIn --exclude-dir=target --exclude=check-pasturestack-source \
     fail legacy_product_runtime_default
 fi
 
-if grep -E '=(https?://|ghcr\.io/)' "$settings" \
+if tr -d '\r' <"$settings" | grep -E '=(https?://|ghcr\.io/)' \
     | grep -Fvx \
         -e 'agent.package.python.agent.url=https://github.com/PastureStack/node-agent/releases/download/v0.13.28/node-agent-0.13.28.tar.gz' \
+        -e 'agent.package.host.api.url=https://github.com/PastureStack/host-api/releases/download/v0.38.5/host-api-0.38.5.tar.gz' \
         -e 'agent.package.windows.agent.url=https://github.com/PastureStack/node-agent/releases/download/v0.13.24/node-agent-0.13.24-windows-amd64.zip' \
         -e 'service.package.compose.executor.url=https://github.com/PastureStack/compose-cli/releases/download/v0.14.35/compose-executor-0.14.35-linux-amd64.gz,compose-executor' \
+        -e 'service.package.websocket.proxy.url=https://github.com/PastureStack/websocket-proxy/releases/download/v0.23.15/websocket-proxy-0.23.15-linux-amd64.tar.xz,websocket-proxy' \
     | grep -Ev "=${release_base}/|=ghcr\\.io/pasturestack/"; then
     fail non_pasturestack_runtime_source
 fi
