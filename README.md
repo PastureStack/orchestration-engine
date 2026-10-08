@@ -8,14 +8,22 @@ Rancher 1.6 ecosystem. It is not affiliated with Rancher Labs or SUSE.
 This fork of [`rancher/cattle`](https://github.com/rancher/cattle) preserves
 upstream history, authorship, licenses, and dependency notices.
 
-## Current release
+## Current build
 
-[Engine v0.183.333](https://github.com/PastureStack/orchestration-engine/releases/tag/v0.183.333)
-is included in the [current Server release](https://github.com/PastureStack/server#current-release).
-It returns create-only fields only for actual resource creation, not POST actions
-such as API Key deactivation. Other readable fields and v1/v2 role schemas are
-unchanged. See the [current release note](docs/releases/orchestration-engine-0.183.333.md)
-for source identity, artifact checksum, tests, and verification limits.
+Engine `0.183.334` adds editable API Key policies and expiry to both API roots.
+Full and legacy Keys retain the account's existing authorization. Custom policies
+can narrow access by persisted environment, stack or resource IDs; they never
+grant more than the account's current permissions. Explicit denials take priority.
+Broadening an existing policy or extending its lifetime requires an actor-bound,
+single-use MFA confirmation of the exact change.
+
+Key requests record the authorization decision and actual HTTP, background-job or
+delegated stream outcome separately. Audit records exclude credentials and request
+payloads. Agent/proxy integration is required for delegated execution and logging;
+the component artifact alone is not proof of complete platform acceptance.
+Use the [current Server release](https://github.com/PastureStack/server#current-release)
+for the published platform version. Source identities, checksums and acceptance
+evidence belong in [release notes](docs/releases), not installation commands.
 
 Use the Server image to deploy the complete platform; `cattle.jar` is a component
 artifact, not a replacement for its database, authentication, agent, or proxy.
@@ -33,7 +41,7 @@ Before publishing an Engine artifact, run the complete package gate:
 
 ```sh
 bash scripts/check-cattle-jdk25-full-package
-ENGINE_VERSION=0.183.333 bash scripts/build --release
+ENGINE_VERSION=0.183.334 bash scripts/build --release
 bash scripts/check-release-artifact dist/artifacts/cattle.jar
 ```
 

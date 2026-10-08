@@ -1,6 +1,7 @@
 package io.cattle.platform.api.resource.jooq;
 
 import io.cattle.platform.api.auth.Policy;
+import io.cattle.platform.api.auth.ApiResourceAccess;
 import io.cattle.platform.api.resource.AbstractObjectResourceManager;
 import io.cattle.platform.api.utils.ApiUtils;
 import io.cattle.platform.engine.process.ExitReason;
@@ -57,6 +58,8 @@ public abstract class AbstractJooqResourceManager extends AbstractObjectResource
     @Inject
     InfrastructureAccessManager infraAccess;
 
+    @Inject List<ApiResourceAccess> resourceAccess;
+
     protected DSLContext create() {
         return new DefaultDSLContext(configuration);
     }
@@ -87,6 +90,13 @@ public abstract class AbstractJooqResourceManager extends AbstractObjectResource
         MultiTableMapper mapper = addTables(schemaFactory, query, type, table, criteria, include, pagination, joins);
         addJoins(query, joins);
         addConditions(schemaFactory, query, type, table, criteria);
+        if (resourceAccess != null) {
+            ApiRequest request = ApiContext.getContext().getApiRequest();
+            for (ApiResourceAccess access : resourceAccess) {
+                Condition restriction = access.constrain(request, schemaFactory, type, table);
+                if (restriction != null) query.addConditions(restriction);
+            }
+        }
         addLimit(schemaFactory, type, pagination, query);
 
         List<?> result;

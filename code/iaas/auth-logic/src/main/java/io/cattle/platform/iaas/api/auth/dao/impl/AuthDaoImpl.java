@@ -21,6 +21,10 @@ import io.cattle.platform.core.model.tables.records.ProjectMemberRecord;
 import io.cattle.platform.db.jooq.dao.impl.AbstractJooqDao;
 import io.cattle.platform.iaas.api.auth.SecurityConstants;
 import io.cattle.platform.iaas.api.auth.dao.AuthDao;
+import io.cattle.platform.iaas.api.auth.apikey.ApiKeyCredentialContext;
+import io.cattle.platform.iaas.api.auth.apikey.ApiKeyPolicy;
+import io.cattle.platform.iaas.api.auth.apikey.ApiKeyPolicyCodec;
+import io.cattle.platform.iaas.api.auth.apikey.VerifiedApiCredential;
 import io.cattle.platform.iaas.api.auth.identity.IdentityLinkKey;
 import io.cattle.platform.iaas.api.auth.identity.IdentityLinkLock;
 import io.cattle.platform.iaas.api.auth.identity.IdentityProofLock;
@@ -208,22 +212,61 @@ public class AuthDaoImpl extends AbstractJooqDao implements AuthDao {
 
     @Override
     public Account getAccountByKeys(String access, String secretKey, TransformationService transformationService) {
+        VerifiedApiCredential verified = getVerifiedApiCredential(access, secretKey, transformationService);
+        if (verified == null || verified.denialCode() != null) return null;
+        ApiKeyPolicy policy = verified.context() == null ? null : verified.context().policy();
+        if (policy != null && policy.getExpiresAt() != null
+                && !java.time.Instant.now().isBefore(policy.getExpiresAt())) return null;
+        return verified.account();
+    }
+
+    @Override
+    public VerifiedApiCredential getVerifiedApiCredential(String access, String secretKey,
+                                                          TransformationService transformationService) {
         try {
+            List<String> supported = new ArrayList<>(SUPPORTED_TYPES.get());
+            supported.add(CredentialConstants.KIND_API_KEY_RESTRICTED);
             Credential credential = create()
                     .selectFrom(CREDENTIAL)
                     .where(
                             CREDENTIAL.STATE.eq(CommonStatesConstants.ACTIVE))
                                     .and(CREDENTIAL.PUBLIC_VALUE.eq(access))
-                                    .and(CREDENTIAL.KIND.in(SUPPORTED_TYPES.get()))
+                                    .and(CREDENTIAL.KIND.in(supported))
                     .fetchOne();
             if (credential == null) {
-                return null;
+                // Inactive non-Key credentials keep their existing behavior.
+                // A public key alone is not identity: compare the retained secret
+                // before returning even a denied API-key context.
+                credential = create().selectFrom(CREDENTIAL)
+                        .where(CREDENTIAL.PUBLIC_VALUE.eq(access))
+                        .and(CREDENTIAL.KIND.in(CredentialConstants.KIND_API_KEY, CredentialConstants.KIND_API_KEY_RESTRICTED))
+                        .and(CREDENTIAL.STATE.ne(CommonStatesConstants.ACTIVE).or(CREDENTIAL.STATE.isNull()))
+                        .fetchOne();
+                if (credential == null) return null;
             }
-            if (transformationService.compare(secretKey, credential.getSecretValue())) {
-                return create()
-                        .selectFrom(ACCOUNT).where(ACCOUNT.ID.eq(credential.getAccountId())
-                                .and(ACCOUNT.STATE.in(getActiveStates())))
-                        .fetchOneInto(AccountRecord.class);
+            if (credential.getSecretValue() != null && transformationService.compare(secretKey, credential.getSecretValue())) {
+                ApiKeyCredentialContext context = null;
+                String denialCode = null;
+                if (CredentialConstants.KIND_API_KEY.equals(credential.getKind())
+                        || CredentialConstants.KIND_API_KEY_RESTRICTED.equals(credential.getKind())) {
+                    ApiKeyPolicyCodec codec = new ApiKeyPolicyCodec();
+                    try {
+                        ApiKeyPolicy policy = codec.read(credential);
+                        context = new ApiKeyCredentialContext(credential.getId(), credential.getAccountId(),
+                                credential.getKind(), codec.revision(credential), policy);
+                    } catch (IllegalArgumentException invalidPolicy) {
+                        context = new ApiKeyCredentialContext(credential.getId(), credential.getAccountId(),
+                                credential.getKind(), 0, null);
+                        denialCode = "ApiKeyPolicyInvalid";
+                    }
+                    if (credential.getRemoved() != null) denialCode = "ApiKeyRevoked";
+                    else if (!CommonStatesConstants.ACTIVE.equals(credential.getState())) denialCode = "ApiKeyInactive";
+                }
+                Account account = create().selectFrom(ACCOUNT).where(ACCOUNT.ID.eq(credential.getAccountId())
+                        .and(ACCOUNT.STATE.in(getActiveStates()))).fetchOneInto(AccountRecord.class);
+                if (account == null && context == null) return null;
+                if (account == null && denialCode == null) denialCode = "OwnerPermissionDenied";
+                return new VerifiedApiCredential(account, context, denialCode);
             }
             else {
                 return null;

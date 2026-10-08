@@ -6,6 +6,7 @@ import io.cattle.platform.core.model.Account;
 import io.cattle.platform.core.model.Credential;
 import io.cattle.platform.core.model.ProjectMember;
 import io.cattle.platform.iaas.api.auth.projects.Member;
+import io.cattle.platform.iaas.api.auth.apikey.VerifiedApiCredential;
 import io.github.ibuildthecloud.gdapi.id.IdFormatter;
 import io.github.ibuildthecloud.gdapi.util.TransformationService;
 
@@ -20,6 +21,9 @@ public interface AuthDao {
     Account getAccountById(Long id);
 
     Account getAccountByKeys(String access, String secretKey, TransformationService transformationService);
+
+    VerifiedApiCredential getVerifiedApiCredential(String access, String secretKey,
+                                                   TransformationService transformationService);
 
     Account getAccountByExternalId(String externalId, String externalType);
 

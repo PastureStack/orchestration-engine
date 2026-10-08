@@ -10,6 +10,7 @@ import static org.junit.Assert.assertTrue;
 import io.github.ibuildthecloud.gdapi.factory.SchemaFactory;
 import io.github.ibuildthecloud.gdapi.factory.impl.AbstractSchemaFactory;
 import io.github.ibuildthecloud.gdapi.model.Schema;
+import io.github.ibuildthecloud.gdapi.model.Field;
 import io.github.ibuildthecloud.gdapi.model.impl.FieldImpl;
 import io.github.ibuildthecloud.gdapi.model.impl.SchemaImpl;
 import io.github.ibuildthecloud.gdapi.url.UrlBuilder;
@@ -314,6 +315,60 @@ public class FileSchemaFactoryTest {
         links.put(UrlBuilder.SELF, null);
         schema.setLinks(links);
         return schema;
+    }
+
+    @Test
+    public void v1KeyPolicyContractMatchesCoreWhileFrozenFieldsAndPermissionsStayIntact() throws Exception {
+        for (boolean writable : List.of(true, false)) {
+            SchemaImpl frozen = schema("apiKey", "apiKeys");
+            frozen.setCollectionMethods(writable ? new ArrayList<>(List.of("GET", "POST")) : new ArrayList<>(List.of("GET")));
+            frozen.setResourceMethods(writable ? new ArrayList<>(List.of("GET", "PUT", "DELETE")) : new ArrayList<>(List.of("GET")));
+            FieldImpl frozenSecret = new FieldImpl();
+            frozenSecret.setType("password"); frozenSecret.setReadOnCreateOnly(true);
+            frozen.getResourceFields().put("secretValue", frozenSecret);
+            FieldImpl frozenName = new FieldImpl(); frozenName.setCreate(writable); frozenName.setUpdate(writable);
+            frozen.getResourceFields().put("name", frozenName);
+            byte[] originalSecret = serialize(List.of(frozenSecret));
+            byte[] originalName = serialize(List.of(frozenName));
+            SchemaImpl core = schema("apiKey", "apiKeys");
+            FieldImpl policy = new FieldImpl(); policy.setType("map[json]"); policy.setCreate(true); policy.setUpdate(true);
+            core.getResourceFields().put("apiKeyPolicy", policy);
+            FieldImpl revision = new FieldImpl(); revision.setType("int"); revision.setUpdate(true);
+            core.getResourceFields().put("apiKeyPolicyRevision", revision);
+            FieldImpl ticket = new FieldImpl(); ticket.setType("password"); ticket.setCreate(true); ticket.setUpdate(true); ticket.setIncludeInList(false);
+            core.getResourceFields().put("securityConfirmation", ticket);
+            SchemaImpl restrictedCore = schema("apiKeyRestricted", "apiKeyRestricteds");
+            restrictedCore.getResourceFields().putAll(core.getResourceFields());
+            SchemaImpl previewCore = schema("apiKeyPolicyPreview", "apiKeyPolicyPreviews");
+            previewCore.setCollectionMethods(new ArrayList<>(List.of("POST")));
+            previewCore.getResourceFields().put("apiKeyPolicy", new FieldImpl(policy));
+            Map<String, Schema> cores = Map.of(core.getId(), core, restrictedCore.getId(), restrictedCore,
+                    previewCore.getId(), previewCore);
+            SchemaFactory parent = new EmptySchemaFactory() {
+                @Override public Schema getSchema(String type) { return cores.get(type); }
+            };
+            String resourceName = "schemas/api-key-policy-v1-" + writable + ".bin";
+            Thread.currentThread().setContextClassLoader(new ResourceClassLoader(resourceName, serialize(List.of(frozen))));
+            FileSchemaFactory factory = factory(resourceName, parent); factory.start();
+            Schema loaded = factory.getSchema("apiKey");
+            assertTrue(Arrays.equals(originalSecret, serialize(List.of(loaded.getResourceFields().get("secretValue")))));
+            assertTrue(Arrays.equals(originalName, serialize(List.of(loaded.getResourceFields().get("name")))));
+            assertEquals(frozen.getResourceMethods(), loaded.getResourceMethods());
+            assertEquals(frozen.getCollectionMethods(), loaded.getCollectionMethods());
+            for (String name : List.of("apiKeyPolicy", "apiKeyPolicyRevision", "securityConfirmation")) {
+                Field field = loaded.getResourceFields().get(name);
+                assertEquals(core.getResourceFields().get(name).getType(), field.getType());
+                assertEquals(writable && core.getResourceFields().get(name).isCreate(), field.isCreate());
+                assertEquals(writable && core.getResourceFields().get(name).isUpdate(), field.isUpdate());
+                assertNotSame(core.getResourceFields().get(name), field);
+            }
+            Schema restricted = factory.getSchema("apiKeyRestricted");
+            assertNotNull(restricted);
+            assertEquals(loaded.getResourceMethods(), restricted.getResourceMethods());
+            assertEquals(loaded.getResourceFields().keySet(), restricted.getResourceFields().keySet());
+            assertEquals(writable, factory.getSchema("apiKeyPolicyPreview") != null);
+            assertTrue(policy.isCreate()); assertTrue(policy.isUpdate());
+        }
     }
 
     private byte[] serialize(List<Object> schemas) throws IOException {

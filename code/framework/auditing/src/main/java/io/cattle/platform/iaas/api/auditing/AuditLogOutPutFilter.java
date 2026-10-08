@@ -4,6 +4,7 @@ import io.cattle.platform.api.auth.Identity;
 import io.cattle.platform.core.model.AuditLog;
 import io.cattle.platform.core.model.tables.records.AuditLogRecord;
 import io.cattle.platform.json.JsonMapper;
+import io.cattle.platform.object.util.DataUtils;
 import io.github.ibuildthecloud.gdapi.context.ApiContext;
 import io.github.ibuildthecloud.gdapi.model.Resource;
 import io.github.ibuildthecloud.gdapi.request.ApiRequest;
@@ -22,6 +23,18 @@ public class AuditLogOutPutFilter implements ResourceOutputFilter {
     public Resource filter(ApiRequest request, Object original, Resource converted) {
         if (original instanceof AuditLogRecord) {
             AuditLogRecord auditLogRecord = (AuditLogRecord) original;
+            java.util.Map<String, Object> fields = DataUtils.getFields(auditLogRecord);
+            if (fields.get("keyId") instanceof String) {
+                // Key events expose only approved metadata, including on detail.
+                converted.getFields().remove("requestObject");
+                converted.getFields().remove("responseObject");
+                for (String name : AuditServiceImpl.API_KEY_AUDIT_FIELDS) {
+                    Object value = fields.get(name);
+                    if (value instanceof String || value instanceof Number || value instanceof Boolean) {
+                        converted.getFields().put(name, value);
+                    }
+                }
+            }
             if (auditLogRecord.getResourceId() != null) {
                 converted.getLinks().put("resource",
                         ApiContext.getUrlBuilder().resourceReferenceLink(

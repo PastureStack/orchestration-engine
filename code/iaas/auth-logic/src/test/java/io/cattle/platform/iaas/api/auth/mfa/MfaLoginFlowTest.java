@@ -387,6 +387,31 @@ public class MfaLoginFlowTest {
         }
     }
 
+    @Test
+    public void apiKeyPolicyConfirmationCannotBeReusedOrTransferredToOidcPolicy() {
+        Account account = account(42L);
+        InMemoryMfaDao dao = new InMemoryMfaDao();
+        byte[] secretBytes = "12345678901234567890".getBytes(StandardCharsets.US_ASCII);
+        dao.create(account.getId(), CredentialConstants.KIND_MFA_TOTP, "totp-factor",
+                "encrypt:" + new Base32().encodeToString(secretBytes), new HashMap<String, Object>());
+        MfaService service = service(account, dao);
+        String digest = repeat("c", 64);
+        Map<String, Object> challenge = service.beginSecurityConfirmation(account,
+                MfaService.PURPOSE_API_KEY_POLICY_UPDATE, digest);
+        String code = TotpService.calculate(secretBytes,
+                (NOW / 1000L) / TotpService.PERIOD_SECONDS, TotpService.DIGITS);
+        Map<String, Object> result = service.finishSecurityConfirmation(account,
+                String.valueOf(challenge.get("challengeId")), MfaService.METHOD_TOTP,
+                code, null, null, MfaService.PURPOSE_API_KEY_POLICY_UPDATE, digest);
+        String ticket = String.valueOf(result.get("securityConfirmation"));
+        assertRejectedConfirmation(() -> service.consumeSecurityConfirmation(account, ticket,
+                MfaService.PURPOSE_OIDC_ACCESS_POLICY_UPDATE, digest));
+        service.consumeSecurityConfirmation(account, ticket,
+                MfaService.PURPOSE_API_KEY_POLICY_UPDATE, digest);
+        assertRejectedConfirmation(() -> service.consumeSecurityConfirmation(account, ticket,
+                MfaService.PURPOSE_API_KEY_POLICY_UPDATE, digest));
+    }
+
     private void assertRejectedConfirmation(Runnable action) {
         try {
             action.run();

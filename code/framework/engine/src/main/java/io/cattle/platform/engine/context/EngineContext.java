@@ -9,6 +9,8 @@ import io.cattle.platform.server.context.ServerContext;
 import java.util.EmptyStackException;
 import java.util.Objects;
 import java.util.Stack;
+import java.util.Map;
+import java.util.Collections;
 
 import org.apache.cloudstack.managed.threadlocal.ManagedThreadLocal;
 import org.slf4j.MDC;
@@ -23,6 +25,15 @@ public class EngineContext {
     };
 
     Stack<ParentLog> currentLog = new Stack<ParentLog>();
+    private final Stack<Map<String, Object>> currentAuthorization = new Stack<>();
+
+    public void pushAuthorization(Map<String, Object> metadata) { currentAuthorization.push(metadata); }
+
+    public void popAuthorization() { currentAuthorization.pop(); }
+
+    public Map<String, Object> peekAuthorization() {
+        return currentAuthorization.isEmpty() ? Collections.emptyMap() : currentAuthorization.peek();
+    }
 
     public void pushLog(ParentLog log) {
         currentLog.push(log);

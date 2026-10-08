@@ -97,6 +97,15 @@ public class JwtTokenServiceImplTest {
     }
 
     @Test
+    public void auditSignatureVerificationDoesNotAuthorizeAnExpiredTicket() throws TokenException {
+        String expired = impl.generateToken(Map.of("trace", "safe"), new Date(1413936626719L), new Date(1413936626719L), false);
+        assertEquals("safe", impl.getAuditSignaturePayload(expired).get("trace"));
+        assertThrows(TokenException.class, () -> impl.getJsonPayload(expired, false));
+        String[] parts = expired.split("\\.");
+        assertThrows(TokenException.class, () -> impl.getAuditSignaturePayload(parts[0] + ".e30." + parts[2]));
+    }
+
+    @Test
     public void testEncryptedTokenUsesDefaultJweAlgorithm() throws ParseException {
         String newEncryptedToken = impl.generateToken(null, new Date(1413936626719L), new Date(1923109200000L), true);
         JOSEObject token = JOSEObject.parse(newEncryptedToken);

@@ -47,6 +47,7 @@ public class MfaService {
     public static final String METHOD_WEBAUTHN_ENROLLMENT = "webauthnEnrollment";
     public static final String METHOD_EMAIL_RECOVERY = "emailRecovery";
     public static final String PURPOSE_OIDC_ACCESS_POLICY_UPDATE = "oidcAccessPolicyUpdate";
+    public static final String PURPOSE_API_KEY_POLICY_UPDATE = "apiKeyPolicyUpdate";
 
     private static final int RANDOM_BYTES = 32;
     private static final int RECOVERY_CODE_BYTES = 12;
@@ -612,7 +613,8 @@ public class MfaService {
         if (normalizedPurpose.isEmpty() && normalizedDigest.isEmpty()) {
             return SecurityConfirmationBinding.unbound();
         }
-        if (!PURPOSE_OIDC_ACCESS_POLICY_UPDATE.equals(normalizedPurpose)
+        if ((!PURPOSE_OIDC_ACCESS_POLICY_UPDATE.equals(normalizedPurpose)
+                && !PURPOSE_API_KEY_POLICY_UPDATE.equals(normalizedPurpose))
                 || !SHA256_DIGEST.matcher(normalizedDigest).matches()) {
             throw invalidChallenge();
         }

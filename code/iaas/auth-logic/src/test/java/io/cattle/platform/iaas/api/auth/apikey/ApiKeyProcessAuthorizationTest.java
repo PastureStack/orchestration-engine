@@ -1,0 +1,104 @@
+package io.cattle.platform.iaas.api.auth.apikey;
+
+import static org.junit.Assert.*;
+import static org.mockito.Mockito.*;
+import io.cattle.platform.api.auth.Policy;
+import io.cattle.platform.core.model.Credential;
+import io.cattle.platform.engine.process.LaunchConfiguration;
+import io.cattle.platform.engine.process.ProcessAuthorizationDeniedException;
+import io.cattle.platform.iaas.api.auth.impl.ApiAuthenticator;
+import io.cattle.platform.object.ObjectManager;
+import io.github.ibuildthecloud.gdapi.factory.SchemaFactory;
+import io.github.ibuildthecloud.gdapi.model.Action;
+import io.github.ibuildthecloud.gdapi.model.Schema;
+import java.time.Clock;
+import java.time.Instant;
+import java.time.ZoneOffset;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import org.junit.Before;
+import org.junit.Test;
+
+public class ApiKeyProcessAuthorizationTest {
+    ApiKeyProcessAuthorization hook;
+    Credential key;
+    Schema schema;
+    Policy owner;
+    Map<String, Object> metadata;
+    LaunchConfiguration job = new LaunchConfiguration("instance.update", "instance", "3", 5L, 0, Map.of());
+    Instant now = Instant.parse("2026-10-08T00:00:00Z");
+    Object root = new Object(), child = new Object();
+    @Before public void setup() {
+        hook = new ApiKeyProcessAuthorization(); hook.objectManager = mock(ObjectManager.class);
+        hook.authenticator = mock(ApiAuthenticator.class); hook.targets = mock(ApiKeyTargetResolver.class);
+        hook.clock = Clock.fixed(now, ZoneOffset.UTC);
+        key = mock(Credential.class); when(key.getId()).thenReturn(1L); when(key.getAccountId()).thenReturn(10L);
+        when(key.getKind()).thenReturn("apiKey"); when(key.getState()).thenReturn("active");
+        when(hook.targets.parseScopeId("credential", "1c1")).thenReturn(1L);
+        when(hook.objectManager.loadResource(Credential.class, 1L)).thenReturn(key);
+        when(hook.objectManager.loadResource("container", 3L)).thenReturn(root);
+        when(hook.objectManager.loadResource("instance", "3")).thenReturn(child);
+        owner = mock(Policy.class); when(owner.authorizeObject(any())).thenAnswer(i -> i.getArgument(0));
+        SchemaFactory factory = mock(SchemaFactory.class); schema = mock(Schema.class);
+        when(factory.getSchema("container")).thenReturn(schema); when(schema.getResourceMethods()).thenReturn(List.of("PUT"));
+        when(hook.authenticator.currentAuthorization(eq(10L), eq(5L), any())).thenReturn(new ApiAuthenticator.CurrentAuthorization(owner, factory));
+        metadata = new java.util.LinkedHashMap<>(Map.of("keyId", "1c1", "policyRevision", 0L,
+                "principalAccountId", 10L, "accountId", 5L, "operation", "update", "targetType", "container",
+                "targetId", "3", "requestMethod", "PUT", "requestCollection", false));
+    }
+    private void policy(ApiKeyPolicy policy) {
+        Map<String, Object> stored = new ApiKeyPolicyCodec().store(key, policy, 1);
+        when(key.getData()).thenReturn(stored);
+        metadata.put("policyRevision", 1L);
+    }
+    private void deny(String code) {
+        assertEquals(code, assertThrows(ProcessAuthorizationDeniedException.class,
+                () -> hook.beforeExecution(job, metadata)).getCode());
+    }
+    @Test public void fullAndLegacyKeepExistingActionBoundary() {
+        hook.beforeExecution(job, metadata);
+        policy(new ApiKeyPolicy(ApiKeyPolicy.Mode.FULL, ApiKeyPolicy.Effect.ALLOW, null, List.of()));
+        hook.beforeExecution(job, metadata);
+        verify(hook.targets, times(2)).parseScopeId("credential", "1c1");
+        verifyNoMoreInteractions(hook.targets);
+    }
+    @Test public void revocationStopsQueuedWorkBeforeOwnerOrTargetLookup() {
+        when(key.getRemoved()).thenReturn(new java.util.Date()); deny("ApiKeyRevoked");
+        verifyNoInteractions(hook.authenticator);
+    }
+    @Test public void policyRevisionChangeDoesNotRunQueuedOldGrant() {
+        policy(new ApiKeyPolicy(ApiKeyPolicy.Mode.FULL, ApiKeyPolicy.Effect.ALLOW, null, List.of()));
+        metadata.put("policyRevision", 0L); deny("ApiKeyPolicyChanged"); verifyNoInteractions(hook.authenticator);
+    }
+    @Test public void fullExplicitExpiryIsCheckedAtExecution() {
+        policy(new ApiKeyPolicy(ApiKeyPolicy.Mode.FULL, ApiKeyPolicy.Effect.ALLOW, now, List.of()));
+        deny("ApiKeyExpired");
+    }
+    @Test public void currentOwnerSchemaStillConstrainsFullKey() {
+        when(schema.getResourceMethods()).thenReturn(List.of("GET")); deny("OwnerPermissionDenied");
+    }
+    @Test public void currentOwnerCannotAuthorizeDifferentPrincipal() {
+        metadata.put("principalAccountId", 11L); deny("OwnerPermissionDenied"); verifyNoInteractions(hook.authenticator);
+    }
+    @Test public void descendantCannotEscapeAuthorizedStack() {
+        policy(new ApiKeyPolicy(ApiKeyPolicy.Mode.CUSTOM, ApiKeyPolicy.Effect.DENY, null,
+                List.of(new ApiKeyPolicy.Rule("scope", ApiKeyPolicy.Effect.ALLOW, ApiKeyPolicy.Scope.stack("1st8"), Set.of("update")))));
+        when(hook.targets.resolveObject("container", root, owner)).thenReturn(ApiKeyPolicyEvaluator.Target.stackResource("container", "1i3", "1a5", "1st8"));
+        when(hook.targets.resolveObject("container", child, owner)).thenReturn(ApiKeyPolicyEvaluator.Target.stackResource("container", "1i4", "1a5", "1st9"));
+        deny("KeyScopeDenied");
+    }
+    @Test public void collectionActionUsesCollectionNotResourceActions() {
+        metadata.put("requestAction", "restart"); metadata.put("requestCollection", true);
+        when(schema.getCollectionActions()).thenReturn(Map.of("restart", mock(Action.class)));
+        when(schema.getResourceActions()).thenReturn(Map.of());
+        hook.beforeExecution(job, metadata);
+        metadata.put("requestCollection", false); deny("OwnerPermissionDenied");
+    }
+    @Test public void transientAuthorizationLookupFailureIsNotPermanentDenial() {
+        IllegalStateException unavailable = new IllegalStateException("provider unavailable");
+        when(hook.authenticator.currentAuthorization(eq(10L), eq(5L), any())).thenThrow(unavailable);
+        assertSame(unavailable, assertThrows(IllegalStateException.class, () -> hook.beforeExecution(job, metadata)));
+        verify(hook.objectManager, never()).loadResource("instance", "3");
+    }
+}
