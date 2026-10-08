@@ -9,6 +9,12 @@ Custom policy rules use explicit operation IDs and persisted ancestry. A deny
 takes precedence over an allow. Both v1 and v2-beta use the same enforcement;
 collection constraints are applied before pagination, with object and attachment
 checks at the shared response boundary.
+Before creating or updating a resource, destination parents and reference checks
+follow the actual input schema and its create/update flags. A read-only
+`serviceId`, unknown `instanceId`, or parent-like string cannot grant Stack-scoped
+creation authority for a field that validation discards. Writable `stackId`
+continues to support directly Stack-owned containers; a service relationship is
+not required when the container has a verified persisted Stack parent.
 
 Policy updates use an exact revision/data/state compare-and-swap. A broader
 policy or longer validity requires the existing single-use MFA confirmation,

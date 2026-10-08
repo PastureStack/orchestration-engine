@@ -21,6 +21,7 @@ import java.util.Set;
 import java.util.Objects;
 import io.github.ibuildthecloud.gdapi.model.Field;
 import io.github.ibuildthecloud.gdapi.model.FieldType;
+import io.github.ibuildthecloud.gdapi.model.Action;
 import io.github.ibuildthecloud.gdapi.model.Schema;
 import jakarta.inject.Inject;
 import jakarta.inject.Named;
@@ -112,21 +113,22 @@ public class ApiKeyTargetResolver {
 
     private void addDestinationParents(ApiRequest request, Policy owner, List<ApiKeyPolicyEvaluator.Target> targets) {
         Map<?, ?> body = request.getRequestObject() instanceof Map<?, ?> m ? m : Map.of();
-        Long declaredAccount = parentId("project", body.get("accountId"));
-        Long declaredStack = parentId("stack", body.get("stackId"));
+        Schema input = inputSchema(request);
+        Long declaredAccount = acceptedParentId(request, input, body, "project", "accountId");
+        Long declaredStack = acceptedParentId(request, input, body, "stack", "stackId");
         if (declaredStack != null) {
             Stack stack = objectManager.loadResource(Stack.class, declaredStack);
             if (stack == null || (declaredAccount != null && !declaredAccount.equals(stack.getAccountId()))) denied("KeyScopeDenied");
             targets.add(stack("stack", format("stack", stack.getId()), stack, owner));
         }
-        Long serviceId = parentId("service", body.get("serviceId"));
+        Long serviceId = acceptedParentId(request, input, body, "service", "serviceId");
         if (serviceId != null) {
             Service service = objectManager.loadResource(Service.class, serviceId);
             if (service == null || (declaredStack != null && !declaredStack.equals(service.getStackId()))
                     || (declaredAccount != null && !declaredAccount.equals(service.getAccountId()))) denied("KeyScopeDenied");
             targets.add(resolveObject("service", service, owner));
         }
-        Long instanceId = parentId("container", body.get("instanceId"));
+        Long instanceId = acceptedParentId(request, input, body, "container", "instanceId");
         if (instanceId != null) {
             Instance instance = objectManager.loadResource(Instance.class, instanceId);
             if (instance == null) denied("KeyScopeDenied");
@@ -142,22 +144,47 @@ public class ApiKeyTargetResolver {
     /** All schema-declared references must also be readable. Never trust a URL's parent alone. */
     public List<ApiKeyPolicyEvaluator.Target> references(ApiRequest request, Policy owner) {
         List<ApiKeyPolicyEvaluator.Target> targets = new ArrayList<>();
-        Schema schema = request.getSchemaFactory().getSchema(request.getType());
-        if (schema != null && request.getAction() != null && schema.getResourceActions() != null
-                && schema.getResourceActions().get(request.getAction()) != null) {
-            schema = request.getSchemaFactory().getSchema(schema.getResourceActions().get(request.getAction()).getInput());
-        }
-        collectReferences(request, schema, request.getRequestObject(), owner, targets, 0);
+        if (!"POST".equalsIgnoreCase(request.getMethod()) && !"PUT".equalsIgnoreCase(request.getMethod())) return targets;
+        collectReferences(request, inputSchema(request), request.getRequestObject(), owner, targets, 0,
+                "POST".equalsIgnoreCase(request.getMethod()));
         return targets;
     }
 
+    /** Match the public validator's accepted input, not fields it will discard. */
+    private Schema inputSchema(ApiRequest request) {
+        if (request.getSchemaFactory() == null) return null;
+        Schema schema = request.getSchemaFactory().getSchema(request.getType());
+        if (schema == null || request.getAction() == null) return schema;
+        Map<String, Action> actions = request.getId() == null ? schema.getCollectionActions() : schema.getResourceActions();
+        Action action = actions == null ? null : actions.get(request.getAction());
+        return action == null || action.getInput() == null ? null
+                : request.getSchemaFactory().getSchema(action.getInput());
+    }
+
+    private Long acceptedParentId(ApiRequest request, Schema schema, Map<?, ?> body, String type, String name) {
+        if (schema == null || schema.getResourceFields() == null) return null;
+        Field field = schema.getResourceFields().get(name);
+        boolean create = "POST".equalsIgnoreCase(request.getMethod());
+        if (!acceptedField(field, create) || (!create && !"PUT".equalsIgnoreCase(request.getMethod()))) return null;
+        List<FieldType.TypeAndName> parts = FieldType.parse(field.getType());
+        if (parts.size() != 2 || parts.getFirst().getType() != FieldType.REFERENCE) return null;
+        String reference = ApiKeyQueryScopes.canonical(parts.get(1).getName());
+        if (!(type.equals(reference) || ("project".equals(type) && "account".equals(reference)))) return null;
+        return parentId(type, body.get(name));
+    }
+
+    private boolean acceptedField(Field field, boolean create) {
+        return field != null && (create ? field.isCreate() : field.isUpdate());
+    }
+
     private void collectReferences(ApiRequest request, Schema schema, Object raw, Policy owner,
-            List<ApiKeyPolicyEvaluator.Target> targets, int depth) {
+            List<ApiKeyPolicyEvaluator.Target> targets, int depth, boolean create) {
         if (!(raw instanceof Map<?, ?> body) || schema == null) return;
         if (depth > 16 || targets.size() > 1024) denied("KeyScopeDenied");
         if (schema.getResourceFields() == null) return;
         for (Map.Entry<String, Field> entry : schema.getResourceFields().entrySet()) {
             Field field = entry.getValue();
+            if (!acceptedField(field, create)) continue;
             Object value = body.get(entry.getKey());
             if (value == null) continue;
             List<FieldType.TypeAndName> parts = FieldType.parse(field.getType());
@@ -175,7 +202,9 @@ public class ApiKeyTargetResolver {
                     targets.add(resolveObject(referenceType, referenced, owner));
                 } else {
                     String nested = parts.get(parts.size() - 1).getName();
-                    collectReferences(request, request.getSchemaFactory().getSchema(nested), item, owner, targets, depth + 1);
+                    // ValidationHandler converts complex values as newly supplied
+                    // input even when their enclosing resource is being updated.
+                    collectReferences(request, request.getSchemaFactory().getSchema(nested), item, owner, targets, depth + 1, true);
                 }
             }
         }

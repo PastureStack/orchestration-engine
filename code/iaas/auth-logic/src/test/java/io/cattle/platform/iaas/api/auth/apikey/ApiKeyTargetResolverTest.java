@@ -12,6 +12,10 @@ import io.cattle.platform.core.model.Volume;
 import io.cattle.platform.object.ObjectManager;
 import io.github.ibuildthecloud.gdapi.exception.ClientVisibleException;
 import io.github.ibuildthecloud.gdapi.id.IdFormatter;
+import io.github.ibuildthecloud.gdapi.factory.SchemaFactory;
+import io.github.ibuildthecloud.gdapi.model.Field;
+import io.github.ibuildthecloud.gdapi.model.Schema;
+import io.github.ibuildthecloud.gdapi.model.Action;
 import io.github.ibuildthecloud.gdapi.request.ApiRequest;
 import java.util.Map;
 import org.junit.Before;
@@ -46,6 +50,30 @@ public class ApiKeyTargetResolverTest {
         when(instance.getServiceId()).thenReturn(null); when(instance.getStackId()).thenReturn(null);
         return instance;
     }
+    private Field inputField(boolean create, boolean update, String type) {
+        Field field = mock(Field.class);
+        when(field.isCreate()).thenReturn(create); when(field.isUpdate()).thenReturn(update);
+        when(field.getType()).thenReturn(type);
+        return field;
+    }
+    private ApiRequest inputRequest(String type, String method, Map<String, Field> fields, Map<String, Object> body) {
+        ApiRequest request = new ApiRequest(null, null);
+        request.setType(type); request.setMethod(method); request.setRequestObject(body);
+        SchemaFactory factory = mock(SchemaFactory.class); Schema schema = mock(Schema.class);
+        when(schema.getResourceFields()).thenReturn(fields); when(factory.getSchema(type)).thenReturn(schema);
+        request.setSchemaFactory(factory); return request;
+    }
+    @Test public void readOnlyServiceParentCannotGrantStackCreateAuthority() {
+        Service service = mock(Service.class);
+        when(service.getId()).thenReturn(2L); when(service.getAccountId()).thenReturn(5L); when(service.getStackId()).thenReturn(8L);
+        when(resolver.objectManager.loadResource(Service.class, 2L)).thenReturn(service);
+        ApiRequest request = inputRequest("container", "POST",
+                Map.of("serviceId", inputField(false, false, "reference[service]")), Map.of("serviceId", "1s2"));
+        var target = resolver.resolve(request, owner).getFirst();
+        assertEquals(ApiKeyPolicyEvaluator.TargetLevel.PROJECT, target.level());
+        assertNull(target.stackId()); assertEquals("1a5", target.projectId());
+        verify(resolver.objectManager, never()).loadResource(Service.class, 2L);
+    }
     @Test public void standaloneContainerUsesPersistedStackAndCanonicalType() {
         Instance instance = instance(); when(instance.getStackId()).thenReturn(8L);
         var target = resolver.resolveObject("instance", instance, owner);
@@ -79,11 +107,71 @@ public class ApiKeyTargetResolverTest {
         assertThrows(ClientVisibleException.class, () -> resolver.parseScopeId("stack", "8"));
     }
     @Test public void createPayloadLoadsParentInsteadOfTrustingItsAccount() {
-        ApiRequest request = new ApiRequest(null, null); request.setType("service"); request.setMethod("POST");
-        request.setRequestObject(Map.of("stackId", "1st8", "accountId", "1a6"));
+        ApiRequest request = inputRequest("service", "POST", Map.of(
+                "stackId", inputField(true, false, "reference[stack]"),
+                "accountId", inputField(true, false, "reference[account]")),
+                Map.of("stackId", "1st8", "accountId", "1a6"));
         assertThrows(ClientVisibleException.class, () -> resolver.resolve(request, owner));
         request.setRequestObject(Map.of("stackId", "1st8", "accountId", "1a5"));
         assertEquals("1st8", resolver.resolve(request, owner).getFirst().stackId());
+    }
+    @Test public void writableDirectStackParentIsStillAValidStandaloneCreate() {
+        ApiRequest request = inputRequest("container", "POST",
+                Map.of("stackId", inputField(true, false, "reference[stack]")), Map.of("stackId", "1st8"));
+        assertEquals("1st8", resolver.resolve(request, owner).getFirst().stackId());
+    }
+    @Test public void unknownInstanceParentCannotGrantStackCreateAuthority() {
+        ApiRequest request = inputRequest("container", "POST", Map.of(), Map.of("instanceId", "1i3"));
+        assertNull(resolver.resolve(request, owner).getFirst().stackId());
+        verify(resolver.objectManager, never()).loadResource(Instance.class, 3L);
+    }
+    @Test public void stringWithParentLikeNameIsNotAResourceReference() {
+        ApiRequest request = inputRequest("container", "POST",
+                Map.of("stackId", inputField(true, true, "string")), Map.of("stackId", "1st8"));
+        assertNull(resolver.resolve(request, owner).getFirst().stackId());
+        verify(resolver.objectManager, never()).loadResource(Stack.class, 8L);
+    }
+    @Test public void immutableUpdateParentDoesNotReplacePersistedAncestry() {
+        Instance instance = instance(); when(instance.getStackId()).thenReturn(8L);
+        when(resolver.objectManager.loadResource("container", 3L)).thenReturn(instance);
+        ApiRequest request = inputRequest("container", "PUT",
+                Map.of("stackId", inputField(true, false, "reference[stack]")), Map.of("stackId", "1st9"));
+        request.setId("1i3");
+        var targets = resolver.resolve(request, owner);
+        assertEquals(1, targets.size()); assertEquals("1st8", targets.getFirst().stackId());
+        verify(resolver.objectManager, never()).loadResource(Stack.class, 9L);
+    }
+    @Test public void ignoredReadOnlyReferencesDoNotRequireAdditionalAuthority() {
+        ApiRequest request = inputRequest("container", "POST",
+                Map.of("serviceId", inputField(false, false, "reference[service]")), Map.of("serviceId", "1s2"));
+        assertTrue(resolver.references(request, owner).isEmpty());
+        verifyNoInteractions(resolver.objectManager);
+        request.setMethod("GET");
+        assertTrue(resolver.references(request, owner).isEmpty());
+    }
+    @Test public void collectionActionUsesItsActualInputSchema() {
+        ApiRequest request = inputRequest("service", "POST", Map.of(), Map.of("stackId", "1st8"));
+        Schema schema = request.getSchemaFactory().getSchema("service");
+        Action action = mock(Action.class); when(action.getInput()).thenReturn("actionInput");
+        when(schema.getCollectionActions()).thenReturn(Map.of("update", action));
+        Schema input = mock(Schema.class);
+        Field stackField = inputField(true, false, "reference[stack]");
+        when(input.getResourceFields()).thenReturn(Map.of("stackId", stackField));
+        when(request.getSchemaFactory().getSchema("actionInput")).thenReturn(input);
+        when(resolver.objectManager.loadResource("stack", "8")).thenReturn(stack);
+        request.setAction("update");
+        assertEquals("1st8", resolver.references(request, owner).getFirst().stackId());
+    }
+    @Test public void nestedUpdateInputUsesCreateFieldsAsTheValidatorDoes() {
+        ApiRequest request = inputRequest("service", "PUT",
+                Map.of("launchConfig", inputField(false, true, "launchConfig")),
+                Map.of("launchConfig", Map.of("stackId", "1st8")));
+        Schema nested = mock(Schema.class);
+        Field stackField = inputField(true, false, "reference[stack]");
+        when(nested.getResourceFields()).thenReturn(Map.of("stackId", stackField));
+        when(request.getSchemaFactory().getSchema("launchConfig")).thenReturn(nested);
+        when(resolver.objectManager.loadResource("stack", "8")).thenReturn(stack);
+        assertEquals("1st8", resolver.references(request, owner).getFirst().stackId());
     }
     @Test public void namedSettingsAreNotParsedAsNumericIds() {
         ApiRequest request = new ApiRequest(null, null); request.setType("setting"); request.setMethod("GET");

@@ -14,6 +14,8 @@ Engine `0.183.334` adds editable API Key policies and expiry to both API roots.
 Full and legacy Keys retain the account's existing authorization. Custom policies
 can narrow access by persisted environment, stack or resource IDs; they never
 grant more than the account's current permissions. Explicit denials take priority.
+Creation scope uses only typed parent fields that the API schema actually accepts;
+ignored or read-only payload fields cannot grant access to a different destination.
 Broadening an existing policy or extending its lifetime requires an actor-bound,
 single-use MFA confirmation of the exact change.
 
