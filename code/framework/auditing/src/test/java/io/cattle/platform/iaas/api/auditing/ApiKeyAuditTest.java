@@ -4,6 +4,10 @@ import static org.junit.Assert.*;
 
 import io.cattle.platform.api.auth.Policy;
 import io.cattle.platform.api.auth.ApiKeyDelegatedAuditEvent;
+import io.cattle.platform.core.constants.CredentialConstants;
+import io.cattle.platform.core.model.Credential;
+import io.cattle.platform.core.model.tables.records.CredentialRecord;
+import io.cattle.platform.object.ObjectManager;
 import io.cattle.platform.iaas.api.auditing.dao.AuditLogDao;
 import io.cattle.platform.engine.process.ExitReason;
 import io.cattle.platform.engine.process.LaunchConfiguration;
@@ -108,6 +112,60 @@ public class ApiKeyAuditTest {
         ApiRequest read = new ApiRequest(null, null); read.setType("apiKey"); read.setMethod("GET"); read.setId("1c42");
         service.complete(read, null); service.logRequest(read, policy());
         assertEquals(1, delivered.size()); assertFalse(AuditServiceImpl.isApiKeyGovernanceRequest(read));
+    }
+
+    @Test
+    public void otherOwnerGovernanceUsesDurableTargetAccountAndKeepsTheActorSeparate() throws Exception {
+        for (String method : new String[]{"POST", "PUT"}) {
+            List<Map<String, Object>> delivered = new ArrayList<>();
+            AuditServiceImpl service = service(delivered);
+            CredentialRecord key = new CredentialRecord();
+            key.setId(42L); key.setAccountId(7L); key.setKind(CredentialConstants.KIND_API_KEY);
+            service.objectManager = (ObjectManager) Proxy.newProxyInstance(ObjectManager.class.getClassLoader(),
+                    new Class<?>[]{ObjectManager.class}, (proxy, called, args) -> {
+                        assertEquals("loadResource", called.getName());
+                        assertEquals(Credential.class, args[0]); assertEquals(42L, args[1]);
+                        return key;
+                    });
+            List<Long> accounts = new ArrayList<>();
+            service.auditLogDao = accountCapturingDao(delivered, accounts);
+            ApiRequest request = new ApiRequest(null, null);
+            request.setType("apiKey"); request.setMethod(method); request.setResponseCode(200);
+            request.setId("PUT".equals(method) ? "42" : null);
+            request.setRequestObject(Map.of("id", "99", "accountId", "99", "secretValue", "private-secret"));
+            if ("POST".equals(method)) request.setResponseObject(new ResourceImpl("42", "apiKey", Map.of("accountId", "99")));
+            service.logRequest(request, policy()); service.logRequest(request, policy());
+            assertEquals(List.of(7L, 2L), accounts);
+            assertEquals(1, delivered.size()); assertEquals("2", delivered.get(0).get("actor"));
+            assertEquals("42", delivered.get(0).get("keyId")); assertFalse(delivered.toString().contains("private-secret"));
+        }
+    }
+
+    @Test
+    public void deniedGovernanceUsesRealKeyOwnerButNeverAnUnrelatedCredentialOrInputOwner() throws Exception {
+        for (String kind : new String[]{CredentialConstants.KIND_API_KEY_RESTRICTED, "password"}) {
+            List<Map<String, Object>> delivered = new ArrayList<>();
+            AuditServiceImpl service = service(delivered);
+            CredentialRecord key = new CredentialRecord(); key.setId(42L); key.setAccountId(7L); key.setKind(kind);
+            service.objectManager = (ObjectManager) Proxy.newProxyInstance(ObjectManager.class.getClassLoader(),
+                    new Class<?>[]{ObjectManager.class}, (proxy, called, args) -> key);
+            List<Long> accounts = new ArrayList<>(); service.auditLogDao = accountCapturingDao(delivered, accounts);
+            ApiRequest request = new ApiRequest(null, null); request.setType("apiKey"); request.setMethod("POST");
+            request.setAction("deactivate"); request.setId("42"); request.setResponseCode(403);
+            request.setRequestObject(Map.of("accountId", "99"));
+            service.logRequest(request, policy());
+            assertEquals(List.of(CredentialConstants.KIND_API_KEY_RESTRICTED.equals(kind) ? 7L : 1L, 2L), accounts);
+            assertEquals("DENIED", delivered.get(0).get("outcome"));
+        }
+    }
+
+    private AuditLogDao accountCapturingDao(List<Map<String, Object>> delivered, List<Long> accounts) {
+        return (AuditLogDao) Proxy.newProxyInstance(AuditLogDao.class.getClassLoader(), new Class<?>[]{AuditLogDao.class},
+                (proxy, method, args) -> {
+                    @SuppressWarnings("unchecked") Map<String, Object> data = (Map<String, Object>) args[2];
+                    delivered.add(new HashMap<>(data)); accounts.add((Long) args[4]); accounts.add((Long) args[5]);
+                    return null;
+                });
     }
 
     @Test

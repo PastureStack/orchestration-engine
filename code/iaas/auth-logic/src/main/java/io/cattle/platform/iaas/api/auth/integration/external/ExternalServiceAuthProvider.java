@@ -292,6 +292,13 @@ public class ExternalServiceAuthProvider {
      */
     public Set<Identity> getPrincipalIdentities(Account account) {
         if (!isConfigured()) return Collections.emptySet();
+        String accessToken = (String) DataAccessor.fields(account).withKey(ServiceAuthConstants.ACCESS_TOKEN).get();
+        if (StringUtils.isBlank(accessToken) && !tokenUtil.hasCurrentProviderPrincipal(account)) {
+            // A local owner's Key historically uses RancherId live RBAC. An
+            // unrelated local browser session must not add external access-mode
+            // restrictions. Missing AT alone never bypasses a linked provider.
+            return Collections.emptySet();
+        }
         AuthToken ownerToken = authTokenDao.getTokenByAccountId(account.getId());
         if (ownerToken != null && account.getId().equals(ownerToken.getAccountId())
                 && account.getId().equals(ownerToken.getAuthenticatedAsAccountId())
@@ -316,7 +323,6 @@ public class ExternalServiceAuthProvider {
             }
             return Collections.emptySet();
         }
-        String accessToken = (String) DataAccessor.fields(account).withKey(ServiceAuthConstants.ACCESS_TOKEN).get();
         if (!SecurityConstants.SECURITY.get() || StringUtils.isBlank(accessToken)) return Collections.emptySet();
         try {
             Response response = AuthHttpClient.get(ServiceAuthConstants.AUTH_SERVICE_URL.get() + "/me/identities",

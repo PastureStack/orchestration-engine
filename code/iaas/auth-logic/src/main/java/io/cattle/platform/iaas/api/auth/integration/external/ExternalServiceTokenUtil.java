@@ -4,6 +4,8 @@ import io.cattle.platform.api.auth.Identity;
 import io.cattle.platform.archaius.util.ArchaiusUtil;
 import io.cattle.platform.archaius.util.ConfigListProperty;
 import io.cattle.platform.core.constants.IdentityConstants;
+import io.cattle.platform.core.constants.CommonStatesConstants;
+import io.cattle.platform.core.constants.CredentialConstants;
 import io.cattle.platform.core.constants.ProjectConstants;
 import io.cattle.platform.core.model.Account;
 import io.cattle.platform.core.model.Credential;
@@ -92,6 +94,26 @@ public class ExternalServiceTokenUtil extends AbstractTokenUtil {
         return configured != null && configured.contains(externalIdType);
     }
 
+    /** Authoritative account/link evidence, never a Cookie or token payload. */
+    public boolean hasCurrentProviderPrincipal(Account account) {
+        if (Strings.CS.equals(account.getExternalIdType(), userType())
+                && StringUtils.isNotBlank(account.getExternalId())) return true;
+        for (Credential link : authDao.getIdentityLinks(account.getId())) {
+            if (isCurrentUserLink(account, link)) return true;
+        }
+        return false;
+    }
+
+    private boolean isCurrentUserLink(Account account, Credential link) {
+        Map<String, Object> data = link.getData();
+        return account.getId().equals(link.getAccountId())
+                && CredentialConstants.KIND_AUTH_IDENTITY.equals(link.getKind())
+                && CommonStatesConstants.ACTIVE.equals(link.getState()) && link.getRemoved() == null
+                && linkMatchesProvider(data, SecurityConstants.AUTH_PROVIDER.get())
+                && Strings.CS.equals(java.util.Objects.toString(data.get("externalIdType"), ""), userType())
+                && StringUtils.isNotBlank(java.util.Objects.toString(data.get("externalId"), ""));
+    }
+
     /**
      * Decode an already verified owner session without reading a request, a
      * Cookie, or getJWT(). The caller verifies the durable token record and
@@ -147,8 +169,7 @@ public class ExternalServiceTokenUtil extends AbstractTokenUtil {
                 && Strings.CS.equals(account.getExternalId(), user.getExternalId())) return true;
         for (Credential link : authDao.getIdentityLinks(account.getId())) {
             Map<String, Object> data = link.getData();
-            if (linkMatchesProvider(data, SecurityConstants.AUTH_PROVIDER.get())
-                    && Strings.CS.equals(String.valueOf(data.get("externalIdType")), user.getExternalIdType())
+            if (isCurrentUserLink(account, link)
                     && Strings.CS.equals(String.valueOf(data.get("externalId")), user.getExternalId())) return true;
         }
         return false;

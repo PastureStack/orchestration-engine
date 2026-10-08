@@ -5,6 +5,8 @@ import io.cattle.platform.api.auth.ApiKeyAuditSink;
 import io.cattle.platform.api.auth.ApiKeyDelegatedAuditEvent;
 import io.cattle.platform.api.auth.Policy;
 import io.cattle.platform.core.constants.AccountConstants;
+import io.cattle.platform.core.constants.CredentialConstants;
+import io.cattle.platform.core.model.Credential;
 import io.cattle.platform.core.constants.ContainerEventConstants;
 import io.cattle.platform.core.constants.ExternalEventConstants;
 import io.cattle.platform.eventing.EventService;
@@ -209,7 +211,7 @@ public class AuditServiceImpl implements AuditService, ApiKeyAuditSink, ApiReque
         Map<String, Object> event = new HashMap<>();
         event.put("resourceType", request.getType());
         event.put("resourceId", parseId(targetId));
-        event.put("accountId", policy.getAccountId());
+        event.put("accountId", governanceAccount(targetId, policy));
         event.put("authenticatedAsAccountId", policy.getAuthenticatedAsAccountId());
         event.put("eventType", "api.apiKey." + operation);
         event.put("authType", metadataValue(request.getAttribute(AccountConstants.AUTH_TYPE), ""));
@@ -217,6 +219,22 @@ public class AuditServiceImpl implements AuditService, ApiKeyAuditSink, ApiReque
         event.put("clientIp", metadataValue(request.getClientIp(), ""));
         event.put("data", data);
         outbox().persist(event, this::deliverApiKeyEvent);
+    }
+
+    private long governanceAccount(String targetId, Policy policy) {
+        Long credentialId = parseId(targetId);
+        if (credentialId != null && objectManager != null) {
+            Credential credential = objectManager.loadResource(Credential.class, credentialId);
+            if (credential != null && credential.getAccountId() != null && credential.getAccountId() > 0
+                    && (CredentialConstants.KIND_API_KEY.equals(credential.getKind())
+                    || CredentialConstants.KIND_API_KEY_RESTRICTED.equals(credential.getKind()))) {
+                // The target's durable account governs audit visibility; the
+                // authenticated actor remains separate. Never trust an input
+                // accountId or widen the viewer's account authorization.
+                return credential.getAccountId();
+            }
+        }
+        return policy.getAccountId();
     }
 
     private static boolean isAuthenticationFailure(ApiRequest request) {

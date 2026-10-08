@@ -157,6 +157,7 @@ public class ExternalServicePrincipalIdentitiesTest {
     @Test public void linkedOidcOwnerIsVerifiedAgainstActiveProviderLink() throws Exception {
         owner.setExternalIdType("rancher_id"); owner.setExternalId("42");
         CredentialRecord link = new CredentialRecord();
+        link.setAccountId(42L); link.setKind("authIdentity"); link.setState("active");
         link.setData(Map.of("provider", "oidcconfig", "externalIdType", "oidc_user", "externalId", "issuer|owner"));
         doReturn(List.of(link)).when(auth).getIdentityLinks(42L);
         fixture(200, Map.of("data", live("oidc_user", "issuer|owner", "oidc_group")), Map.of());
@@ -248,6 +249,88 @@ public class ExternalServicePrincipalIdentitiesTest {
         assertEquals(0, getCalls.get()); assertNull(ApiContext.getContext());
     }
 
+    @Test public void localKeyKeepsRancherRbacWithRequiredExternalModeAndRecoveryDisabled() throws Exception {
+        localOwnerWithRequiredMode();
+        when(tokens.getTokenByAccountId(42L)).thenReturn(session);
+        when(crypto.getJsonPayload("owner-signed-session", true)).thenReturn(Map.of(
+                AbstractTokenUtil.TOKEN, LocalAuthConstants.JWT, AbstractTokenUtil.PRINCIPAL_ACCOUNT_ID, "42",
+                AbstractTokenUtil.ID_LIST, List.of("rancher_id:42")));
+        assertTrue(provider.getPrincipalIdentities(owner).isEmpty());
+        verifyNoInteractions(tokens, crypto); assertNull(ApiContext.getContext());
+    }
+
+    @Test public void linkedOidcWithoutAccessTokenIsNotTreatedAsLocal() throws Exception {
+        localOwnerWithRequiredMode();
+        CredentialRecord link = activeLink();
+        doReturn(List.of(link)).when(auth).getIdentityLinks(42L);
+        when(tokens.getTokenByAccountId(42L)).thenReturn(session);
+        setting(ServiceAuthConstants.ALLOWED_IDENTITIES_SETTING, "oidc_group:issuer|group");
+        assertTrue(provider.getPrincipalIdentities(owner).contains(new Identity("oidc_group", "issuer|group")));
+        verify(crypto).getJsonPayload("owner-signed-session", true);
+        setting(ServiceAuthConstants.ALLOWED_IDENTITIES_SETTING, "oidc_group:other-group");
+        assertEquals(403, assertThrows(ClientVisibleException.class, () -> provider.getPrincipalIdentities(owner)).getStatus());
+    }
+
+    @Test public void onlyActiveOwnedCurrentProviderUserLinksPreventLocalFallback() {
+        localOwnerWithRequiredMode();
+        CredentialRecord link = activeLink(); doReturn(List.of(link)).when(auth).getIdentityLinks(42L);
+        assertTrue(util.hasCurrentProviderPrincipal(owner));
+        link.setState("inactive"); assertFalse(util.hasCurrentProviderPrincipal(owner)); link.setState("active");
+        link.setRemoved(new Date()); assertFalse(util.hasCurrentProviderPrincipal(owner)); link.setRemoved(null);
+        link.setAccountId(99L); assertFalse(util.hasCurrentProviderPrincipal(owner)); link.setAccountId(42L);
+        link.setKind("apiKey"); assertFalse(util.hasCurrentProviderPrincipal(owner)); link.setKind("authIdentity");
+        link.setData(Map.of("provider", "other-provider", "externalIdType", "oidc_user", "externalId", "issuer|owner"));
+        assertFalse(util.hasCurrentProviderPrincipal(owner));
+        link.setData(Map.of("provider", "oidcconfig", "externalIdType", "oidc_group", "externalId", "group"));
+        assertFalse(util.hasCurrentProviderPrincipal(owner));
+        link.setData(Map.of("provider", "oidcconfig", "externalIdType", "oidc_user", "externalId", ""));
+        assertFalse(util.hasCurrentProviderPrincipal(owner)); assertNull(ApiContext.getContext());
+    }
+
+    @Test public void ordinaryOidcBrowserStillUsesCookieSessionIdentities() throws Exception {
+        localOwnerWithRequiredMode();
+        setting(ServiceAuthConstants.ALLOWED_IDENTITIES_SETTING, "oidc_group:issuer|group");
+        browserSession(payload(42L));
+        assertTrue(provider.getIdentities(owner).contains(new Identity("oidc_group", "issuer|group")));
+        verify(tokens, atLeastOnce()).getTokenByKey("browser-session"); verify(tokens, never()).getTokenByAccountId(anyLong());
+    }
+
+    @Test public void ordinaryLocalBrowserStillEnforcesRecoveryAndExternalAccessMode() throws Exception {
+        localOwnerWithRequiredMode();
+        browserSession(Map.of(AbstractTokenUtil.TOKEN, LocalAuthConstants.JWT,
+                AbstractTokenUtil.PRINCIPAL_ACCOUNT_ID, "42", AbstractTokenUtil.ID_LIST, List.of("rancher_id:42")));
+        assertEquals(403, assertThrows(ClientVisibleException.class, () -> provider.getIdentities(owner)).getStatus());
+        setting(LocalAuthConstants.RECOVERY_ENABLED_SETTING, true);
+        assertEquals(Set.of(new Identity("rancher_id", "42")), provider.getIdentities(owner));
+        verify(tokens, never()).getTokenByAccountId(anyLong());
+    }
+
+    private void localOwnerWithRequiredMode() {
+        owner.setKind("admin"); owner.setExternalIdType("rancher_id"); owner.setExternalId("42");
+        DataAccessor.fields(owner).withKey(ServiceAuthConstants.ACCESS_TOKEN).set(null);
+        setting(ServiceAuthConstants.ACCESSMODE_SETTING, AbstractTokenUtil.REQUIRED_ACCESSMODE);
+        setting(ServiceAuthConstants.IDENTITY_SEPARATOR_SETTING, ",");
+        setting(ServiceAuthConstants.ALLOWED_IDENTITIES_SETTING, "oidc_group:required-group");
+        setting(LocalAuthConstants.RECOVERY_ENABLED_SETTING, false);
+        when(auth.getAccountById(42L)).thenReturn(owner); when(accounts.isActiveAccount(owner)).thenReturn(true);
+    }
+    private CredentialRecord activeLink() {
+        CredentialRecord link = new CredentialRecord(); link.setAccountId(42L); link.setKind("authIdentity"); link.setState("active");
+        link.setData(Map.of("provider", "oidcconfig", "externalIdType", "oidc_user", "externalId", "issuer|owner"));
+        return link;
+    }
+    private void browserSession(Map<String, Object> payload) throws Exception {
+        BrowserUtil browser = new BrowserUtil(); browser.dependencies(auth, accounts);
+        Field service = AbstractTokenUtil.class.getDeclaredField("tokenService"); service.setAccessible(true); service.set(browser, crypto);
+        Field dao = AbstractTokenUtil.class.getDeclaredField("authTokenDao"); dao.setAccessible(true); dao.set(browser, tokens);
+        provider.tokenUtil = browser;
+        when(tokens.getTokenByKey("browser-session")).thenReturn(session);
+        when(crypto.getJsonPayload("owner-signed-session", true)).thenReturn(payload);
+        HttpServletRequest servlet = mock(HttpServletRequest.class);
+        when(servlet.getCookies()).thenReturn(new Cookie[]{new Cookie("token", "browser-session")});
+        ApiContext.newContext().setApiRequest(new ApiRequest(new ApiServletContext(servlet, null, null), null));
+    }
+
     private void assertLive() {
         Set<Identity> result = provider.getPrincipalIdentities(owner);
         assertTrue(result.contains(new Identity(ServiceAuthConstants.USER_TYPE.get().replace("_user", "_group"), "live-group")));
@@ -294,5 +377,8 @@ public class ExternalServicePrincipalIdentitiesTest {
         @Override public Set<Identity> getIdentities() { throw new AssertionError("principal decoder read request context"); }
         @Override public io.cattle.platform.iaas.api.auth.identity.Token createToken(Set<Identity> ids,
                 io.cattle.platform.core.model.Account account, String login) { throw new AssertionError("created platform session"); }
+    }
+    private static class BrowserUtil extends ExternalServiceTokenUtil {
+        void dependencies(AuthDao dao, AccountDao accounts) { authDao = dao; accountDao = accounts; }
     }
 }

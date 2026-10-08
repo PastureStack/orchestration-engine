@@ -23,8 +23,11 @@ payloads. Queued work rechecks current account permissions without relying on an
 HTTP request or its temporary object-access whitelist. Agent/proxy integration is
 required for delegated execution and logging. Key identity lookup is bound to its
 owner, not another browser session's Cookie; existing signed owner sessions retain
-their original expiry semantics. Key management through the web UI is also linked
-to the managed Key's audit history without recording secret delivery or MFA inputs.
+their original expiry semantics. Local-account Keys keep their existing live RBAC
+without acquiring external-provider restrictions from an unrelated browser session.
+Key management through the web UI is linked to the managed Key's account and audit
+history, with the operator recorded separately, without recording secret delivery
+or MFA inputs.
 V1 responses only advertise environment aliases when its schema supports them;
 the proxy checks the authenticated backend's audit capability before sending any
 Key-authorized work. An older backend fails without executing it; a dual-signed,
