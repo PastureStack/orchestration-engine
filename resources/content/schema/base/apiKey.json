@@ -2,6 +2,6 @@
     "resourceFields": {
         "apiKeyPolicy": { "type": "map[json]", "create": true, "update": true, "nullable": true },
         "apiKeyPolicyRevision": { "type": "int", "create": false, "update": true, "nullable": true },
-        "securityConfirmation": { "type": "password", "create": true, "update": true, "nullable": true, "includeInList": false }
+        "securityConfirmation": { "type": "password", "create": true, "update": true, "nullable": true, "includeInList": false, "readOnCreateOnly": true }
     }
 }

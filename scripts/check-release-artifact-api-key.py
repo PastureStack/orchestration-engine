@@ -25,8 +25,12 @@ with zipfile.ZipFile(sys.argv[1]) as war:
             require(fields["apiKeyPolicy"].get("create") and fields["apiKeyPolicy"].get("update"), kind + ".policy")
             require(fields["apiKeyPolicyRevision"].get("update"), kind + ".revision")
             confirmation = fields["securityConfirmation"]
-            require(confirmation.get("type") == "password" and confirmation.get("includeInList") is False,
+            require(confirmation.get("type") == "password" and confirmation.get("includeInList") is False
+                    and confirmation.get("readOnCreateOnly") is True,
                     kind + ".confirmation-privacy")
+            for role in ("user", "admin", "project"):
+                grants = json.loads(resources.read("schema/" + role + "/" + role + "-auth.json"))["authorize"]
+                require(grants.get(kind + ".securityConfirmation") == "cruo", role + ".confirmation-write-metadata")
         preview = json.loads(resources.read("schema/base/apiKeyPolicyPreview.json"))
         require(preview["collectionMethods"] == ["POST"] and preview["resourceMethods"] == [], "preview-methods")
         for field in ("requestDigest", "purpose", "confirmationRequired"):

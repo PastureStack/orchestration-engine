@@ -129,6 +129,8 @@ public class ApiKeyPolicyManagementServiceTest {
         assertEquals(1, fixture.confirmations.get());
         assertEquals(6, codec.revision(fixture.key));
         assertEquals(CredentialConstants.KIND_API_KEY_RESTRICTED, fixture.key.getKind());
+        assertFalse(edit.containsKey("securityConfirmation"));
+        assertFalse(fixture.key.getData().containsKey("securityConfirmation"));
         assertEquals("ApiKeyPolicyRevisionConflict", rejected(() -> fixture.service.update("apiKeyRestricted", "12", request(edit), fixture.next)));
         assertEquals(1, fixture.confirmations.get());
     }

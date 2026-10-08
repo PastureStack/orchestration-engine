@@ -109,6 +109,9 @@ public class ApiKeyPolicyManagementService extends AbstractJooqDao implements Ap
                         Map<String, Object> data = policyWrite ? codec.store(current, candidate, revision + 1)
                                 : current.getData();
                         String targetKind = policyWrite ? kind(candidate, current.getKind()) : current.getKind();
+                        // One-time confirmation is a synthetic write input,
+                        // never part of a stored credential or response body.
+                        input.remove("securityConfirmation");
                         persist(current, data, targetKind, input);
                         return objectManager.reload(current);
                     }
