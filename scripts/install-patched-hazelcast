@@ -35,7 +35,13 @@ rm -rf "$work_root"
 mkdir -p "$work_root/metadata"
 
 runtime_jar="$work_root/hazelcast-${runtime_version}.jar"
-if ! curl --proto '=https' --tlsv1.2 --fail --silent --show-error --location \
+# An already downloaded official asset may be reused by release builders.
+# It passes the SAME pinned SHA256, licenses, versions and revision checks
+# below; neither a local Maven coordinate nor a caller-supplied hash is trusted.
+if [ -n "${PATCHED_HAZELCAST_JAR:-}" ]; then
+    test -f "$PATCHED_HAZELCAST_JAR"
+    cp -- "$PATCHED_HAZELCAST_JAR" "$runtime_jar"
+elif ! curl --proto '=https' --tlsv1.2 --fail --silent --show-error --location \
     --retry 2 --retry-all-errors --retry-delay 2 --connect-timeout 10 --max-time 600 \
     --output "$runtime_jar" "$release_url"; then
     echo "Release URL unavailable; retrieving the same hash-pinned GitHub asset via its API" >&2
