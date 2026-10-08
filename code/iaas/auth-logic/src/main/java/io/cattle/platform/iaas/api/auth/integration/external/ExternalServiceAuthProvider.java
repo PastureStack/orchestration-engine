@@ -285,6 +285,84 @@ public class ExternalServiceAuthProvider {
         return tokenUtil.getIdentities();
     }
 
+    /**
+     * Principal-bound identity source for verified API Keys and queued work.
+     * Existing unexpired owner sessions retain their original expiry semantics;
+     * this method neither consumes the current Cookie nor creates a session.
+     */
+    public Set<Identity> getPrincipalIdentities(Account account) {
+        if (!isConfigured()) return Collections.emptySet();
+        AuthToken ownerToken = authTokenDao.getTokenByAccountId(account.getId());
+        if (ownerToken != null && account.getId().equals(ownerToken.getAccountId())
+                && account.getId().equals(ownerToken.getAuthenticatedAsAccountId())
+                && SecurityConstants.TOKEN_VERSION.equals(ownerToken.getVersion())
+                && StringUtils.equalsIgnoreCase(SecurityConstants.AUTH_PROVIDER.get(), ownerToken.getProvider())
+                && ownerToken.getExpires() != null && ownerToken.getExpires().after(new java.util.Date())
+                && StringUtils.isNotBlank(ownerToken.getValue())) {
+            try {
+                Set<Identity> cached = tokenUtil.identitiesForAccount(account,
+                        tokenService.getJsonPayload(ownerToken.getValue(), true));
+                if (cached != null) return cached;
+            } catch (TokenException invalidOrExpired) {
+                // An unusable owner session is not replaced by a request Cookie.
+            }
+        }
+        if (ServiceAuthConstants.NO_IDENTITY_LOOKUP_SUPPORTED.get()) {
+            // SAML's existing no-session fallback supplies the owner user only,
+            // not a new group snapshot or an invented remote-refresh contract.
+            if (StringUtils.equals(account.getExternalIdType(), ServiceAuthConstants.USER_TYPE.get())) {
+                return Set.of(new Identity(account.getExternalIdType(), account.getExternalId(),
+                        null, null, null, null, true));
+            }
+            return Collections.emptySet();
+        }
+        String accessToken = (String) DataAccessor.fields(account).withKey(ServiceAuthConstants.ACCESS_TOKEN).get();
+        if (!SecurityConstants.SECURITY.get() || StringUtils.isBlank(accessToken)) return Collections.emptySet();
+        try {
+            Response response = AuthHttpClient.get(ServiceAuthConstants.AUTH_SERVICE_URL.get() + "/me/identities",
+                    ServiceAuthConstants.ACCEPT, ServiceAuthConstants.APPLICATION_JSON,
+                    ServiceAuthConstants.AUTHORIZATION, "Bearer " + accessToken);
+            Map<String, Object> data = readPrincipalResponse(response);
+            Set<Identity> live = readPrincipalIdentities(data, "data");
+            if (live.isEmpty()) {
+                // AD advertises lookup but its /me/identities returns an empty
+                // collection. Preserve its existing refresh query, without
+                // createToken(), JWT persistence, or ApiContext mutation.
+                Response refreshed = AuthHttpClient.postJson(ServiceAuthConstants.AUTH_SERVICE_URL.get() + "/token",
+                        jsonMapper.writeValueAsString(Collections.singletonMap("accessToken", accessToken)),
+                        ServiceAuthConstants.ACCEPT, ServiceAuthConstants.APPLICATION_JSON);
+                live = readPrincipalIdentities(readPrincipalResponse(refreshed), "identities");
+            }
+            return tokenUtil.validateAccountIdentities(account, live);
+        } catch (IOException unavailable) {
+            throw principalProviderUnavailable();
+        }
+    }
+
+    private Map<String, Object> readPrincipalResponse(Response response) throws IOException {
+        if (response.getStatusCode() != ResponseCodes.OK) throw principalProviderUnavailable();
+        Map<String, Object> result = jsonMapper.readValue(response.getBody());
+        if (result == null) throw principalProviderUnavailable();
+        return result;
+    }
+
+    private Set<Identity> readPrincipalIdentities(Map<String, Object> data, String field) {
+        // Missing or malformed data is an unavailable provider, never the AD
+        // empty-collection signal. No response body or bearer is logged.
+        if (!(data.get(field) instanceof List<?> values)) throw principalProviderUnavailable();
+        Set<Identity> result = new HashSet<>();
+        for (Object value : values) {
+            if (!(value instanceof Map<?, ?>)) throw principalProviderUnavailable();
+            result.add(tokenUtil.jsonToValidatedExternalIdentity(CollectionUtils.toMap(value)));
+        }
+        return result;
+    }
+
+    private ClientVisibleException principalProviderUnavailable() {
+        return new ClientVisibleException(ResponseCodes.SERVICE_UNAVAILABLE, "AuthenticationUnavailable",
+                GENERIC_ERROR_MESSAGE, null);
+    }
+
     public boolean isConfigured() {
         if (SecurityConstants.AUTH_PROVIDER.get() != null
                 && !SecurityConstants.NO_PROVIDER.equalsIgnoreCase(SecurityConstants.AUTH_PROVIDER.get())

@@ -124,6 +124,14 @@ public class AuditServiceImpl implements AuditService, ApiKeyAuditSink, ApiReque
             return;
         }
 
+        if (isApiKeyGovernanceRequest(request)) {
+            if (!Boolean.TRUE.equals(request.getAttribute(API_KEY_AUDIT_PREFIX + "governanceRecorded"))) {
+                logApiKeyGovernance(request, policy);
+                request.setAttribute(API_KEY_AUDIT_PREFIX + "governanceRecorded", Boolean.TRUE);
+            }
+            return;
+        }
+
         if (Schema.Method.GET.isMethod(request.getMethod()) ||
                 BLACK_LIST_TYPES.contains(request.getType().toLowerCase())) {
             return;
@@ -149,6 +157,66 @@ public class AuditServiceImpl implements AuditService, ApiKeyAuditSink, ApiReque
 
     public static boolean isApiKeyRequest(ApiRequest request) {
         return request != null && request.getAttribute(API_KEY_AUDIT_PREFIX + "keyId") instanceof String;
+    }
+
+    public static boolean isApiKeyGovernanceRequest(ApiRequest request) {
+        return request != null && ("apiKey".equalsIgnoreCase(request.getType())
+                || "apiKeyRestricted".equalsIgnoreCase(request.getType()))
+                && (Schema.Method.POST.isMethod(request.getMethod()) || Schema.Method.PUT.isMethod(request.getMethod())
+                || Schema.Method.DELETE.isMethod(request.getMethod()));
+    }
+
+    private void logApiKeyGovernance(ApiRequest request, Policy policy) {
+        // This is the managed Key, not a credential used to authenticate the caller.
+        // Never infer it from an input payload (including a forged accountId/id).
+        String targetId = metadataValue(request.getId(), "");
+        if (request.getResponseObject() instanceof Resource resource
+                && ("apiKey".equalsIgnoreCase(resource.getType()) || "apiKeyRestricted".equalsIgnoreCase(resource.getType()))) {
+            targetId = metadataValue(resource.getId(), targetId);
+        }
+        String requestId = metadataValue(request.getAttribute(API_KEY_AUDIT_PREFIX + "requestId"), "");
+        if (requestId.isEmpty()) {
+            requestId = UUID.randomUUID().toString();
+            request.setAttribute(API_KEY_AUDIT_PREFIX + "requestId", requestId);
+        }
+        int status = request.getResponseCode();
+        boolean denied = status == 401 || status == 403;
+        String operation = metadataValue(request.getAction(), "");
+        if (operation.isEmpty()) operation = convertToAction(request.getMethod()).name();
+        Map<String, Object> data = new HashMap<>();
+        data.put("eventId", UUID.randomUUID().toString());
+        if (!targetId.isEmpty()) data.put("keyId", targetId);
+        data.put("requestId", requestId);
+        data.put("actor", formattedAccountId(policy.getAuthenticatedAsAccountId()));
+        data.put("targetType", "apiKey");
+        data.put("targetId", targetId);
+        if (request.getResponseObject() instanceof Resource resource
+                && resource.getFields().get("apiKeyPolicyRevision") instanceof Number revision && revision.longValue() >= 0) {
+            data.put("policyRevision", revision.longValue());
+        }
+        data.put("operation", operation);
+        data.put("phase", "response");
+        data.put("decision", denied ? "DENY" : "ALLOW");
+        data.put("outcome", denied ? "DENIED" : status == 202 ? "ACCEPTED"
+                : status >= 200 && status < 400 ? "SUCCEEDED" : "FAILED");
+        String actualOutcome = metadataValue(request.getAttribute(API_KEY_AUDIT_PREFIX + "actualOutcome"), "");
+        if (!denied && Set.of("FAILED", "CANCELED").contains(actualOutcome)) data.put("outcome", actualOutcome);
+        data.put("reason", denied ? "KeyGovernanceDenied" : status >= 200 && status < 400
+                ? "KeyGovernanceCompleted" : "KeyGovernanceFailed");
+        data.put("httpStatus", status);
+        data.put("responseCode", status);
+        data.put("preview", false);
+        Map<String, Object> event = new HashMap<>();
+        event.put("resourceType", request.getType());
+        event.put("resourceId", parseId(targetId));
+        event.put("accountId", policy.getAccountId());
+        event.put("authenticatedAsAccountId", policy.getAuthenticatedAsAccountId());
+        event.put("eventType", "api.apiKey." + operation);
+        event.put("authType", metadataValue(request.getAttribute(AccountConstants.AUTH_TYPE), ""));
+        event.put("runtime", runtime(request));
+        event.put("clientIp", metadataValue(request.getClientIp(), ""));
+        event.put("data", data);
+        outbox().persist(event, this::deliverApiKeyEvent);
     }
 
     private static boolean isAuthenticationFailure(ApiRequest request) {
@@ -214,7 +282,7 @@ public class AuditServiceImpl implements AuditService, ApiKeyAuditSink, ApiReque
 
     @Override
     public void complete(ApiRequest request, Throwable failure) {
-        if (!isApiKeyRequest(request) && !isAuthenticationFailure(request)) {
+        if (!isApiKeyRequest(request) && !isAuthenticationFailure(request) && !isApiKeyGovernanceRequest(request)) {
             return;
         }
         request.setAttribute("requestEndTime", System.currentTimeMillis());

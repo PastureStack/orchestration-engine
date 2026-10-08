@@ -21,7 +21,11 @@ Key requests record the authorization decision and actual HTTP, background-job o
 delegated stream outcome separately. Audit records exclude credentials and request
 payloads. Queued work rechecks current account permissions without relying on an
 HTTP request or its temporary object-access whitelist. Agent/proxy integration is
-required for delegated execution and logging;
+required for delegated execution and logging. Key identity lookup is bound to its
+owner, not another browser session's Cookie; existing signed owner sessions retain
+their original expiry semantics. Key management through the web UI is also linked
+to the managed Key's audit history without recording secret delivery or MFA inputs.
+V1 responses only advertise environment aliases when its schema supports them;
 the proxy checks the authenticated backend's audit capability before sending any
 Key-authorized work. An older backend fails without executing it; a dual-signed,
 host-bound receipt records that handshake failure, not a successful execution.

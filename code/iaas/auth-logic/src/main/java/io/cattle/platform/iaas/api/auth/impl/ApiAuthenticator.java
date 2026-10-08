@@ -101,7 +101,7 @@ public class ApiAuthenticator extends AbstractApiRequestHandler {
             throw new ClientVisibleException(ResponseCodes.UNAUTHORIZED);
         }
 
-        Set<Identity> identities = getIdentities(authenticatedAsAccount);
+        Set<Identity> identities = getIdentities(authenticatedAsAccount, ApiKeyCredentialContext.get(request) != null);
         if (identities == null || identities.size() == 0) {
             throw new ClientVisibleException(ResponseCodes.UNAUTHORIZED);
         }
@@ -144,7 +144,7 @@ public class ApiAuthenticator extends AbstractApiRequestHandler {
         if (principal == null || account == null || !accountDao.isActiveAccount(principal) || !accountDao.isActiveAccount(account)) {
             throw new ClientVisibleException(ResponseCodes.FORBIDDEN, "OwnerPermissionDenied", "The key owner no longer has access.", null);
         }
-        Set<Identity> identities = getIdentities(principal);
+        Set<Identity> identities = getIdentities(principal, true);
         Policy personal = getPolicy(principal, principal, identities, request);
         if (personal == null || (principalId != accountId && !authDao.hasAccessToProject(accountId, principalId,
                 personal.isOption(Policy.AUTHORIZED_FOR_ALL_ACCOUNTS), identities))) {
@@ -237,12 +237,13 @@ public class ApiAuthenticator extends AbstractApiRequestHandler {
         return null;
     }
 
-    private Set<Identity> getIdentities(Account account) {
+    protected Set<Identity> getIdentities(Account account, boolean principalBound) {
         Set<Identity> identities = new HashSet<>();
         for (IdentityProvider identityProvider : identityProviders) {
            identities.addAll(identityProvider.getIdentities(account));
         }
-        identities.addAll(externalAuthProvider.getIdentities(account));
+        identities.addAll(principalBound ? externalAuthProvider.getPrincipalIdentities(account)
+                : externalAuthProvider.getIdentities(account));
         identities.remove(null);
         return identities;
     }

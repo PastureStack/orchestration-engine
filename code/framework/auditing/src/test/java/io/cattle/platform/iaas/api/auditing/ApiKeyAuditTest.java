@@ -20,6 +20,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.stream.Stream;
 
 import org.junit.Rule;
@@ -49,6 +50,64 @@ public class ApiKeyAuditTest {
         assertFalse(delivered.toString().contains("secret"));
         assertFalse(delivered.get(1).containsKey("requestObject"));
         assertFalse(delivered.get(1).containsKey("responseObject"));
+    }
+
+    @Test
+    public void cookieKeyCreationIsLinkedToServerIssuedKeyAndNeverItsSecret() throws Exception {
+        List<Map<String, Object>> delivered = new ArrayList<>();
+        AuditServiceImpl service = service(delivered);
+        ApiRequest request = new ApiRequest(null, null);
+        request.setMethod("POST"); request.setType("apiKey"); request.setResponseCode(201);
+        request.setRequestObject(Map.of("id", "forged-key", "secretValue", "private-secret", "securityConfirmation", "private-ticket"));
+        request.setResponseObject(new ResourceImpl("1c42", "apiKey", Map.of("secretValue", "private-response-secret", "apiKeyPolicyRevision", 1L)));
+        service.logRequest(request, policy()); service.logRequest(request, policy());
+        assertEquals(1, delivered.size());
+        Map<String, Object> data = delivered.get(0);
+        assertEquals("1c42", data.get("keyId")); assertEquals("1c42", data.get("targetId"));
+        assertEquals("2", data.get("actor")); assertEquals("create", data.get("operation"));
+        assertEquals("response", data.get("phase")); assertEquals("SUCCEEDED", data.get("outcome"));
+        assertEquals(1L, ((Number) data.get("policyRevision")).longValue());
+        assertEquals(201, data.get("httpStatus")); UUID.fromString((String) data.get("requestId"));
+        assertFalse(delivered.toString().contains("private")); assertFalse(delivered.toString().contains("forged"));
+        assertFalse(AuditServiceImpl.isApiKeyRequest(request));
+    }
+
+    @Test
+    public void cookieKeyUpdatesAndRevocationRecordActualFinalStatusExactlyOnce() throws Exception {
+        for (int status : new int[]{200, 202, 400, 403, 500}) {
+            List<Map<String, Object>> delivered = new ArrayList<>(); AuditServiceImpl service = service(delivered);
+            ApiRequest request = new ApiRequest(null, null);
+            request.setMethod("PUT"); request.setType("apiKeyRestricted"); request.setId("1c42"); request.setResponseCode(status);
+            request.setRequestObject(Map.of("id", "forged-key", "securityConfirmation", "private-ticket", "expiresAt", "private-input"));
+            ApiContext.newContext().setPolicy(policy());
+            try { service.complete(request, null); service.complete(request, null); } finally { ApiContext.remove(); }
+            assertEquals(1, delivered.size());
+            assertEquals("1c42", delivered.get(0).get("keyId")); assertEquals("update", delivered.get(0).get("operation"));
+            assertEquals(status, delivered.get(0).get("httpStatus"));
+            assertEquals(status == 403 ? "DENY" : "ALLOW", delivered.get(0).get("decision"));
+            assertEquals(status == 403 ? "DENIED" : status == 202 ? "ACCEPTED" : status == 200 ? "SUCCEEDED" : "FAILED", delivered.get(0).get("outcome"));
+            assertFalse(delivered.toString().contains("private")); assertFalse(delivered.toString().contains("forged"));
+        }
+        List<Map<String, Object>> delivered = new ArrayList<>(); AuditServiceImpl service = service(delivered);
+        ApiRequest request = new ApiRequest(null, null);
+        request.setMethod("POST"); request.setType("apiKey"); request.setId("1c42"); request.setAction("deactivate"); request.setResponseCode(202);
+        service.logRequest(request, policy());
+        assertEquals("deactivate", delivered.get(0).get("operation"));
+        assertEquals("ACCEPTED", delivered.get(0).get("outcome"));
+    }
+
+    @Test
+    public void failedCookieCreationCannotLinkUntrustedPayloadAndGovernanceReadsRemainUnchanged() throws Exception {
+        List<Map<String, Object>> delivered = new ArrayList<>(); AuditServiceImpl service = service(delivered);
+        ApiRequest create = new ApiRequest(null, null);
+        create.setType("apiKey"); create.setMethod("POST"); create.setResponseCode(400);
+        create.setRequestObject(Map.of("id", "forged-key", "accountId", "forged-owner"));
+        service.logRequest(create, policy());
+        assertEquals(1, delivered.size()); assertFalse(delivered.get(0).containsKey("keyId"));
+        assertEquals("FAILED", delivered.get(0).get("outcome")); assertFalse(delivered.toString().contains("forged"));
+        ApiRequest read = new ApiRequest(null, null); read.setType("apiKey"); read.setMethod("GET"); read.setId("1c42");
+        service.complete(read, null); service.logRequest(read, policy());
+        assertEquals(1, delivered.size()); assertFalse(AuditServiceImpl.isApiKeyGovernanceRequest(read));
     }
 
     @Test
