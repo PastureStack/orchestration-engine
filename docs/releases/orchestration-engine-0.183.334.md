@@ -23,6 +23,9 @@ use the same rule before pagination. Storage persists the container/image link
 before synchronous image creation. Only that verified internal dependency may
 use its container/service/Stack scope; this does not grant access to arbitrary
 images or bypass live owner, revision, expiry or revocation checks.
+The exact container targets are retained for dependency DENY matching; an
+authorized parent grant never hides a child-specific denial. Full and legacy
+Keys keep direct image operations that the owner's existing RBAC permits.
 
 Policy updates use an exact revision/data/state compare-and-swap. A broader
 policy or longer validity requires the existing single-use MFA confirmation,

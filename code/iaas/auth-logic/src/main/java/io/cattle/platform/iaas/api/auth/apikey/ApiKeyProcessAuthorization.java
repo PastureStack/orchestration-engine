@@ -82,12 +82,12 @@ public class ApiKeyProcessAuthorization implements ProcessAuthorizationHook {
             // Image CREATE runs before the caller returns. Its actual instance
             // relation is persisted by storage first; that narrow dependency is
             // authorized through live owner access, never a blanket internal bypass.
-            ApiKeyPolicyEvaluator.Target dependency = null;
-            if (child instanceof Image image && "image.create".equals(config.getProcessName())
-                    && "image".equals(config.getResourceType())) {
-                dependency = targets.resolveImageDependency(root, image, current.policy());
-            } else if (current.policy().authorizeObject(child) == null) {
-                denied("OwnerPermissionDenied");
+            ApiKeyTargetResolver.ImageDependency dependency = null;
+            boolean imageDependency = child instanceof Image && !(root instanceof Image)
+                    && "image.create".equals(config.getProcessName()) && "image".equals(config.getResourceType());
+            if (current.policy().authorizeObject(child) == null) {
+                if (imageDependency) dependency = targets.resolveImageDependency(root, (Image) child, current.policy());
+                else denied("OwnerPermissionDenied");
             }
             if (policy == null || policy.getMode() == ApiKeyPolicy.Mode.FULL) {
                 if (policy != null && policy.getExpiresAt() != null && !clock.instant().isBefore(policy.getExpiresAt())) denied("ApiKeyExpired");
@@ -97,10 +97,16 @@ public class ApiKeyProcessAuthorization implements ProcessAuthorizationHook {
             var decision = evaluator.evaluate(policy, new ApiKeyPolicyEvaluator.Request(true, operation,
                     ApiKeyOperations.OPERATIONS.contains(operation), List.of(target)), clock.instant());
             if (!decision.allowed()) denied(decision.reason().getCode());
+            if (imageDependency && dependency == null) {
+                dependency = targets.resolveImageDependency(root, (Image) child, current.policy());
+            }
             var descendant = dependency == null
-                    ? targets.resolveObject(ApiKeyQueryScopes.canonical(config.getResourceType()), child, current.policy()) : dependency;
+                    ? targets.resolveObject(ApiKeyQueryScopes.canonical(config.getResourceType()), child, current.policy()) : dependency.scope();
             if (target.projectId() != null && !target.projectId().equals(descendant.projectId())) denied("KeyScopeDenied");
             if (target.stackId() != null && !target.stackId().equals(descendant.stackId())) denied("KeyScopeDenied");
+            var dependencyDecision = evaluator.evaluateAuthorizedDependency(policy, new ApiKeyPolicyEvaluator.Request(true, operation,
+                    ApiKeyOperations.OPERATIONS.contains(operation), dependency == null ? List.of(descendant) : dependency.instances()), clock.instant());
+            if (!dependencyDecision.allowed()) denied(dependencyDecision.reason().getCode());
         } catch (ProcessAuthorizationDeniedException denied) { throw denied; }
         catch (ClientVisibleException denied) {
             if (denied.getStatus() == 401 || denied.getStatus() == 403 || denied.getStatus() == 404) {

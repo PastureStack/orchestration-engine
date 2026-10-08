@@ -19,6 +19,7 @@ ignored or read-only payload fields cannot grant access to a different destinati
 Service-managed container ancestry uses persisted managed relationships, including
 when denormalized parent columns are empty. Internal image creation verifies its
 persisted container dependency; it does not grant global image access.
+A parent grant cannot override an explicit denial on its lifecycle dependencies.
 Broadening an existing policy or extending its lifetime requires an actor-bound,
 single-use MFA confirmation of the exact change.
 

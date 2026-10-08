@@ -182,6 +182,35 @@ public class ApiKeyPolicyEvaluatorTest {
         return new ApiKeyPolicy(mode, defaultEffect, null, List.of(rules));
     }
 
+    @Test public void dependencyInheritsOnlyGrantAndKeepsResourceDenialPriority() {
+        var child = Target.stackResource("container", "1i3", "1a5", "1st1");
+        var policy = policy(Mode.CUSTOM, Effect.DENY,
+                new Rule("root", Effect.ALLOW, Scope.resource("service", "1s2"), Set.of("upgrade")));
+        var request = new Request(true, "upgrade", true, List.of(child));
+        assertFalse(evaluator.evaluate(policy, request, NOW).allowed());
+        assertTrue(evaluator.evaluateAuthorizedDependency(policy, request, NOW).allowed());
+        var denied = policy(Mode.CUSTOM, Effect.DENY,
+                new Rule("root", Effect.ALLOW, Scope.resource("service", "1s2"), Set.of("upgrade")),
+                new Rule("child", Effect.DENY, Scope.resource("container", "1i3"), Set.of("upgrade")));
+        var decision = evaluator.evaluateAuthorizedDependency(denied, request, NOW);
+        assertFalse(decision.allowed());
+        assertEquals("KeyPolicyDenied", decision.reason().getCode());
+        assertEquals(List.of("child"), decision.matchedRuleIds());
+    }
+    @Test public void dependencyCannotBypassOwnerExpiryClosedOrUnknownAncestry() {
+        var request = new Request(true, "update", true, List.of(A));
+        var custom = policy(Mode.CUSTOM, Effect.DENY);
+        assertEquals("OwnerPermissionDenied", evaluator.evaluateAuthorizedDependency(custom,
+                new Request(false, "update", true, List.of(A)), NOW).reason().getCode());
+        assertEquals("ApiKeyExpired", evaluator.evaluateAuthorizedDependency(
+                new ApiKeyPolicy(Mode.CUSTOM, Effect.DENY, NOW, List.of()), request, NOW).reason().getCode());
+        assertEquals("KeyPolicyDenied", evaluator.evaluateAuthorizedDependency(policy(Mode.CLOSED, Effect.DENY), request, NOW).reason().getCode());
+        assertEquals("KeyScopeDenied", evaluator.evaluateAuthorizedDependency(custom,
+                new Request(true, "update", true, List.of(Target.unresolved("container", "1i3"))), NOW).reason().getCode());
+        assertEquals("UnknownOperation", evaluator.evaluateAuthorizedDependency(custom,
+                new Request(true, "unknown", false, List.of(A)), NOW).reason().getCode());
+    }
+
     private ApiKeyPolicyEvaluator.Decision evaluate(ApiKeyPolicy policy, String operation, Target... targets) {
         return evaluator.evaluate(policy, new Request(true, operation, true, List.of(targets)), NOW);
     }

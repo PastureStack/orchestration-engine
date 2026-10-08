@@ -109,6 +109,17 @@ public final class ApiKeyPolicyEvaluator {
     }
 
     public Decision evaluate(ApiKeyPolicy policy, Request request, Instant now) {
+        return evaluate(policy, request, now, false);
+    }
+
+    /** A caller that has already authorized the root operation may inherit its
+     * grant for a verified lifecycle dependency. Explicit child DENY rules still
+     * win; expiry, owner access and resolvable ancestry are never bypassed. */
+    public Decision evaluateAuthorizedDependency(ApiKeyPolicy policy, Request request, Instant now) {
+        return evaluate(policy, request, now, true);
+    }
+
+    private Decision evaluate(ApiKeyPolicy policy, Request request, Instant now, boolean inheritedGrant) {
         Objects.requireNonNull(policy, "policy; legacy absence must be handled explicitly");
         Objects.requireNonNull(request, "request");
         Objects.requireNonNull(now, "clock instant");
@@ -138,7 +149,7 @@ public final class ApiKeyPolicyEvaluator {
         Set<String> matches = new LinkedHashSet<>();
         boolean missingGrant = false;
         for (Target target : request.targets()) {
-            boolean granted = policy.getDefaultEffect() == Effect.ALLOW;
+            boolean granted = inheritedGrant || policy.getDefaultEffect() == Effect.ALLOW;
             for (Rule rule : policy.getRules()) {
                 if (!matches(rule.scope(), target)
                         || !rule.operations().contains(request.operation())) {

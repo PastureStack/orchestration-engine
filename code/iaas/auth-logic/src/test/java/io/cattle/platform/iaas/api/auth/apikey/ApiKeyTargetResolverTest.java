@@ -36,9 +36,11 @@ public class ApiKeyTargetResolverTest {
         Instance instance = imageInstance();
         Image image = image();
         when(owner.authorizeObject(image)).thenReturn(null);
-        var target = resolver.resolveImageDependency(instance, image, owner);
+        var dependency = resolver.resolveImageDependency(instance, image, owner);
+        var target = dependency.scope();
         assertEquals("image", target.resourceType()); assertEquals("1st8", target.stackId());
         assertEquals("1a5", target.projectId());
+        assertEquals(List.of(ApiKeyPolicyEvaluator.Target.stackResource("container", "1i3", "1a5", "1st8")), dependency.instances());
         assertEquals(ApiKeyPolicyEvaluator.TargetLevel.UNRESOLVED, resolver.resolveObject("image", image(), owner).level());
     }
     @Test public void serviceAndStackCanAuthorizeTheirActualImageDependency() {
@@ -46,15 +48,21 @@ public class ApiKeyTargetResolverTest {
         Service service = mock(Service.class); when(service.getId()).thenReturn(2L);
         when(service.getAccountId()).thenReturn(5L); when(service.getStackId()).thenReturn(8L);
         when(resolver.objectManager.loadResource(Service.class, 2L)).thenReturn(service);
-        assertEquals("1st8", resolver.resolveImageDependency(service, image(), owner).stackId());
-        assertEquals("1st8", resolver.resolveImageDependency(stack, image(), owner).stackId());
+        for (Object root : List.of(service, stack)) {
+            var dependency = resolver.resolveImageDependency(root, image(), owner);
+            assertEquals("1st8", dependency.scope().stackId());
+            assertEquals(List.of(ApiKeyPolicyEvaluator.Target.stackResource("container", "1i3", "1a5", "1st8")), dependency.instances());
+        }
     }
     @Test public void realServiceMapSuppliesMissingDenormalizedParents() {
         Instance instance = imageInstance(); when(instance.getStackId()).thenReturn(null); when(instance.getServiceId()).thenReturn(null);
         Service service = mapService(instance, 2L, 5L, 8L);
         assertEquals("1st8", resolver.resolveObject("container", instance, owner).stackId());
-        assertEquals("1st8", resolver.resolveImageDependency(service, image(), owner).stackId());
-        assertEquals("1st8", resolver.resolveImageDependency(stack, image(), owner).stackId());
+        for (Object root : List.of(service, stack)) {
+            var dependency = resolver.resolveImageDependency(root, image(), owner);
+            assertEquals("1st8", dependency.scope().stackId());
+            assertEquals(List.of(ApiKeyPolicyEvaluator.Target.stackResource("container", "1i3", "1a5", "1st8")), dependency.instances());
+        }
         when(service.getAccountId()).thenReturn(6L);
         assertThrows(ClientVisibleException.class, () -> resolver.resolveImageDependency(service, image(), owner));
     }
@@ -118,11 +126,48 @@ public class ApiKeyTargetResolverTest {
         Policy real = new AccountPolicy(project, principal, java.util.Set.of(), new NoPolicyOptions());
         Instance instance = imageInstance();
         io.github.ibuildthecloud.gdapi.context.ApiContext.remove();
-        assertEquals("1st8", resolver.resolveImageDependency(instance, image(), real).stackId());
+        var dependency = resolver.resolveImageDependency(instance, image(), real);
+        assertEquals("1st8", dependency.scope().stackId());
+        assertEquals(List.of(ApiKeyPolicyEvaluator.Target.stackResource("container", "1i3", "1a5", "1st8")), dependency.instances());
         when(instance.getAccountId()).thenReturn(6L);
         assertEquals("OwnerPermissionDenied", assertThrows(ClientVisibleException.class,
                 () -> resolver.resolveImageDependency(instance, image(), real)).getCode());
         assertNull(io.github.ibuildthecloud.gdapi.context.ApiContext.getContext());
+    }
+    @Test public void everyActualContainerIdIsPreservedForResourceDenyInsteadOfBecomingImageId() {
+        Instance first = imageInstance();
+        Instance second = instance(); when(second.getId()).thenReturn(4L);
+        when(second.getImageId()).thenReturn(7L); when(second.getStackId()).thenReturn(8L);
+        when(resolver.objectManager.find(Instance.class, INSTANCE.IMAGE_ID, 7L, INSTANCE.REMOVED, null))
+                .thenReturn(List.of(first, second));
+        var dependency = resolver.resolveImageDependency(stack, image(), owner);
+        assertEquals(ApiKeyPolicyEvaluator.Target.stackResource("image", "1img7", "1a5", "1st8"), dependency.scope());
+        assertEquals(List.of(
+                ApiKeyPolicyEvaluator.Target.stackResource("container", "1i3", "1a5", "1st8"),
+                ApiKeyPolicyEvaluator.Target.stackResource("container", "1i4", "1a5", "1st8")), dependency.instances());
+        var deniedContainer = new ApiKeyPolicy.Rule("child-deny", ApiKeyPolicy.Effect.DENY,
+                ApiKeyPolicy.Scope.resource("container", "1i4"), java.util.Set.of("upgrade"));
+        var policy = new ApiKeyPolicy(ApiKeyPolicy.Mode.CUSTOM, ApiKeyPolicy.Effect.ALLOW, null, List.of(deniedContainer));
+        var evaluator = new ApiKeyPolicyEvaluator();
+        java.time.Instant now = java.time.Instant.parse("2026-10-08T00:00:00Z");
+        assertTrue(evaluator.evaluate(policy, new ApiKeyPolicyEvaluator.Request(true, "upgrade", true,
+                List.of(dependency.scope())), now).allowed());
+        var result = evaluator.evaluate(policy, new ApiKeyPolicyEvaluator.Request(true, "upgrade", true,
+                dependency.instances()), now);
+        assertFalse(result.allowed());
+        assertEquals(List.of("child-deny"), result.matchedRuleIds());
+    }
+    @Test public void standaloneProjectDependencyPreservesRealContainerAndImmutableTargetList() {
+        Instance instance = imageInstance(); when(instance.getStackId()).thenReturn(null);
+        var dependency = resolver.resolveImageDependency(instance, image(), owner);
+        assertEquals(ApiKeyPolicyEvaluator.Target.projectResource("image", "1img7", "1a5"), dependency.scope());
+        var target = ApiKeyPolicyEvaluator.Target.projectResource("container", "1i3", "1a5");
+        assertEquals(List.of(target), dependency.instances());
+        assertThrows(UnsupportedOperationException.class, () -> dependency.instances().clear());
+        var mutable = new java.util.ArrayList<>(List.of(target));
+        var copy = new ApiKeyTargetResolver.ImageDependency(dependency.scope(), mutable);
+        mutable.clear();
+        assertEquals(List.of(target), copy.instances());
     }
     private Image image() { Image image = mock(Image.class); when(image.getId()).thenReturn(7L); return image; }
     private Instance imageInstance() {

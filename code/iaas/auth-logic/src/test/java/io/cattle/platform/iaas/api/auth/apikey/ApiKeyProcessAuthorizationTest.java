@@ -143,7 +143,9 @@ public class ApiKeyProcessAuthorizationTest {
         when(hook.objectManager.loadResource("image", "7")).thenReturn(image);
         when(owner.authorizeObject(image)).thenReturn(null);
         when(hook.targets.resolveImageDependency(root, image, owner))
-                .thenReturn(ApiKeyPolicyEvaluator.Target.stackResource("image", "1img7", "1a5", "1st8"));
+                .thenReturn(new ApiKeyTargetResolver.ImageDependency(
+                        ApiKeyPolicyEvaluator.Target.stackResource("image", "1img7", "1a5", "1st8"),
+                        List.of(ApiKeyPolicyEvaluator.Target.stackResource("container", "1i3", "1a5", "1st8"))));
         LaunchConfiguration imageJob = new LaunchConfiguration("image.create", "image", "7", null, 0, Map.of());
         hook.beforeExecution(imageJob, metadata);
         policy(new ApiKeyPolicy(ApiKeyPolicy.Mode.CUSTOM, ApiKeyPolicy.Effect.DENY, null,
@@ -152,7 +154,51 @@ public class ApiKeyProcessAuthorizationTest {
                 .thenReturn(ApiKeyPolicyEvaluator.Target.stackResource("container", "1i3", "1a5", "1st8"));
         hook.beforeExecution(imageJob, metadata);
         verify(hook.targets, times(2)).resolveImageDependency(root, image, owner);
-        verify(owner, never()).authorizeObject(image);
+        verify(owner, times(2)).authorizeObject(image);
+    }
+    @Test public void fullAndLegacyDirectImageCreateKeepExistingOwnerGrantWithoutDependencyRequirement() {
+        Image image = mock(Image.class);
+        when(hook.objectManager.loadResource("image", 7L)).thenReturn(image);
+        when(hook.objectManager.loadResource("image", "7")).thenReturn(image);
+        metadata.put("targetType", "image"); metadata.put("targetId", "7");
+        metadata.put("operation", "create"); metadata.put("requestCollection", true); metadata.put("requestMethod", "POST");
+        SchemaFactory factory = mock(SchemaFactory.class);
+        when(factory.getSchema("image")).thenReturn(schema);
+        when(schema.getCollectionMethods()).thenReturn(List.of("POST"));
+        when(hook.authenticator.currentAuthorization(eq(10L), eq(5L), any()))
+                .thenReturn(new ApiAuthenticator.CurrentAuthorization(owner, factory));
+        LaunchConfiguration imageJob = new LaunchConfiguration("image.create", "image", "7", null, 0, Map.of());
+        hook.beforeExecution(imageJob, metadata);
+        policy(new ApiKeyPolicy(ApiKeyPolicy.Mode.FULL, ApiKeyPolicy.Effect.ALLOW, null, List.of()));
+        hook.beforeExecution(imageJob, metadata);
+        verify(hook.targets, never()).resolveImageDependency(any(), any(), any());
+        verify(hook.targets, never()).resolveObject(anyString(), any(), any());
+    }
+    @Test public void rootGrantCannotOverrideActualContainerDependencyDenial() {
+        Image image = mock(Image.class);
+        when(hook.objectManager.loadResource("image", "7")).thenReturn(image);
+        when(owner.authorizeObject(image)).thenReturn(null);
+        when(hook.targets.resolveImageDependency(root, image, owner))
+                .thenReturn(new ApiKeyTargetResolver.ImageDependency(
+                        ApiKeyPolicyEvaluator.Target.stackResource("image", "1img7", "1a5", "1st8"),
+                        List.of(ApiKeyPolicyEvaluator.Target.stackResource("container", "1i4", "1a5", "1st8"))));
+        when(hook.targets.resolveObject("container", root, owner))
+                .thenReturn(ApiKeyPolicyEvaluator.Target.stackResource("container", "1i3", "1a5", "1st8"));
+        policy(new ApiKeyPolicy(ApiKeyPolicy.Mode.CUSTOM, ApiKeyPolicy.Effect.DENY, null, List.of(
+                new ApiKeyPolicy.Rule("parent", ApiKeyPolicy.Effect.ALLOW, ApiKeyPolicy.Scope.resource("container", "1i3"), Set.of("update")),
+                new ApiKeyPolicy.Rule("child-deny", ApiKeyPolicy.Effect.DENY, ApiKeyPolicy.Scope.resource("container", "1i4"), Set.of("update")))));
+        LaunchConfiguration imageJob = new LaunchConfiguration("image.create", "image", "7", null, 0, Map.of());
+        assertEquals("KeyPolicyDenied", assertThrows(ProcessAuthorizationDeniedException.class,
+                () -> hook.beforeExecution(imageJob, metadata)).getCode());
+    }
+    @Test public void authorizedRootDependencyDoesNotRequireAnUnrelatedAdditionalChildGrant() {
+        policy(new ApiKeyPolicy(ApiKeyPolicy.Mode.CUSTOM, ApiKeyPolicy.Effect.DENY, null,
+                List.of(new ApiKeyPolicy.Rule("parent", ApiKeyPolicy.Effect.ALLOW, ApiKeyPolicy.Scope.resource("container", "1i3"), Set.of("update")))));
+        when(hook.targets.resolveObject("container", root, owner))
+                .thenReturn(ApiKeyPolicyEvaluator.Target.stackResource("container", "1i3", "1a5", "1st8"));
+        when(hook.targets.resolveObject("container", child, owner))
+                .thenReturn(ApiKeyPolicyEvaluator.Target.stackResource("container", "1i4", "1a5", "1st8"));
+        hook.beforeExecution(job, metadata);
     }
     @Test public void missingImageDependencyIsDeniedAndOtherImageProcessesKeepOwnerBoundary() {
         Image image = mock(Image.class);

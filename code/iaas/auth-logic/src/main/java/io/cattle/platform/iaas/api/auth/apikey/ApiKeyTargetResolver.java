@@ -96,16 +96,26 @@ public class ApiKeyTargetResolver {
         return ApiKeyPolicyEvaluator.Target.unresolved(type, id);
     }
 
+    public record ImageDependency(ApiKeyPolicyEvaluator.Target scope, List<ApiKeyPolicyEvaluator.Target> instances) {
+        public ImageDependency {
+            Objects.requireNonNull(scope, "dependency scope");
+            instances = List.copyOf(instances);
+        }
+    }
+
     /** Internal image creation is a dependency, not a separate image API grant.
      * Only persisted references from the authorized container/service/stack
-     * establish that relationship. No process-data or request hint is trusted.
+     * establish that relationship. Preserve each real container target so its
+     * explicit resource DENY cannot be hidden by the derived image scope.
+     * No process-data or request hint is trusted.
      */
-    public ApiKeyPolicyEvaluator.Target resolveImageDependency(Object root, Image image, Policy owner) {
+    public ImageDependency resolveImageDependency(Object root, Image image, Policy owner) {
         if (image.getId() == null || image.getRemoved() != null) denied("KeyScopeDenied");
         List<Instance> instances = objectManager.find(Instance.class,
                 INSTANCE.IMAGE_ID, image.getId(), INSTANCE.REMOVED, null);
         if (instances == null || instances.isEmpty()) denied("KeyScopeDenied");
         ApiKeyPolicyEvaluator.Target scope = null;
+        List<ApiKeyPolicyEvaluator.Target> instanceTargets = new ArrayList<>();
         for (Instance instance : instances) {
             if (!Objects.equals(instance.getImageId(), image.getId()) || instance.getRemoved() != null
                     || owner.authorizeObject(instance) == null) denied("OwnerPermissionDenied");
@@ -118,10 +128,12 @@ public class ApiKeyTargetResolver {
             if (scope != null && (!Objects.equals(scope.projectId(), candidate.projectId())
                     || !Objects.equals(scope.stackId(), candidate.stackId()))) denied("KeyScopeDenied");
             scope = candidate;
+            instanceTargets.add(candidate);
         }
-        if (scope.stackId() != null) return ApiKeyPolicyEvaluator.Target.stackResource("image", format("image", image.getId()),
-                scope.projectId(), scope.stackId());
-        return ApiKeyPolicyEvaluator.Target.projectResource("image", format("image", image.getId()), scope.projectId());
+        ApiKeyPolicyEvaluator.Target imageScope = scope.stackId() != null
+                ? ApiKeyPolicyEvaluator.Target.stackResource("image", format("image", image.getId()), scope.projectId(), scope.stackId())
+                : ApiKeyPolicyEvaluator.Target.projectResource("image", format("image", image.getId()), scope.projectId());
+        return new ImageDependency(imageScope, instanceTargets);
     }
 
     private record InstanceParents(Long stackId, Set<Long> serviceIds) { }
