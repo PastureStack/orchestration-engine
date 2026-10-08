@@ -173,6 +173,14 @@ public class ApiKeyTargetResolverTest {
         when(resolver.objectManager.loadResource("stack", "8")).thenReturn(stack);
         assertEquals("1st8", resolver.references(request, owner).getFirst().stackId());
     }
+    @Test public void putUsesResourceFieldsEvenWithAnActionQueryParameter() {
+        ApiRequest request = inputRequest("container", "PUT",
+                Map.of("stackId", inputField(true, false, "reference[stack]")), Map.of("stackId", "1st9"));
+        request.setAction("update");
+        assertTrue(resolver.references(request, owner).isEmpty());
+        assertNull(resolver.resolve(request, owner).stream().findFirst().orElse(null));
+        verifyNoInteractions(resolver.objectManager);
+    }
     @Test public void namedSettingsAreNotParsedAsNumericIds() {
         ApiRequest request = new ApiRequest(null, null); request.setType("setting"); request.setMethod("GET");
         request.setId("api.host");

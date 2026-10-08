@@ -154,7 +154,7 @@ public class ApiKeyTargetResolver {
     private Schema inputSchema(ApiRequest request) {
         if (request.getSchemaFactory() == null) return null;
         Schema schema = request.getSchemaFactory().getSchema(request.getType());
-        if (schema == null || request.getAction() == null) return schema;
+        if (schema == null || request.getAction() == null || !"POST".equalsIgnoreCase(request.getMethod())) return schema;
         Map<String, Action> actions = request.getId() == null ? schema.getCollectionActions() : schema.getResourceActions();
         Action action = actions == null ? null : actions.get(request.getAction());
         return action == null || action.getInput() == null ? null
