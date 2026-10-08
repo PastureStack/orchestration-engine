@@ -9,6 +9,11 @@ public class ApiKeyDelegationCompletionResourceManager extends AbstractNoOpResou
     @Inject ApiKeyDelegationService delegations;
     @Override public Class<?>[] getTypeClasses() { return new Class<?>[]{ApiKeyDelegationCompletion.class}; }
     @Override protected Object createInternal(String type, ApiRequest request) {
-        return new ResourceImpl("completion", "apiKeyDelegationCompletion", delegations.recordCompletion(request));
+        java.util.Map<String, Object> result = delegations.recordCompletion(request);
+        // This acknowledges durable evidence; it does not create a credential.
+        // The generic CREATE handler initially chooses 201, whereas the host
+        // receipt contract deliberately requires 200 with accepted=true.
+        request.setResponseCode(200);
+        return new ResourceImpl("completion", "apiKeyDelegationCompletion", result);
     }
 }

@@ -7,7 +7,10 @@ import io.cattle.platform.api.auth.Policy;
 import io.cattle.platform.core.dao.AgentDao;
 import io.github.ibuildthecloud.gdapi.context.ApiContext;
 import io.github.ibuildthecloud.gdapi.id.IdentityFormatter;
+import io.github.ibuildthecloud.gdapi.model.Resource;
 import io.github.ibuildthecloud.gdapi.request.ApiRequest;
+import io.github.ibuildthecloud.gdapi.request.handler.ResourceManagerRequestHandler;
+import io.github.ibuildthecloud.gdapi.request.resource.ResourceManagerLocator;
 import java.time.Clock;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
@@ -93,6 +96,19 @@ public class ApiKeyDelegationCompletionTest {
     @Test public void auditUnavailableIsAnOperationalFailureNotAnAuthorizationDenial(){
         Fixture f=new Fixture();f.engine.service.recordCompletion(f.request("FAILED","AuditUnavailable"));
         assertEquals("FAILED",f.events.getFirst().outcome());assertEquals("AuditUnavailable",f.events.getFirst().failureCode());
+    }
+
+    @Test public void genericCreateBoundaryAcknowledgesDurableReceiptWithHttp200() throws Exception {
+        Fixture f=new Fixture();ApiRequest request=f.request("SUCCEEDED",null);
+        request.setMethod("POST");request.setType("apiKeyDelegationCompletion");
+        ApiKeyDelegationCompletionResourceManager manager=new ApiKeyDelegationCompletionResourceManager();
+        manager.delegations=f.engine.service;
+        ResourceManagerRequestHandler handler=new ResourceManagerRequestHandler();
+        handler.setResourceManagerLocator(ApiKeyDelegationServiceTest.proxy(ResourceManagerLocator.class,(method,args)->manager));
+        handler.handle(request);
+        assertEquals(200,request.getResponseCode());
+        assertEquals(true,((Resource)request.getResponseObject()).getFields().get("accepted"));
+        assertEquals(1,f.events.size());
     }
 
     static final class Fixture {
