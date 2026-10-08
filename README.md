@@ -20,6 +20,9 @@ single-use MFA confirmation of the exact change.
 Key requests record the authorization decision and actual HTTP, background-job or
 delegated stream outcome separately. Audit records exclude credentials and request
 payloads. Agent/proxy integration is required for delegated execution and logging;
+the proxy checks the authenticated backend's audit capability before sending any
+Key-authorized work. An older backend fails without executing it; a dual-signed,
+host-bound receipt records that handshake failure, not a successful execution.
 the component artifact alone is not proof of complete platform acceptance.
 Use the [current Server release](https://github.com/PastureStack/server#current-release)
 for the published platform version. Source identities, checksums and acceptance

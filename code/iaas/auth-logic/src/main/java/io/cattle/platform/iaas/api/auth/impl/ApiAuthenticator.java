@@ -90,7 +90,8 @@ public class ApiAuthenticator extends AbstractApiRequestHandler {
         if (ApiContext.getContext().getTransformationService() == null){
             ApiContext.getContext().setTransformationService(transformationService);
         }
-        if (delegationService != null && delegationService.handleIntrospection(request)) {
+        if (delegationService != null && (delegationService.handleProxyFailure(request)
+                || delegationService.handleIntrospection(request))) {
             return;
         }
 

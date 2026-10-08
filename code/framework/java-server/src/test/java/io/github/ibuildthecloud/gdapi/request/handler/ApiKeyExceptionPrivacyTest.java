@@ -7,7 +7,7 @@ import org.junit.Test;
 
 public class ApiKeyExceptionPrivacyTest {
     @Test public void keyAndAnonymousErrorsNeverSerializeRequestOrPrivateCauseButKeepStatus() throws Exception {
-        for (String variant : List.of("key", "anonymous", "apiKeyDelegationCompletion", "apiKeyDelegation")) {
+        for (String variant : List.of("key", "anonymous", "apiKeyDelegationCompletion", "apiKeyDelegation", "apiKeyDelegationFailure")) {
             ApiRequest request = privateRequest(variant);
             ExceptionHandler handler = new ExceptionHandler();
             assertTrue(handler.handleException(request, privateFailure()));

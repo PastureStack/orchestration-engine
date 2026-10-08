@@ -102,16 +102,24 @@ public class HostApiProxyTokenManager extends AbstractNoOpResourceManager {
     }
 
     protected String getToken(String reportedUuid) {
+        // Derive the connection identity from the authenticated agent, never
+        // from caller-supplied fields. Older backends still read reportedUuid.
+        Agent agent = verifiedAgent(reportedUuid);
         Map<String, Object> data = new HashMap<String, Object>();
         data.put(HostConstants.FIELD_REPORTED_UUID, reportedUuid);
+        data.put("purpose", "host-api-backend-v1");
+        data.put("agentId", agent.getId());
+        data.put("issuedAt", java.time.Instant.now().getEpochSecond());
         return tokenService.generateToken(data);
     }
 
     protected void validate(HostApiProxyToken proxyToken) {
-        String reportedUuid = proxyToken.getReportedUuid();
+        verifiedAgent(proxyToken.getReportedUuid());
+    }
 
+    private Agent verifiedAgent(String reportedUuid) {
         Policy policy = ApiUtils.getPolicy();
-        Agent agent = objectManager.loadResource(Agent.class, policy.getOption(Policy.AGENT_ID));
+        Agent agent = policy == null ? null : objectManager.loadResource(Agent.class, policy.getOption(Policy.AGENT_ID));
         if (agent == null) {
             throw new ClientVisibleException(ResponseCodes.FORBIDDEN, VERIFY_AGENT);
         }
@@ -120,5 +128,6 @@ public class HostApiProxyTokenManager extends AbstractNoOpResourceManager {
         if (host == null) {
             throw new ValidationErrorException(ValidationErrorCodes.INVALID_REFERENCE, HostConstants.FIELD_REPORTED_UUID);
         }
+        return agent;
     }
 }

@@ -216,6 +216,23 @@ public class ApiKeyAuditTest {
     }
 
     @Test
+    public void delegatedFailureNeverAuditsEitherSignatureOnSuccessOrDenial() throws Exception {
+        for (int status : new int[]{200, 401, 403, 503}) {
+            List<Map<String, Object>> delivered = new ArrayList<>();
+            AuditServiceImpl service = service(delivered);
+            ApiRequest request = new ApiRequest(null, null);
+            request.setMethod("POST"); request.setType("apiKeyDelegationFailure"); request.setLink("report");
+            request.setRequestObject(Map.of("token", "private-stream-JWT", "backendToken", "private-backend-JWT"));
+            request.setResponseObject(Map.of("backendToken", "private-response-JWT")); request.setResponseCode(status);
+            request.setAttribute("requestStartTime", 1L); request.setAttribute("requestEndTime", 2L);
+            service.logRequest(request, policy());
+            assertEquals(1, delivered.size()); assertEquals(status, delivered.get(0).get("responseCode"));
+            assertFalse(delivered.get(0).containsKey("requestObject")); assertFalse(delivered.get(0).containsKey("responseObject"));
+            assertFalse(delivered.toString().contains("JWT")); assertFalse(AuditServiceImpl.isApiKeyRequest(request));
+        }
+    }
+
+    @Test
     public void durableOutboxSurvivesRestartAndReplaysWithoutDroppingReads() throws Exception {
         Path path = temporary.newFolder().toPath();
         JacksonMapper mapper = mapper();
@@ -253,6 +270,28 @@ public class ApiKeyAuditTest {
         assertEquals("ALLOW", delivered.get(0).get("decision"));
         assertEquals("FAILED", delivered.get(0).get("outcome"));
         assertEquals("AuditUnavailable", delivered.get(0).get("reason"));
+    }
+
+    @Test
+    public void verifiedCapabilityFailureIsActual503HandshakeNotExecutorCompletion() throws Exception {
+        List<Map<String, Object>> delivered = new ArrayList<>();
+        AuditServiceImpl service = service(delivered);
+        service.recordDelegatedOutcome(new ApiKeyDelegatedAuditEvent("e".repeat(64), "1a99", 2L, 1L, 3L,
+                "exec", "container", "12", "request1", "FAILED", "BackendAuditCapabilityUnavailable", "host-uuid"));
+        assertEquals(1, delivered.size());
+        Map<String, Object> event = delivered.get(0);
+        assertEquals("ALLOW", event.get("decision")); assertEquals("FAILED", event.get("outcome"));
+        assertEquals("handshake", event.get("phase")); assertEquals(503, event.get("httpStatus"));
+        assertEquals(503, event.get("responseCode")); assertEquals("BackendAuditCapabilityUnavailable", event.get("reason"));
+        assertEquals(false, event.get("preview"));
+        for (String invalid : List.of("SUCCEEDED", "CANCELLED", "CANCELED")) {
+            try {
+                service.recordDelegatedOutcome(new ApiKeyDelegatedAuditEvent("f".repeat(64), "1a99", 2L, 1L, 3L,
+                        "exec", "container", "12", "request1", invalid, "BackendAuditCapabilityUnavailable", "host-uuid"));
+                fail("A blocked handshake cannot claim execution or cancellation");
+            } catch (IllegalStateException expected) { }
+        }
+        assertEquals(1, delivered.size());
     }
 
     @Test

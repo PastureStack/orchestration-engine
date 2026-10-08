@@ -9,6 +9,7 @@ import io.cattle.platform.core.dao.AgentDao;
 import io.cattle.platform.core.constants.CredentialConstants;
 import io.cattle.platform.core.constants.HostConstants;
 import io.cattle.platform.core.model.Account;
+import io.cattle.platform.core.model.Agent;
 import io.cattle.platform.core.model.Credential;
 import io.cattle.platform.core.model.Host;
 import io.cattle.platform.core.model.Instance;
@@ -158,6 +159,33 @@ public class ApiKeyDelegationService implements ApiKeyDelegationTokenProvider {
         catch (RuntimeException invalid) { denied("ApiKeyDelegationInvalid"); return null; }
     }
 
+    /** Dual server-signed proof can record only this fixed, pre-execution failure.
+     * It never installs an agent Policy or authorizes a Docker operation. */
+    public boolean handleProxyFailure(ApiRequest request) throws IOException {
+        if (!"apiKeyDelegationFailure".equals(request.getType())) return false;
+        if (!"POST".equals(request.getMethod()) || !"report".equals(request.getId())
+                || request.getAction() != null || request.getLink() != null) denied("ApiKeyDelegationInvalid");
+        Map<String, Object> response = recordProxyFailure(request);
+        request.setResponseCode(200);
+        request.setResponseContentType("application/json");
+        request.getServletContext().getResponse().setHeader("Cache-Control", "no-store");
+        request.getOutputStream().write(jsonMapper.writeValueAsString(response).getBytes(StandardCharsets.UTF_8));
+        return true;
+    }
+
+    Map<String, Object> recordProxyFailure(ApiRequest request) {
+        Map<String, Object> body = map(request.getRequestObject());
+        if (!body.keySet().equals(Set.of("token", "backendToken"))) denied("ApiKeyDelegationInvalid");
+        Map<String, Object> backend = auditClaims(text(body, "backendToken"));
+        if (!"host-api-backend-v1".equals(backend.get("purpose"))) denied("DelegatedAuditAgentRequired");
+        checkReceiptAge(number(backend, "issuedAt"));
+        long agentId = number(backend, "agentId");
+        Agent agent = objectManager.loadResource(Agent.class, agentId);
+        if (agent == null || agent.getRemoved() != null || !"active".equals(agent.getState())) denied("DelegatedAuditAgentRequired");
+        return recordEvidence(text(body, "token"), "FAILED", "BackendAuditCapabilityUnavailable", agentId,
+                "apiKey-stream-handshake-failure-v1|", text(backend, "reportedUuid"));
+    }
+
     /** Authenticated host evidence, never an alternative authorization path. */
     public Map<String, Object> recordCompletion(ApiRequest request) {
         Policy agentPolicy = (Policy) ApiContext.getContext().getPolicy();
@@ -174,29 +202,45 @@ public class ApiKeyDelegationService implements ApiKeyDelegationTokenProvider {
         if (!(outcome.equals("SUCCEEDED") && failureCode == null)
                 && !(outcome.equals("FAILED") && failures.contains(failureCode == null ? "" : failureCode))
                 && !(outcome.equals("CANCELLED") && cancellations.contains(failureCode == null ? "" : failureCode))) denied("ApiKeyDelegationInvalid");
-        Map<String, Object> claims;
-        try { claims = tokenService.getAuditSignaturePayload(token); }
-        catch (io.cattle.platform.token.TokenException invalid) { denied("ApiKeyDelegationInvalid"); return null; }
+        return recordEvidence(token, outcome, failureCode, Long.parseLong(agentId), "apiKey-stream-terminal-v1|", null);
+    }
+
+    private Map<String, Object> auditClaims(String token) {
+        try { return tokenService.getAuditSignaturePayload(token); }
+        catch (io.cattle.platform.token.TokenException | RuntimeException invalid) {
+            denied("ApiKeyDelegationInvalid"); return null;
+        }
+    }
+
+    private void checkReceiptAge(long issuedAt) {
+        long now = clock.instant().getEpochSecond();
+        Long retention = auditRetentionSeconds.get();
+        long maxAge = retention == null ? 0 : Math.min(7 * 24 * 3600L, retention);
+        if (maxAge <= 0 || issuedAt <= 0 || issuedAt > now + 30 || now - issuedAt > maxAge) denied("ApiKeyDelegationInvalid");
+    }
+
+    private Map<String, Object> recordEvidence(String token, String outcome, String failureCode, long agentId,
+                                              String eventPrefix, String backendHostUuid) {
+        Map<String, Object> claims = auditClaims(token);
         boolean scoped = claims.containsKey(CLAIM);
         Map<String, Object> grant = map(claims.get(scoped ? CLAIM : AUDIT_CLAIM));
-        long issuedAt = number(grant, "issuedAt"), now = clock.instant().getEpochSecond();
-        Long retention = auditRetentionSeconds.get();
-        long maxReceiptAge = retention == null ? 0 : Math.min(7 * 24 * 3600L, retention);
+        long issuedAt = number(grant, "issuedAt");
         // Cleanup does not treat zero/negative retention as disabled. Do not accept
         // a new receipt after its persisted dedupe row could already be purged.
-        if (maxReceiptAge <= 0 || number(grant, "version") != 1 || issuedAt > now + 30 || now - issuedAt > maxReceiptAge
+        checkReceiptAge(issuedAt);
+        if (number(grant, "version") != 1
                 || number(grant, "keyId") < 1 || number(grant, "principalId") < 1 || number(grant, "accountId") < 1) denied("ApiKeyDelegationInvalid");
         if (scoped && (number(grant, "expiresAt") != number(claims, "exp")
                 || number(grant, "expiresAt") <= issuedAt || number(grant, "expiresAt") - issuedAt > MAX_LIFETIME_SECONDS)) denied("ApiKeyDelegationInvalid");
         Map<String, Object> payload = scoped ? map(grant.get("payload")) : claims;
         String hostUuid = text(payload, "hostUuid");
-        Host host = agentDao.getHosts(Long.valueOf(agentId)).get(hostUuid);
-        if (host == null) denied("DelegatedAuditHostMismatch");
+        Host host = agentDao.getHosts(agentId).get(hostUuid);
+        if (host == null || (backendHostUuid != null && !hostUuid.equals(backendHostUuid))) denied("DelegatedAuditHostMismatch");
         String operation = text(grant, "operation");
         if (!Set.of("exec", "logs", "read").contains(operation)) denied("ApiKeyDelegationInvalid");
         String requestId = text(grant, "requestId");
         if (!requestId.matches("[0-9a-fA-F-]{36}")) denied("ApiKeyDelegationInvalid");
-        String eventId = digest("apiKey-stream-terminal-v1|" + token);
+        String eventId = digest(eventPrefix + token);
         String keyId = String.valueOf(ApiContext.getContext().getIdFormatter().formatId(CredentialConstants.TYPE, number(grant, "keyId")));
         ApiKeyDelegatedAuditEvent event = new ApiKeyDelegatedAuditEvent(eventId, keyId,
                 number(grant, "principalId"), number(grant, "accountId"), number(grant, "revision"), operation,

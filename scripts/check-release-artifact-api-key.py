@@ -42,6 +42,14 @@ with zipfile.ZipFile(sys.argv[1]) as war:
     with module("cattle-iaas-auth-logic") as auth:
         for kind in ("ApiKeyAuthorizationService", "ApiKeyPolicyPreviewResourceManager", "ApiKeyDelegationCompletionResourceManager"):
             require("io/cattle/platform/iaas/api/auth/apikey/" + kind + ".class" in auth.namelist(), "class=" + kind)
+        delegation = auth.read("io/cattle/platform/iaas/api/auth/apikey/ApiKeyDelegationService.class")
+        for marker in (b"handleProxyFailure", b"host-api-backend-v1", b"backendToken", b"BackendAuditCapabilityUnavailable",
+                       b"apiKey-stream-handshake-failure-v1|"):
+            require(marker in delegation, "handshake-audit=" + marker.decode())
+    with module("cattle-host-api") as host:
+        producer = host.read("io/cattle/platform/host/api/HostApiProxyTokenManager.class")
+        for marker in (b"host-api-backend-v1", b"agentId", b"issuedAt", b"verifiedAgent"):
+            require(marker in producer, "backend-proof=" + marker.decode())
     with module("cattle-app-config") as app:
         iaas = app.read("io/cattle/platform/app/IaasApiConfig.class")
         for marker in (b"ApiKeyPolicyTypes", b"ApiKeyDelegationCompletionResourceManager", b"ApiKeyAuthorizationService"):

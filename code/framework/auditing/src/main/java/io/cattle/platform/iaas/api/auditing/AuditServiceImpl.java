@@ -130,7 +130,7 @@ public class AuditServiceImpl implements AuditService, ApiKeyAuditSink, ApiReque
         }
         Map<String, Object> data = new HashMap<>();
         if (!"apikey".equalsIgnoreCase(request.getType()) && !"apikeyrestricted".equalsIgnoreCase(request.getType())
-                && !"apiKeyDelegationCompletion".equalsIgnoreCase(request.getType())) {
+                && !StringUtils.startsWithIgnoreCase(request.getType(), "apiKeyDelegation")) {
             putInAsString(data, request.getType(), "requestObject", "Failed to convert request object to json.", request.getRequestObject());
             putInAsString(data, request.getType(), "responseObject", "Failed to convert response object to json.", request.getResponseObject());
         }
@@ -233,9 +233,13 @@ public class AuditServiceImpl implements AuditService, ApiKeyAuditSink, ApiReque
                 || !Set.of("SUCCEEDED", "FAILED", "CANCELLED", "CANCELED").contains(terminal.outcome())) {
             throw new IllegalStateException("Invalid delegated outcome metadata");
         }
-        if (terminal.failureCode() != null && !Set.of("HandshakeDenied", "DockerFailure", "StreamFailed", "AuditUnavailable",
+        if (terminal.failureCode() != null && !Set.of("HandshakeDenied", "DockerFailure", "StreamFailed", "AuditUnavailable", "BackendAuditCapabilityUnavailable",
                 "AuthorizationRevoked", "ClientDisconnected", "StreamCancelled").contains(terminal.failureCode())) {
             throw new IllegalStateException("Invalid delegated outcome code");
+        }
+        boolean blockedHandshake = "BackendAuditCapabilityUnavailable".equals(terminal.failureCode());
+        if (blockedHandshake && !"FAILED".equals(terminal.outcome())) {
+            throw new IllegalStateException("Invalid blocked handshake outcome");
         }
         Map<String, Object> data = new HashMap<>();
         data.put("eventId", terminal.eventId());
@@ -247,14 +251,14 @@ public class AuditServiceImpl implements AuditService, ApiKeyAuditSink, ApiReque
         data.put("hostUuid", requiredMetadata(terminal.hostUuid()));
         data.put("policyRevision", terminal.policyRevision());
         data.put("actor", formattedAccountId(terminal.principalAccountId()));
-        data.put("decision", "ALLOW"); // The original verified ticket was admitted; this is its actual terminal result.
+        data.put("decision", "ALLOW"); // Original policy admission; operational failure is not a permission denial.
         data.put("outcome", "CANCELLED".equals(terminal.outcome()) ? "CANCELED" : terminal.outcome());
-        data.put("phase", "completion");
+        data.put("phase", blockedHandshake ? "handshake" : "completion");
         data.put("reason", terminal.failureCode() == null ? "StreamCompleted" : terminal.failureCode());
         if (terminal.failureCode() != null) data.put("failureCode", terminal.failureCode());
         data.put("preview", false);
-        data.put("httpStatus", 0); // A host event, not a fabricated HTTP response.
-        data.put("responseCode", 0);
+        data.put("httpStatus", blockedHandshake ? 503 : 0); // Verified blocked proxy handshake, otherwise a host event.
+        data.put("responseCode", blockedHandshake ? 503 : 0);
         Map<String, Object> event = new HashMap<>();
         event.put("delegatedEventId", terminal.eventId());
         event.put("resourceType", data.get("targetType"));
@@ -574,6 +578,8 @@ public class AuditServiceImpl implements AuditService, ApiKeyAuditSink, ApiReque
         obj.remove("testRecipient");
         obj.remove("securityConfirmation");
         obj.remove("purposeDigest");
+        obj.remove("token");
+        obj.remove("backendToken");
         Iterator<Map.Entry<String, Object>> iter = obj.entrySet().iterator();
         while (iter.hasNext()) {
             if (iter.next().getKey().endsWith("Config")) {

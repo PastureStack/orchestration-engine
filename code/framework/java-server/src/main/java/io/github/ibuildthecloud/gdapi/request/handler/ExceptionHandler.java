@@ -79,6 +79,7 @@ public class ExceptionHandler implements ApiRequestHandler {
         return request.getAttribute("apiKey.audit.keyId") instanceof String
                 || Boolean.TRUE.equals(request.getAttribute("apiKey.audit.authenticationFailed"))
                 || "apiKeyDelegationCompletion".equalsIgnoreCase(request.getType())
+                || "apiKeyDelegationFailure".equalsIgnoreCase(request.getType())
                 || "apiKeyDelegation".equalsIgnoreCase(request.getType());
     }
 
