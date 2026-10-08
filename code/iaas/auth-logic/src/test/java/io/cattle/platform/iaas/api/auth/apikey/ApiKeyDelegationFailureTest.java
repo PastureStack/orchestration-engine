@@ -89,6 +89,34 @@ public class ApiKeyDelegationFailureTest {
         assertNotEquals(first,terminal);assertEquals(f.base.events.getFirst().requestId(),f.base.events.getLast().requestId());
     }
 
+    @Test public void signedRouteDenialIsFixedAuditableAndSeparateFromOtherOutcomes(){
+        Fixture f=new Fixture();ApiRequest request=f.request();
+        request.setRequestObject(Map.of("token",f.base.token,"backendToken",f.backendToken,
+                "failureCode","DelegationRouteDenied"));
+        String route=(String)f.service().recordProxyFailure(request).get("eventId");
+        assertEquals(route,f.service().recordProxyFailure(request).get("eventId"));
+        var event=f.base.events.getFirst();assertEquals("FAILED",event.outcome());
+        assertEquals("DelegationRouteDenied",event.failureCode());
+        assertEquals("container",event.targetType());assertEquals("1i9",event.targetId());
+        assertNull(ApiContext.getContext().getPolicy());assertNull(ApiKeyCredentialContext.get(request));
+        assertNotEquals(route,f.service().recordProxyFailure(f.request()).get("eventId"));
+        ApiContext.getContext().setPolicy(ApiKeyDelegationServiceTest.proxy(Policy.class,(method,args)->
+                method.equals("getOption") && Policy.AGENT_ID.equals(args[0])?"88":null));
+        assertNotEquals(route,f.service().recordCompletion(f.base.request("SUCCEEDED",null)).get("eventId"));
+    }
+
+    @Test public void routeDenialStillRequiresMatchingSignedBackendAndCannotChooseAuthority(){
+        Fixture f=new Fixture();ApiRequest request=f.request();
+        var body=new HashMap<String,Object>(Map.of("token",f.base.token,"backendToken",f.backendToken,
+                "failureCode","DelegationRouteDenied"));
+        request.setRequestObject(body);
+        body.put("outcome","SUCCEEDED");invalid(f,request,"ApiKeyDelegationInvalid");body.remove("outcome");
+        body.put("keyId",999L);invalid(f,request,"ApiKeyDelegationInvalid");body.remove("keyId");
+        body.put("backendToken","unsigned");invalid(f,request,"ApiKeyDelegationInvalid");
+        body.put("backendToken",f.backendToken);f.backend().put("reportedUuid","other-host");
+        invalid(f,request,"DelegatedAuditHostMismatch");assertTrue(f.base.events.isEmpty());
+    }
+
     @Test public void expiredRevokedTicketCanRecordEvidenceButStaleBackendCannot(){
         Fixture f=new Fixture();f.base.engine.key.setState("inactive");
         f.service().clock=Clock.fixed(f.base.engine.now.plusSeconds(100),ZoneOffset.UTC);

@@ -159,7 +159,7 @@ public class ApiKeyDelegationService implements ApiKeyDelegationTokenProvider {
         catch (RuntimeException invalid) { denied("ApiKeyDelegationInvalid"); return null; }
     }
 
-    /** Dual server-signed proof can record only this fixed, pre-execution failure.
+    /** Dual server-signed proof can record only fixed, pre-execution failures.
      * It never installs an agent Policy or authorizes a Docker operation. */
     public boolean handleProxyFailure(ApiRequest request) throws IOException {
         if (!"apiKeyDelegationFailure".equals(request.getType())) return false;
@@ -175,15 +175,22 @@ public class ApiKeyDelegationService implements ApiKeyDelegationTokenProvider {
 
     Map<String, Object> recordProxyFailure(ApiRequest request) {
         Map<String, Object> body = map(request.getRequestObject());
-        if (!body.keySet().equals(Set.of("token", "backendToken"))) denied("ApiKeyDelegationInvalid");
+        boolean routeDenied = body.keySet().equals(Set.of("token", "backendToken", "failureCode"))
+                && "DelegationRouteDenied".equals(body.get("failureCode"));
+        if (!routeDenied && !body.keySet().equals(Set.of("token", "backendToken"))) denied("ApiKeyDelegationInvalid");
         Map<String, Object> backend = auditClaims(text(body, "backendToken"));
         if (!"host-api-backend-v1".equals(backend.get("purpose"))) denied("DelegatedAuditAgentRequired");
         checkReceiptAge(number(backend, "issuedAt"));
         long agentId = number(backend, "agentId");
         Agent agent = objectManager.loadResource(Agent.class, agentId);
         if (agent == null || agent.getRemoved() != null || !"active".equals(agent.getState())) denied("DelegatedAuditAgentRequired");
-        return recordEvidence(text(body, "token"), "FAILED", "BackendAuditCapabilityUnavailable", agentId,
-                "apiKey-stream-handshake-failure-v1|", text(backend, "reportedUuid"));
+        // The Proxy may report this bounded observation but cannot select an
+        // identity, resource, successful outcome, or arbitrary failure code.
+        // Both identities and the original operation come from signed tickets.
+        return recordEvidence(text(body, "token"), "FAILED",
+                routeDenied ? "DelegationRouteDenied" : "BackendAuditCapabilityUnavailable", agentId,
+                routeDenied ? "apiKey-stream-route-denial-v1|" : "apiKey-stream-handshake-failure-v1|",
+                text(backend, "reportedUuid"));
     }
 
     /** Authenticated host evidence, never an alternative authorization path. */

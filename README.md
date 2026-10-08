@@ -31,7 +31,9 @@ or MFA inputs.
 V1 responses only advertise environment aliases when its schema supports them;
 the proxy checks the authenticated backend's audit capability before sending any
 Key-authorized work. An older backend fails without executing it; a dual-signed,
-host-bound receipt records that handshake failure, not a successful execution.
+host-bound receipt records that handshake failure or a ticket used on the wrong
+stream route, not a successful execution. These receipts cannot select another
+identity, target, arbitrary result or failure code.
 The component artifact alone is not proof of complete platform acceptance.
 Use the [current Server release](https://github.com/PastureStack/server#current-release)
 for the published platform version. Source identities, checksums and acceptance
