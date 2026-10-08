@@ -175,9 +175,12 @@ public class ApiKeyDelegationService implements ApiKeyDelegationTokenProvider {
 
     Map<String, Object> recordProxyFailure(ApiRequest request) {
         Map<String, Object> body = map(request.getRequestObject());
-        boolean routeDenied = body.keySet().equals(Set.of("token", "backendToken", "failureCode"))
+        boolean routeDenied = body.keySet().equals(Set.of("token", "backendToken", "failureCode", "attemptId"))
                 && "DelegationRouteDenied".equals(body.get("failureCode"));
         if (!routeDenied && !body.keySet().equals(Set.of("token", "backendToken"))) denied("ApiKeyDelegationInvalid");
+        String attemptId = routeDenied ? text(body, "attemptId") : null;
+        if (routeDenied && !attemptId.matches("[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}"))
+            denied("ApiKeyDelegationInvalid");
         Map<String, Object> backend = auditClaims(text(body, "backendToken"));
         if (!"host-api-backend-v1".equals(backend.get("purpose"))) denied("DelegatedAuditAgentRequired");
         checkReceiptAge(number(backend, "issuedAt"));
@@ -189,7 +192,7 @@ public class ApiKeyDelegationService implements ApiKeyDelegationTokenProvider {
         // Both identities and the original operation come from signed tickets.
         return recordEvidence(text(body, "token"), "FAILED",
                 routeDenied ? "DelegationRouteDenied" : "BackendAuditCapabilityUnavailable", agentId,
-                routeDenied ? "apiKey-stream-route-denial-v1|" : "apiKey-stream-handshake-failure-v1|",
+                routeDenied ? "apiKey-stream-route-denial-v1|" + attemptId + "|" : "apiKey-stream-handshake-failure-v1|",
                 text(backend, "reportedUuid"));
     }
 

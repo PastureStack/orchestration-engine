@@ -92,13 +92,16 @@ public class ApiKeyDelegationFailureTest {
     @Test public void signedRouteDenialIsFixedAuditableAndSeparateFromOtherOutcomes(){
         Fixture f=new Fixture();ApiRequest request=f.request();
         request.setRequestObject(Map.of("token",f.base.token,"backendToken",f.backendToken,
-                "failureCode","DelegationRouteDenied"));
+                "failureCode","DelegationRouteDenied","attemptId","d3819b41-95fb-4351-b95a-0d82e94a477c"));
         String route=(String)f.service().recordProxyFailure(request).get("eventId");
         assertEquals(route,f.service().recordProxyFailure(request).get("eventId"));
         var event=f.base.events.getFirst();assertEquals("FAILED",event.outcome());
         assertEquals("DelegationRouteDenied",event.failureCode());
         assertEquals("container",event.targetType());assertEquals("1i9",event.targetId());
         assertNull(ApiContext.getContext().getPolicy());assertNull(ApiKeyCredentialContext.get(request));
+        request.setRequestObject(Map.of("token",f.base.token,"backendToken",f.backendToken,
+                "failureCode","DelegationRouteDenied","attemptId","6dfc52b1-84c4-4ae5-991b-51c9c7ed007f"));
+        assertNotEquals(route,f.service().recordProxyFailure(request).get("eventId"));
         assertNotEquals(route,f.service().recordProxyFailure(f.request()).get("eventId"));
         ApiContext.getContext().setPolicy(ApiKeyDelegationServiceTest.proxy(Policy.class,(method,args)->
                 method.equals("getOption") && Policy.AGENT_ID.equals(args[0])?"88":null));
@@ -108,12 +111,14 @@ public class ApiKeyDelegationFailureTest {
     @Test public void routeDenialStillRequiresMatchingSignedBackendAndCannotChooseAuthority(){
         Fixture f=new Fixture();ApiRequest request=f.request();
         var body=new HashMap<String,Object>(Map.of("token",f.base.token,"backendToken",f.backendToken,
-                "failureCode","DelegationRouteDenied"));
+                "failureCode","DelegationRouteDenied","attemptId","d3819b41-95fb-4351-b95a-0d82e94a477c"));
         request.setRequestObject(body);
         body.put("outcome","SUCCEEDED");invalid(f,request,"ApiKeyDelegationInvalid");body.remove("outcome");
         body.put("keyId",999L);invalid(f,request,"ApiKeyDelegationInvalid");body.remove("keyId");
         body.put("backendToken","unsigned");invalid(f,request,"ApiKeyDelegationInvalid");
-        body.put("backendToken",f.backendToken);f.backend().put("reportedUuid","other-host");
+        body.put("backendToken",f.backendToken);body.put("attemptId","caller-controlled/path");
+        invalid(f,request,"ApiKeyDelegationInvalid");body.remove("attemptId");invalid(f,request,"ApiKeyDelegationInvalid");
+        body.put("attemptId","d3819b41-95fb-4351-b95a-0d82e94a477c");f.backend().put("reportedUuid","other-host");
         invalid(f,request,"DelegatedAuditHostMismatch");assertTrue(f.base.events.isEmpty());
     }
 
