@@ -42,6 +42,15 @@ with zipfile.ZipFile(sys.argv[1]) as war:
         require("releases/download/v0.13.28/node-agent-0.13.28.tar.gz" in config, "node-lifecycle-producer")
         require("releases/download/v0.38.5/host-api-0.38.5.tar.gz" in config, "host-producer")
         require("releases/download/v0.23.15/websocket-proxy-0.23.15-linux-amd64.tar.xz" in config, "proxy-producer")
+        bootstrap = resources.read("config-content/bootstrap/bootstrap.sh").decode()
+        launcher = re.search(r"(?ms)^start_agent\(\)\n\{(.*?)^\}\n", bootstrap)
+        require(launcher is not None, "node-bootstrap-launcher")
+        launch_body = launcher.group(1)
+        require("local main=${CATTLE_HOME}/node-agent/apply.sh" in launch_body
+                and 'exec "$main" start' in launch_body
+                and "export AGENT_PARENT_PID=$PPID" in launch_body,
+                "node-bootstrap-formal-lifecycle")
+        require("/pyagent/" not in launch_body and "||" not in launch_body, "node-bootstrap-no-legacy-fallback")
     with module("cattle-iaas-auth-logic") as auth:
         for kind in ("ApiKeyAuthorizationService", "ApiKeyPolicyPreviewResourceManager", "ApiKeyDelegationCompletionResourceManager"):
             require("io/cattle/platform/iaas/api/auth/apikey/" + kind + ".class" in auth.namelist(), "class=" + kind)

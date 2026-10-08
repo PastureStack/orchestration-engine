@@ -23,7 +23,7 @@ payloads. Agent/proxy integration is required for delegated execution and loggin
 the proxy checks the authenticated backend's audit capability before sending any
 Key-authorized work. An older backend fails without executing it; a dual-signed,
 host-bound receipt records that handshake failure, not a successful execution.
-the component artifact alone is not proof of complete platform acceptance.
+The component artifact alone is not proof of complete platform acceptance.
 Use the [current Server release](https://github.com/PastureStack/server#current-release)
 for the published platform version. Source identities, checksums and acceptance
 evidence belong in [release notes](docs/releases), not installation commands.
