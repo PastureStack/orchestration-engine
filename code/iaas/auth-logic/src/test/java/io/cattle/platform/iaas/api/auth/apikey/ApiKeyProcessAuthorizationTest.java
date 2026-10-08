@@ -4,6 +4,10 @@ import static org.junit.Assert.*;
 import static org.mockito.Mockito.*;
 import io.cattle.platform.api.auth.Policy;
 import io.cattle.platform.core.model.Credential;
+import io.cattle.platform.core.model.Account;
+import io.cattle.platform.core.model.Instance;
+import io.cattle.platform.api.auth.impl.NoPolicyOptions;
+import io.cattle.platform.iaas.api.auth.impl.AccountPolicy;
 import io.cattle.platform.engine.process.LaunchConfiguration;
 import io.cattle.platform.engine.process.ProcessAuthorizationDeniedException;
 import io.cattle.platform.iaas.api.auth.impl.ApiAuthenticator;
@@ -11,6 +15,7 @@ import io.cattle.platform.object.ObjectManager;
 import io.github.ibuildthecloud.gdapi.factory.SchemaFactory;
 import io.github.ibuildthecloud.gdapi.model.Action;
 import io.github.ibuildthecloud.gdapi.model.Schema;
+import io.github.ibuildthecloud.gdapi.context.ApiContext;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
@@ -100,5 +105,34 @@ public class ApiKeyProcessAuthorizationTest {
         when(hook.authenticator.currentAuthorization(eq(10L), eq(5L), any())).thenThrow(unavailable);
         assertSame(unavailable, assertThrows(IllegalStateException.class, () -> hook.beforeExecution(job, metadata)));
         verify(hook.objectManager, never()).loadResource("instance", "3");
+    }
+
+    @Test public void actualAccountPolicyAuthorizesQueuedWorkWithoutHttpContext() {
+        actualAccountPolicy(5L);
+        ApiContext.remove();
+        hook.beforeExecution(job, metadata);
+        assertNull(ApiContext.getContext());
+    }
+
+    @Test public void actualAccountPolicyStillDeniesForeignQueuedResource() {
+        actualAccountPolicy(6L);
+        ApiContext.remove();
+        deny("OwnerPermissionDenied");
+        assertNull(ApiContext.getContext());
+    }
+
+    private void actualAccountPolicy(long resourceAccountId) {
+        Account project = mock(Account.class), principal = mock(Account.class);
+        when(project.getId()).thenReturn(5L);
+        when(principal.getId()).thenReturn(10L);
+        AccountPolicy real = new AccountPolicy(project, principal, Set.of(), new NoPolicyOptions());
+        SchemaFactory factory = mock(SchemaFactory.class);
+        when(factory.getSchema("container")).thenReturn(schema);
+        when(hook.authenticator.currentAuthorization(eq(10L), eq(5L), any()))
+                .thenReturn(new ApiAuthenticator.CurrentAuthorization(real, factory));
+        Instance instance = mock(Instance.class);
+        when(instance.getAccountId()).thenReturn(resourceAccountId);
+        when(hook.objectManager.loadResource("container", 3L)).thenReturn(instance);
+        when(hook.objectManager.loadResource("instance", "3")).thenReturn(instance);
     }
 }

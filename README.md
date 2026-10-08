@@ -19,7 +19,9 @@ single-use MFA confirmation of the exact change.
 
 Key requests record the authorization decision and actual HTTP, background-job or
 delegated stream outcome separately. Audit records exclude credentials and request
-payloads. Agent/proxy integration is required for delegated execution and logging;
+payloads. Queued work rechecks current account permissions without relying on an
+HTTP request or its temporary object-access whitelist. Agent/proxy integration is
+required for delegated execution and logging;
 the proxy checks the authenticated backend's audit capability before sending any
 Key-authorized work. An older backend fails without executing it; a dual-signed,
 host-bound receipt records that handshake failure, not a successful execution.
