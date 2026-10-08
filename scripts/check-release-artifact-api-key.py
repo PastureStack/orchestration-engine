@@ -32,7 +32,10 @@ with zipfile.ZipFile(sys.argv[1]) as war:
         for field in ("requestDigest", "purpose", "confirmationRequired"):
             require(preview["resourceFields"][field].get("create") is False, "preview-server-owned-" + field)
         audit = json.loads(resources.read("schema/base/auditLog.json"))["resourceFields"]
-        for field in ("keyId", "decision", "outcome", "httpStatus", "requestId", "operation", "phase", "failureCode"):
+        audit_fields = ("eventId", "keyId", "decision", "outcome", "httpStatus", "requestId", "actor",
+                        "targetType", "targetId", "operation", "policyRevision", "reason", "phase", "preview",
+                        "processId", "processName", "hostUuid", "failureCode")
+        for field in audit_fields:
             require(field in audit and audit[field].get("create") is False and audit[field].get("update") is False,
                     "audit-server-owned-" + field)
         config = resources.read("cattle-global.properties").decode()
@@ -59,7 +62,8 @@ with zipfile.ZipFile(sys.argv[1]) as war:
     # Server runtime tests verify the effective schemas under both API versions.
     with module("cattle-framework-api") as api:
         factory = api.read("io/cattle/platform/api/schema/FileSchemaFactory.class")
-        for marker in (b"mergeApiKeyPolicyFields", b"addApiKeyPolicySchemas", b"apiKeyPolicyRevision", b"apiKeyPolicyPreview"):
+        for marker in (b"mergeApiKeyPolicyFields", b"addApiKeyPolicySchemas", b"apiKeyPolicyRevision", b"apiKeyPolicyPreview",
+                       b"mergeAuditLogReadFields") + tuple(name.encode() for name in audit_fields):
             require(marker in factory, "v1-factory=" + marker.decode())
 
 print("ENGINE_API_KEY_ARTIFACT_OK policy=full-closed-custom v1=registered preview=server-owned audit=decision-outcome producers=pinned")

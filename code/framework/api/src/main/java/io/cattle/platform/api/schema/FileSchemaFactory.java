@@ -96,6 +96,7 @@ public class FileSchemaFactory extends AbstractSchemaFactory implements Initiali
         mergeProjectTemplatePublicReadField(schema, coreSchema);
         mergeVolumeNativeReadField(schema, coreSchema);
         mergeApiKeyPolicyFields(schema, coreSchema);
+        mergeAuditLogReadFields(schema, coreSchema);
         Class<?> clz =  parentSchemaFactory.getSchemaClass(schema.getId());
         if (clz == null) {
             return;
@@ -125,6 +126,26 @@ public class FileSchemaFactory extends AbstractSchemaFactory implements Initiali
             field.setName(name);
             field.setCreate(field.isCreate() && schema.getCollectionMethods().contains("POST"));
             field.setUpdate(field.isUpdate() && schema.getResourceMethods().contains("PUT"));
+            schema.getResourceFields().put(name, field);
+        }
+    }
+
+    private void mergeAuditLogReadFields(Schema schema, Schema coreSchema) {
+        if (coreSchema == null || !"auditLog".equals(schema.getId())) return;
+        // Extend only an audit schema already granted by the frozen role. These
+        // are server-owned, non-secret metadata; neither role access nor writes
+        // are added, and existing fields/methods/actions remain untouched.
+        for (String name : List.of("eventId", "keyId", "decision", "outcome", "httpStatus", "requestId",
+                "actor", "targetType", "targetId", "operation", "policyRevision", "reason", "phase",
+                "preview", "processId", "processName", "hostUuid", "failureCode")) {
+            Field coreField = coreSchema.getResourceFields().get(name);
+            if (!(coreField instanceof FieldImpl) || schema.getResourceFields().containsKey(name)) continue;
+            FieldImpl field = new FieldImpl(coreField);
+            field.setName(name);
+            field.setCreate(false);
+            field.setUpdate(false);
+            field.setReadOnCreateOnly(false);
+            field.setIncludeInList(true);
             schema.getResourceFields().put(name, field);
         }
     }

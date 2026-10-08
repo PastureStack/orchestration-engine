@@ -379,6 +379,65 @@ public class FileSchemaFactoryTest {
         return baos.toByteArray();
     }
 
+    @Test
+    public void supplementsPackagedV1AuditMetadataWithoutGrantingSchemaAccessOrWrites() throws Exception {
+        List<String> names = List.of("eventId", "keyId", "decision", "outcome", "httpStatus", "requestId",
+                "actor", "targetType", "targetId", "operation", "policyRevision", "reason", "phase",
+                "preview", "processId", "processName", "hostUuid", "failureCode");
+        SchemaImpl core = schema("auditLog", "auditLogs");
+        for (String name : names) {
+            FieldImpl field = new FieldImpl();
+            field.setType("preview".equals(name) ? "boolean" : "httpStatus".equals(name) ? "int" : "string");
+            field.setCreate(true); field.setUpdate(true); field.setReadOnCreateOnly(true);
+            core.getResourceFields().put(name, field);
+        }
+        // A new arbitrary parent field must not leak into the frozen contract.
+        core.getResourceFields().put("sensitivePayload", new FieldImpl());
+        Path root = Paths.get("").toAbsolutePath();
+        while (root != null && !Files.isRegularFile(root.resolve("resources/content/schema/v1/admin.ser"))) {
+            root = root.getParent();
+        }
+        assertNotNull("Packaged role schemas are required", root);
+        int auditedRoles = 0;
+        for (String role : List.of("admin", "user", "owner", "member", "restricted", "readonly")) {
+            String resourceName = "schema/v1/" + role + ".ser";
+            byte[] bytes = Files.readAllBytes(root.resolve("resources/content/").resolve(resourceName));
+            Thread.currentThread().setContextClassLoader(new ResourceClassLoader(resourceName, bytes));
+            FileSchemaFactory original = factory(resourceName); original.start();
+            Thread.currentThread().setContextClassLoader(new ResourceClassLoader(resourceName, bytes));
+            FileSchemaFactory repaired = factory(resourceName, new SingleSchemaFactory(core)); repaired.start();
+            Schema before = original.getSchema("auditLog"), after = repaired.getSchema("auditLog");
+            assertEquals(role, original.listSchemas().size(), repaired.listSchemas().size());
+            if (before == null) {
+                assertTrue(role + " must not acquire audit access", after == null);
+                continue;
+            }
+            auditedRoles++;
+            assertNotNull(role, after);
+            assertEquals(role, before.getCollectionMethods(), after.getCollectionMethods());
+            assertEquals(role, before.getResourceMethods(), after.getResourceMethods());
+            assertTrue(Arrays.equals(serialize(List.of(before.getResourceActions())), serialize(List.of(after.getResourceActions()))));
+            assertTrue(Arrays.equals(serialize(List.of(before.getCollectionActions())), serialize(List.of(after.getCollectionActions()))));
+            for (Map.Entry<String, Field> entry : before.getResourceFields().entrySet()) {
+                assertTrue(role + "/" + entry.getKey(), Arrays.equals(serialize(List.of(entry.getValue())),
+                        serialize(List.of(after.getResourceFields().get(entry.getKey())))));
+            }
+            for (String name : names) {
+                Field field = after.getResourceFields().get(name);
+                assertNotNull(role + "/" + name, field);
+                if (before.getResourceFields().containsKey(name)) continue;
+                assertNotSame(core.getResourceFields().get(name), field);
+                assertEquals(core.getResourceFields().get(name).getType(), field.getType());
+                assertFalse(field.isCreate()); assertFalse(field.isUpdate());
+                assertFalse(field.isReadOnCreateOnly()); assertTrue(field.isIncludeInList());
+            }
+            assertFalse(after.getResourceFields().containsKey("sensitivePayload"));
+        }
+        assertTrue("The real frozen audit schemas must be exercised", auditedRoles > 0);
+        assertTrue(core.getResourceFields().get("keyId").isCreate());
+        assertTrue(core.getResourceFields().get("keyId").isUpdate());
+    }
+
     private static class ResourceClassLoader extends ClassLoader {
         private final String resourceName;
         private final byte[] resource;
