@@ -28,7 +28,13 @@ never proof of the caller's identity.
 
 ## Integration and compatibility
 
-Delegated operations require host-api 0.38.5 and websocket-proxy 0.23.15. Scoped
+Delegated operations require host-api 0.38.5, websocket-proxy 0.23.15 and Linux
+node-agent 0.13.28. The existing full bootstrap image remains 1.2.31; the Server
+distributes the independently versioned Node and Host archives through its
+authenticated config-item path. Node owns process lifecycle and launches the
+installed Host producer; it does not duplicate Host authorization or auditing.
+An older backend cannot accept verified Key streams without the required audit
+capability, while ordinary non-Key sessions retain their compatibility path. Scoped
 tickets are bound to the Key, policy revision, operation, resource and host;
 authorization is checked again during the stream. Legacy full-Key authorization
 and ordinary non-Key sessions retain their prior behavior. The audit path for a
