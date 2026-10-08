@@ -16,6 +16,9 @@ can narrow access by persisted environment, stack or resource IDs; they never
 grant more than the account's current permissions. Explicit denials take priority.
 Creation scope uses only typed parent fields that the API schema actually accepts;
 ignored or read-only payload fields cannot grant access to a different destination.
+Service-managed container ancestry uses persisted managed relationships, including
+when denormalized parent columns are empty. Internal image creation verifies its
+persisted container dependency; it does not grant global image access.
 Broadening an existing policy or extending its lifetime requires an actor-bound,
 single-use MFA confirmation of the exact change.
 

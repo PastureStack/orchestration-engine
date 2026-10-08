@@ -3,9 +3,15 @@ package io.cattle.platform.iaas.api.auth.apikey;
 import static org.junit.Assert.*;
 import static org.mockito.Mockito.*;
 import io.cattle.platform.api.auth.Policy;
+import io.cattle.platform.api.auth.impl.NoPolicyOptions;
+import io.cattle.platform.iaas.api.auth.impl.AccountPolicy;
 import io.cattle.platform.api.resource.NamedResourceIdentity;
 import io.cattle.platform.core.model.Account;
 import io.cattle.platform.core.model.Instance;
+import io.cattle.platform.core.model.Image;
+import io.cattle.platform.core.model.ServiceExposeMap;
+import static io.cattle.platform.core.model.tables.InstanceTable.INSTANCE;
+import static io.cattle.platform.core.model.tables.ServiceExposeMapTable.SERVICE_EXPOSE_MAP;
 import io.cattle.platform.core.model.Service;
 import io.cattle.platform.core.model.Stack;
 import io.cattle.platform.core.model.Volume;
@@ -18,6 +24,7 @@ import io.github.ibuildthecloud.gdapi.model.Schema;
 import io.github.ibuildthecloud.gdapi.model.Action;
 import io.github.ibuildthecloud.gdapi.request.ApiRequest;
 import java.util.Map;
+import java.util.List;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -25,13 +32,111 @@ public class ApiKeyTargetResolverTest {
     ApiKeyTargetResolver resolver;
     Policy owner;
     Stack stack;
+    @Test public void imageDependencyUsesPersistedInstanceNotImageVisibility() {
+        Instance instance = imageInstance();
+        Image image = image();
+        when(owner.authorizeObject(image)).thenReturn(null);
+        var target = resolver.resolveImageDependency(instance, image, owner);
+        assertEquals("image", target.resourceType()); assertEquals("1st8", target.stackId());
+        assertEquals("1a5", target.projectId());
+        assertEquals(ApiKeyPolicyEvaluator.TargetLevel.UNRESOLVED, resolver.resolveObject("image", image(), owner).level());
+    }
+    @Test public void serviceAndStackCanAuthorizeTheirActualImageDependency() {
+        Instance instance = imageInstance(); when(instance.getServiceId()).thenReturn(2L);
+        Service service = mock(Service.class); when(service.getId()).thenReturn(2L);
+        when(service.getAccountId()).thenReturn(5L); when(service.getStackId()).thenReturn(8L);
+        when(resolver.objectManager.loadResource(Service.class, 2L)).thenReturn(service);
+        assertEquals("1st8", resolver.resolveImageDependency(service, image(), owner).stackId());
+        assertEquals("1st8", resolver.resolveImageDependency(stack, image(), owner).stackId());
+    }
+    @Test public void realServiceMapSuppliesMissingDenormalizedParents() {
+        Instance instance = imageInstance(); when(instance.getStackId()).thenReturn(null); when(instance.getServiceId()).thenReturn(null);
+        Service service = mapService(instance, 2L, 5L, 8L);
+        assertEquals("1st8", resolver.resolveObject("container", instance, owner).stackId());
+        assertEquals("1st8", resolver.resolveImageDependency(service, image(), owner).stackId());
+        assertEquals("1st8", resolver.resolveImageDependency(stack, image(), owner).stackId());
+        when(service.getAccountId()).thenReturn(6L);
+        assertThrows(ClientVisibleException.class, () -> resolver.resolveImageDependency(service, image(), owner));
+    }
+    @Test public void managedMapCannotContradictExplicitStackOrItsOwnAccount() {
+        Instance instance = imageInstance(); Service service = mapService(instance, 2L, 5L, 9L);
+        assertThrows(ClientVisibleException.class, () -> resolver.resolveObject("container", instance, owner));
+        when(service.getStackId()).thenReturn(8L);
+        var maps = resolver.objectManager.find(ServiceExposeMap.class, SERVICE_EXPOSE_MAP.INSTANCE_ID, 3L,
+                SERVICE_EXPOSE_MAP.REMOVED, null, SERVICE_EXPOSE_MAP.MANAGED, true);
+        when(maps.getFirst().getAccountId()).thenReturn(6L);
+        assertThrows(ClientVisibleException.class, () -> resolver.resolveImageDependency(service, image(), owner));
+    }
+    @Test public void nullAndNonNullManagedServiceStacksRemainAmbiguousInEitherOrder() {
+        Instance instance = imageInstance(); when(instance.getStackId()).thenReturn(null);
+        Service first = mapService(instance, 2L, 5L, 8L); when(first.getStackId()).thenReturn(null);
+        var firstMaps = resolver.objectManager.find(ServiceExposeMap.class, SERVICE_EXPOSE_MAP.INSTANCE_ID, 3L,
+                SERVICE_EXPOSE_MAP.REMOVED, null, SERVICE_EXPOSE_MAP.MANAGED, true);
+        mapService(instance, 4L, 5L, 8L);
+        var secondMaps = resolver.objectManager.find(ServiceExposeMap.class, SERVICE_EXPOSE_MAP.INSTANCE_ID, 3L,
+                SERVICE_EXPOSE_MAP.REMOVED, null, SERVICE_EXPOSE_MAP.MANAGED, true);
+        when(resolver.objectManager.find(ServiceExposeMap.class, SERVICE_EXPOSE_MAP.INSTANCE_ID, 3L,
+                SERVICE_EXPOSE_MAP.REMOVED, null, SERVICE_EXPOSE_MAP.MANAGED, true))
+                .thenReturn(List.of(firstMaps.getFirst(), secondMaps.getFirst()));
+        assertThrows(ClientVisibleException.class, () -> resolver.resolveObject("container", instance, owner));
+        when(resolver.objectManager.find(ServiceExposeMap.class, SERVICE_EXPOSE_MAP.INSTANCE_ID, 3L,
+                SERVICE_EXPOSE_MAP.REMOVED, null, SERVICE_EXPOSE_MAP.MANAGED, true))
+                .thenReturn(List.of(secondMaps.getFirst(), firstMaps.getFirst()));
+        assertThrows(ClientVisibleException.class, () -> resolver.resolveObject("container", instance, owner));
+    }
+    private Service mapService(Instance instance, long id, long account, long stackId) {
+        Long instanceId = instance.getId();
+        Service service = mock(Service.class); when(service.getId()).thenReturn(id);
+        when(service.getAccountId()).thenReturn(account); when(service.getStackId()).thenReturn(stackId);
+        when(resolver.objectManager.loadResource(Service.class, id)).thenReturn(service);
+        ServiceExposeMap map = mock(ServiceExposeMap.class); when(map.getInstanceId()).thenReturn(instanceId);
+        when(map.getServiceId()).thenReturn(id); when(map.getAccountId()).thenReturn(account); when(map.getManaged()).thenReturn(true);
+        when(resolver.objectManager.find(ServiceExposeMap.class, SERVICE_EXPOSE_MAP.INSTANCE_ID, instanceId,
+                SERVICE_EXPOSE_MAP.REMOVED, null, SERVICE_EXPOSE_MAP.MANAGED, true)).thenReturn(List.of(map));
+        return service;
+    }
+    @Test public void imageWithoutPersistedLinkOrUnrelatedRootCannotBorrowScope() {
+        Instance instance = imageInstance();
+        Instance other = mock(Instance.class); when(other.getId()).thenReturn(99L);
+        assertThrows(ClientVisibleException.class, () -> resolver.resolveImageDependency(other, image(), owner));
+        when(resolver.objectManager.find(Instance.class, INSTANCE.IMAGE_ID, 7L, INSTANCE.REMOVED, null)).thenReturn(List.of());
+        assertThrows(ClientVisibleException.class, () -> resolver.resolveImageDependency(instance, image(), owner));
+    }
+    @Test public void revokedOwnerOrForeignAdditionalImageReferenceIsDenied() {
+        Instance instance = imageInstance(); when(owner.authorizeObject(instance)).thenReturn(null);
+        assertEquals("OwnerPermissionDenied", assertThrows(ClientVisibleException.class,
+                () -> resolver.resolveImageDependency(instance, image(), owner)).getCode());
+        when(owner.authorizeObject(instance)).thenReturn(instance);
+        Instance foreign = mock(Instance.class); when(foreign.getImageId()).thenReturn(7L);
+        when(owner.authorizeObject(foreign)).thenReturn(null);
+        when(resolver.objectManager.find(Instance.class, INSTANCE.IMAGE_ID, 7L, INSTANCE.REMOVED, null)).thenReturn(List.of(instance, foreign));
+        assertThrows(ClientVisibleException.class, () -> resolver.resolveImageDependency(instance, image(), owner));
+    }
+    @Test public void realAccountPolicyRequiresLiveOwnedInstanceWithoutHttpContext() {
+        Account project = mock(Account.class), principal = mock(Account.class);
+        when(project.getId()).thenReturn(5L); when(principal.getId()).thenReturn(10L);
+        Policy real = new AccountPolicy(project, principal, java.util.Set.of(), new NoPolicyOptions());
+        Instance instance = imageInstance();
+        io.github.ibuildthecloud.gdapi.context.ApiContext.remove();
+        assertEquals("1st8", resolver.resolveImageDependency(instance, image(), real).stackId());
+        when(instance.getAccountId()).thenReturn(6L);
+        assertEquals("OwnerPermissionDenied", assertThrows(ClientVisibleException.class,
+                () -> resolver.resolveImageDependency(instance, image(), real)).getCode());
+        assertNull(io.github.ibuildthecloud.gdapi.context.ApiContext.getContext());
+    }
+    private Image image() { Image image = mock(Image.class); when(image.getId()).thenReturn(7L); return image; }
+    private Instance imageInstance() {
+        Instance instance = instance(); when(instance.getStackId()).thenReturn(8L); when(instance.getImageId()).thenReturn(7L);
+        when(resolver.objectManager.find(Instance.class, INSTANCE.IMAGE_ID, 7L, INSTANCE.REMOVED, null)).thenReturn(List.of(instance));
+        return instance;
+    }
     @Before public void setup() {
         resolver = new ApiKeyTargetResolver();
         resolver.objectManager = mock(ObjectManager.class);
         resolver.idFormatter = mock(IdFormatter.class);
         when(resolver.idFormatter.parseId(anyString())).thenAnswer(i -> i.<String>getArgument(0).replaceFirst("^1[a-z]+", ""));
         when(resolver.idFormatter.formatId(anyString(), any())).thenAnswer(i -> {
-            String prefix = Map.of("project", "a", "stack", "st", "service", "s", "container", "i", "volume", "v").get(i.<String>getArgument(0));
+            String prefix = Map.of("project", "a", "stack", "st", "service", "s", "container", "i", "volume", "v", "image", "img").get(i.<String>getArgument(0));
             return "1" + prefix + i.getArgument(1);
         });
         owner = mock(Policy.class);

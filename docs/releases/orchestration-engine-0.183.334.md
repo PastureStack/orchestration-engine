@@ -16,6 +16,14 @@ creation authority for a field that validation discards. Writable `stackId`
 continues to support directly Stack-owned containers; a service relationship is
 not required when the container has a verified persisted Stack parent.
 
+Service-managed containers resolve their ancestry through active, managed
+ServiceExposeMap records when denormalized parent columns are absent. All
+persisted parent records must agree on account and Stack; collection queries
+use the same rule before pagination. Storage persists the container/image link
+before synchronous image creation. Only that verified internal dependency may
+use its container/service/Stack scope; this does not grant access to arbitrary
+images or bypass live owner, revision, expiry or revocation checks.
+
 Policy updates use an exact revision/data/state compare-and-swap. A broader
 policy or longer validity requires the existing single-use MFA confirmation,
 bound to the operator, purpose and server-canonical request digest. Client input

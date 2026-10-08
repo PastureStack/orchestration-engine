@@ -115,6 +115,11 @@ public class ServiceValidationFilterImageRewriteTest {
 
     private static class AcceptAllStorageService implements StorageService {
         @Override
+        public Image registerRemoteImageForInstance(String uuid, io.cattle.platform.core.model.Instance instance) {
+            return null;
+        }
+
+        @Override
         public Image registerRemoteImage(String uuid) {
             return null;
         }

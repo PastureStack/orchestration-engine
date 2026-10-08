@@ -29,9 +29,8 @@ public class DockerStorageDaoImpl implements DockerStorageDao {
     @Override
     public Image createImageForInstance(Instance instance) {
         String uuid = (String) DataAccessor.fields(instance).withKey(InstanceConstants.FIELD_IMAGE_UUID).get();
-        Image image = storageService.registerRemoteImage(uuid);
+        Image image = storageService.registerRemoteImageForInstance(uuid, instance);
         if (image != null) {
-            objectManager.setFields(instance, INSTANCE.IMAGE_ID, image.getId());
             long currentAccount = instance.getAccountId();
             Long id = instance.getRegistryCredentialId();
             image = objectManager.loadResource(Image.class, instance.getImageId());

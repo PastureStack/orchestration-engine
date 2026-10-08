@@ -6,6 +6,8 @@ import io.cattle.platform.api.auth.Policy;
 import io.cattle.platform.core.model.Credential;
 import io.cattle.platform.core.model.Account;
 import io.cattle.platform.core.model.Instance;
+import io.cattle.platform.core.model.Image;
+import io.github.ibuildthecloud.gdapi.exception.ClientVisibleException;
 import io.cattle.platform.api.auth.impl.NoPolicyOptions;
 import io.cattle.platform.iaas.api.auth.impl.AccountPolicy;
 import io.cattle.platform.engine.process.LaunchConfiguration;
@@ -134,5 +136,36 @@ public class ApiKeyProcessAuthorizationTest {
         when(instance.getAccountId()).thenReturn(resourceAccountId);
         when(hook.objectManager.loadResource("container", 3L)).thenReturn(instance);
         when(hook.objectManager.loadResource("instance", "3")).thenReturn(instance);
+    }
+
+    @Test public void imageCreateDependencyWorksForFullAndScopedWithoutPublicImageGrant() {
+        Image image = mock(Image.class);
+        when(hook.objectManager.loadResource("image", "7")).thenReturn(image);
+        when(owner.authorizeObject(image)).thenReturn(null);
+        when(hook.targets.resolveImageDependency(root, image, owner))
+                .thenReturn(ApiKeyPolicyEvaluator.Target.stackResource("image", "1img7", "1a5", "1st8"));
+        LaunchConfiguration imageJob = new LaunchConfiguration("image.create", "image", "7", null, 0, Map.of());
+        hook.beforeExecution(imageJob, metadata);
+        policy(new ApiKeyPolicy(ApiKeyPolicy.Mode.CUSTOM, ApiKeyPolicy.Effect.DENY, null,
+                List.of(new ApiKeyPolicy.Rule("scope", ApiKeyPolicy.Effect.ALLOW, ApiKeyPolicy.Scope.stack("1st8"), Set.of("update")))));
+        when(hook.targets.resolveObject("container", root, owner))
+                .thenReturn(ApiKeyPolicyEvaluator.Target.stackResource("container", "1i3", "1a5", "1st8"));
+        hook.beforeExecution(imageJob, metadata);
+        verify(hook.targets, times(2)).resolveImageDependency(root, image, owner);
+        verify(owner, never()).authorizeObject(image);
+    }
+    @Test public void missingImageDependencyIsDeniedAndOtherImageProcessesKeepOwnerBoundary() {
+        Image image = mock(Image.class);
+        when(hook.objectManager.loadResource("image", "7")).thenReturn(image);
+        when(owner.authorizeObject(image)).thenReturn(null);
+        when(hook.targets.resolveImageDependency(root, image, owner))
+                .thenThrow(new ClientVisibleException(403, "KeyScopeDenied"));
+        LaunchConfiguration imageJob = new LaunchConfiguration("image.create", "image", "7", null, 0, Map.of());
+        assertEquals("KeyScopeDenied", assertThrows(ProcessAuthorizationDeniedException.class,
+                () -> hook.beforeExecution(imageJob, metadata)).getCode());
+        imageJob.setProcessName("image.remove");
+        assertEquals("OwnerPermissionDenied", assertThrows(ProcessAuthorizationDeniedException.class,
+                () -> hook.beforeExecution(imageJob, metadata)).getCode());
+        verify(hook.targets, times(1)).resolveImageDependency(root, image, owner);
     }
 }

@@ -3,6 +3,7 @@ package io.cattle.platform.iaas.api.auth.apikey;
 import io.cattle.platform.api.auth.Policy;
 import io.cattle.platform.core.constants.CredentialConstants;
 import io.cattle.platform.core.model.Credential;
+import io.cattle.platform.core.model.Image;
 import io.cattle.platform.engine.process.LaunchConfiguration;
 import io.cattle.platform.engine.process.ProcessAuthorizationHook;
 import io.cattle.platform.engine.process.ProcessAuthorizationDeniedException;
@@ -75,7 +76,17 @@ public class ApiKeyProcessAuthorization implements ProcessAuthorizationHook {
             Object root = objectManager.loadResource(type, parseNumeric(type, text(metadata, "targetId")));
             Object child = objectManager.loadResource(config.getResourceType(), config.getResourceId());
             if (root == null || child == null || current.policy().authorizeObject(root) == null
-                    || current.policy().authorizeObject(child) == null || !schemaAllows(current.schemas().getSchema(type), metadata)) {
+                    || !schemaAllows(current.schemas().getSchema(type), metadata)) {
+                denied("OwnerPermissionDenied");
+            }
+            // Image CREATE runs before the caller returns. Its actual instance
+            // relation is persisted by storage first; that narrow dependency is
+            // authorized through live owner access, never a blanket internal bypass.
+            ApiKeyPolicyEvaluator.Target dependency = null;
+            if (child instanceof Image image && "image.create".equals(config.getProcessName())
+                    && "image".equals(config.getResourceType())) {
+                dependency = targets.resolveImageDependency(root, image, current.policy());
+            } else if (current.policy().authorizeObject(child) == null) {
                 denied("OwnerPermissionDenied");
             }
             if (policy == null || policy.getMode() == ApiKeyPolicy.Mode.FULL) {
@@ -86,7 +97,8 @@ public class ApiKeyProcessAuthorization implements ProcessAuthorizationHook {
             var decision = evaluator.evaluate(policy, new ApiKeyPolicyEvaluator.Request(true, operation,
                     ApiKeyOperations.OPERATIONS.contains(operation), List.of(target)), clock.instant());
             if (!decision.allowed()) denied(decision.reason().getCode());
-            var descendant = targets.resolveObject(ApiKeyQueryScopes.canonical(config.getResourceType()), child, current.policy());
+            var descendant = dependency == null
+                    ? targets.resolveObject(ApiKeyQueryScopes.canonical(config.getResourceType()), child, current.policy()) : dependency;
             if (target.projectId() != null && !target.projectId().equals(descendant.projectId())) denied("KeyScopeDenied");
             if (target.stackId() != null && !target.stackId().equals(descendant.stackId())) denied("KeyScopeDenied");
         } catch (ProcessAuthorizationDeniedException denied) { throw denied; }

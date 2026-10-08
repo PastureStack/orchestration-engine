@@ -5,7 +5,11 @@ import io.cattle.platform.api.resource.NamedResourceIdentity;
 import io.cattle.platform.core.constants.AccountConstants;
 import io.cattle.platform.core.model.Account;
 import io.cattle.platform.core.model.Instance;
+import io.cattle.platform.core.model.Image;
+import static io.cattle.platform.core.model.tables.InstanceTable.INSTANCE;
 import io.cattle.platform.core.model.Service;
+import io.cattle.platform.core.model.ServiceExposeMap;
+import static io.cattle.platform.core.model.tables.ServiceExposeMapTable.SERVICE_EXPOSE_MAP;
 import io.cattle.platform.core.model.Stack;
 import io.cattle.platform.core.model.Volume;
 import io.cattle.platform.object.ObjectManager;
@@ -19,6 +23,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.Objects;
+import java.util.HashSet;
 import io.github.ibuildthecloud.gdapi.model.Field;
 import io.github.ibuildthecloud.gdapi.model.FieldType;
 import io.github.ibuildthecloud.gdapi.model.Action;
@@ -75,14 +80,7 @@ public class ApiKeyTargetResolver {
             return child("service", id, service.getAccountId(), service.getStackId(), owner);
         }
         if (value instanceof Instance instance) {
-            Long stackId = instance.getStackId();
-            if (instance.getServiceId() != null) {
-                Service service = objectManager.loadResource(Service.class, instance.getServiceId());
-                if (service == null || !Objects.equals(instance.getAccountId(), service.getAccountId())
-                        || (stackId != null && !stackId.equals(service.getStackId()))) denied("KeyScopeDenied");
-                stackId = service.getStackId();
-            }
-            return child("container", id, instance.getAccountId(), stackId, owner);
+            return child("container", id, instance.getAccountId(), instanceParents(instance, owner).stackId(), owner);
         }
         if (value instanceof Volume volume) {
             return child("volume", id, volume.getAccountId(), volume.getStackId(), owner);
@@ -96,6 +94,70 @@ public class ApiKeyTargetResolver {
         }
         if (PLATFORM.contains(type)) return ApiKeyPolicyEvaluator.Target.platformResource(type, id);
         return ApiKeyPolicyEvaluator.Target.unresolved(type, id);
+    }
+
+    /** Internal image creation is a dependency, not a separate image API grant.
+     * Only persisted references from the authorized container/service/stack
+     * establish that relationship. No process-data or request hint is trusted.
+     */
+    public ApiKeyPolicyEvaluator.Target resolveImageDependency(Object root, Image image, Policy owner) {
+        if (image.getId() == null || image.getRemoved() != null) denied("KeyScopeDenied");
+        List<Instance> instances = objectManager.find(Instance.class,
+                INSTANCE.IMAGE_ID, image.getId(), INSTANCE.REMOVED, null);
+        if (instances == null || instances.isEmpty()) denied("KeyScopeDenied");
+        ApiKeyPolicyEvaluator.Target scope = null;
+        for (Instance instance : instances) {
+            if (!Objects.equals(instance.getImageId(), image.getId()) || instance.getRemoved() != null
+                    || owner.authorizeObject(instance) == null) denied("OwnerPermissionDenied");
+            var parents = instanceParents(instance, owner);
+            var candidate = child("container", format("container", instance.getId()), instance.getAccountId(), parents.stackId(), owner);
+            boolean belongs = root instanceof Instance container && Objects.equals(container.getId(), instance.getId())
+                    || root instanceof Service service && parents.serviceIds().contains(service.getId())
+                    || root instanceof Stack stack && Objects.equals(format("stack", stack.getId()), candidate.stackId());
+            if (!belongs || candidate.level() == ApiKeyPolicyEvaluator.TargetLevel.UNRESOLVED) denied("KeyScopeDenied");
+            if (scope != null && (!Objects.equals(scope.projectId(), candidate.projectId())
+                    || !Objects.equals(scope.stackId(), candidate.stackId()))) denied("KeyScopeDenied");
+            scope = candidate;
+        }
+        if (scope.stackId() != null) return ApiKeyPolicyEvaluator.Target.stackResource("image", format("image", image.getId()),
+                scope.projectId(), scope.stackId());
+        return ApiKeyPolicyEvaluator.Target.projectResource("image", format("image", image.getId()), scope.projectId());
+    }
+
+    private record InstanceParents(Long stackId, Set<Long> serviceIds) { }
+
+    /** Service-managed instances use the persisted managed expose map; older
+     * denormalized service/stack columns, when present, must agree with it. */
+    private InstanceParents instanceParents(Instance instance, Policy owner) {
+        Long stackId = instance.getStackId();
+        boolean hasParent = stackId != null;
+        Set<Long> serviceIds = new HashSet<>();
+        if (instance.getServiceId() != null) {
+            stackId = serviceStack(instance, instance.getServiceId(), stackId, hasParent, owner);
+            hasParent = true;
+            serviceIds.add(instance.getServiceId());
+        }
+        List<ServiceExposeMap> maps = objectManager.find(ServiceExposeMap.class,
+                SERVICE_EXPOSE_MAP.INSTANCE_ID, instance.getId(), SERVICE_EXPOSE_MAP.REMOVED, null,
+                SERVICE_EXPOSE_MAP.MANAGED, true);
+        if (maps != null) for (ServiceExposeMap map : maps) {
+            if (!Objects.equals(instance.getId(), map.getInstanceId())
+                    || !Objects.equals(instance.getAccountId(), map.getAccountId())
+                    || map.getRemoved() != null || !Boolean.TRUE.equals(map.getManaged())
+                    || map.getServiceId() == null) denied("KeyScopeDenied");
+            stackId = serviceStack(instance, map.getServiceId(), stackId, hasParent, owner);
+            hasParent = true;
+            serviceIds.add(map.getServiceId());
+        }
+        return new InstanceParents(stackId, Set.copyOf(serviceIds));
+    }
+
+    private Long serviceStack(Instance instance, Long serviceId, Long expectedStack, boolean hasParent, Policy owner) {
+        Service service = objectManager.loadResource(Service.class, serviceId);
+        if (service == null || service.getRemoved() != null || owner.authorizeObject(service) == null
+                || !Objects.equals(instance.getAccountId(), service.getAccountId())
+                || (hasParent && !Objects.equals(expectedStack, service.getStackId()))) denied("KeyScopeDenied");
+        return service.getStackId();
     }
 
     private List<ApiKeyPolicyEvaluator.Target> resolveCreate(ApiRequest request, Policy owner) {
