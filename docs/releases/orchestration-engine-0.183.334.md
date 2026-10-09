@@ -36,6 +36,10 @@ sanitization, so a forbidden owner or credential field cannot be silently
 discarded and turned into an accepted policy change. Ordinary legacy writes
 without policy input retain their existing schema behavior.
 
+The reviewed sensitive-export registry includes machine-template `secretValues`
+and the HA database `dbdump` link, not ordinary read access. Full access still
+uses the existing account RBAC without an additional Key restriction.
+
 Verified Key requests durably record a decision before side effects, then record
 the actual response or terminal background/agent outcome separately. A 202
 response or stream ticket is not a successful business operation. Bounded durable

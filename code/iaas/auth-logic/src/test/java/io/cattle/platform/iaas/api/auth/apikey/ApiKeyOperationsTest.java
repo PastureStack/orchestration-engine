@@ -13,4 +13,13 @@ public class ApiKeyOperationsTest {
         assertEquals("logs", ApiKeyOperations.of("POST", "logs", null).id());
         assertFalse(ApiKeyOperations.of("POST", "arbitraryNewAction", null).registered());
     }
+    @Test public void machineSecretsAndDatabaseBackupsAreExportsNotOrdinaryRelationshipReads() {
+        for (String link : new String[] {"secretValues", "secretvalues", "dbdump", "DBDump"}) {
+            var operation = ApiKeyOperations.of("GET", null, link);
+            assertEquals("export", operation.id());
+            assertTrue(operation.registered());
+        }
+        assertEquals("read", ApiKeyOperations.of("GET", null, "instances").id());
+        assertEquals("read", ApiKeyOperations.of("GET", null, "projectMembers").id());
+    }
 }
