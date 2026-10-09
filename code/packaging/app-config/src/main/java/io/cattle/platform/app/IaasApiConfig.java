@@ -42,6 +42,7 @@ import io.cattle.platform.iaas.api.auth.impl.ApiAuthenticator;
 import io.cattle.platform.iaas.api.auth.apikey.ApiKeyAuthorizationService;
 import io.cattle.platform.iaas.api.auth.apikey.ApiKeyTargetResolver;
 import io.cattle.platform.iaas.api.auth.apikey.ApiKeyPolicyManagementService;
+import io.cattle.platform.iaas.api.auth.apikey.ApiKeyPolicyInputHandler;
 import io.cattle.platform.iaas.api.auth.apikey.ApiKeyPolicyPreviewResourceManager;
 import io.cattle.platform.iaas.api.auth.apikey.ApiKeyPolicyPreview;
 import io.cattle.platform.iaas.api.auth.apikey.ApiKeyProcessAuthorization;
@@ -588,6 +589,11 @@ public class IaasApiConfig {
     @Bean
     VersionHandler VersionHandler(ExtensionManagerImpl em) {
         return EMUtils.add(em, ApiRequestHandler.class, new VersionHandler());
+    }
+
+    @Bean
+    ApiKeyPolicyInputHandler ApiKeyPolicyInputHandler(ExtensionManagerImpl em) {
+        return EMUtils.add(em, ApiRequestHandler.class, new ApiKeyPolicyInputHandler());
     }
 
     @Bean

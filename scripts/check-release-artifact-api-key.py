@@ -68,8 +68,11 @@ with zipfile.ZipFile(sys.argv[1]) as war:
             require(marker in producer, "backend-proof=" + marker.decode())
     with module("cattle-app-config") as app:
         iaas = app.read("io/cattle/platform/app/IaasApiConfig.class")
-        for marker in (b"ApiKeyPolicyTypes", b"ApiKeyDelegationCompletionResourceManager", b"ApiKeyAuthorizationService"):
+        for marker in (b"ApiKeyPolicyTypes", b"ApiKeyDelegationCompletionResourceManager", b"ApiKeyAuthorizationService", b"ApiKeyPolicyInputHandler"):
             require(marker in iaas, "registered=" + marker.decode())
+        handlers = app.read("META-INF/cattle/iaas-api/defaults.properties").decode()
+        require(handlers.index("ApiAuthenticator,") < handlers.index("ApiKeyPolicyInputHandler,")
+                < handlers.index("ValidationHandler,"), "policy-input-before-schema-sanitization-after-auth")
     # v1 keeps the existing frozen role files. The narrowly reviewed factory
     # supplement copies only the new contracts using each frozen role's methods;
     # Server runtime tests verify the effective schemas under both API versions.

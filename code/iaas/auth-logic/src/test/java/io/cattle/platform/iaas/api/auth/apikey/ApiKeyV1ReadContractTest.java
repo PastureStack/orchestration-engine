@@ -136,7 +136,7 @@ public class ApiKeyV1ReadContractTest {
         assertNull("The real owner guard must still reject foreign keys", policy.authorizeObject(foreign));
     }
 
-    private SchemaFactoryImpl core() {
+    SchemaFactoryImpl core() {
         SchemaFactoryImpl factory = new SchemaFactoryImpl(); factory.setId("core");
         factory.setPostProcessors(List.of(new AbstractSchemaPostProcessor() {
             @Override public SchemaImpl postProcessRegister(SchemaImpl schema, SchemaFactory parent) {

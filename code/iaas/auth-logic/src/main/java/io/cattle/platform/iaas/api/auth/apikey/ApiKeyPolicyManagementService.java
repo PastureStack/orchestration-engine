@@ -120,9 +120,7 @@ public class ApiKeyPolicyManagementService extends AbstractJooqDao implements Ap
 
     public Map<String, Object> preview(ApiRequest request, ResourceManager keyManager) {
         Map<String, Object> input = CollectionUtils.toMap(request.getRequestObject());
-        if (!Set.of("apiKeyId", ApiKeyPolicyCodec.POLICY, ApiKeyPolicyCodec.REVISION).containsAll(input.keySet())) {
-            throw error(ResponseCodes.BAD_REQUEST, "ApiKeyPolicyInvalid");
-        }
+        validatePreviewInput(input);
         Account actor = actor();
         String keyId = string(input.get("apiKeyId"));
         ApiKeyPolicy previous = null;
@@ -250,11 +248,22 @@ public class ApiKeyPolicyManagementService extends AbstractJooqDao implements Ap
         }
     }
 
-    private void validateInput(Map<String, Object> input, boolean create) {
-        Set<String> allowed = create ? Set.of("name", "description", "accountId", "kind", "publicValue", "secretValue",
+    void validateInput(Map<String, Object> input, boolean create) {
+        Set<String> allowed = create ? Set.of("type", "name", "description", "accountId", "kind", "publicValue", "secretValue",
                 ApiKeyPolicyCodec.POLICY, ApiKeyPolicyCodec.REVISION, "securityConfirmation")
                 : Set.of("name", "description", ApiKeyPolicyCodec.POLICY, ApiKeyPolicyCodec.REVISION, "securityConfirmation");
         if (!allowed.containsAll(input.keySet())) throw error(ResponseCodes.BAD_REQUEST, "ApiKeyPolicyInvalid");
+        if (create && input.containsKey("type") && (input.get("type") == null || !Set.of(CredentialConstants.TYPE,
+                CredentialConstants.KIND_API_KEY, CredentialConstants.KIND_API_KEY_RESTRICTED)
+                .contains(string(input.get("type"))))) {
+            throw error(ResponseCodes.BAD_REQUEST, "ApiKeyPolicyInvalid");
+        }
+    }
+
+    void validatePreviewInput(Map<String, Object> input) {
+        if (!Set.of("apiKeyId", ApiKeyPolicyCodec.POLICY, ApiKeyPolicyCodec.REVISION).containsAll(input.keySet())) {
+            throw error(ResponseCodes.BAD_REQUEST, "ApiKeyPolicyInvalid");
+        }
     }
 
     private void requireRevision(Map<String, Object> input, long revision) {
