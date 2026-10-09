@@ -23,6 +23,7 @@ public class ProcessAuthorizationExecutionTest {
         assertEquals(ExitReason.DONE, process.run());
         assertEquals(1, process.sideEffects);
         assertEquals(0, callbacks.get());
+        assertNull(EngineContext.getEngineContext().currentVerifiedExecution());
     }
 
     @Test
@@ -42,6 +43,7 @@ public class ProcessAuthorizationExecutionTest {
         assertEquals(ExitReason.AUTHORIZATION_DENIED, process.getProcessRecord().getExitReason());
         assertNotNull(record.getEndTime());
         assertTrue(EngineContext.getEngineContext().peekAuthorization().isEmpty());
+        assertNull(EngineContext.getEngineContext().currentVerifiedExecution());
     }
 
     @Test
@@ -52,6 +54,7 @@ public class ProcessAuthorizationExecutionTest {
             @Override public boolean recordsCompletion() { return true; }
             @Override public void afterExecution(LaunchConfiguration config, Map<String, Object> metadata, ExitReason reason) {
                 assertEquals(ExitReason.DONE, reason);
+                if (callbacks.get() > 0) assertNull(EngineContext.getEngineContext().currentVerifiedExecution());
                 if (callbacks.getAndIncrement() == 0) { throw new IllegalStateException("storage unavailable"); }
             }
         };
@@ -64,6 +67,94 @@ public class ProcessAuthorizationExecutionTest {
         assertEquals(0, replay.sideEffects);
         assertEquals(2, callbacks.get());
         assertFalse(record.getData().containsKey(ProcessAuthorization.COMPLETION_PENDING_KEY));
+        assertNull(EngineContext.getEngineContext().currentVerifiedExecution());
+    }
+
+    @Test
+    public void verifiedFrameStartsOnlyAfterAllHooksAndHasImmutableActualIdentity() {
+        EngineContext engine = EngineContext.getEngineContext();
+        ProcessRecord record = record(true);
+        AtomicInteger passed = new AtomicInteger();
+        ProcessAuthorizationHook check = new ProcessAuthorizationHook() {
+            @Override public boolean recordsCompletion() { return true; }
+            @Override public void beforeExecution(LaunchConfiguration config, Map<String, Object> metadata) {
+                assertNull(engine.currentVerifiedExecution()); passed.incrementAndGet();
+            }
+        };
+        TestProcess process = process(record, List.of(authorizer(false), check, check));
+        process.onRun = () -> {
+            assertEquals(2, passed.get());
+            var frame = engine.currentVerifiedExecution();
+            assertEquals("stack", frame.resourceType()); assertEquals("12", frame.resourceId());
+            assertEquals(Map.of("keyId", "1a1", "requestId", "request1"), frame.rootAuthorization());
+            assertThrows(UnsupportedOperationException.class, () -> frame.rootAuthorization().put("targetId", "99"));
+            record.getData().put(ProcessAuthorization.DATA_KEY, Map.of("keyId", "1a1", "requestId", "mutated"));
+            assertEquals("request1", frame.rootAuthorization().get("requestId"));
+        };
+        assertEquals(ExitReason.DONE, process.run());
+        assertNull(engine.currentVerifiedExecution()); assertTrue(engine.peekAuthorization().isEmpty());
+    }
+
+    @Test
+    public void childValidationSeesActualParentAndEveryExitRestoresIt() {
+        EngineContext engine = EngineContext.getEngineContext();
+        TestProcess parent = process(record(true), List.of(authorizer(false), audit()));
+        parent.onRun = () -> {
+            var original = engine.currentVerifiedExecution();
+            ProcessRecord childRecord = record(true); childRecord.setResourceType("volume"); childRecord.setResourceId("6");
+            ProcessAuthorizationHook validation = new ProcessAuthorizationHook() {
+                @Override public void beforeExecution(LaunchConfiguration config, Map<String, Object> metadata) {
+                    assertSame(original, engine.currentVerifiedExecution());
+                }
+            };
+            TestProcess child = process(childRecord, List.of(authorizer(false), validation, audit()));
+            child.onRun = () -> {
+                assertNotSame(original, engine.currentVerifiedExecution());
+                assertEquals("volume", engine.currentVerifiedExecution().resourceType());
+                assertEquals("6", engine.currentVerifiedExecution().resourceId());
+                assertThrows(IllegalStateException.class, () -> engine.popVerifiedExecution(original));
+            };
+            assertEquals(ExitReason.DONE, child.run()); assertSame(original, engine.currentVerifiedExecution());
+            TestProcess denied = process(childRecord, List.of(authorizer(true), audit()));
+            assertThrows(ProcessInstanceException.class, denied::run);
+            assertSame(original, engine.currentVerifiedExecution());
+        };
+        assertEquals(ExitReason.DONE, parent.run()); assertNull(engine.currentVerifiedExecution());
+    }
+
+    @Test
+    public void delegateAndPersistFailuresCannotLeakVerifiedFrame() {
+        EngineContext engine = EngineContext.getEngineContext();
+        TestProcess delegate = process(record(true), List.of(authorizer(false), audit()));
+        delegate.onRun = () -> { throw new IllegalStateException("delegate failed"); };
+        assertThrows(IllegalStateException.class, delegate::run);
+        assertNull(engine.currentVerifiedExecution()); assertTrue(engine.peekAuthorization().isEmpty());
+        ProcessManager failedManager = (ProcessManager) Proxy.newProxyInstance(ProcessManager.class.getClassLoader(),
+                new Class<?>[]{ProcessManager.class}, (proxy, method, arguments) -> {
+                    if (method.getName().equals("persistState")) throw new IllegalStateException("persist failed");
+                    return null;
+                });
+        TestProcess persist = process(record(true), List.of(authorizer(false), audit()), failedManager);
+        assertThrows(IllegalStateException.class, persist::run);
+        assertNull(engine.currentVerifiedExecution()); assertTrue(engine.peekAuthorization().isEmpty());
+    }
+
+    @Test
+    public void unavailableLaterHookNeverCreatesVerifiedAuthorityOrSideEffects() {
+        EngineContext engine = EngineContext.getEngineContext();
+        TestProcess process = process(record(true), List.of(authorizer(false), new ProcessAuthorizationHook() {
+            @Override public void beforeExecution(LaunchConfiguration config, Map<String, Object> metadata) {
+                assertNull(engine.currentVerifiedExecution()); throw new IllegalStateException("owner lookup unavailable");
+            }
+        }, audit()));
+        ProcessExecutionExitException retry = assertThrows(ProcessExecutionExitException.class, process::run);
+        assertEquals(ExitReason.RETRY_EXCEPTION, retry.getExitReason());
+        assertEquals(0, process.sideEffects); assertNull(engine.currentVerifiedExecution());
+        assertTrue(engine.peekAuthorization().isEmpty());
+    }
+
+    private static ProcessAuthorizationHook audit() {
+        return new ProcessAuthorizationHook() { @Override public boolean recordsCompletion() { return true; } };
     }
 
     private static ProcessAuthorizationHook authorizer(boolean deny) {
@@ -78,6 +169,10 @@ public class ProcessAuthorizationExecutionTest {
     private static TestProcess process(ProcessRecord record, List<ProcessAuthorizationHook> hooks) {
         ProcessManager manager = (ProcessManager) Proxy.newProxyInstance(ProcessManager.class.getClassLoader(), new Class<?>[]{ProcessManager.class},
                 (proxy, method, arguments) -> null);
+        return process(record, hooks, manager);
+    }
+
+    private static TestProcess process(ProcessRecord record, List<ProcessAuthorizationHook> hooks, ProcessManager manager) {
         ProcessServiceContext context = new ProcessServiceContext(null, null, manager, null, List.of());
         context.setAuthorizationHooks(hooks);
         return new TestProcess(context, record);
@@ -96,9 +191,10 @@ public class ProcessAuthorizationExecutionTest {
 
     private static final class TestProcess extends DefaultProcessInstanceImpl {
         int sideEffects;
+        Runnable onRun = () -> { };
         TestProcess(ProcessServiceContext context, ProcessRecord record) { super(context, record, null, state(record), false, false); }
         ExitReason run() { return executeWithProcessInstanceLock(); }
-        @Override protected void runDelegateLoop(EngineContext context) { sideEffects++; }
+        @Override protected void runDelegateLoop(EngineContext context) { sideEffects++; onRun.run(); }
     }
 
     private static ProcessState state(ProcessRecord record) {

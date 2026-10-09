@@ -159,6 +159,7 @@ public class DefaultProcessInstanceImpl implements ProcessInstance {
         Map<String, Object> metadata = ProcessAuthorization.metadata(record);
         engineContext.pushAuthorization(metadata);
         boolean completionReplay = false;
+        EngineContext.VerifiedExecutionFrame verifiedFrame = null;
         try {
             if (!metadata.isEmpty() && record.getData().get(ProcessAuthorization.COMPLETION_PENDING_KEY) instanceof String pending) {
                 completionReplay = true;
@@ -197,6 +198,7 @@ public class DefaultProcessInstanceImpl implements ProcessInstance {
                     throw new ProcessExecutionExitException(RETRY_EXCEPTION);
                 }
             }
+            verifiedFrame = engineContext.pushVerifiedExecution(record.getResourceType(), record.getResourceId(), metadata);
             runDelegateLoop(engineContext);
 
             return exit(ExitReason.DONE);
@@ -239,7 +241,11 @@ public class DefaultProcessInstanceImpl implements ProcessInstance {
                 try {
                     context.getProcessManager().persistState(this, schedule);
                 } finally {
-                    engineContext.popAuthorization();
+                    try {
+                        if (verifiedFrame != null) engineContext.popVerifiedExecution(verifiedFrame);
+                    } finally {
+                        engineContext.popAuthorization();
+                    }
                 }
             }
         }

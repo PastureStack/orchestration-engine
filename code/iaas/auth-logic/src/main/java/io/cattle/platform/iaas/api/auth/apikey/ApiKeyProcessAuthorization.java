@@ -4,6 +4,8 @@ import io.cattle.platform.api.auth.Policy;
 import io.cattle.platform.core.constants.CredentialConstants;
 import io.cattle.platform.core.model.Credential;
 import io.cattle.platform.core.model.Image;
+import io.cattle.platform.core.model.ImageStoragePoolMap;
+import io.cattle.platform.engine.context.EngineContext;
 import io.cattle.platform.engine.process.LaunchConfiguration;
 import io.cattle.platform.engine.process.ProcessAuthorizationHook;
 import io.cattle.platform.engine.process.ProcessAuthorizationDeniedException;
@@ -83,10 +85,17 @@ public class ApiKeyProcessAuthorization implements ProcessAuthorizationHook {
             // relation is persisted by storage first; that narrow dependency is
             // authorized through live owner access, never a blanket internal bypass.
             ApiKeyTargetResolver.ImageDependency dependency = null;
+            ApiKeyTargetResolver.LifecycleDependency ensure = null;
             boolean imageDependency = child instanceof Image && !(root instanceof Image)
                     && "image.create".equals(config.getProcessName()) && "image".equals(config.getResourceType());
+            boolean imageEnsure = !(root instanceof Image) && (child instanceof Image
+                    && "image".equals(config.getResourceType()) && "image.activate".equals(config.getProcessName())
+                    || child instanceof ImageStoragePoolMap && "imageStoragePoolMap".equalsIgnoreCase(config.getResourceType())
+                    && ("imagestoragepoolmap.create".equals(config.getProcessName()) || "imagestoragepoolmap.activate".equals(config.getProcessName())));
             if (current.policy().authorizeObject(child) == null) {
                 if (imageDependency) dependency = targets.resolveImageDependency(root, (Image) child, current.policy());
+                else if (imageEnsure) ensure = targets.resolveImageEnsureDependency(root, child, current.policy(),
+                        EngineContext.getEngineContext().currentVerifiedExecution(), metadata);
                 else denied("OwnerPermissionDenied");
             }
             if (policy == null || policy.getMode() == ApiKeyPolicy.Mode.FULL) {
@@ -100,7 +109,9 @@ public class ApiKeyProcessAuthorization implements ProcessAuthorizationHook {
             if (imageDependency && dependency == null) {
                 dependency = targets.resolveImageDependency(root, (Image) child, current.policy());
             }
-            var lifecycle = dependency == null ? targets.resolveLifecycleDependency(root, child, current.policy()) : null;
+            if (imageEnsure && ensure == null) ensure = targets.resolveImageEnsureDependency(root, child, current.policy(),
+                    EngineContext.getEngineContext().currentVerifiedExecution(), metadata);
+            var lifecycle = ensure != null ? ensure : dependency == null ? targets.resolveLifecycleDependency(root, child, current.policy()) : null;
             var descendant = lifecycle != null ? lifecycle.scope() : dependency == null
                     ? targets.resolveObject(ApiKeyQueryScopes.canonical(config.getResourceType()), child, current.policy()) : dependency.scope();
             if (target.projectId() != null && !target.projectId().equals(descendant.projectId())) denied("KeyScopeDenied");

@@ -15,12 +15,19 @@ import io.cattle.platform.core.model.IpAddress;
 import io.cattle.platform.core.model.IpAddressNicMap;
 import io.cattle.platform.core.model.HostIpAddressMap;
 import io.cattle.platform.core.model.Image;
+import io.cattle.platform.core.model.ImageStoragePoolMap;
+import io.cattle.platform.core.model.StoragePool;
+import io.cattle.platform.core.model.Credential;
+import io.cattle.platform.core.constants.CredentialConstants;
+import io.cattle.platform.core.constants.StoragePoolConstants;
+import io.cattle.platform.engine.context.EngineContext;
 import static io.cattle.platform.core.model.tables.InstanceTable.INSTANCE;
 import static io.cattle.platform.core.model.tables.MountTable.MOUNT;
 import static io.cattle.platform.core.model.tables.IpAddressNicMapTable.IP_ADDRESS_NIC_MAP;
 import io.cattle.platform.core.model.Service;
 import io.cattle.platform.core.model.ServiceExposeMap;
 import static io.cattle.platform.core.model.tables.ServiceExposeMapTable.SERVICE_EXPOSE_MAP;
+import static io.cattle.platform.core.model.tables.VolumeStoragePoolMapTable.VOLUME_STORAGE_POOL_MAP;
 import io.cattle.platform.core.model.Stack;
 import io.cattle.platform.core.model.Volume;
 import io.cattle.platform.object.ObjectManager;
@@ -130,7 +137,23 @@ public class ApiKeyTargetResolver {
         if (model == null || !(root instanceof Instance || root instanceof Service || root instanceof Stack)) return null;
         Class<?> rootModel = root instanceof Instance ? Instance.class : root instanceof Service ? Service.class : Stack.class;
         root = persisted(rootModel, root, owner, "accountId", "stackId", "serviceId");
-        Object stored = persisted(model, resource, owner, "accountId", "instanceId", "hostId", "volumeId", "nicId", "ipAddressId", "storagePoolId", "stackId", "targetInstanceId", "networkId");
+        Object stored = persisted(model, resource, owner, model == ServiceExposeMap.class
+                ? new String[] { "accountId", "instanceId", "serviceId", "managed", "upgrade" }
+                : new String[] { "accountId", "instanceId", "hostId", "volumeId", "nicId", "ipAddressId", "storagePoolId", "stackId", "targetInstanceId", "networkId" });
+        if (stored instanceof ServiceExposeMap map) {
+            // A map belongs to its exact Service, not every Service sharing its
+            // Instance. Only persisted managed/upgrade lifecycle maps qualify.
+            if (!(root instanceof Service serviceRoot)
+                    || !Objects.equals(map.getServiceId(), serviceRoot.getId())
+                    || !Objects.equals(map.getAccountId(), serviceRoot.getAccountId())
+                    || !(Boolean.TRUE.equals(map.getManaged())
+                        || (Boolean.FALSE.equals(map.getManaged()) && Boolean.TRUE.equals(map.getUpgrade())))) denied("KeyScopeDenied");
+            Service service = liveResource(Service.class, map.getServiceId(), owner);
+            if (service.getStackId() != null) {
+                Stack stack = liveResource(Stack.class, service.getStackId(), owner);
+                if (!Objects.equals(stack.getAccountId(), map.getAccountId())) denied("KeyScopeDenied");
+            }
+        }
         List<Object> ancestry = new ArrayList<>();
         List<Instance> instances = lifecycleInstances(stored, owner, ancestry);
         if (instances.isEmpty()) denied("KeyScopeDenied");
@@ -182,6 +205,7 @@ public class ApiKeyTargetResolver {
     }
 
     private Class<?> lifecycleModel(Object resource) {
+        if (resource instanceof ServiceExposeMap) return ServiceExposeMap.class;
         if (resource instanceof InstanceHostMap) return InstanceHostMap.class;
         if (resource instanceof Nic) return Nic.class;
         if (resource instanceof Port) return Port.class;
@@ -197,6 +221,7 @@ public class ApiKeyTargetResolver {
 
     private List<Instance> lifecycleInstances(Object resource, Policy owner, List<Object> ancestry) {
         ancestry.add(resource);
+        if (resource instanceof ServiceExposeMap map) return List.of(liveInstance(map.getInstanceId(), requiredAccount(map.getAccountId()), owner));
         if (resource instanceof InstanceHostMap map) return List.of(liveInstance(map.getInstanceId(), null, owner));
         if (resource instanceof Nic nic) return List.of(liveInstance(nic.getInstanceId(), requiredAccount(nic.getAccountId()), owner));
         if (resource instanceof Port port) return List.of(liveInstance(port.getInstanceId(), requiredAccount(port.getAccountId()), owner));
@@ -281,6 +306,95 @@ public class ApiKeyTargetResolver {
                     ObjectUtils.getPropertyIgnoreErrors(stored, reference))) denied("KeyScopeDenied");
         }
         return stored;
+    }
+
+    /** Only the verified executing Volume may ensure its allocated image cache.
+     * Other users of a shared Image are neither ancestors nor newly authorized.
+     * Shared image/pool targets are retained only to preserve explicit DENY; the
+     * dependency scope remains the actual owned Volume, not a public image grant. */
+    public LifecycleDependency resolveImageEnsureDependency(Object root, Object resource, Policy owner,
+            EngineContext.VerifiedExecutionFrame frame, Map<String, Object> binding) {
+        if (frame == null || !"volume".equals(frame.resourceType()) || frame.rootAuthorization().isEmpty()
+                || !frame.rootAuthorization().equals(binding)) denied("KeyScopeDenied");
+        String rootType = root instanceof Instance ? "container" : root instanceof Service ? "service" : root instanceof Stack ? "stack" : null;
+        if (rootType == null || !(binding.get("targetType") instanceof String type)
+                || !rootType.equals(ApiKeyQueryScopes.canonical(type)) || !(binding.get("targetId") instanceof String id)
+                || !Objects.equals(ObjectUtils.getPropertyIgnoreErrors(root, "id"), executionResourceId(rootType, id))) denied("KeyScopeDenied");
+        Volume volume = liveResource(Volume.class, executionResourceId("volume", frame.resourceId()), owner);
+        LifecycleDependency owned = resolveLifecycleDependency(root, volume, owner);
+        if (owned == null || volume.getImageId() == null) denied("KeyScopeDenied");
+        ImageStoragePoolMap cache = null;
+        if (resource instanceof Image image) {
+            if (!Objects.equals(volume.getImageId(), image.getId()) || image.getRemoved() != null) denied("KeyScopeDenied");
+        } else if (resource instanceof ImageStoragePoolMap map) {
+            cache = sharedImageCache(map);
+            if (!Objects.equals(cache.getImageId(), volume.getImageId())) denied("KeyScopeDenied");
+        } else denied("KeyScopeDenied");
+        Image image = objectManager.loadResource(Image.class, volume.getImageId());
+        if (image == null || !Objects.equals(volume.getImageId(), image.getId()) || image.getRemoved() != null
+                || Set.of("removed", "purging", "purged").contains(String.valueOf(image.getState()))) denied("KeyScopeDenied");
+        if (image.getAccountId() != null && owner.authorizeObject(image) == null) denied("OwnerPermissionDenied");
+        if (resource instanceof Image supplied && (!Objects.equals(supplied.getAccountId(), image.getAccountId())
+                || !Objects.equals(supplied.getState(), image.getState())
+                || !Objects.equals(supplied.getRegistryCredentialId(), image.getRegistryCredentialId()))) denied("KeyScopeDenied");
+        Set<ApiKeyPolicyEvaluator.Target> resources = new LinkedHashSet<>(owned.resources());
+        if (image.getRegistryCredentialId() != null) {
+            Credential credential = liveResource(Credential.class, image.getRegistryCredentialId(), owner);
+            if (!"active".equals(credential.getState()) || !CredentialConstants.KIND_REGISTRY_CREDENTIAL.equals(credential.getKind())
+                    || !Objects.equals(credential.getAccountId(), volume.getAccountId())) denied("OwnerPermissionDenied");
+            StoragePool registry = liveResource(StoragePool.class, credential.getRegistryId(), owner);
+            if (!"active".equals(registry.getState()) || !StoragePoolConstants.KIND_REGISTRY.equals(registry.getKind())
+                    || !Objects.equals(registry.getAccountId(), volume.getAccountId())) denied("OwnerPermissionDenied");
+            for (Instance instance : lifecycleInstances(volume, owner, new ArrayList<>())) {
+                if (!Objects.equals(instance.getRegistryCredentialId(), credential.getId())) denied("OwnerPermissionDenied");
+            }
+            resources.add(ApiKeyPolicyEvaluator.Target.projectResource("registryCredential", format("registryCredential", credential.getId()),
+                    format("project", credential.getAccountId())));
+            resources.add(ApiKeyPolicyEvaluator.Target.projectResource("registry", format("registry", registry.getId()),
+                    format("project", registry.getAccountId())));
+        }
+        resources.add(image.getAccountId() == null
+                ? ApiKeyPolicyEvaluator.Target.platformResource("image", format("image", image.getId()))
+                : ApiKeyPolicyEvaluator.Target.projectResource("image", format("image", image.getId()), format("project", image.getAccountId())));
+        List<VolumeStoragePoolMap> allocations = cache == null
+                ? objectManager.find(VolumeStoragePoolMap.class, VOLUME_STORAGE_POOL_MAP.VOLUME_ID, volume.getId(),
+                        VOLUME_STORAGE_POOL_MAP.REMOVED, null)
+                : objectManager.find(VolumeStoragePoolMap.class,
+                    VOLUME_STORAGE_POOL_MAP.VOLUME_ID, volume.getId(),
+                    VOLUME_STORAGE_POOL_MAP.STORAGE_POOL_ID, cache.getStoragePoolId(), VOLUME_STORAGE_POOL_MAP.REMOVED, null);
+        if (allocations == null || allocations.isEmpty()) denied("KeyScopeDenied");
+        for (VolumeStoragePoolMap allocation : allocations) {
+            VolumeStoragePoolMap stored = persisted(VolumeStoragePoolMap.class, allocation, owner, "volumeId", "storagePoolId");
+            if (!Objects.equals(stored.getVolumeId(), volume.getId())
+                    || (cache != null && !Objects.equals(stored.getStoragePoolId(), cache.getStoragePoolId()))) denied("KeyScopeDenied");
+            StoragePool pool = liveResource(StoragePool.class, stored.getStoragePoolId(), owner);
+            resources.addAll(resolveLifecycleDependency(root, stored, owner).resources());
+            resources.add(resolveObject("storagePool", pool, owner));
+        }
+        if (cache != null) {
+            resources.add(ApiKeyPolicyEvaluator.Target.platformResource("imageStoragePoolMap", format("imageStoragePoolMap", cache.getId())));
+        }
+        return new LifecycleDependency(owned.scope(), List.copyOf(resources));
+    }
+
+    private ImageStoragePoolMap sharedImageCache(ImageStoragePoolMap supplied) {
+        if (supplied.getId() == null || supplied.getRemoved() != null) denied("KeyScopeDenied");
+        ImageStoragePoolMap stored = objectManager.loadResource(ImageStoragePoolMap.class, supplied.getId());
+        // Shared cache rows have no owning Account. This reload is only used
+        // after verified Volume/root checks, never for ordinary object grants.
+        if (stored == null || !Objects.equals(supplied.getId(), stored.getId()) || stored.getRemoved() != null
+                || Set.of("removed", "purging", "purged").contains(String.valueOf(stored.getState()))
+                || !Objects.equals(supplied.getState(), stored.getState())
+                || !Objects.equals(supplied.getImageId(), stored.getImageId())
+                || !Objects.equals(supplied.getStoragePoolId(), stored.getStoragePoolId())) denied("KeyScopeDenied");
+        return stored;
+    }
+
+    private Long executionResourceId(String type, String raw) {
+        // ProcessRecord uses raw decimal IDs. Typed IDs must still round-trip
+        // as the actual schema; this does not change public scope resolution.
+        try { return raw != null && raw.matches("[0-9]+") ? Long.valueOf(raw) : parentId(type, raw); }
+        catch (NumberFormatException invalid) { denied("KeyScopeDenied"); return null; }
     }
 
     /** Internal image creation is a dependency, not a separate image API grant.

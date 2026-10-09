@@ -8,6 +8,7 @@ import io.cattle.platform.core.model.Credential;
 import io.cattle.platform.core.model.Account;
 import io.cattle.platform.core.model.Instance;
 import io.cattle.platform.core.model.Image;
+import io.cattle.platform.core.model.ImageStoragePoolMap;
 import io.cattle.platform.core.model.Service;
 import io.cattle.platform.core.model.ServiceExposeMap;
 import io.cattle.platform.core.model.Stack;
@@ -19,6 +20,7 @@ import io.cattle.platform.api.auth.impl.NoPolicyOptions;
 import io.cattle.platform.iaas.api.auth.impl.AccountPolicy;
 import io.cattle.platform.engine.process.LaunchConfiguration;
 import io.cattle.platform.engine.process.ProcessAuthorizationDeniedException;
+import io.cattle.platform.engine.context.EngineContext;
 import io.cattle.platform.iaas.api.auth.impl.ApiAuthenticator;
 import io.cattle.platform.object.ObjectManager;
 import io.github.ibuildthecloud.gdapi.factory.SchemaFactory;
@@ -163,6 +165,123 @@ public class ApiKeyProcessAuthorizationTest {
         hook.beforeExecution(imageJob, metadata);
         verify(hook.targets, times(2)).resolveImageDependency(root, image, owner);
         verify(owner, times(2)).authorizeObject(image);
+    }
+    private ApiKeyTargetResolver.LifecycleDependency scopedEnsure(Object child, String type) {
+        when(hook.objectManager.loadResource(type, "7")).thenReturn(child);
+        policy(new ApiKeyPolicy(ApiKeyPolicy.Mode.CUSTOM, ApiKeyPolicy.Effect.DENY, null,
+                List.of(new ApiKeyPolicy.Rule("root", ApiKeyPolicy.Effect.ALLOW, ApiKeyPolicy.Scope.resource("container", "1i3"), Set.of("update")))));
+        when(hook.targets.resolveObject("container", root, owner))
+                .thenReturn(ApiKeyPolicyEvaluator.Target.stackResource("container", "1i3", "1a5", "1st8"));
+        var dependency = new ApiKeyTargetResolver.LifecycleDependency(
+                ApiKeyPolicyEvaluator.Target.stackResource("volume", "1v6", "1a5", "1st8"), List.of(
+                        ApiKeyPolicyEvaluator.Target.stackResource("container", "1i3", "1a5", "1st8"),
+                        ApiKeyPolicyEvaluator.Target.stackResource("volume", "1v6", "1a5", "1st8"),
+                        ApiKeyPolicyEvaluator.Target.platformResource("image", "1img7"),
+                        ApiKeyPolicyEvaluator.Target.platformResource("imageStoragePoolMap", "1im7"),
+                        ApiKeyPolicyEvaluator.Target.projectResource("storagePool", "1sp9", "1a5")));
+        when(hook.targets.resolveImageEnsureDependency(eq(root), eq(child), eq(owner), any(), eq(metadata))).thenReturn(dependency);
+        return dependency;
+    }
+
+    @Test public void onlyClosedEnsureProcessesUseActualCurrentFrameAndRootGrant() {
+        Image image = mock(Image.class); ImageStoragePoolMap cache = mock(ImageStoragePoolMap.class);
+        for (String process : List.of("image.activate", "imagestoragepoolmap.create", "imagestoragepoolmap.activate")) {
+            Object child = process.startsWith("image.") ? image : cache;
+            String type = process.startsWith("image.") ? "image" : "imagestoragepoolmap";
+            scopedEnsure(child, type);
+            if (child == image) when(owner.authorizeObject(image)).thenReturn(null);
+            else when(owner.authorizeObject(cache)).thenReturn(null);
+            EngineContext engine = EngineContext.getEngineContext(); var frame = engine.pushVerifiedExecution("volume", "6", metadata);
+            try {
+                hook.beforeExecution(new LaunchConfiguration(process, type, "7", null, 0, Map.of("volumeId", 99L)), metadata);
+                verify(hook.targets).resolveImageEnsureDependency(root, child, owner, frame, metadata);
+            } finally { engine.popVerifiedExecution(frame); }
+        }
+        verify(hook.targets, never()).resolveImageDependency(any(), any(), any());
+    }
+
+    @Test public void scopedEnsureCannotHideExplicitActualDependencyDenials() {
+        Image image = mock(Image.class);
+        var dependency = scopedEnsure(image, "image");
+        when(owner.authorizeObject(image)).thenReturn(null);
+        for (var target : dependency.resources()) {
+            policy(new ApiKeyPolicy(ApiKeyPolicy.Mode.CUSTOM, ApiKeyPolicy.Effect.DENY, null, List.of(
+                    new ApiKeyPolicy.Rule("root", ApiKeyPolicy.Effect.ALLOW, ApiKeyPolicy.Scope.resource("container", "1i3"), Set.of("update")),
+                    new ApiKeyPolicy.Rule("deny", ApiKeyPolicy.Effect.DENY, ApiKeyPolicy.Scope.resource(target.resourceType(), target.resourceId()), Set.of("update")))));
+            EngineContext engine = EngineContext.getEngineContext(); var frame = engine.pushVerifiedExecution("volume", "6", metadata);
+            try { assertEquals("KeyPolicyDenied", assertThrows(ProcessAuthorizationDeniedException.class,
+                    () -> hook.beforeExecution(new LaunchConfiguration("image.activate", "image", "7", null, 0, Map.of()), metadata)).getCode()); }
+            finally { engine.popVerifiedExecution(frame); }
+        }
+    }
+
+    @Test public void requestDataCannotMintEnsureFrameAndRootGrantIsStillRequired() {
+        Image image = mock(Image.class); scopedEnsure(image, "image");
+        when(owner.authorizeObject(image)).thenReturn(null);
+        when(hook.targets.resolveImageEnsureDependency(eq(root), eq(image), eq(owner), isNull(), eq(metadata)))
+                .thenThrow(new ClientVisibleException(403, "KeyScopeDenied"));
+        LaunchConfiguration config = new LaunchConfiguration("image.activate", "image", "7", null, 0,
+                Map.of("verifiedExecution", Map.of("resourceType", "volume", "resourceId", "6"), "_apiKeyAudit", metadata));
+        assertNull(EngineContext.getEngineContext().currentVerifiedExecution());
+        assertEquals("KeyScopeDenied", assertThrows(ProcessAuthorizationDeniedException.class, () -> hook.beforeExecution(config, metadata)).getCode());
+        policy(new ApiKeyPolicy(ApiKeyPolicy.Mode.CUSTOM, ApiKeyPolicy.Effect.DENY, null, List.of()));
+        EngineContext engine = EngineContext.getEngineContext(); var frame = engine.pushVerifiedExecution("volume", "6", metadata);
+        try { assertEquals("KeyScopeDenied", assertThrows(ProcessAuthorizationDeniedException.class, () -> hook.beforeExecution(config, metadata)).getCode()); }
+        finally { engine.popVerifiedExecution(frame); }
+    }
+
+    @Test public void revokedEnsureKeyNeverUsesParentAuthority() {
+        Image image = mock(Image.class); scopedEnsure(image, "image");
+        when(key.getRemoved()).thenReturn(new java.util.Date());
+        assertEquals("ApiKeyRevoked", assertThrows(ProcessAuthorizationDeniedException.class,
+                () -> hook.beforeExecution(new LaunchConfiguration("image.activate", "image", "7", null, 0, Map.of()), metadata)).getCode());
+        verify(hook.targets, never()).resolveImageEnsureDependency(any(), any(), any(), any(), any());
+    }
+
+    @Test public void destructiveImageAndCacheProcessesCannotUseEnsureAuthority() {
+        Image image = mock(Image.class); ImageStoragePoolMap cache = mock(ImageStoragePoolMap.class);
+        when(owner.authorizeObject(image)).thenReturn(null); when(owner.authorizeObject(cache)).thenReturn(null);
+        when(hook.objectManager.loadResource("image", "7")).thenReturn(image);
+        when(hook.objectManager.loadResource("imagestoragepoolmap", "7")).thenReturn(cache);
+        for (String type : List.of("image", "imagestoragepoolmap")) {
+            for (String action : List.of("remove", "update", "purge")) {
+                assertEquals("OwnerPermissionDenied", assertThrows(ProcessAuthorizationDeniedException.class,
+                        () -> hook.beforeExecution(new LaunchConfiguration(type + "." + action, type, "7", null, 0, Map.of()), metadata)).getCode());
+            }
+        }
+        verify(hook.targets, never()).resolveImageEnsureDependency(any(), any(), any(), any(), any());
+    }
+
+    @Test public void fullAndLegacyAlreadyOwnedEnsurePathsHaveNoNewFrameRequirement() {
+        Image image = mock(Image.class); ImageStoragePoolMap cache = mock(ImageStoragePoolMap.class);
+        when(hook.objectManager.loadResource("image", "7")).thenReturn(image);
+        when(hook.objectManager.loadResource("imagestoragepoolmap", "7")).thenReturn(cache);
+        for (boolean full : List.of(false, true)) {
+            if (full) policy(new ApiKeyPolicy(ApiKeyPolicy.Mode.FULL, ApiKeyPolicy.Effect.ALLOW, null, List.of()));
+            for (String process : List.of("image.activate", "imagestoragepoolmap.create", "imagestoragepoolmap.activate")) {
+                String type = process.startsWith("image.") ? "image" : "imagestoragepoolmap";
+                hook.beforeExecution(new LaunchConfiguration(process, type, "7", null, 0, Map.of()), metadata);
+            }
+        }
+        assertNull(EngineContext.getEngineContext().currentVerifiedExecution());
+        verify(hook.targets, never()).resolveImageEnsureDependency(any(), any(), any(), any(), any());
+    }
+
+    @Test public void customDirectPublicImageStillCannotBorrowVolumeEnsureGrant() {
+        Image image = mock(Image.class);
+        when(hook.objectManager.loadResource("image", 7L)).thenReturn(image);
+        when(hook.objectManager.loadResource("image", "7")).thenReturn(image);
+        metadata.put("targetType", "image"); metadata.put("targetId", "7");
+        SchemaFactory factory = mock(SchemaFactory.class); when(factory.getSchema("image")).thenReturn(schema);
+        when(hook.authenticator.currentAuthorization(eq(10L), eq(5L), any()))
+                .thenReturn(new ApiAuthenticator.CurrentAuthorization(owner, factory));
+        policy(new ApiKeyPolicy(ApiKeyPolicy.Mode.CUSTOM, ApiKeyPolicy.Effect.ALLOW, null, List.of()));
+        when(hook.targets.resolveObject("image", image, owner)).thenReturn(ApiKeyPolicyEvaluator.Target.unresolved("image", "1img7"));
+        EngineContext engine = EngineContext.getEngineContext(); var frame = engine.pushVerifiedExecution("volume", "6", metadata);
+        try { assertEquals("KeyScopeDenied", assertThrows(ProcessAuthorizationDeniedException.class,
+                () -> hook.beforeExecution(new LaunchConfiguration("image.activate", "image", "7", null, 0, Map.of()), metadata)).getCode()); }
+        finally { engine.popVerifiedExecution(frame); }
+        verify(hook.targets, never()).resolveImageEnsureDependency(any(), any(), any(), any(), any());
     }
     @Test public void fullAndLegacyDirectImageCreateKeepExistingOwnerGrantWithoutDependencyRequirement() {
         Image image = mock(Image.class);

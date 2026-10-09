@@ -10,6 +10,10 @@ import io.cattle.platform.api.resource.NamedResourceIdentity;
 import io.cattle.platform.core.model.Account;
 import io.cattle.platform.core.model.Instance;
 import io.cattle.platform.core.model.Image;
+import io.cattle.platform.core.model.ImageStoragePoolMap;
+import io.cattle.platform.core.model.StoragePool;
+import io.cattle.platform.core.model.Credential;
+import io.cattle.platform.engine.context.EngineContext;
 import io.cattle.platform.core.model.ServiceExposeMap;
 import static io.cattle.platform.core.model.tables.InstanceTable.INSTANCE;
 import static io.cattle.platform.core.model.tables.ServiceExposeMapTable.SERVICE_EXPOSE_MAP;
@@ -28,6 +32,7 @@ import io.cattle.platform.core.model.HostIpAddressMap;
 import io.cattle.platform.core.model.tables.records.*;
 import static io.cattle.platform.core.model.tables.MountTable.MOUNT;
 import static io.cattle.platform.core.model.tables.IpAddressNicMapTable.IP_ADDRESS_NIC_MAP;
+import static io.cattle.platform.core.model.tables.VolumeStoragePoolMapTable.VOLUME_STORAGE_POOL_MAP;
 import io.cattle.platform.object.ObjectManager;
 import io.github.ibuildthecloud.gdapi.exception.ClientVisibleException;
 import io.github.ibuildthecloud.gdapi.id.IdFormatter;
@@ -62,6 +67,100 @@ public class ApiKeyTargetResolverTest {
         // A persisted lifecycle relation does not make an unknown public API type resolvable.
         assertEquals(ApiKeyPolicyEvaluator.TargetLevel.UNRESOLVED, resolver.resolveObject("instanceHostMap", f.hostMap, owner).level());
         assertNull(resolver.resolveLifecycleDependency(f.service, new Object(), owner));
+    }
+    @Test public void serviceExposeMapLifecycleUsesOnlyItsExactPersistedServiceRoot() {
+        for (boolean managed : List.of(true, false)) {
+            Lifecycle f = lifecycle();
+            f.expose.setManaged(managed); f.expose.setUpgrade(!managed);
+            io.github.ibuildthecloud.gdapi.context.ApiContext.remove();
+            var dependency = resolver.resolveLifecycleDependency(f.service, f.expose, owner);
+            assertEquals("1a5", dependency.scope().projectId());
+            assertEquals("1st8", dependency.scope().stackId());
+            assertEquals("serviceExposeMap", dependency.scope().resourceType());
+            assertTrue(dependency.resources().contains(ApiKeyPolicyEvaluator.Target.stackResource("container", "1i3", "1a5", "1st8")));
+            assertTrue(dependency.resources().contains(ApiKeyPolicyEvaluator.Target.stackResource("service", "1s2", "1a5", "1st8")));
+            assertTrue(dependency.resources().contains(dependency.scope()));
+            assertEquals(ApiKeyPolicyEvaluator.TargetLevel.UNRESOLVED, resolver.resolveObject("serviceExposeMap", f.expose, owner).level());
+            assertThrows(ClientVisibleException.class, () -> resolver.resolveLifecycleDependency(f.instance, f.expose, owner));
+            assertThrows(ClientVisibleException.class, () -> resolver.resolveLifecycleDependency(f.stack, f.expose, owner));
+            assertNull(io.github.ibuildthecloud.gdapi.context.ApiContext.getContext());
+        }
+    }
+    @Test public void serviceExposeMapRejectsMissingForeignRemovedOrContradictoryPersistedGraph() {
+        for (String invalid : List.of("missing-map", "missing-instance", "missing-service", "missing-stack", "missing-project",
+                "foreign-map", "foreign-instance", "foreign-service", "foreign-stack", "removed-map", "removed-instance",
+                "removed-service", "removed-stack", "removed-project", "purged-map", "purged-instance", "purged-service", "purged-stack",
+                "unmanaged", "null-managed", "null-instance", "null-service", "null-account", "contradictory-stack",
+                "fabricated-account", "fabricated-instance", "fabricated-service", "fabricated-managed", "fabricated-upgrade")) {
+            Lifecycle f = lifecycle();
+            ServiceExposeMapRecord attempted = f.expose;
+            switch (invalid) {
+                case "missing-map" -> f.rows.get(ServiceExposeMap.class).clear();
+                case "missing-instance" -> f.rows.get(Instance.class).clear();
+                case "missing-service" -> f.rows.get(Service.class).clear();
+                case "missing-stack" -> f.rows.get(Stack.class).clear();
+                case "missing-project" -> f.rows.get(Account.class).clear();
+                case "foreign-map" -> f.expose.setAccountId(6L);
+                case "foreign-instance" -> f.instance.setAccountId(6L);
+                case "foreign-service" -> f.service.setAccountId(6L);
+                case "foreign-stack" -> f.stack.setAccountId(6L);
+                case "removed-map" -> f.expose.setRemoved(new java.util.Date(1));
+                case "removed-instance" -> f.instance.setRemoved(new java.util.Date(1));
+                case "removed-service" -> f.service.setRemoved(new java.util.Date(1));
+                case "removed-stack" -> f.stack.setRemoved(new java.util.Date(1));
+                case "removed-project" -> ((Account) f.rows.get(Account.class).get(5L)).setRemoved(new java.util.Date(1));
+                case "purged-map" -> f.expose.setState("purged");
+                case "purged-instance" -> f.instance.setState("purged");
+                case "purged-service" -> f.service.setState("purged");
+                case "purged-stack" -> f.stack.setState("purged");
+                case "unmanaged" -> f.expose.setUpgrade(false);
+                case "null-managed" -> f.expose.setManaged(null);
+                case "null-instance" -> f.expose.setInstanceId(null);
+                case "null-service" -> f.expose.setServiceId(null);
+                case "null-account" -> f.expose.setAccountId(null);
+                case "contradictory-stack" -> f.instance.setStackId(9L);
+                default -> {
+                    attempted = new ServiceExposeMapRecord(); attempted.from(f.expose);
+                    switch (invalid) {
+                        case "fabricated-account" -> attempted.setAccountId(6L);
+                        case "fabricated-instance" -> attempted.setInstanceId(99L);
+                        case "fabricated-service" -> attempted.setServiceId(99L);
+                        case "fabricated-managed" -> attempted.setManaged(true);
+                        case "fabricated-upgrade" -> attempted.setUpgrade(false);
+                    }
+                }
+            }
+            ServiceExposeMapRecord child = attempted;
+            assertThrows(invalid, ClientVisibleException.class, () -> resolver.resolveLifecycleDependency(f.service, child, owner));
+        }
+    }
+    @Test public void serviceExposeMapCannotBorrowAnotherServiceOnTheSameInstance() {
+        Lifecycle f = lifecycle();
+        ServiceRecord other = new ServiceRecord(); other.setId(99L); other.setAccountId(5L); other.setStackId(8L);
+        f.add(Service.class, other);
+        ServiceExposeMapRecord otherMap = new ServiceExposeMapRecord(); otherMap.from(f.expose);
+        otherMap.setId(99L); otherMap.setServiceId(99L); otherMap.setManaged(true); otherMap.setUpgrade(false);
+        f.add(ServiceExposeMap.class, otherMap);
+        when(resolver.objectManager.find(ServiceExposeMap.class, SERVICE_EXPOSE_MAP.INSTANCE_ID, 3L,
+                SERVICE_EXPOSE_MAP.REMOVED, null, SERVICE_EXPOSE_MAP.MANAGED, true)).thenReturn(List.of(otherMap));
+        // Both Services are legitimate parents of this Instance. Neither map may
+        // use the other Service's grant merely because that Instance is shared.
+        assertNotNull(resolver.resolveLifecycleDependency(f.service, f.expose, owner));
+        assertNotNull(resolver.resolveLifecycleDependency(other, otherMap, owner));
+        assertThrows(ClientVisibleException.class, () -> resolver.resolveLifecycleDependency(f.service, otherMap, owner));
+        assertThrows(ClientVisibleException.class, () -> resolver.resolveLifecycleDependency(other, f.expose, owner));
+    }
+    @Test public void serviceExposeMapDependencyRetainsEveryActualChildDenial() {
+        Lifecycle f = lifecycle();
+        var dependency = resolver.resolveLifecycleDependency(f.service, f.expose, owner);
+        for (var denied : List.of(ApiKeyPolicy.Scope.resource("container", "1i3"), ApiKeyPolicy.Scope.resource("service", "1s2"),
+                ApiKeyPolicy.Scope.resource("serviceExposeMap", dependency.scope().resourceId()))) {
+            ApiKeyPolicy policy = new ApiKeyPolicy(ApiKeyPolicy.Mode.CUSTOM, ApiKeyPolicy.Effect.DENY, null, List.of(
+                    new ApiKeyPolicy.Rule("root", ApiKeyPolicy.Effect.ALLOW, ApiKeyPolicy.Scope.stack("1st8"), java.util.Set.of("upgrade")),
+                    new ApiKeyPolicy.Rule("deny", ApiKeyPolicy.Effect.DENY, denied, java.util.Set.of("upgrade"))));
+            assertEquals(ApiKeyPolicyEvaluator.Reason.POLICY_DENIED, new ApiKeyPolicyEvaluator().evaluateAuthorizedDependency(policy,
+                    new ApiKeyPolicyEvaluator.Request(true, "upgrade", true, dependency.resources()), java.time.Instant.EPOCH).reason());
+        }
     }
     @Test public void hostMapRejectsMissingForeignUnmanagedRemovedAndContradictoryAncestry() {
         for (String invalid : List.of("missing-map", "missing-instance", "foreign-instance", "removed-map", "removed-instance",
@@ -206,6 +305,7 @@ public class ApiKeyTargetResolverTest {
         f.service.setId(2L); f.service.setAccountId(5L); f.service.setStackId(8L); f.add(Service.class, f.service);
         f.stack.setId(8L); f.stack.setAccountId(5L); f.add(Stack.class, f.stack);
         f.expose.setId(1L); f.expose.setAccountId(5L); f.expose.setServiceId(2L); f.expose.setInstanceId(3L); f.expose.setManaged(false); f.expose.setUpgrade(true);
+        f.add(ServiceExposeMap.class, f.expose);
         when(resolver.objectManager.find(ServiceExposeMap.class, SERVICE_EXPOSE_MAP.INSTANCE_ID, 3L,
                 SERVICE_EXPOSE_MAP.REMOVED, null, SERVICE_EXPOSE_MAP.MANAGED, true)).thenAnswer(i ->
                 f.expose.getRemoved() == null && Boolean.TRUE.equals(f.expose.getManaged()) ? List.of(f.expose) : List.of());
@@ -241,6 +341,202 @@ public class ApiKeyTargetResolverTest {
         }
         List<Object> children() { return List.of(hostMap, nic, port, link, volume, mount, poolMap, address, addressMap, hostAddressMap); }
     }
+    private static final Map<String, Object> ENSURE_BINDING = Map.of("keyId", "1c1", "requestId", "request1", "targetType", "service", "targetId", "2");
+    private record ImageEnsure(Lifecycle lifecycle, ImageRecord image, ImageStoragePoolMapRecord cache, StoragePoolRecord pool) { }
+
+    private ImageEnsure imageEnsure() {
+        Lifecycle f = lifecycle();
+        ImageRecord image = new ImageRecord(); image.setId(7L); image.setState("active"); f.add(Image.class, image);
+        f.volume.setImageId(7L); f.instance.setImageId(7L);
+        StoragePoolRecord pool = new StoragePoolRecord(); pool.setId(9L); pool.setAccountId(5L); pool.setState("active"); f.add(StoragePool.class, pool);
+        ImageStoragePoolMapRecord cache = new ImageStoragePoolMapRecord(); cache.setId(14L); cache.setImageId(7L); cache.setStoragePoolId(9L);
+        f.add(ImageStoragePoolMap.class, cache);
+        when(resolver.objectManager.find(VolumeStoragePoolMap.class, VOLUME_STORAGE_POOL_MAP.VOLUME_ID, 6L,
+                VOLUME_STORAGE_POOL_MAP.REMOVED, null)).thenAnswer(i -> f.rows.get(VolumeStoragePoolMap.class).values().stream()
+                .map(VolumeStoragePoolMap.class::cast).filter(m -> m.getRemoved() == null && Long.valueOf(6L).equals(m.getVolumeId())).toList());
+        when(resolver.objectManager.find(VolumeStoragePoolMap.class, VOLUME_STORAGE_POOL_MAP.VOLUME_ID, 6L,
+                VOLUME_STORAGE_POOL_MAP.STORAGE_POOL_ID, 9L, VOLUME_STORAGE_POOL_MAP.REMOVED, null)).thenAnswer(i ->
+                f.rows.get(VolumeStoragePoolMap.class).values().stream().map(VolumeStoragePoolMap.class::cast)
+                        .filter(m -> m.getRemoved() == null && Long.valueOf(6L).equals(m.getVolumeId()) && Long.valueOf(9L).equals(m.getStoragePoolId())).toList());
+        return new ImageEnsure(f, image, cache, pool);
+    }
+
+    @Test public void sharedImageEnsureUsesOnlyVerifiedOwnedVolumeAndAllocatedCache() {
+        ImageEnsure f = imageEnsure();
+        InstanceRecord foreign = new InstanceRecord(); foreign.setId(99L); foreign.setAccountId(6L); foreign.setImageId(7L);
+        when(resolver.objectManager.find(Instance.class, INSTANCE.IMAGE_ID, 7L, INSTANCE.REMOVED, null)).thenReturn(List.of(f.lifecycle.instance, foreign));
+        EngineContext engine = EngineContext.getEngineContext();
+        for (Object root : List.of(f.lifecycle.instance, f.lifecycle.service, f.lifecycle.stack)) {
+            Map<String, Object> binding = new HashMap<>(ENSURE_BINDING);
+            binding.put("targetType", root instanceof Instance ? "container" : root instanceof Service ? "service" : "stack");
+            binding.put("targetId", String.valueOf(io.cattle.platform.object.util.ObjectUtils.getPropertyIgnoreErrors(root, "id")));
+            var frame = engine.pushVerifiedExecution("volume", "6", binding);
+            try {
+                for (Object child : List.of(f.image, f.cache)) {
+                    var dependency = resolver.resolveImageEnsureDependency(root, child, owner, frame, binding);
+                    assertEquals(ApiKeyPolicyEvaluator.Target.stackResource("volume", "1v6", "1a5", "1st8"), dependency.scope());
+                    assertTrue(dependency.resources().contains(ApiKeyPolicyEvaluator.Target.platformResource("image", "1img7")));
+                    assertTrue(dependency.resources().stream().anyMatch(t -> "storagePool".equals(t.resourceType())));
+                    assertFalse(dependency.resources().stream().anyMatch(t -> "1i99".equals(t.resourceId())));
+                }
+            } finally { engine.popVerifiedExecution(frame); }
+        }
+        Policy visible = mock(Policy.class); when(visible.authorizeObject(any())).thenAnswer(i -> i.getArgument(0));
+        assertEquals(ApiKeyPolicyEvaluator.TargetLevel.UNRESOLVED, resolver.resolveObject("image", f.image, visible).level());
+        assertEquals(ApiKeyPolicyEvaluator.TargetLevel.UNRESOLVED, resolver.resolveObject("imageStoragePoolMap", f.cache, owner).level());
+        verify(resolver.objectManager, never()).find(Instance.class, INSTANCE.IMAGE_ID, 7L, INSTANCE.REMOVED, null);
+    }
+
+    @Test public void imageEnsureRejectsAbsentWrongOrDifferentRootFrame() {
+        ImageEnsure f = imageEnsure(); EngineContext engine = EngineContext.getEngineContext();
+        assertThrows(ClientVisibleException.class, () -> resolver.resolveImageEnsureDependency(f.lifecycle.service, f.image, owner, null, ENSURE_BINDING));
+        for (String type : List.of("service", "image", "Volume")) {
+            var frame = engine.pushVerifiedExecution(type, "6", ENSURE_BINDING);
+            try { assertThrows(ClientVisibleException.class, () -> resolver.resolveImageEnsureDependency(f.lifecycle.service, f.image, owner, frame, ENSURE_BINDING)); }
+            finally { engine.popVerifiedExecution(frame); }
+        }
+        for (String id : List.of("", "99", "1s6", "999999999999999999999")) {
+            var frame = engine.pushVerifiedExecution("volume", id, ENSURE_BINDING);
+            try { assertThrows(ClientVisibleException.class, () -> resolver.resolveImageEnsureDependency(f.lifecycle.service, f.image, owner, frame, ENSURE_BINDING)); }
+            finally { engine.popVerifiedExecution(frame); }
+        }
+        var empty = engine.pushVerifiedExecution("volume", "6", Map.of());
+        try { assertThrows(ClientVisibleException.class, () -> resolver.resolveImageEnsureDependency(f.lifecycle.service, f.image, owner, empty, Map.of())); }
+        finally { engine.popVerifiedExecution(empty); }
+        for (Map<String, Object> mismatchedRoot : List.of(
+                Map.<String, Object>of("keyId", "1c1", "requestId", "request1", "targetType", "service", "targetId", "99"),
+                Map.<String, Object>of("keyId", "1c1", "requestId", "request1", "targetType", "container", "targetId", "3"))) {
+            var wrongRoot = engine.pushVerifiedExecution("volume", "6", mismatchedRoot);
+            try { assertThrows(ClientVisibleException.class, () -> resolver.resolveImageEnsureDependency(f.lifecycle.service, f.image, owner, wrongRoot, mismatchedRoot)); }
+            finally { engine.popVerifiedExecution(wrongRoot); }
+        }
+        var frame = engine.pushVerifiedExecution("volume", "6", ENSURE_BINDING);
+        try {
+            assertThrows(ClientVisibleException.class, () -> resolver.resolveImageEnsureDependency(f.lifecycle.service, new Object(), owner, frame, ENSURE_BINDING));
+            for (String field : List.of("keyId", "requestId", "targetType", "targetId")) {
+                Map<String, Object> altered = new HashMap<>(ENSURE_BINDING); altered.put(field, "other");
+                assertThrows(field, ClientVisibleException.class, () -> resolver.resolveImageEnsureDependency(f.lifecycle.service, f.image, owner, frame, altered));
+            }
+            ServiceRecord other = new ServiceRecord(); other.setId(99L); other.setAccountId(5L); other.setStackId(8L); f.lifecycle.add(Service.class, other);
+            assertThrows(ClientVisibleException.class, () -> resolver.resolveImageEnsureDependency(other, f.image, owner, frame, ENSURE_BINDING));
+        } finally { engine.popVerifiedExecution(frame); }
+    }
+
+    @Test public void sharedCacheOrdinaryOwnerDenialDoesNotBlockItsExactOwnedVolumeEnsure() {
+        ImageEnsure f = imageEnsure(); Policy actual = owner;
+        Policy internal = mock(Policy.class);
+        when(internal.authorizeObject(any())).thenAnswer(i -> i.getArgument(0) instanceof ImageStoragePoolMap
+                ? null : actual.authorizeObject(i.getArgument(0)));
+        owner = internal;
+        assertNull(owner.authorizeObject(f.cache));
+        assertThrows(ClientVisibleException.class, () -> resolver.resolveObject("imageStoragePoolMap", f.cache, owner));
+        EngineContext engine = EngineContext.getEngineContext(); var frame = engine.pushVerifiedExecution("volume", "6", ENSURE_BINDING);
+        try {
+            var dependency = resolver.resolveImageEnsureDependency(f.lifecycle.service, f.cache, owner, frame, ENSURE_BINDING);
+            assertEquals(ApiKeyPolicyEvaluator.Target.stackResource("volume", "1v6", "1a5", "1st8"), dependency.scope());
+            assertTrue(dependency.resources().stream().anyMatch(t -> "imageStoragePoolMap".equals(t.resourceType())));
+            assertThrows(ClientVisibleException.class, () -> resolver.resolveImageEnsureDependency(f.lifecycle.service, f.cache, owner, null, ENSURE_BINDING));
+            Map<String, Object> wrongBinding = new HashMap<>(ENSURE_BINDING); wrongBinding.put("requestId", "other");
+            assertThrows(ClientVisibleException.class, () -> resolver.resolveImageEnsureDependency(f.lifecycle.service, f.cache, owner, frame, wrongBinding));
+            ImageStoragePoolMapRecord forged = new ImageStoragePoolMapRecord(); forged.from(f.cache); forged.setImageId(99L);
+            assertThrows(ClientVisibleException.class, () -> resolver.resolveImageEnsureDependency(f.lifecycle.service, forged, owner, frame, ENSURE_BINDING));
+            f.cache.setStoragePoolId(99L);
+            assertThrows(ClientVisibleException.class, () -> resolver.resolveImageEnsureDependency(f.lifecycle.service, f.cache, owner, frame, ENSURE_BINDING));
+            f.cache.setStoragePoolId(9L); f.cache.setRemoved(new java.util.Date(1));
+            assertThrows(ClientVisibleException.class, () -> resolver.resolveImageEnsureDependency(f.lifecycle.service, f.cache, owner, frame, ENSURE_BINDING));
+        } finally { engine.popVerifiedExecution(frame); }
+    }
+
+    @Test public void imageEnsureRejectsMissingForeignRemovedOrContradictoryDependencies() {
+        for (String invalid : List.of("missing-volume", "foreign-volume", "removed-volume", "wrong-volume-image", "missing-image", "foreign-image", "removed-image", "purged-image",
+                "missing-allocation", "removed-allocation", "purged-allocation", "wrong-allocation-volume", "missing-pool", "foreign-pool", "removed-pool",
+                "missing-cache", "removed-cache", "purged-cache", "wrong-cache-image", "wrong-cache-pool", "fabricated-cache-image", "fabricated-cache-pool", "fabricated-cache-state", "fabricated-image-registry", "fabricated-image-state")) {
+            ImageEnsure f = imageEnsure(); Object child = invalid.contains("cache") ? f.cache : f.image;
+            switch (invalid) {
+                case "missing-volume" -> f.lifecycle.rows.get(Volume.class).clear();
+                case "foreign-volume" -> f.lifecycle.volume.setAccountId(6L);
+                case "removed-volume" -> f.lifecycle.volume.setRemoved(new java.util.Date(1));
+                case "wrong-volume-image" -> f.lifecycle.volume.setImageId(99L);
+                case "missing-image" -> f.lifecycle.rows.get(Image.class).clear();
+                case "foreign-image" -> f.image.setAccountId(6L);
+                case "removed-image" -> f.image.setRemoved(new java.util.Date(1));
+                case "purged-image" -> f.image.setState("purged");
+                case "missing-allocation" -> f.lifecycle.rows.get(VolumeStoragePoolMap.class).clear();
+                case "removed-allocation" -> f.lifecycle.poolMap.setRemoved(new java.util.Date(1));
+                case "purged-allocation" -> f.lifecycle.poolMap.setState("purged");
+                case "wrong-allocation-volume" -> f.lifecycle.poolMap.setVolumeId(99L);
+                case "missing-pool" -> f.lifecycle.rows.get(StoragePool.class).clear();
+                case "foreign-pool" -> f.pool.setAccountId(6L);
+                case "removed-pool" -> f.pool.setRemoved(new java.util.Date(1));
+                case "missing-cache" -> f.lifecycle.rows.get(ImageStoragePoolMap.class).clear();
+                case "removed-cache" -> f.cache.setRemoved(new java.util.Date(1));
+                case "purged-cache" -> f.cache.setState("purged");
+                case "wrong-cache-image" -> f.cache.setImageId(99L);
+                case "wrong-cache-pool" -> f.cache.setStoragePoolId(99L);
+                case "fabricated-cache-image", "fabricated-cache-pool", "fabricated-cache-state" -> {
+                    ImageStoragePoolMapRecord clone = new ImageStoragePoolMapRecord(); clone.from(f.cache);
+                    if (invalid.endsWith("image")) clone.setImageId(99L);
+                    else if (invalid.endsWith("pool")) clone.setStoragePoolId(99L); else clone.setState("active"); child = clone;
+                }
+                case "fabricated-image-registry" -> { ImageRecord clone = new ImageRecord(); clone.from(f.image); clone.setRegistryCredentialId(99L); child = clone; }
+                case "fabricated-image-state" -> { ImageRecord clone = new ImageRecord(); clone.from(f.image); clone.setState("inactive"); child = clone; }
+            }
+            Object attempted = child; EngineContext engine = EngineContext.getEngineContext();
+            var frame = engine.pushVerifiedExecution("volume", "6", ENSURE_BINDING);
+            try { assertThrows(invalid, ClientVisibleException.class, () -> resolver.resolveImageEnsureDependency(f.lifecycle.service, attempted, owner, frame, ENSURE_BINDING)); }
+            finally { engine.popVerifiedExecution(frame); }
+        }
+    }
+
+    private CredentialRecord imageRegistry(ImageEnsure f) {
+        CredentialRecord credential = new CredentialRecord(); credential.setId(20L); credential.setAccountId(5L);
+        credential.setState("active"); credential.setKind("registryCredential"); credential.setRegistryId(21L); f.lifecycle.add(Credential.class, credential);
+        StoragePoolRecord registry = new StoragePoolRecord(); registry.setId(21L); registry.setAccountId(5L); registry.setState("active"); registry.setKind("registry");
+        f.lifecycle.add(StoragePool.class, registry); f.image.setRegistryCredentialId(20L); f.lifecycle.instance.setRegistryCredentialId(20L);
+        return credential;
+    }
+
+    @Test public void privateRegistryEnsureRequiresActualOwnedActiveCredentialAndRegistry() {
+        for (String invalid : List.of("valid", "missing-credential", "foreign-credential", "inactive-credential", "wrong-credential-kind", "removed-credential",
+                "missing-registry", "foreign-registry", "inactive-registry", "wrong-registry-kind", "removed-registry", "different-instance-credential")) {
+            ImageEnsure f = imageEnsure(); CredentialRecord credential = imageRegistry(f);
+            StoragePoolRecord registry = (StoragePoolRecord) f.lifecycle.rows.get(StoragePool.class).get(21L);
+            switch (invalid) {
+                case "missing-credential" -> f.lifecycle.rows.get(Credential.class).clear();
+                case "foreign-credential" -> credential.setAccountId(6L);
+                case "inactive-credential" -> credential.setState("inactive");
+                case "wrong-credential-kind" -> credential.setKind("apiKey");
+                case "removed-credential" -> credential.setRemoved(new java.util.Date(1));
+                case "missing-registry" -> f.lifecycle.rows.get(StoragePool.class).remove(21L);
+                case "foreign-registry" -> registry.setAccountId(6L);
+                case "inactive-registry" -> registry.setState("inactive");
+                case "wrong-registry-kind" -> registry.setKind("docker");
+                case "removed-registry" -> registry.setRemoved(new java.util.Date(1));
+                case "different-instance-credential" -> f.lifecycle.instance.setRegistryCredentialId(99L);
+            }
+            EngineContext engine = EngineContext.getEngineContext(); var frame = engine.pushVerifiedExecution("volume", "6", ENSURE_BINDING);
+            try {
+                if (invalid.equals("valid")) assertNotNull(resolver.resolveImageEnsureDependency(f.lifecycle.service, f.cache, owner, frame, ENSURE_BINDING));
+                else assertThrows(invalid, ClientVisibleException.class, () -> resolver.resolveImageEnsureDependency(f.lifecycle.service, f.cache, owner, frame, ENSURE_BINDING));
+            } finally { engine.popVerifiedExecution(frame); }
+        }
+    }
+
+    @Test public void imageEnsureRetainsEveryActualDependencyExplicitDenial() {
+        ImageEnsure f = imageEnsure(); imageRegistry(f); EngineContext engine = EngineContext.getEngineContext();
+        var frame = engine.pushVerifiedExecution("volume", "6", ENSURE_BINDING);
+        try {
+            var dependency = resolver.resolveImageEnsureDependency(f.lifecycle.service, f.cache, owner, frame, ENSURE_BINDING);
+            for (var target : dependency.resources()) {
+                ApiKeyPolicy policy = new ApiKeyPolicy(ApiKeyPolicy.Mode.CUSTOM, ApiKeyPolicy.Effect.DENY, null, List.of(
+                        new ApiKeyPolicy.Rule("root", ApiKeyPolicy.Effect.ALLOW, ApiKeyPolicy.Scope.stack("1st8"), java.util.Set.of("upgrade")),
+                        new ApiKeyPolicy.Rule("deny", ApiKeyPolicy.Effect.DENY, ApiKeyPolicy.Scope.resource(target.resourceType(), target.resourceId()), java.util.Set.of("upgrade"))));
+                assertEquals(target.toString(), ApiKeyPolicyEvaluator.Reason.POLICY_DENIED, new ApiKeyPolicyEvaluator().evaluateAuthorizedDependency(policy,
+                        new ApiKeyPolicyEvaluator.Request(true, "upgrade", true, dependency.resources()), java.time.Instant.EPOCH).reason());
+            }
+        } finally { engine.popVerifiedExecution(frame); }
+    }
+
     @Test public void imageDependencyUsesPersistedInstanceNotImageVisibility() {
         Instance instance = imageInstance();
         Image image = image();
