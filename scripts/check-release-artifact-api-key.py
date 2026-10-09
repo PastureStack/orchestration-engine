@@ -35,6 +35,9 @@ with zipfile.ZipFile(sys.argv[1]) as war:
         require(preview["collectionMethods"] == ["POST"] and preview["resourceMethods"] == [], "preview-methods")
         for field in ("requestDigest", "purpose", "confirmationRequired"):
             require(preview["resourceFields"][field].get("create") is False, "preview-server-owned-" + field)
+        mfa_purpose = json.loads(resources.read("schema/base/mfaOperation.json"))["resourceFields"]["purpose"]
+        require(mfa_purpose.get("type") == "enum" and mfa_purpose.get("options", []).count("apiKeyPolicyUpdate") == 1,
+                "mfa-api-key-policy-purpose")
         audit = json.loads(resources.read("schema/base/auditLog.json"))["resourceFields"]
         audit_fields = ("eventId", "keyId", "decision", "outcome", "httpStatus", "requestId", "actor",
                         "targetType", "targetId", "operation", "policyRevision", "reason", "phase", "preview",
@@ -79,7 +82,7 @@ with zipfile.ZipFile(sys.argv[1]) as war:
     with module("cattle-framework-api") as api:
         factory = api.read("io/cattle/platform/api/schema/FileSchemaFactory.class")
         for marker in (b"mergeApiKeyPolicyFields", b"addApiKeyPolicySchemas", b"apiKeyPolicyRevision", b"apiKeyPolicyPreview",
-                       b"mergeAuditLogReadFields") + tuple(name.encode() for name in audit_fields):
+                       b"mergeAuditLogReadFields", b"mergeApiKeyMfaPurposeOption", b"mfaOperation", b"apiKeyPolicyUpdate") + tuple(name.encode() for name in audit_fields):
             require(marker in factory, "v1-factory=" + marker.decode())
 
 print("ENGINE_API_KEY_ARTIFACT_OK policy=full-closed-custom v1=registered preview=server-owned audit=decision-outcome producers=pinned")

@@ -3,6 +3,7 @@ package io.cattle.platform.iaas.api.auth.apikey;
 import static org.junit.Assert.*;
 import static org.mockito.Mockito.*;
 import io.cattle.platform.api.auth.Policy;
+import io.cattle.platform.api.formatter.DefaultIdFormatter;
 import io.cattle.platform.core.model.Credential;
 import io.cattle.platform.core.model.Account;
 import io.cattle.platform.core.model.Instance;
@@ -10,6 +11,8 @@ import io.cattle.platform.core.model.Image;
 import io.cattle.platform.core.model.Service;
 import io.cattle.platform.core.model.ServiceExposeMap;
 import io.cattle.platform.core.model.Stack;
+import io.cattle.platform.core.model.InstanceHostMap;
+import io.cattle.platform.core.model.tables.records.InstanceHostMapRecord;
 import static io.cattle.platform.core.model.tables.ServiceExposeMapTable.SERVICE_EXPOSE_MAP;
 import io.github.ibuildthecloud.gdapi.exception.ClientVisibleException;
 import io.cattle.platform.api.auth.impl.NoPolicyOptions;
@@ -230,6 +233,28 @@ public class ApiKeyProcessAuthorizationTest {
         }
         assertNull(ApiContext.getContext());
     }
+    @Test public void upgradeHostMapUsesActualPersistedInstanceAndPreservesChildDenial() {
+        upgradeLifecycle();
+        DefaultIdFormatter formatter = new DefaultIdFormatter(); formatter.setSchemaFactory(mock(SchemaFactory.class));
+        formatter.setTypeMappings(Map.of("credential", "c", "project", "a", "stack", "st", "service", "s", "container", "i"));
+        hook.targets.idFormatter = formatter;
+        Instance instance = hook.objectManager.loadResource("instance", "3");
+        when(hook.objectManager.loadResource(Instance.class, 3L)).thenReturn(instance);
+        InstanceHostMapRecord map = new InstanceHostMapRecord();
+        map.setId(4L); map.setInstanceId(3L); map.setHostId(9L);
+        when(hook.objectManager.loadResource("instancehostmap", "4")).thenReturn(map);
+        when(hook.objectManager.loadResource(InstanceHostMap.class, 4L)).thenReturn(map);
+        LaunchConfiguration deactivate = new LaunchConfiguration("instancehostmap.deactivate", "instancehostmap", "4", null, 0,
+                Map.of("instanceId", 99L, "stackId", 99L));
+        ApiContext.remove();
+        hook.beforeExecution(deactivate, metadata);
+        policy(new ApiKeyPolicy(ApiKeyPolicy.Mode.CUSTOM, ApiKeyPolicy.Effect.DENY, null, List.of(
+                new ApiKeyPolicy.Rule("root", ApiKeyPolicy.Effect.ALLOW, ApiKeyPolicy.Scope.stack("1st8"), Set.of("upgrade")),
+                new ApiKeyPolicy.Rule("child-deny", ApiKeyPolicy.Effect.DENY, ApiKeyPolicy.Scope.resource("container", "1i3"), Set.of("upgrade")))));
+        assertEquals("KeyPolicyDenied", assertThrows(ProcessAuthorizationDeniedException.class,
+                () -> hook.beforeExecution(deactivate, metadata)).getCode());
+        assertNull(ApiContext.getContext());
+    }
     @Test public void upgradeLifecycleStillRejectsForeignOrUnmarkedMapAndExplicitChildDeny() {
         ServiceExposeMap map = upgradeLifecycle();
         LaunchConfiguration stop = new LaunchConfiguration("instance.stop", "instance", "3", 5L, 0, Map.of());
@@ -277,7 +302,7 @@ public class ApiKeyProcessAuthorizationTest {
         actual.idFormatter = mock(IdFormatter.class);
         when(actual.idFormatter.parseId(anyString())).thenAnswer(i -> i.<String>getArgument(0).replaceFirst("^1[a-z]+", ""));
         when(actual.idFormatter.formatId(anyString(), any())).thenAnswer(i -> "1" +
-                Map.of("credential", "c", "project", "a", "stack", "st", "service", "s", "container", "i").get(i.<String>getArgument(0)) + i.getArgument(1));
+                Map.of("credential", "c", "project", "a", "stack", "st", "service", "s", "container", "i").getOrDefault(i.<String>getArgument(0), "internal") + i.getArgument(1));
         hook.targets = actual;
         SchemaFactory factory = mock(SchemaFactory.class); when(factory.getSchema("service")).thenReturn(schema);
         when(schema.getResourceActions()).thenReturn(Map.of("upgrade", mock(Action.class), "finishupgrade", mock(Action.class)));

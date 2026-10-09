@@ -96,6 +96,7 @@ public class FileSchemaFactory extends AbstractSchemaFactory implements Initiali
         mergeProjectTemplatePublicReadField(schema, coreSchema);
         mergeVolumeNativeReadField(schema, coreSchema);
         mergeApiKeyPolicyFields(schema, coreSchema);
+        mergeApiKeyMfaPurposeOption(schema, coreSchema);
         mergeAuditLogReadFields(schema, coreSchema);
         Class<?> clz =  parentSchemaFactory.getSchemaClass(schema.getId());
         if (clz == null) {
@@ -128,6 +129,21 @@ public class FileSchemaFactory extends AbstractSchemaFactory implements Initiali
             field.setUpdate(field.isUpdate() && schema.getResourceMethods().contains("PUT"));
             schema.getResourceFields().put(name, field);
         }
+    }
+
+    private void mergeApiKeyMfaPurposeOption(Schema schema, Schema coreSchema) {
+        if (coreSchema == null || !"mfaOperation".equals(schema.getId())
+                || !schema.getCollectionMethods().contains("POST")) return;
+        Field field = schema.getResourceFields().get("purpose");
+        Field coreField = coreSchema.getResourceFields().get("purpose");
+        if (!(field instanceof FieldImpl) || !field.isCreate() || coreField == null
+                || coreField.getOptions() == null || !coreField.getOptions().contains("apiKeyPolicyUpdate")
+                || (field.getOptions() != null && field.getOptions().contains("apiKeyPolicyUpdate"))) return;
+        // Extend only the purpose already writable by this frozen role, without
+        // importing other core options or changing any field permissions.
+        List<String> options = field.getOptions() == null ? new ArrayList<>() : new ArrayList<>(field.getOptions());
+        options.add("apiKeyPolicyUpdate");
+        ((FieldImpl) field).setOptions(options);
     }
 
     private void mergeAuditLogReadFields(Schema schema, Schema coreSchema) {

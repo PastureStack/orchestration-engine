@@ -5,8 +5,19 @@ import io.cattle.platform.api.resource.NamedResourceIdentity;
 import io.cattle.platform.core.constants.AccountConstants;
 import io.cattle.platform.core.model.Account;
 import io.cattle.platform.core.model.Instance;
+import io.cattle.platform.core.model.InstanceHostMap;
+import io.cattle.platform.core.model.InstanceLink;
+import io.cattle.platform.core.model.Nic;
+import io.cattle.platform.core.model.Port;
+import io.cattle.platform.core.model.Mount;
+import io.cattle.platform.core.model.VolumeStoragePoolMap;
+import io.cattle.platform.core.model.IpAddress;
+import io.cattle.platform.core.model.IpAddressNicMap;
+import io.cattle.platform.core.model.HostIpAddressMap;
 import io.cattle.platform.core.model.Image;
 import static io.cattle.platform.core.model.tables.InstanceTable.INSTANCE;
+import static io.cattle.platform.core.model.tables.MountTable.MOUNT;
+import static io.cattle.platform.core.model.tables.IpAddressNicMapTable.IP_ADDRESS_NIC_MAP;
 import io.cattle.platform.core.model.Service;
 import io.cattle.platform.core.model.ServiceExposeMap;
 import static io.cattle.platform.core.model.tables.ServiceExposeMapTable.SERVICE_EXPOSE_MAP;
@@ -24,6 +35,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.Objects;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import io.github.ibuildthecloud.gdapi.model.Field;
 import io.github.ibuildthecloud.gdapi.model.FieldType;
 import io.github.ibuildthecloud.gdapi.model.Action;
@@ -101,6 +113,174 @@ public class ApiKeyTargetResolver {
             Objects.requireNonNull(scope, "dependency scope");
             instances = List.copyOf(instances);
         }
+    }
+
+    public record LifecycleDependency(ApiKeyPolicyEvaluator.Target scope, List<ApiKeyPolicyEvaluator.Target> resources) {
+        public LifecycleDependency {
+            Objects.requireNonNull(scope, "dependency scope");
+            resources = List.copyOf(resources);
+        }
+    }
+
+    /** Background lifecycle children inherit only their persisted owning Instance's
+     * root grant. This closed model graph is not public API scope resolution and
+     * never uses a process name, payload parent, Host or storage pool as ancestry. */
+    public LifecycleDependency resolveLifecycleDependency(Object root, Object resource, Policy owner) {
+        Class<?> model = lifecycleModel(resource);
+        if (model == null || !(root instanceof Instance || root instanceof Service || root instanceof Stack)) return null;
+        Class<?> rootModel = root instanceof Instance ? Instance.class : root instanceof Service ? Service.class : Stack.class;
+        root = persisted(rootModel, root, owner, "accountId", "stackId", "serviceId");
+        Object stored = persisted(model, resource, owner, "accountId", "instanceId", "hostId", "volumeId", "nicId", "ipAddressId", "storagePoolId", "stackId", "targetInstanceId", "networkId");
+        List<Object> ancestry = new ArrayList<>();
+        List<Instance> instances = lifecycleInstances(stored, owner, ancestry);
+        if (instances.isEmpty()) denied("KeyScopeDenied");
+        String type = lifecycleType(model);
+        String id = format(type, ObjectUtils.getPropertyIgnoreErrors(stored, "id"));
+        ApiKeyPolicyEvaluator.Target scope = null;
+        Set<ApiKeyPolicyEvaluator.Target> resources = new LinkedHashSet<>();
+        for (Instance instance : instances) {
+            liveResource(Account.class, instance.getAccountId(), owner);
+            var parents = instanceParents(instance, owner);
+            var target = child("container", format("container", instance.getId()), instance.getAccountId(), parents.stackId(), owner);
+            boolean belongs = root instanceof Instance container && Objects.equals(container.getId(), instance.getId())
+                    && Objects.equals(container.getAccountId(), instance.getAccountId())
+                    || root instanceof Service service && parents.serviceIds().contains(service.getId())
+                    && Objects.equals(service.getAccountId(), instance.getAccountId())
+                    || root instanceof Stack stack && Objects.equals(stack.getId(), parents.stackId())
+                    && Objects.equals(stack.getAccountId(), instance.getAccountId());
+            if (!belongs || target.level() == ApiKeyPolicyEvaluator.TargetLevel.UNRESOLVED) denied("KeyScopeDenied");
+            if (parents.stackId() != null) {
+                Stack stack = objectManager.loadResource(Stack.class, parents.stackId());
+                if (stack == null || stack.getRemoved() != null) denied("KeyScopeDenied");
+            }
+            Object declaredStack = ObjectUtils.getPropertyIgnoreErrors(stored, "stackId");
+            if (declaredStack != null && !Objects.equals(declaredStack, parents.stackId())) denied("KeyScopeDenied");
+            if (scope != null && (!Objects.equals(scope.projectId(), target.projectId())
+                    || !Objects.equals(scope.stackId(), target.stackId()))) denied("KeyScopeDenied");
+            scope = target;
+            resources.add(target); // Preserve explicit container DENY under a parent ALLOW.
+            for (Long serviceId : parents.serviceIds()) {
+                resources.add(resolveObject("service", liveResource(Service.class, serviceId, owner), owner));
+            }
+        }
+        var dependency = scope.stackId() == null
+                ? ApiKeyPolicyEvaluator.Target.projectResource(type, id, scope.projectId())
+                : ApiKeyPolicyEvaluator.Target.stackResource(type, id, scope.projectId(), scope.stackId());
+        for (Object ancestor : ancestry) {
+            String ancestorType = lifecycleType(lifecycleModel(ancestor));
+            String ancestorId = format(ancestorType, ObjectUtils.getPropertyIgnoreErrors(ancestor, "id"));
+            resources.add(scope.stackId() == null
+                    ? ApiKeyPolicyEvaluator.Target.projectResource(ancestorType, ancestorId, scope.projectId())
+                    : ApiKeyPolicyEvaluator.Target.stackResource(ancestorType, ancestorId, scope.projectId(), scope.stackId()));
+        }
+        return new LifecycleDependency(dependency, List.copyOf(resources));
+    }
+
+    private String lifecycleType(Class<?> model) {
+        String name = model.getSimpleName();
+        return Character.toLowerCase(name.charAt(0)) + name.substring(1);
+    }
+
+    private Class<?> lifecycleModel(Object resource) {
+        if (resource instanceof InstanceHostMap) return InstanceHostMap.class;
+        if (resource instanceof Nic) return Nic.class;
+        if (resource instanceof Port) return Port.class;
+        if (resource instanceof InstanceLink) return InstanceLink.class;
+        if (resource instanceof Mount) return Mount.class;
+        if (resource instanceof Volume) return Volume.class;
+        if (resource instanceof VolumeStoragePoolMap) return VolumeStoragePoolMap.class;
+        if (resource instanceof IpAddress) return IpAddress.class;
+        if (resource instanceof IpAddressNicMap) return IpAddressNicMap.class;
+        if (resource instanceof HostIpAddressMap) return HostIpAddressMap.class;
+        return null;
+    }
+
+    private List<Instance> lifecycleInstances(Object resource, Policy owner, List<Object> ancestry) {
+        ancestry.add(resource);
+        if (resource instanceof InstanceHostMap map) return List.of(liveInstance(map.getInstanceId(), null, owner));
+        if (resource instanceof Nic nic) return List.of(liveInstance(nic.getInstanceId(), requiredAccount(nic.getAccountId()), owner));
+        if (resource instanceof Port port) return List.of(liveInstance(port.getInstanceId(), requiredAccount(port.getAccountId()), owner));
+        if (resource instanceof InstanceLink link) return List.of(liveInstance(link.getInstanceId(), requiredAccount(link.getAccountId()), owner));
+        if (resource instanceof Mount mount) {
+            Volume volume = liveResource(Volume.class, mount.getVolumeId(), owner);
+            ancestry.add(volume);
+            if (!Objects.equals(mount.getAccountId(), volume.getAccountId())) denied("KeyScopeDenied");
+            Instance instance = liveInstance(mount.getInstanceId(), requiredAccount(mount.getAccountId()), owner);
+            requireVolumeStack(volume, instance, owner);
+            return List.of(instance);
+        }
+        if (resource instanceof VolumeStoragePoolMap map) return lifecycleInstances(liveResource(Volume.class, map.getVolumeId(), owner), owner, ancestry);
+        if (resource instanceof Volume volume) {
+            List<Instance> instances = new ArrayList<>();
+            Long accountId = requiredAccount(volume.getAccountId());
+            if (volume.getInstanceId() != null) instances.add(liveInstance(volume.getInstanceId(), accountId, owner));
+            List<Mount> mounts = objectManager.find(Mount.class, MOUNT.VOLUME_ID, volume.getId(), MOUNT.REMOVED, null);
+            if (mounts != null) for (Mount mount : mounts) {
+                Mount stored = persisted(Mount.class, mount, owner, "accountId", "instanceId", "volumeId");
+                ancestry.add(stored);
+                if (!Objects.equals(stored.getVolumeId(), volume.getId()) || !Objects.equals(stored.getAccountId(), accountId)) denied("KeyScopeDenied");
+                instances.add(liveInstance(stored.getInstanceId(), accountId, owner));
+            }
+            for (Instance instance : instances) requireVolumeStack(volume, instance, owner);
+            return instances;
+        }
+        if (resource instanceof IpAddressNicMap map) {
+            IpAddress address = liveResource(IpAddress.class, map.getIpAddressId(), owner);
+            ancestry.add(address);
+            Nic nic = liveResource(Nic.class, map.getNicId(), owner);
+            if (!Objects.equals(address.getAccountId(), nic.getAccountId())) denied("KeyScopeDenied");
+            return lifecycleInstances(nic, owner, ancestry);
+        }
+        if (resource instanceof HostIpAddressMap map) return lifecycleInstances(liveResource(IpAddress.class, map.getIpAddressId(), owner), owner, ancestry);
+        if (resource instanceof IpAddress address) {
+            List<Instance> instances = new ArrayList<>();
+            List<IpAddressNicMap> maps = objectManager.find(IpAddressNicMap.class,
+                    IP_ADDRESS_NIC_MAP.IP_ADDRESS_ID, address.getId(), IP_ADDRESS_NIC_MAP.REMOVED, null);
+            if (maps != null) for (IpAddressNicMap map : maps) {
+                IpAddressNicMap stored = persisted(IpAddressNicMap.class, map, owner, "nicId", "ipAddressId");
+                if (!Objects.equals(stored.getIpAddressId(), address.getId())) denied("KeyScopeDenied");
+                instances.addAll(lifecycleInstances(stored, owner, ancestry));
+            }
+            return instances;
+        }
+        throw new IllegalArgumentException("Unknown lifecycle model");
+    }
+
+    private Long requiredAccount(Long accountId) {
+        if (accountId == null) denied("KeyScopeDenied");
+        return accountId;
+    }
+
+    private void requireVolumeStack(Volume volume, Instance instance, Policy owner) {
+        if (volume.getStackId() != null && !Objects.equals(volume.getStackId(), instanceParents(instance, owner).stackId())) denied("KeyScopeDenied");
+    }
+
+    private Instance liveInstance(Long id, Long accountId, Policy owner) {
+        Instance instance = liveResource(Instance.class, id, owner);
+        if (instance.getAccountId() == null || (accountId != null && !Objects.equals(accountId, instance.getAccountId()))) denied("KeyScopeDenied");
+        return instance;
+    }
+
+    private <T> T liveResource(Class<T> model, Long id, Policy owner) {
+        if (id == null) denied("KeyScopeDenied");
+        T stored = objectManager.loadResource(model, id);
+        if (stored == null || !Objects.equals(id, ObjectUtils.getPropertyIgnoreErrors(stored, "id"))
+                || ObjectUtils.getPropertyIgnoreErrors(stored, "removed") != null) denied("KeyScopeDenied");
+        Object state = ObjectUtils.getPropertyIgnoreErrors(stored, "state");
+        if (state instanceof String name && Set.of("removed", "purging", "purged").contains(name)) denied("KeyScopeDenied");
+        if (owner.authorizeObject(stored) == null) denied("OwnerPermissionDenied");
+        return stored;
+    }
+
+    private <T> T persisted(Class<T> model, Object resource, Policy owner, String... references) {
+        Object id = ObjectUtils.getPropertyIgnoreErrors(resource, "id");
+        if (!(id instanceof Long) || ObjectUtils.getPropertyIgnoreErrors(resource, "removed") != null) denied("KeyScopeDenied");
+        T stored = liveResource(model, (Long) id, owner);
+        for (String reference : references) {
+            if (!Objects.equals(ObjectUtils.getPropertyIgnoreErrors(resource, reference),
+                    ObjectUtils.getPropertyIgnoreErrors(stored, reference))) denied("KeyScopeDenied");
+        }
+        return stored;
     }
 
     /** Internal image creation is a dependency, not a separate image API grant.

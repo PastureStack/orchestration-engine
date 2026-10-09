@@ -31,11 +31,21 @@ foreign or contradictory relationships cannot supply a parent grant. Direct
 authorization and collection SQL use the same rule. Internal image creation verifies its
 persisted container dependency; it does not grant global image access.
 A parent grant cannot override an explicit denial on its lifecycle dependencies.
+Background container lifecycle work resolves only an explicit, persisted model
+graph (host maps, NICs, ports, links, mounts, volumes and IP mappings). Every
+owning account and container/service/Stack relationship is checked again; an
+internal dependency is not a public resource permission or a process-name bypass.
+Removed, foreign, contradictory or ambiguous ancestry fails closed, while
+in-progress removal retains its verified ancestry until the removal completes.
 Broadening an existing policy or extending its lifetime requires an actor-bound,
 single-use MFA confirmation of the exact change. Policy updates use the stored
 revision and existing conflict/error handling; client input cannot replace
 ownership, revision or raw credential data. New secrets are delivered only at
 creation, not returned by later GET/list/detail responses.
+Both API versions advertise the `apiKeyPolicyUpdate` confirmation purpose only
+where the existing role can create an MFA operation. The v1 frozen-role adapter
+adds this one supported purpose without importing other permissions or changing
+the serialized role schemas.
 
 Custom collection scope is applied before SQL pagination. Transparent resource
 manager filters retain that guarded capability only when the same authorization

@@ -100,12 +100,14 @@ public class ApiKeyProcessAuthorization implements ProcessAuthorizationHook {
             if (imageDependency && dependency == null) {
                 dependency = targets.resolveImageDependency(root, (Image) child, current.policy());
             }
-            var descendant = dependency == null
+            var lifecycle = dependency == null ? targets.resolveLifecycleDependency(root, child, current.policy()) : null;
+            var descendant = lifecycle != null ? lifecycle.scope() : dependency == null
                     ? targets.resolveObject(ApiKeyQueryScopes.canonical(config.getResourceType()), child, current.policy()) : dependency.scope();
             if (target.projectId() != null && !target.projectId().equals(descendant.projectId())) denied("KeyScopeDenied");
             if (target.stackId() != null && !target.stackId().equals(descendant.stackId())) denied("KeyScopeDenied");
             var dependencyDecision = evaluator.evaluateAuthorizedDependency(policy, new ApiKeyPolicyEvaluator.Request(true, operation,
-                    ApiKeyOperations.OPERATIONS.contains(operation), dependency == null ? List.of(descendant) : dependency.instances()), clock.instant());
+                    ApiKeyOperations.OPERATIONS.contains(operation), lifecycle != null ? lifecycle.resources()
+                            : dependency == null ? List.of(descendant) : dependency.instances()), clock.instant());
             if (!dependencyDecision.allowed()) denied(dependencyDecision.reason().getCode());
         } catch (ProcessAuthorizationDeniedException denied) { throw denied; }
         catch (ClientVisibleException denied) {

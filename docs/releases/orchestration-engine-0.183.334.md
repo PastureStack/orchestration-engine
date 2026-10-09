@@ -31,6 +31,12 @@ The exact container targets are retained for dependency DENY matching; an
 authorized parent grant never hides a child-specific denial. Full and legacy
 Keys keep direct image operations that the owner's existing RBAC permits.
 
+Background lifecycle dependencies use a closed, persisted model graph for host
+maps, network attachments, mounts, volumes and IP mappings. Root and child
+ownership, ancestry and explicit denials are rechecked; the internal relationship
+does not authorize arbitrary public resources. Removed, foreign or contradictory
+records remain denied, and this path never bypasses authorization by process name.
+
 Policy updates use an exact revision/data/state compare-and-swap. A broader
 policy or longer validity requires the existing single-use MFA confirmation,
 bound to the operator, purpose and server-canonical request digest. Client input
@@ -39,6 +45,9 @@ Policy-bearing writes are checked after authentication and before schema
 sanitization, so a forbidden owner or credential field cannot be silently
 discarded and turned into an accepted policy change. Ordinary legacy writes
 without policy input retain their existing schema behavior.
+The v1 frozen-role schema advertises the same API Key MFA confirmation purpose
+as v2-beta, but only for roles already allowed to create that MFA operation. No
+serialized role permission or other enum option is imported from the core schema.
 
 The reviewed sensitive-export registry includes machine-template `secretValues`
 and the HA database `dbdump` link, not ordinary read access. Full access still

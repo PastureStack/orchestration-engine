@@ -4,6 +4,7 @@ import static org.junit.Assert.*;
 import static org.mockito.Mockito.*;
 import io.cattle.platform.api.auth.Policy;
 import io.cattle.platform.api.auth.impl.NoPolicyOptions;
+import io.cattle.platform.api.formatter.DefaultIdFormatter;
 import io.cattle.platform.iaas.api.auth.impl.AccountPolicy;
 import io.cattle.platform.api.resource.NamedResourceIdentity;
 import io.cattle.platform.core.model.Account;
@@ -15,6 +16,18 @@ import static io.cattle.platform.core.model.tables.ServiceExposeMapTable.SERVICE
 import io.cattle.platform.core.model.Service;
 import io.cattle.platform.core.model.Stack;
 import io.cattle.platform.core.model.Volume;
+import io.cattle.platform.core.model.InstanceHostMap;
+import io.cattle.platform.core.model.Nic;
+import io.cattle.platform.core.model.Port;
+import io.cattle.platform.core.model.InstanceLink;
+import io.cattle.platform.core.model.Mount;
+import io.cattle.platform.core.model.VolumeStoragePoolMap;
+import io.cattle.platform.core.model.IpAddress;
+import io.cattle.platform.core.model.IpAddressNicMap;
+import io.cattle.platform.core.model.HostIpAddressMap;
+import io.cattle.platform.core.model.tables.records.*;
+import static io.cattle.platform.core.model.tables.MountTable.MOUNT;
+import static io.cattle.platform.core.model.tables.IpAddressNicMapTable.IP_ADDRESS_NIC_MAP;
 import io.cattle.platform.object.ObjectManager;
 import io.github.ibuildthecloud.gdapi.exception.ClientVisibleException;
 import io.github.ibuildthecloud.gdapi.id.IdFormatter;
@@ -25,6 +38,7 @@ import io.github.ibuildthecloud.gdapi.model.Action;
 import io.github.ibuildthecloud.gdapi.request.ApiRequest;
 import java.util.Map;
 import java.util.List;
+import java.util.HashMap;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -32,6 +46,201 @@ public class ApiKeyTargetResolverTest {
     ApiKeyTargetResolver resolver;
     Policy owner;
     Stack stack;
+    @Test public void persistedUpgradeLifecycleGraphResolvesOnlyForItsLiveRoots() {
+        Lifecycle f = lifecycle();
+        io.github.ibuildthecloud.gdapi.context.ApiContext.remove();
+        for (Object root : List.of(f.instance, f.service, f.stack)) {
+            for (Object child : f.children()) {
+                var dependency = resolver.resolveLifecycleDependency(root, child, owner);
+                assertEquals("1a5", dependency.scope().projectId());
+                assertEquals("1st8", dependency.scope().stackId());
+                assertTrue(dependency.resources().contains(ApiKeyPolicyEvaluator.Target.stackResource("container", "1i3", "1a5", "1st8")));
+                assertTrue(dependency.resources().contains(ApiKeyPolicyEvaluator.Target.stackResource("service", "1s2", "1a5", "1st8")));
+            }
+        }
+        assertNull(io.github.ibuildthecloud.gdapi.context.ApiContext.getContext());
+        // A persisted lifecycle relation does not make an unknown public API type resolvable.
+        assertEquals(ApiKeyPolicyEvaluator.TargetLevel.UNRESOLVED, resolver.resolveObject("instanceHostMap", f.hostMap, owner).level());
+        assertNull(resolver.resolveLifecycleDependency(f.service, new Object(), owner));
+    }
+    @Test public void hostMapRejectsMissingForeignUnmanagedRemovedAndContradictoryAncestry() {
+        for (String invalid : List.of("missing-map", "missing-instance", "foreign-instance", "removed-map", "removed-instance",
+                "unmanaged", "removed-expose-map", "foreign-expose-map", "missing-service", "removed-service", "foreign-service",
+                "removed-stack", "foreign-stack", "different-instance-stack", "different-service-stack", "removed-root", "removed-project",
+                "contradictory-instance-state", "contradictory-map-state", "fabricated-parent", "fabricated-host")) {
+            Lifecycle f = lifecycle();
+            Object child = f.hostMap;
+            switch (invalid) {
+                case "missing-map" -> f.rows.get(InstanceHostMap.class).clear();
+                case "missing-instance" -> f.rows.get(Instance.class).clear();
+                case "foreign-instance" -> f.instance.setAccountId(6L);
+                case "removed-map" -> f.hostMap.setRemoved(new java.util.Date(1));
+                case "removed-instance" -> f.instance.setRemoved(new java.util.Date(1));
+                case "unmanaged" -> f.expose.setUpgrade(false);
+                case "removed-expose-map" -> f.expose.setRemoved(new java.util.Date(1));
+                case "foreign-expose-map" -> f.expose.setAccountId(6L);
+                case "missing-service" -> f.rows.get(Service.class).clear();
+                case "removed-service", "removed-root" -> f.service.setRemoved(new java.util.Date(1));
+                case "foreign-service" -> f.service.setAccountId(6L);
+                case "removed-stack" -> f.stack.setRemoved(new java.util.Date(1));
+                case "foreign-stack" -> f.stack.setAccountId(6L);
+                case "removed-project" -> ((Account) f.rows.get(Account.class).get(5L)).setRemoved(new java.util.Date(1));
+                case "contradictory-instance-state" -> f.instance.setState("purged");
+                case "contradictory-map-state" -> f.hostMap.setState("removed");
+                case "different-instance-stack" -> f.instance.setStackId(9L);
+                case "different-service-stack" -> f.service.setStackId(9L);
+                case "fabricated-parent", "fabricated-host" -> {
+                    InstanceHostMapRecord forged = new InstanceHostMapRecord(); forged.from(f.hostMap);
+                    if (invalid.equals("fabricated-parent")) forged.setInstanceId(99L); else forged.setHostId(99L);
+                    child = forged;
+                }
+            }
+            Object attempted = child;
+            assertThrows(invalid, ClientVisibleException.class, () -> resolver.resolveLifecycleDependency(f.service, attempted, owner));
+        }
+    }
+    @Test public void internalChildCannotBorrowUnrelatedServiceOrStackEvenInSameAccount() {
+        Lifecycle f = lifecycle();
+        ServiceRecord otherService = new ServiceRecord(); otherService.setId(99L); otherService.setAccountId(5L); otherService.setStackId(8L);
+        StackRecord otherStack = new StackRecord(); otherStack.setId(9L); otherStack.setAccountId(5L);
+        InstanceRecord otherInstance = new InstanceRecord(); otherInstance.setId(99L); otherInstance.setAccountId(5L);
+        for (Object root : List.of(otherService, otherStack, otherInstance)) {
+            assertThrows(ClientVisibleException.class, () -> resolver.resolveLifecycleDependency(root, f.hostMap, owner));
+        }
+        ServiceRecord forgedRoot = new ServiceRecord(); forgedRoot.from(f.service); forgedRoot.setStackId(9L);
+        assertThrows(ClientVisibleException.class, () -> resolver.resolveLifecycleDependency(forgedRoot, f.hostMap, owner));
+    }
+    @Test public void sharedVolumeAndAddressCheckEveryPersistedInstanceReference() {
+        for (boolean volume : List.of(true, false)) {
+            Lifecycle f = lifecycle();
+            InstanceRecord foreign = new InstanceRecord(); foreign.setId(99L); foreign.setAccountId(5L); foreign.setStackId(9L);
+            StackRecord foreignStack = new StackRecord(); foreignStack.setId(9L); foreignStack.setAccountId(5L);
+            f.add(Instance.class, foreign); f.add(Stack.class, foreignStack);
+            if (volume) {
+                MountRecord shared = new MountRecord(); shared.setId(99L); shared.setAccountId(5L); shared.setInstanceId(99L); shared.setVolumeId(6L);
+                f.add(Mount.class, shared);
+                assertThrows(ClientVisibleException.class, () -> resolver.resolveLifecycleDependency(f.stack, f.volume, owner));
+                assertThrows(ClientVisibleException.class, () -> resolver.resolveLifecycleDependency(f.stack, f.poolMap, owner));
+            } else {
+                NicRecord nic = new NicRecord(); nic.setId(99L); nic.setAccountId(5L); nic.setInstanceId(99L); f.add(Nic.class, nic);
+                IpAddressNicMapRecord shared = new IpAddressNicMapRecord(); shared.setId(99L); shared.setNicId(99L); shared.setIpAddressId(10L); f.add(IpAddressNicMap.class, shared);
+                assertThrows(ClientVisibleException.class, () -> resolver.resolveLifecycleDependency(f.stack, f.address, owner));
+                assertThrows(ClientVisibleException.class, () -> resolver.resolveLifecycleDependency(f.stack, f.hostAddressMap, owner));
+            }
+        }
+    }
+    @Test public void internalResourcesRequireTheirOwnLiveAccountAndPersistedIntermediateRows() {
+        for (String invalid : List.of("foreign-nic", "foreign-port", "foreign-link", "foreign-mount", "foreign-volume", "foreign-address",
+                "missing-nic", "missing-volume", "missing-address", "unlinked-address", "contradictory-volume-stack", "unknown-pool-map")) {
+            Lifecycle f = lifecycle(); Object child = f.hostMap;
+            switch (invalid) {
+                case "foreign-nic" -> { f.nic.setAccountId(6L); child = f.nic; }
+                case "foreign-port" -> { f.port.setAccountId(6L); child = f.port; }
+                case "foreign-link" -> { f.link.setAccountId(6L); child = f.link; }
+                case "foreign-mount" -> { f.mount.setAccountId(6L); child = f.mount; }
+                case "foreign-volume" -> { f.volume.setAccountId(6L); child = f.poolMap; }
+                case "foreign-address" -> { f.address.setAccountId(6L); child = f.addressMap; }
+                case "missing-nic" -> { f.rows.get(Nic.class).clear(); child = f.address; }
+                case "missing-volume" -> { f.rows.get(Volume.class).clear(); child = f.mount; }
+                case "missing-address" -> { f.rows.get(IpAddress.class).clear(); child = f.addressMap; }
+                case "unlinked-address" -> { f.rows.get(IpAddressNicMap.class).clear(); child = f.address; }
+                case "contradictory-volume-stack" -> { f.volume.setStackId(9L); child = f.poolMap; }
+                case "unknown-pool-map" -> { f.rows.get(VolumeStoragePoolMap.class).clear(); child = f.poolMap; }
+            }
+            Object attempted = child;
+            assertThrows(invalid, ClientVisibleException.class, () -> resolver.resolveLifecycleDependency(f.service, attempted, owner));
+        }
+    }
+    @Test public void lifecycleDependenciesPreserveIntermediateVolumeAndServiceDenials() {
+        Lifecycle f = lifecycle();
+        var dependency = resolver.resolveLifecycleDependency(f.service, f.poolMap, owner);
+        for (var denied : List.of(ApiKeyPolicy.Scope.resource("volume", "1v6"), ApiKeyPolicy.Scope.resource("service", "1s2"))) {
+            ApiKeyPolicy policy = new ApiKeyPolicy(ApiKeyPolicy.Mode.CUSTOM, ApiKeyPolicy.Effect.DENY, null, List.of(
+                    new ApiKeyPolicy.Rule("root", ApiKeyPolicy.Effect.ALLOW, ApiKeyPolicy.Scope.stack("1st8"), java.util.Set.of("upgrade")),
+                    new ApiKeyPolicy.Rule("deny", ApiKeyPolicy.Effect.DENY, denied, java.util.Set.of("upgrade"))));
+            assertEquals(ApiKeyPolicyEvaluator.Reason.POLICY_DENIED, new ApiKeyPolicyEvaluator().evaluateAuthorizedDependency(policy,
+                    new ApiKeyPolicyEvaluator.Request(true, "upgrade", true, dependency.resources()), java.time.Instant.EPOCH).reason());
+        }
+        var hostDependency = resolver.resolveLifecycleDependency(f.service, f.hostMap, owner);
+        ApiKeyPolicy deniedHostMap = new ApiKeyPolicy(ApiKeyPolicy.Mode.CUSTOM, ApiKeyPolicy.Effect.ALLOW, null,
+                List.of(new ApiKeyPolicy.Rule("deny", ApiKeyPolicy.Effect.DENY,
+                        ApiKeyPolicy.Scope.resource("instanceHostMap", hostDependency.scope().resourceId()), java.util.Set.of("upgrade"))));
+        assertEquals(ApiKeyPolicyEvaluator.Reason.POLICY_DENIED, new ApiKeyPolicyEvaluator().evaluateAuthorizedDependency(deniedHostMap,
+                new ApiKeyPolicyEvaluator.Request(true, "upgrade", true, hostDependency.resources()), java.time.Instant.EPOCH).reason());
+    }
+    @Test public void directVolumeScopeRetainsItsPublicResolverContract() {
+        Lifecycle f = lifecycle(); f.volume.setStackId(8L);
+        assertNull(resolver.resolveLifecycleDependency(f.volume, f.volume, owner));
+        assertEquals(ApiKeyPolicyEvaluator.Target.stackResource("volume", "1v6", "1a5", "1st8"),
+                resolver.resolveObject("volume", f.volume, owner));
+    }
+    @Test public void liveRemovingRowsAuthorizeBeforePostListenerAndRemovedRowsRemainDenied() {
+        Lifecycle f = lifecycle(); f.service.setState("finishing-upgrade"); f.instance.setState("removing");
+        // SetRemovedFields is a remove POST listener: these handlers execute with
+        // persisted state=removing but removed=NULL, without trusting process names.
+        for (Object child : f.children()) {
+            io.cattle.platform.object.util.ObjectUtils.setProperty(child, "state", "removing");
+            assertNotNull(resolver.resolveLifecycleDependency(f.service, child, owner));
+            io.cattle.platform.object.util.ObjectUtils.setProperty(child, "removed", new java.util.Date(1));
+            assertThrows(ClientVisibleException.class, () -> resolver.resolveLifecycleDependency(f.service, child, owner));
+            io.cattle.platform.object.util.ObjectUtils.setProperty(child, "removed", null);
+        }
+        f.instance.setRemoved(new java.util.Date(1));
+        for (Object child : f.children()) {
+            assertThrows(ClientVisibleException.class, () -> resolver.resolveLifecycleDependency(f.service, child, owner));
+        }
+    }
+    private Lifecycle lifecycle() {
+        Lifecycle f = new Lifecycle();
+        DefaultIdFormatter formatter = new DefaultIdFormatter(); formatter.setSchemaFactory(mock(SchemaFactory.class));
+        formatter.setTypeMappings(Map.of("project", "a", "stack", "st", "service", "s", "container", "i", "volume", "v", "image", "img"));
+        resolver.idFormatter = formatter;
+        AccountRecord project = new AccountRecord(); project.setId(5L); project.setKind("project");
+        AccountRecord principal = new AccountRecord(); principal.setId(10L);
+        owner = new AccountPolicy(project, principal, java.util.Set.of(), new NoPolicyOptions());
+        when(resolver.objectManager.loadResource(any(Class.class), any(Long.class))).thenAnswer(i -> {
+            Map<Long, Object> table = f.rows.get(i.getArgument(0)); return table == null ? null : table.get(i.getArgument(1));
+        });
+        f.add(Account.class, project);
+        f.instance.setId(3L); f.instance.setAccountId(5L); f.add(Instance.class, f.instance);
+        f.service.setId(2L); f.service.setAccountId(5L); f.service.setStackId(8L); f.add(Service.class, f.service);
+        f.stack.setId(8L); f.stack.setAccountId(5L); f.add(Stack.class, f.stack);
+        f.expose.setId(1L); f.expose.setAccountId(5L); f.expose.setServiceId(2L); f.expose.setInstanceId(3L); f.expose.setManaged(false); f.expose.setUpgrade(true);
+        when(resolver.objectManager.find(ServiceExposeMap.class, SERVICE_EXPOSE_MAP.INSTANCE_ID, 3L,
+                SERVICE_EXPOSE_MAP.REMOVED, null, SERVICE_EXPOSE_MAP.MANAGED, true)).thenAnswer(i ->
+                f.expose.getRemoved() == null && Boolean.TRUE.equals(f.expose.getManaged()) ? List.of(f.expose) : List.of());
+        when(resolver.objectManager.find(ServiceExposeMap.class, SERVICE_EXPOSE_MAP.INSTANCE_ID, 3L,
+                SERVICE_EXPOSE_MAP.REMOVED, null, SERVICE_EXPOSE_MAP.MANAGED, false, SERVICE_EXPOSE_MAP.UPGRADE, true)).thenAnswer(i ->
+                f.expose.getRemoved() == null && Boolean.FALSE.equals(f.expose.getManaged()) && Boolean.TRUE.equals(f.expose.getUpgrade()) ? List.of(f.expose) : List.of());
+        f.hostMap.setId(4L); f.hostMap.setInstanceId(3L); f.hostMap.setHostId(9L); f.add(InstanceHostMap.class, f.hostMap);
+        f.nic.setId(5L); f.nic.setAccountId(5L); f.nic.setInstanceId(3L); f.add(Nic.class, f.nic);
+        f.volume.setId(6L); f.volume.setAccountId(5L); f.volume.setInstanceId(3L); f.add(Volume.class, f.volume);
+        f.mount.setId(7L); f.mount.setAccountId(5L); f.mount.setInstanceId(3L); f.mount.setVolumeId(6L); f.add(Mount.class, f.mount);
+        f.port.setId(8L); f.port.setAccountId(5L); f.port.setInstanceId(3L); f.add(Port.class, f.port);
+        f.link.setId(9L); f.link.setAccountId(5L); f.link.setInstanceId(3L); f.add(InstanceLink.class, f.link);
+        f.address.setId(10L); f.address.setAccountId(5L); f.add(IpAddress.class, f.address);
+        f.addressMap.setId(11L); f.addressMap.setIpAddressId(10L); f.addressMap.setNicId(5L); f.add(IpAddressNicMap.class, f.addressMap);
+        f.poolMap.setId(12L); f.poolMap.setVolumeId(6L); f.poolMap.setStoragePoolId(9L); f.add(VolumeStoragePoolMap.class, f.poolMap);
+        f.hostAddressMap.setId(13L); f.hostAddressMap.setIpAddressId(10L); f.hostAddressMap.setHostId(9L); f.add(HostIpAddressMap.class, f.hostAddressMap);
+        when(resolver.objectManager.find(Mount.class, MOUNT.VOLUME_ID, 6L, MOUNT.REMOVED, null)).thenAnswer(i ->
+                f.rows.get(Mount.class).values().stream().map(Mount.class::cast).filter(m -> m.getRemoved() == null && Long.valueOf(6L).equals(m.getVolumeId())).toList());
+        when(resolver.objectManager.find(IpAddressNicMap.class, IP_ADDRESS_NIC_MAP.IP_ADDRESS_ID, 10L, IP_ADDRESS_NIC_MAP.REMOVED, null)).thenAnswer(i ->
+                f.rows.get(IpAddressNicMap.class).values().stream().map(IpAddressNicMap.class::cast).filter(m -> m.getRemoved() == null && Long.valueOf(10L).equals(m.getIpAddressId())).toList());
+        return f;
+    }
+    private static class Lifecycle {
+        final Map<Class<?>, Map<Long, Object>> rows = new HashMap<>();
+        final InstanceRecord instance = new InstanceRecord(); final ServiceRecord service = new ServiceRecord(); final StackRecord stack = new StackRecord();
+        final ServiceExposeMapRecord expose = new ServiceExposeMapRecord(); final InstanceHostMapRecord hostMap = new InstanceHostMapRecord();
+        final NicRecord nic = new NicRecord(); final PortRecord port = new PortRecord(); final InstanceLinkRecord link = new InstanceLinkRecord();
+        final VolumeRecord volume = new VolumeRecord(); final MountRecord mount = new MountRecord(); final VolumeStoragePoolMapRecord poolMap = new VolumeStoragePoolMapRecord();
+        final IpAddressRecord address = new IpAddressRecord(); final IpAddressNicMapRecord addressMap = new IpAddressNicMapRecord(); final HostIpAddressMapRecord hostAddressMap = new HostIpAddressMapRecord();
+        void add(Class<?> type, Object row) {
+            Long id = (Long) io.cattle.platform.object.util.ObjectUtils.getPropertyIgnoreErrors(row, "id");
+            rows.computeIfAbsent(type, ignored -> new HashMap<>()).put(id, row);
+        }
+        List<Object> children() { return List.of(hostMap, nic, port, link, volume, mount, poolMap, address, addressMap, hostAddressMap); }
+    }
     @Test public void imageDependencyUsesPersistedInstanceNotImageVisibility() {
         Instance instance = imageInstance();
         Image image = image();
@@ -246,7 +455,7 @@ public class ApiKeyTargetResolverTest {
         resolver.idFormatter = mock(IdFormatter.class);
         when(resolver.idFormatter.parseId(anyString())).thenAnswer(i -> i.<String>getArgument(0).replaceFirst("^1[a-z]+", ""));
         when(resolver.idFormatter.formatId(anyString(), any())).thenAnswer(i -> {
-            String prefix = Map.of("project", "a", "stack", "st", "service", "s", "container", "i", "volume", "v", "image", "img").get(i.<String>getArgument(0));
+            String prefix = Map.of("project", "a", "stack", "st", "service", "s", "container", "i", "volume", "v", "image", "img").getOrDefault(i.<String>getArgument(0), "internal");
             return "1" + prefix + i.getArgument(1);
         });
         owner = mock(Policy.class);

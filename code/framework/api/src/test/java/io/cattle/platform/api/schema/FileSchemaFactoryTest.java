@@ -438,6 +438,139 @@ public class FileSchemaFactoryTest {
         assertTrue(core.getResourceFields().get("keyId").isUpdate());
     }
 
+    @Test
+    public void supplementsApiKeyMfaPurposeInPackagedFrozenV1RolesWithoutChangingOtherContracts() throws Exception {
+        SchemaImpl core = mfaSchema("mfaOperation", List.of("oidcAccessPolicyUpdate", "apiKeyPolicyUpdate", "futurePurpose"));
+        byte[] coreBefore = serialize(List.of(core));
+        Path root = Paths.get("").toAbsolutePath();
+        while (root != null && !Files.isRegularFile(root.resolve("resources/content/schema/v1/admin.ser"))) {
+            root = root.getParent();
+        }
+        assertNotNull("Packaged role schemas are required", root);
+        int supplementedRoles = 0, unchangedRoles = 0;
+        for (String role : List.of("admin", "user", "owner", "member", "restricted", "readonly")) {
+            String resourceName = "schema/v1/" + role + ".ser";
+            Path frozenFile = root.resolve("resources/content/").resolve(resourceName);
+            byte[] bytes = Files.readAllBytes(frozenFile);
+            FileSchemaFactory original = loadSchemas(resourceName, bytes, new EmptySchemaFactory());
+            FileSchemaFactory repaired = loadSchemas(resourceName, bytes, new SingleSchemaFactory(core));
+            assertEquals(role, original.listSchemas().size(), repaired.listSchemas().size());
+            Schema before = original.getSchema("mfaOperation"), after = repaired.getSchema("mfaOperation");
+            if (before == null) {
+                assertTrue(role + " must not acquire MFA schema access", after == null);
+                unchangedRoles++;
+            } else {
+                Field purpose = before.getResourceFields().get("purpose");
+                boolean authorized = before.getCollectionMethods().contains("POST") && purpose != null && purpose.isCreate();
+                if (authorized) {
+                    assertFalse(role + " must exercise the old frozen purpose", purpose.getOptions().contains("apiKeyPolicyUpdate"));
+                    List<String> expected = new ArrayList<>(purpose.getOptions());
+                    expected.add("apiKeyPolicyUpdate");
+                    assertEquals(role, expected, after.getResourceFields().get("purpose").getOptions());
+                    assertEquals(role, 1, Collections.frequency(after.getResourceFields().get("purpose").getOptions(), "apiKeyPolicyUpdate"));
+                    assertOnlyPurposeOptionsChanged(role, before, after);
+                    supplementedRoles++;
+                } else {
+                    assertSerializedSchemaEquals(role, before, after);
+                    unchangedRoles++;
+                }
+            }
+            assertTrue(role + " frozen file must remain unchanged", Arrays.equals(bytes, Files.readAllBytes(frozenFile)));
+        }
+        assertTrue("Real frozen roles must exercise the new purpose", supplementedRoles > 0);
+        assertTrue("Real frozen roles without MFA access must remain unchanged", unchangedRoles > 0);
+        assertTrue("The core schema must remain unchanged", Arrays.equals(coreBefore, serialize(List.of(core))));
+    }
+
+    @Test
+    public void doesNotGrantMfaPurposeForMissingOrUnauthorizedFrozenContracts() throws Exception {
+        for (String scenario : List.of("noSchema", "noPurpose", "noCore", "noCorePurpose", "noCoreOptions",
+                "unsupportedCorePurpose", "noPost", "noCreate", "unrelatedSchema")) {
+            SchemaImpl frozen = mfaSchema("unrelatedSchema".equals(scenario) ? "otherOperation" : "mfaOperation",
+                    List.of("oidcAccessPolicyUpdate"));
+            SchemaImpl core = mfaSchema(frozen.getId(), List.of("oidcAccessPolicyUpdate", "apiKeyPolicyUpdate"));
+            if ("noPurpose".equals(scenario)) frozen.getResourceFields().remove("purpose");
+            if ("noCorePurpose".equals(scenario)) core.getResourceFields().remove("purpose");
+            if ("noCoreOptions".equals(scenario)) ((FieldImpl) core.getResourceFields().get("purpose")).setOptions(null);
+            if ("unsupportedCorePurpose".equals(scenario)) {
+                ((FieldImpl) core.getResourceFields().get("purpose")).setOptions(List.of("oidcAccessPolicyUpdate", "apiKeyPolicyUpdateOther"));
+            }
+            if ("noPost".equals(scenario)) frozen.setCollectionMethods(new ArrayList<>(List.of("GET")));
+            if ("noCreate".equals(scenario)) ((FieldImpl) frozen.getResourceFields().get("purpose")).setCreate(false);
+            byte[] bytes = serialize("noSchema".equals(scenario) ? Collections.emptyList() : List.of(frozen));
+            String resourceName = "schemas/mfa-purpose-" + scenario + ".bin";
+            FileSchemaFactory original = loadSchemas(resourceName, bytes, new EmptySchemaFactory());
+            FileSchemaFactory repaired = loadSchemas(resourceName, bytes,
+                    "noCore".equals(scenario) ? new EmptySchemaFactory() : new SingleSchemaFactory(core));
+            assertEquals(scenario, original.listSchemas().size(), repaired.listSchemas().size());
+            if ("noSchema".equals(scenario)) {
+                assertTrue(scenario, repaired.getSchema("mfaOperation") == null);
+            } else {
+                assertSerializedSchemaEquals(scenario, original.getSchema(frozen.getId()), repaired.getSchema(frozen.getId()));
+            }
+        }
+    }
+
+    @Test
+    public void addsOnlyExactApiKeyMfaPurposeOnceAndPreservesExistingOptions() throws Exception {
+        for (boolean alreadyPresent : List.of(false, true)) {
+            List<String> options = new ArrayList<>(List.of("oidcAccessPolicyUpdate", "legacyPurpose", "legacyPurpose"));
+            if (alreadyPresent) options.add("apiKeyPolicyUpdate");
+            SchemaImpl frozen = mfaSchema("mfaOperation", options);
+            SchemaImpl core = mfaSchema("mfaOperation", List.of("apiKeyPolicyUpdate", "apiKeyPolicyUpdate", "futurePurpose"));
+            byte[] coreBefore = serialize(List.of(core));
+            String resourceName = "schemas/mfa-purpose-once-" + alreadyPresent + ".bin";
+            byte[] bytes = serialize(List.of(frozen));
+            FileSchemaFactory original = loadSchemas(resourceName, bytes, new EmptySchemaFactory());
+            FileSchemaFactory repaired = loadSchemas(resourceName, bytes, new SingleSchemaFactory(core));
+            repaired.start();
+            Schema after = repaired.getSchema("mfaOperation");
+            if (!alreadyPresent) options.add("apiKeyPolicyUpdate");
+            assertEquals(options, after.getResourceFields().get("purpose").getOptions());
+            assertEquals(1, Collections.frequency(after.getResourceFields().get("purpose").getOptions(), "apiKeyPolicyUpdate"));
+            assertOnlyPurposeOptionsChanged("existing=" + alreadyPresent, original.getSchema("mfaOperation"), after);
+            assertTrue("The core schema must remain unchanged", Arrays.equals(coreBefore, serialize(List.of(core))));
+        }
+    }
+
+    private SchemaImpl mfaSchema(String id, List<String> purposes) {
+        SchemaImpl schema = schema(id, id + "s");
+        schema.setCollectionMethods(new ArrayList<>(List.of("POST")));
+        schema.setResourceMethods(new ArrayList<>());
+        FieldImpl purpose = new FieldImpl();
+        purpose.setType("enum"); purpose.setCreate(true); purpose.setUpdate(false); purpose.setNullable(true);
+        purpose.setOptions(new ArrayList<>(purposes));
+        schema.getResourceFields().put("purpose", purpose);
+        FieldImpl operation = new FieldImpl();
+        operation.setType("enum"); operation.setCreate(true); operation.setOptions(List.of("beginSecurityConfirmation"));
+        schema.getResourceFields().put("operation", operation);
+        FieldImpl confirmation = new FieldImpl();
+        confirmation.setType("password"); confirmation.setCreate(true); confirmation.setReadOnCreateOnly(true);
+        confirmation.setIncludeInList(false); confirmation.setNullable(true);
+        schema.getResourceFields().put("securityConfirmation", confirmation);
+        return schema;
+    }
+
+    private FileSchemaFactory loadSchemas(String resourceName, byte[] bytes, SchemaFactory parent) {
+        Thread.currentThread().setContextClassLoader(new ResourceClassLoader(resourceName, bytes));
+        FileSchemaFactory factory = factory(resourceName, parent);
+        factory.start();
+        return factory;
+    }
+
+    private void assertOnlyPurposeOptionsChanged(String label, Schema before, Schema after) throws IOException {
+        FieldImpl purpose = (FieldImpl) after.getResourceFields().get("purpose");
+        List<String> options = purpose.getOptions();
+        purpose.setOptions(before.getResourceFields().get("purpose").getOptions());
+        assertSerializedSchemaEquals(label, before, after);
+        purpose.setOptions(options);
+    }
+
+    private void assertSerializedSchemaEquals(String label, Schema before, Schema after) throws IOException {
+        assertNotNull(label, after);
+        assertTrue(label + " must preserve the serialized contract", Arrays.equals(serialize(List.of(before)), serialize(List.of(after))));
+    }
+
     private static class ResourceClassLoader extends ClassLoader {
         private final String resourceName;
         private final byte[] resource;
