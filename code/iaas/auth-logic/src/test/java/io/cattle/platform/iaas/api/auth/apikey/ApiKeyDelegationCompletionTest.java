@@ -4,8 +4,10 @@ import static org.junit.Assert.*;
 import io.cattle.platform.api.auth.ApiKeyAuditSink;
 import io.cattle.platform.api.auth.ApiKeyDelegatedAuditEvent;
 import io.cattle.platform.api.auth.Policy;
+import io.cattle.platform.api.formatter.DefaultIdFormatter;
 import io.cattle.platform.core.dao.AgentDao;
 import io.github.ibuildthecloud.gdapi.context.ApiContext;
+import io.github.ibuildthecloud.gdapi.factory.SchemaFactory;
 import io.github.ibuildthecloud.gdapi.id.IdentityFormatter;
 import io.github.ibuildthecloud.gdapi.model.Resource;
 import io.github.ibuildthecloud.gdapi.request.ApiRequest;
@@ -70,6 +72,55 @@ public class ApiKeyDelegationCompletionTest {
         // Actual first-wins persistence is tested by the audit DAO/outbox owner.
     }
 
+    @Test public void numericFullKeyContainerCompletionUsesCanonicalIdsAndStableRetryEvidence(){
+        DefaultIdFormatter formatter=typedFormatter();
+        Fixture f=new Fixture("container","9",true);
+        Map<?,?> signed=(Map<?,?>)f.engine.tokens.get(f.token).get(ApiKeyDelegationService.AUDIT_CLAIM);
+        assertFalse(f.engine.tokens.get(f.token).containsKey(ApiKeyDelegationService.CLAIM));
+        assertEquals("9",signed.get("targetId"));
+        String first=(String)f.engine.service.recordCompletion(f.request("SUCCEEDED",null)).get("eventId");
+        String second=(String)f.engine.service.recordCompletion(f.request("SUCCEEDED",null)).get("eventId");
+        assertEquals(ApiKeyDelegationService.digest("apiKey-stream-terminal-v1|"+f.token),first);
+        assertEquals(first,second);
+        for(ApiKeyDelegatedAuditEvent event:f.events){
+            assertEquals("1c12",event.keyId());assertEquals(formatter.formatId("credential",12L),event.keyId());
+            assertEquals("container",event.targetType());assertEquals("1i9",event.targetId());
+            assertEquals(formatter.formatId("container","9"),event.targetId());
+        }
+        assertEquals(f.events.get(0).requestId(),f.events.get(1).requestId());
+        assertEquals("9",signed.get("targetId"));
+    }
+
+    @Test public void numericScopedHostCompletionUsesTheAuthoritativeTargetTypeFormatter(){
+        DefaultIdFormatter formatter=typedFormatter();
+        Fixture f=new Fixture("host","5",false);
+        Map<?,?> signed=(Map<?,?>)f.engine.tokens.get(f.token).get(ApiKeyDelegationService.CLAIM);
+        f.engine.service.recordCompletion(f.request("SUCCEEDED",null));
+        ApiKeyDelegatedAuditEvent event=f.events.getFirst();
+        assertEquals("1c12",event.keyId());assertEquals("host",event.targetType());
+        assertEquals("1h5",event.targetId());assertEquals(formatter.formatId("host","5"),event.targetId());
+        assertEquals("read",event.operation());assertEquals("5",signed.get("targetId"));
+    }
+
+    @Test public void existingExternalTargetIdsArePreservedWithoutASecondPrefix(){
+        typedFormatter();
+        for(String type:List.of("container","host")){
+            String targetId=type.equals("container")?"1i9":"1h5";
+            Fixture f=new Fixture(type,targetId,false);
+            f.engine.service.recordCompletion(f.request("SUCCEEDED",null));
+            assertEquals(targetId,f.events.getFirst().targetId());
+            assertEquals("1c12",f.events.getFirst().keyId());
+        }
+    }
+
+    private DefaultIdFormatter typedFormatter(){
+        DefaultIdFormatter formatter=new DefaultIdFormatter();
+        formatter.setSchemaFactory(ApiKeyDelegationServiceTest.proxy(SchemaFactory.class,(method,args)->
+                method.equals("getBaseType")?("container".equals(args[0])?"instance":args[0]):null));
+        ApiContext.getContext().setIdFormatter(formatter);
+        return formatter;
+    }
+
     @Test public void staleOrFutureAuditEvidenceIsRejectedWithoutAuthorization(){
         Fixture f=new Fixture();
         f.engine.service.clock=Clock.fixed(f.engine.now.plusSeconds(7*24*3600+1),ZoneOffset.UTC);
@@ -113,9 +164,22 @@ public class ApiKeyDelegationCompletionTest {
 
     static final class Fixture {
         final ApiKeyDelegationServiceTest.Fixture engine=new ApiKeyDelegationServiceTest.Fixture();
-        final String token=engine.issue(null);
+        final String token;
         final List<ApiKeyDelegatedAuditEvent> events=new ArrayList<>();
-        Fixture(){
+        Fixture(){this("container","1i9",false);}
+        Fixture(String targetType,String targetId,boolean fullKey){
+            ApiRequest original=engine.request();original.setType(targetType);original.setId(targetId);
+            Map<String,Object> payload=engine.payload();
+            if(targetType.equals("host")){
+                original.setMethod("GET");original.setAction(null);
+                payload=Map.of("hostUuid","h1","resourceId","5");
+            }
+            if(fullKey){
+                ApiKeyCredentialContext.attach(original,new ApiKeyCredentialContext(12,42,"apiKey",3,
+                        new ApiKeyPolicy(ApiKeyPolicy.Mode.FULL,ApiKeyPolicy.Effect.ALLOW,null,List.of())));
+                original.setAttribute("apiKey.audit.decision","ALLOW");
+            }
+            token=engine.service.token(original,payload,null);
             engine.service.auditRetentionSeconds=()->2592000L;
             engine.service.agentDao=ApiKeyDelegationServiceTest.proxy(AgentDao.class,(method,args)->method.equals("getHosts")?Map.of("h1",engine.host):null);
             engine.service.auditSinks=List.of(new ApiKeyAuditSink(){

@@ -252,9 +252,13 @@ public class ApiKeyDelegationService implements ApiKeyDelegationTokenProvider {
         if (!requestId.matches("[0-9a-fA-F-]{36}")) denied("ApiKeyDelegationInvalid");
         String eventId = digest(eventPrefix + token);
         String keyId = String.valueOf(ApiContext.getContext().getIdFormatter().formatId(CredentialConstants.TYPE, number(grant, "keyId")));
+        String targetType = text(grant, "targetType");
+        String targetId = text(grant, "targetId");
+        if (targetId.matches("[0-9]+"))
+            targetId = String.valueOf(ApiContext.getContext().getIdFormatter().formatId(targetType, targetId));
         ApiKeyDelegatedAuditEvent event = new ApiKeyDelegatedAuditEvent(eventId, keyId,
                 number(grant, "principalId"), number(grant, "accountId"), number(grant, "revision"), operation,
-                text(grant, "targetType"), text(grant, "targetId"), requestId, outcome, failureCode, hostUuid);
+                targetType, targetId, requestId, outcome, failureCode, hostUuid);
         if (auditSinks == null || auditSinks.isEmpty()) throw new ClientVisibleException(503, "AuditUnavailable");
         try { for (ApiKeyAuditSink sink : auditSinks) sink.recordDelegatedOutcome(event); }
         catch (RuntimeException unavailable) { throw new ClientVisibleException(503, "AuditUnavailable"); }
