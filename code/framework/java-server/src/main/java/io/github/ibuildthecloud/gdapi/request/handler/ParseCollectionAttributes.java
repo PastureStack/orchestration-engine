@@ -105,6 +105,9 @@ public class ParseCollectionAttributes extends AbstractApiRequestHandler {
     protected void parseSort(Schema schema, Map<String, Object> params, ApiRequest request) {
         SortOrder orderEnum = SortOrder.ASC;
         String sort = RequestUtils.getSingularStringValue(Collection.SORT, params);
+        if (sort == null) {
+            return;
+        }
         String order = RequestUtils.getSingularStringValue(Collection.ORDER, params);
         if (order != null) {
             try {
