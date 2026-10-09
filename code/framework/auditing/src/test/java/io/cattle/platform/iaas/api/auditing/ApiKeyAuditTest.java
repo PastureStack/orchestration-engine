@@ -4,6 +4,7 @@ import static org.junit.Assert.*;
 
 import io.cattle.platform.api.auth.Policy;
 import io.cattle.platform.api.auth.ApiKeyDelegatedAuditEvent;
+import io.cattle.platform.api.formatter.DefaultIdFormatter;
 import io.cattle.platform.core.constants.CredentialConstants;
 import io.cattle.platform.core.model.Credential;
 import io.cattle.platform.core.model.tables.records.CredentialRecord;
@@ -14,6 +15,7 @@ import io.cattle.platform.engine.process.LaunchConfiguration;
 import io.github.ibuildthecloud.gdapi.json.JacksonMapper;
 import io.github.ibuildthecloud.gdapi.request.ApiRequest;
 import io.github.ibuildthecloud.gdapi.context.ApiContext;
+import io.github.ibuildthecloud.gdapi.factory.SchemaFactory;
 import io.github.ibuildthecloud.gdapi.model.impl.ResourceImpl;
 import java.io.EOFException;
 
@@ -254,6 +256,7 @@ public class ApiKeyAuditTest {
     public void actualProcessCompletionIsSeparateFromAcceptanceAndChain() throws Exception {
         List<Map<String, Object>> delivered = new ArrayList<>();
         AuditServiceImpl service = service(delivered);
+        service.idFormatter = typedFormatter();
         LaunchConfiguration config = new LaunchConfiguration("stack.update", "stack", "12", 1L, 0, Map.of());
         Map<String, Object> metadata = Map.of("keyId", "1a99", "requestId", "request1", "operation", "update",
                 "targetType", "stack", "targetId", "12", "policyRevision", 3L, "principalAccountId", 2L, "accountId", 1L);
@@ -268,6 +271,46 @@ public class ApiKeyAuditTest {
         service.afterExecution(config, metadata, ExitReason.AUTHORIZATION_DENIED);
         assertEquals("DENIED", delivered.get(2).get("outcome"));
         assertEquals("DENY", delivered.get(2).get("decision"));
+        for (Map<String, Object> event : delivered) assertEquals("1st12", event.get("targetId"));
+        assertEquals("12", metadata.get("targetId"));
+    }
+
+    @Test
+    public void backgroundTargetsUseInjectedFormatterWithoutApiContextAndPreserveExternalIds() throws Exception {
+        ApiContext.remove();
+        assertNull(ApiContext.getContext());
+        Map<String, String> targets = Map.of("service", "1s12", "stack", "1st12", "container", "1i12", "host", "1h12");
+        for (Map.Entry<String, String> target : targets.entrySet()) {
+            for (Object rawId : List.of(12L, target.getValue())) {
+                List<Map<String, Object>> delivered = new ArrayList<>();
+                AuditServiceImpl service = service(delivered);
+                DefaultIdFormatter formatter = typedFormatter();
+                service.idFormatter = formatter;
+                LaunchConfiguration config = new LaunchConfiguration(target.getKey()+".update", target.getKey(), "12", 1L, 0, Map.of());
+                Map<String, Object> metadata = Map.of("keyId", "1c99", "requestId", "request1", "operation", "update",
+                        "targetType", target.getKey(), "targetId", rawId, "policyRevision", 3L,
+                        "principalAccountId", 2L, "accountId", 1L);
+                service.afterExecution(config, metadata, ExitReason.DONE);
+                assertEquals(1, delivered.size());
+                Map<String, Object> event = delivered.getFirst();
+                assertEquals(target.getKey(), event.get("targetType"));
+                assertEquals(target.getValue(), event.get("targetId"));
+                assertEquals(formatter.formatId(target.getKey(), 12L), event.get("targetId"));
+                assertEquals("1c99", event.get("keyId"));assertEquals("request1", event.get("requestId"));
+                assertEquals("completion", event.get("phase"));assertEquals("SUCCEEDED", event.get("outcome"));
+                assertEquals(rawId, metadata.get("targetId"));assertEquals("12", config.getResourceId());
+                assertNull(ApiContext.getContext());
+            }
+        }
+    }
+
+    private static DefaultIdFormatter typedFormatter() {
+        DefaultIdFormatter formatter = new DefaultIdFormatter();
+        formatter.setSchemaFactory((SchemaFactory) Proxy.newProxyInstance(SchemaFactory.class.getClassLoader(), new Class<?>[]{SchemaFactory.class},
+                (proxy, method, arguments) -> method.getName().equals("getBaseType")
+                        ? ("container".equals(arguments[0]) ? "instance" : arguments[0]) : null));
+        formatter.setTypeMappings(Map.of("stack", "st", "secret", "se"));
+        return formatter;
     }
 
     @Test

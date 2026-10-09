@@ -382,6 +382,9 @@ public class AuditServiceImpl implements AuditService, ApiKeyAuditSink, ApiReque
         for (String name : Arrays.asList("keyId", "requestId", "operation", "targetType", "targetId", "policyRevision")) {
             data.put(name, metadataValue(metadata.get(name), ""));
         }
+        String targetId = String.valueOf(data.get("targetId"));
+        if (targetId.matches("[0-9]+"))
+            data.put("targetId", String.valueOf(idFormatter.formatId(String.valueOf(data.get("targetType")), targetId)));
         Number principal = (Number) metadata.get("principalAccountId");
         Number account = (Number) metadata.get("accountId");
         if (principal == null || account == null) {
