@@ -6,6 +6,7 @@ import io.cattle.platform.api.auth.ApiKeyDelegatedAuditEvent;
 import io.cattle.platform.api.auth.Policy;
 import io.cattle.platform.core.constants.AccountConstants;
 import io.cattle.platform.core.constants.CredentialConstants;
+import io.cattle.platform.core.constants.InstanceConstants;
 import io.cattle.platform.core.model.Credential;
 import io.cattle.platform.core.constants.ContainerEventConstants;
 import io.cattle.platform.core.constants.ExternalEventConstants;
@@ -384,7 +385,9 @@ public class AuditServiceImpl implements AuditService, ApiKeyAuditSink, ApiReque
         }
         String targetId = String.valueOf(data.get("targetId"));
         if (targetId.matches("[0-9]+"))
-            data.put("targetId", String.valueOf(idFormatter.formatId(String.valueOf(data.get("targetType")), targetId)));
+            data.put("targetId", String.valueOf(idFormatter.formatId(
+                    InstanceConstants.TYPE_CONTAINER.equals(data.get("targetType"))
+                            ? InstanceConstants.TYPE : String.valueOf(data.get("targetType")), targetId)));
         Number principal = (Number) metadata.get("principalAccountId");
         Number account = (Number) metadata.get("accountId");
         if (principal == null || account == null) {

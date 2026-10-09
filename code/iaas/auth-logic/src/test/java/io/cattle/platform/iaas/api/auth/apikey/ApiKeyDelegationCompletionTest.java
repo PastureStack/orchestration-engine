@@ -72,8 +72,9 @@ public class ApiKeyDelegationCompletionTest {
         // Actual first-wins persistence is tested by the audit DAO/outbox owner.
     }
 
-    @Test public void numericFullKeyContainerCompletionUsesCanonicalIdsAndStableRetryEvidence(){
+    @Test public void numericFullKeyContainerCompletionWithoutContainerAliasUsesCanonicalIdsAndStableRetryEvidence(){
         DefaultIdFormatter formatter=typedFormatter();
+        assertEquals("1c9",formatter.formatId("container","9")); // agent schema has no public alias
         Fixture f=new Fixture("container","9",true);
         Map<?,?> signed=(Map<?,?>)f.engine.tokens.get(f.token).get(ApiKeyDelegationService.AUDIT_CLAIM);
         assertFalse(f.engine.tokens.get(f.token).containsKey(ApiKeyDelegationService.CLAIM));
@@ -85,7 +86,7 @@ public class ApiKeyDelegationCompletionTest {
         for(ApiKeyDelegatedAuditEvent event:f.events){
             assertEquals("1c12",event.keyId());assertEquals(formatter.formatId("credential",12L),event.keyId());
             assertEquals("container",event.targetType());assertEquals("1i9",event.targetId());
-            assertEquals(formatter.formatId("container","9"),event.targetId());
+            assertEquals(formatter.formatId("instance","9"),event.targetId());
         }
         assertEquals(f.events.get(0).requestId(),f.events.get(1).requestId());
         assertEquals("9",signed.get("targetId"));
@@ -116,7 +117,7 @@ public class ApiKeyDelegationCompletionTest {
     private DefaultIdFormatter typedFormatter(){
         DefaultIdFormatter formatter=new DefaultIdFormatter();
         formatter.setSchemaFactory(ApiKeyDelegationServiceTest.proxy(SchemaFactory.class,(method,args)->
-                method.equals("getBaseType")?("container".equals(args[0])?"instance":args[0]):null));
+                method.equals("getBaseType")?("container".equals(args[0])?null:args[0]):null));
         ApiContext.getContext().setIdFormatter(formatter);
         return formatter;
     }

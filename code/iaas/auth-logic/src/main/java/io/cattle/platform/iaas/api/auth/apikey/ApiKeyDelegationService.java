@@ -8,6 +8,7 @@ import io.cattle.platform.archaius.util.ConfigProperty;
 import io.cattle.platform.core.dao.AgentDao;
 import io.cattle.platform.core.constants.CredentialConstants;
 import io.cattle.platform.core.constants.HostConstants;
+import io.cattle.platform.core.constants.InstanceConstants;
 import io.cattle.platform.core.model.Account;
 import io.cattle.platform.core.model.Agent;
 import io.cattle.platform.core.model.Credential;
@@ -255,7 +256,10 @@ public class ApiKeyDelegationService implements ApiKeyDelegationTokenProvider {
         String targetType = text(grant, "targetType");
         String targetId = text(grant, "targetId");
         if (targetId.matches("[0-9]+"))
-            targetId = String.valueOf(ApiContext.getContext().getIdFormatter().formatId(targetType, targetId));
+            // Agent schemas need not expose the public container alias. IDs
+            // belong to the persisted instance type, not the callback schema.
+            targetId = String.valueOf(ApiContext.getContext().getIdFormatter().formatId(
+                    InstanceConstants.TYPE_CONTAINER.equals(targetType) ? InstanceConstants.TYPE : targetType, targetId));
         ApiKeyDelegatedAuditEvent event = new ApiKeyDelegatedAuditEvent(eventId, keyId,
                 number(grant, "principalId"), number(grant, "accountId"), number(grant, "revision"), operation,
                 targetType, targetId, requestId, outcome, failureCode, hostUuid);

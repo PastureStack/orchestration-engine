@@ -298,7 +298,7 @@ public class ApiKeyAuditTest {
     }
 
     @Test
-    public void backgroundTargetsUseInjectedFormatterWithoutApiContextAndPreserveExternalIds() throws Exception {
+    public void backgroundTargetsWithoutContainerAliasOrApiContextUsePersistedTypesAndPreserveExternalIds() throws Exception {
         ApiContext.remove();
         assertNull(ApiContext.getContext());
         Map<String, String> targets = Map.of("service", "1s12", "stack", "1st12", "container", "1i12", "host", "1h12");
@@ -317,7 +317,8 @@ public class ApiKeyAuditTest {
                 Map<String, Object> event = delivered.getFirst();
                 assertEquals(target.getKey(), event.get("targetType"));
                 assertEquals(target.getValue(), event.get("targetId"));
-                assertEquals(formatter.formatId(target.getKey(), 12L), event.get("targetId"));
+                assertEquals(formatter.formatId("container".equals(target.getKey()) ? "instance" : target.getKey(), 12L), event.get("targetId"));
+                if ("container".equals(target.getKey())) assertEquals("1c12", formatter.formatId("container", 12L));
                 assertEquals("1c99", event.get("keyId"));assertEquals("request1", event.get("requestId"));
                 assertEquals("completion", event.get("phase"));assertEquals("SUCCEEDED", event.get("outcome"));
                 assertEquals(rawId, metadata.get("targetId"));assertEquals("12", config.getResourceId());
@@ -330,7 +331,7 @@ public class ApiKeyAuditTest {
         DefaultIdFormatter formatter = new DefaultIdFormatter();
         formatter.setSchemaFactory((SchemaFactory) Proxy.newProxyInstance(SchemaFactory.class.getClassLoader(), new Class<?>[]{SchemaFactory.class},
                 (proxy, method, arguments) -> method.getName().equals("getBaseType")
-                        ? ("container".equals(arguments[0]) ? "instance" : arguments[0]) : null));
+                        ? ("container".equals(arguments[0]) ? null : arguments[0]) : null));
         formatter.setTypeMappings(Map.of("stack", "st", "secret", "se"));
         return formatter;
     }
