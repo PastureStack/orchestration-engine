@@ -1,5 +1,9 @@
 # Orchestration Engine 0.183.334
 
+Status: unpublished component candidate for Server `v1.6.519`. See the
+[API Key policy and audit guide](../api-key-policy.md) for the shared contract;
+source/component evidence is not publication or complete platform acceptance.
+
 ## API Key policy and audit contract
 
 Keys may use full, closed or custom access and an optional expiration timestamp.
@@ -50,8 +54,9 @@ Audit records contain safe identifiers and status metadata, not Authorization,
 Cookie, JWT, OTP, OIDC code, key secrets, stream tickets or sensitive payloads.
 Invalid secrets have anonymous attribution; a supplied public Key ID alone is
 never proof of the caller's identity.
-Container audit IDs use the persisted instance identity consistently across
-decisions, responses and terminal receipts, including agent-only schemas.
+Container audit IDs use the persisted instance identity (`1i` prefix)
+consistently across decisions, responses and terminal receipts, including
+agent-only schemas without a `container` alias.
 
 ## Integration and compatibility
 
@@ -66,6 +71,12 @@ tickets are bound to the Key, policy revision, operation, resource and host;
 authorization is checked again during the stream. Legacy full-Key authorization
 and ordinary non-Key sessions retain their prior behavior. The audit path for a
 verified Key still requires durable admission.
+
+An expired, signed Key-traced ticket is verified only for an audit denial with
+authenticated host proof, never to authorize execution. Durable acceptance
+records `DENY`/`FAILED`, phase `handshake`, and returns `ApiKeyExpired` (`401`).
+Missing proof or durable acceptance returns `AuditUnavailable` (`503`), without
+starting a backend or persistent session or claiming a durable denial receipt.
 
 No authentication provider, MFA, CSRF, HTTPS cookie or host firewall setting is
 disabled. Policy data lives in credential metadata; this release adds no database

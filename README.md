@@ -10,36 +10,16 @@ upstream history, authorship, licenses, and dependency notices.
 
 ## Current build
 
-Engine `0.183.334` adds editable API Key policies and expiry to both API roots.
-Full and legacy Keys retain the account's existing authorization. Custom policies
-can narrow access by persisted environment, stack or resource IDs; they never
-grant more than the account's current permissions. Explicit denials take priority.
-Creation scope uses only typed parent fields that the API schema actually accepts;
-ignored or read-only payload fields cannot grant access to a different destination.
-Service-managed container ancestry uses persisted managed relationships, including
-when denormalized parent columns are empty. Internal image creation verifies its
-persisted container dependency; it does not grant global image access.
-A parent grant cannot override an explicit denial on its lifecycle dependencies.
-Broadening an existing policy or extending its lifetime requires an actor-bound,
-single-use MFA confirmation of the exact change.
+Engine `0.183.334` is the component candidate for Server `v1.6.519`.
+Both API roots support full, closed or custom Key access, optional expiry and
+per-Key durable audit. Full and untouched legacy Keys keep their existing scope;
+all policies remain bounded by the owner's live RBAC, and explicit denies win.
+A broader policy or longer validity uses the existing actor-bound, single-use MFA
+confirmation. Secret delivery is creation-only; audit never records credentials
+or request payloads. HTTP acceptance is separate from job or stream completion.
+See the [API Key policy and audit contract](docs/api-key-policy.md) for ancestry,
+revision, error and delegated-stream details.
 
-Key requests record the authorization decision and actual HTTP, background-job or
-delegated stream outcome separately. Audit records exclude credentials and request
-payloads. Queued work rechecks current account permissions without relying on an
-HTTP request or its temporary object-access whitelist. Agent/proxy integration is
-required for delegated execution and logging. Key identity lookup is bound to its
-owner, not another browser session's Cookie; existing signed owner sessions retain
-their original expiry semantics. Local-account Keys keep their existing live RBAC
-without acquiring external-provider restrictions from an unrelated browser session.
-Key management through the web UI is linked to the managed Key's account and audit
-history, with the operator recorded separately, without recording secret delivery
-or MFA inputs.
-V1 responses only advertise environment aliases when its schema supports them;
-the proxy checks the authenticated backend's audit capability before sending any
-Key-authorized work. An older backend fails without executing it; a dual-signed,
-host-bound receipt records that handshake failure or a ticket used on the wrong
-stream route, not a successful execution. These receipts cannot select another
-identity, target, arbitrary result or failure code.
 The component artifact alone is not proof of complete platform acceptance.
 Use the [current Server release](https://github.com/PastureStack/server#current-release)
 for the published platform version. Source identities, checksums and acceptance
