@@ -320,12 +320,13 @@ public class AuditServiceImpl implements AuditService, ApiKeyAuditSink, ApiReque
                 || !Set.of("SUCCEEDED", "FAILED", "CANCELLED", "CANCELED").contains(terminal.outcome())) {
             throw new IllegalStateException("Invalid delegated outcome metadata");
         }
-        if (terminal.failureCode() != null && !Set.of("HandshakeDenied", "DockerFailure", "StreamFailed", "AuditUnavailable", "BackendAuditCapabilityUnavailable", "DelegationRouteDenied",
+        if (terminal.failureCode() != null && !Set.of("HandshakeDenied", "DockerFailure", "StreamFailed", "AuditUnavailable", "BackendAuditCapabilityUnavailable", "DelegationRouteDenied", "ApiKeyExpired",
                 "AuthorizationRevoked", "ClientDisconnected", "StreamCancelled").contains(terminal.failureCode())) {
             throw new IllegalStateException("Invalid delegated outcome code");
         }
         boolean routeDenied = "DelegationRouteDenied".equals(terminal.failureCode());
-        boolean blockedHandshake = routeDenied || "BackendAuditCapabilityUnavailable".equals(terminal.failureCode());
+        boolean expired = "ApiKeyExpired".equals(terminal.failureCode());
+        boolean blockedHandshake = routeDenied || expired || "BackendAuditCapabilityUnavailable".equals(terminal.failureCode());
         if (blockedHandshake && !"FAILED".equals(terminal.outcome())) {
             throw new IllegalStateException("Invalid blocked handshake outcome");
         }
@@ -342,13 +343,13 @@ public class AuditServiceImpl implements AuditService, ApiKeyAuditSink, ApiReque
         // Keep ordinary operational failure distinct from authorization denial.
         // A wrong-route handshake is denied; the original ticket admission remains
         // its own ALLOW event and is never rewritten as execution or success.
-        data.put("decision", routeDenied ? "DENY" : "ALLOW");
+        data.put("decision", routeDenied || expired ? "DENY" : "ALLOW");
         data.put("outcome", "CANCELLED".equals(terminal.outcome()) ? "CANCELED" : terminal.outcome());
         data.put("phase", blockedHandshake ? "handshake" : "completion");
         data.put("reason", terminal.failureCode() == null ? "StreamCompleted" : terminal.failureCode());
         if (terminal.failureCode() != null) data.put("failureCode", terminal.failureCode());
         data.put("preview", false);
-        int handshakeStatus = routeDenied ? 403 : blockedHandshake ? 503 : 0;
+        int handshakeStatus = expired ? 401 : routeDenied ? 403 : blockedHandshake ? 503 : 0;
         data.put("httpStatus", handshakeStatus); // Verified proxy status, otherwise a host event.
         data.put("responseCode", handshakeStatus);
         Map<String, Object> event = new HashMap<>();
@@ -472,6 +473,14 @@ public class AuditServiceImpl implements AuditService, ApiKeyAuditSink, ApiReque
                 targetId = resource.getId();
             }
             data.put("targetId", metadataValue(targetId, ""));
+        }
+        String targetId = String.valueOf(data.get("targetId"));
+        if (targetId.matches("[0-9]+")) {
+            IdFormatter formatter = ApiContext.getContext() == null ? idFormatter : ApiContext.getContext().getIdFormatter();
+            if (formatter != null)
+                data.put("targetId", String.valueOf(formatter.formatId(
+                        InstanceConstants.TYPE_CONTAINER.equals(data.get("targetType"))
+                                ? InstanceConstants.TYPE : String.valueOf(data.get("targetType")), targetId)));
         }
         String requestId = metadataValue(request.getAttribute(API_KEY_AUDIT_PREFIX + "requestId"), "");
         if (requestId.isEmpty()) {

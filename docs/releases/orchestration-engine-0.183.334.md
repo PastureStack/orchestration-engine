@@ -31,6 +31,10 @@ Policy updates use an exact revision/data/state compare-and-swap. A broader
 policy or longer validity requires the existing single-use MFA confirmation,
 bound to the operator, purpose and server-canonical request digest. Client input
 cannot replace policy ownership, stored revision or raw credential data.
+Policy-bearing writes are checked after authentication and before schema
+sanitization, so a forbidden owner or credential field cannot be silently
+discarded and turned into an accepted policy change. Ordinary legacy writes
+without policy input retain their existing schema behavior.
 
 Verified Key requests durably record a decision before side effects, then record
 the actual response or terminal background/agent outcome separately. A 202
@@ -42,6 +46,8 @@ Audit records contain safe identifiers and status metadata, not Authorization,
 Cookie, JWT, OTP, OIDC code, key secrets, stream tickets or sensitive payloads.
 Invalid secrets have anonymous attribution; a supplied public Key ID alone is
 never proof of the caller's identity.
+Container audit IDs use the persisted instance identity consistently across
+decisions, responses and terminal receipts, including agent-only schemas.
 
 ## Integration and compatibility
 

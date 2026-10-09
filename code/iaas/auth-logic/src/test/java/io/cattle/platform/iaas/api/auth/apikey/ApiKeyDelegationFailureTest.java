@@ -137,6 +137,87 @@ public class ApiKeyDelegationFailureTest {
         assertTrue(f.base.events.isEmpty());
     }
 
+    @Test public void expiredHandshakeHasFixedDualProofAndPerAttemptRetryStableEvidenceOnly(){
+        Fixture f=new Fixture();f.service().clock=Clock.fixed(f.base.engine.now.plusSeconds(301),ZoneOffset.UTC);
+        ApiRequest request=f.request();request.setRequestObject(Map.of("token",f.base.token,"backendToken",f.backendToken,
+                "failureCode","ApiKeyExpired","attemptId","d3819b41-95fb-4351-b95a-0d82e94a477c"));
+        String first=(String)f.service().recordProxyFailure(request).get("eventId");
+        assertEquals(first,f.service().recordProxyFailure(request).get("eventId"));
+        var event=f.base.events.getFirst();assertEquals("FAILED",event.outcome());assertEquals("ApiKeyExpired",event.failureCode());
+        assertEquals("1i9",event.targetId());assertEquals(42L,event.principalAccountId());assertEquals(7L,event.accountId());
+        assertNull(ApiContext.getContext().getPolicy());assertNull(ApiKeyCredentialContext.get(request));
+        request.setRequestObject(Map.of("token",f.base.token,"backendToken",f.backendToken,
+                "failureCode","ApiKeyExpired","attemptId","6dfc52b1-84c4-4ae5-991b-51c9c7ed007f"));
+        String second=(String)f.service().recordProxyFailure(request).get("eventId");assertNotEquals(first,second);
+        assertEquals(event.requestId(),f.base.events.getLast().requestId());
+        assertNotEquals(first,f.service().recordProxyFailure(f.request()).get("eventId"));
+        ApiContext.getContext().setPolicy(ApiKeyDelegationServiceTest.proxy(Policy.class,(method,args)->
+                method.equals("getOption") && Policy.AGENT_ID.equals(args[0])?"88":null));
+        assertNotEquals(first,f.service().recordCompletion(f.base.request("CANCELLED","AuthorizationRevoked")).get("eventId"));
+    }
+
+    @Test public void expiryEvidenceRejectsNotExpiredWrongHostUnsignedAndCallerFields(){
+        Fixture f=new Fixture();ApiRequest request=f.request();var body=new HashMap<String,Object>(Map.of("token",f.base.token,"backendToken",f.backendToken,
+                "failureCode","ApiKeyExpired","attemptId","d3819b41-95fb-4351-b95a-0d82e94a477c"));request.setRequestObject(body);
+        invalid(f,request,"ApiKeyDelegationInvalid");
+        f.service().clock=Clock.fixed(f.base.engine.now.plusSeconds(301),ZoneOffset.UTC);
+        body.put("accountId",999L);invalid(f,request,"ApiKeyDelegationInvalid");body.remove("accountId");
+        body.put("token","unsigned");invalid(f,request,"ApiKeyDelegationInvalid");body.put("token",f.base.token);
+        body.put("backendToken","unsigned");invalid(f,request,"ApiKeyDelegationInvalid");body.put("backendToken",f.backendToken);
+        body.put("attemptId","caller/path");invalid(f,request,"ApiKeyDelegationInvalid");body.put("attemptId","d3819b41-95fb-4351-b95a-0d82e94a477c");
+        f.backend().put("reportedUuid","other-host");invalid(f,request,"DelegatedAuditHostMismatch");
+        assertTrue(f.base.events.isEmpty());assertNull(ApiContext.getContext().getPolicy());
+    }
+
+    @Test public void expiryEvidenceRejectsUnownedLegacyOrInconsistentBoundExpiryAndBackendAge(){
+        Fixture f=new Fixture();ApiContext.getContext().setPolicy(f.base.engine.owner);
+        ApiRequest original=f.base.engine.request();
+        ApiKeyCredentialContext.attach(original,new ApiKeyCredentialContext(12,42,"apiKey",0,null));
+        original.setAttribute("apiKey.audit.decision","ALLOW");
+        String legacy=f.service().token(original,f.base.engine.payload(),null);
+        f.base.engine.tokens.get(legacy).remove(ApiKeyDelegationService.AUDIT_CLAIM);
+        ApiContext.getContext().setPolicy(null);
+        f.service().clock=Clock.fixed(f.base.engine.now.plusSeconds(301),ZoneOffset.UTC);
+        ApiRequest report=f.request();var body=new HashMap<String,Object>(Map.of("token",legacy,"backendToken",f.backendToken,
+                "failureCode","ApiKeyExpired","attemptId","d3819b41-95fb-4351-b95a-0d82e94a477c"));report.setRequestObject(body);
+        invalid(f,report,"ApiKeyDelegationInvalid");body.put("token",f.base.token);
+        Map<String,Object> claims=f.base.engine.tokens.get(f.base.token);Object originalExpiry=claims.get("exp");
+        claims.put("exp",f.base.engine.now.plusSeconds(302).getEpochSecond());invalid(f,report,"ApiKeyDelegationInvalid");
+        claims.put("exp",originalExpiry);
+        f.service().auditRetentionSeconds=()->300L;invalid(f,report,"ApiKeyDelegationInvalid");
+        assertTrue(f.base.events.isEmpty());assertNull(ApiContext.getContext().getPolicy());assertNull(ApiKeyCredentialContext.get(report));
+    }
+
+    @Test public void expiredFullTraceRetainsOwnerAndOriginalTtlWithoutBecomingAGrant(){
+        Fixture f=new Fixture();ApiContext.getContext().setPolicy(f.base.engine.owner);
+        ApiRequest original=f.base.engine.request();
+        ApiKeyCredentialContext.attach(original,new ApiKeyCredentialContext(12,42,"apiKey",0,null));
+        original.setAttribute("apiKey.audit.decision","ALLOW");
+        String full=f.service().token(original,f.base.engine.payload(),java.util.Date.from(f.base.engine.now.plusSeconds(60)));
+        Map<String,Object> claims=f.base.engine.tokens.get(full);
+        assertFalse(claims.containsKey(ApiKeyDelegationService.CLAIM));
+        assertEquals(f.base.engine.now.plusSeconds(60).getEpochSecond(),claims.get("exp"));
+        ApiContext.getContext().setPolicy(null);
+        ApiRequest report=f.request();report.setRequestObject(Map.of("token",full,"backendToken",f.backendToken,
+                "failureCode","ApiKeyExpired","attemptId","d3819b41-95fb-4351-b95a-0d82e94a477c"));
+        invalid(f,report,"ApiKeyDelegationInvalid");
+        f.service().clock=Clock.fixed(f.base.engine.now.plusSeconds(61),ZoneOffset.UTC);
+        Map<String,Object> trace=ApiKeyDelegationService.map(claims.get(ApiKeyDelegationService.AUDIT_CLAIM));
+        Object principal=trace.remove("principalId");invalid(f,report,"ApiKeyDelegationInvalid");trace.put("principalId",principal);
+        claims.put("exp",f.base.engine.now.getEpochSecond());invalid(f,report,"ApiKeyDelegationInvalid");
+        claims.put("exp",f.base.engine.now.plusSeconds(60).getEpochSecond());
+        f.backend().put("reportedUuid","other-host");invalid(f,report,"DelegatedAuditHostMismatch");f.backend().put("reportedUuid","h1");
+        assertTrue(f.base.events.isEmpty());
+        String eventId=(String)f.service().recordProxyFailure(report).get("eventId");
+        assertEquals(eventId,f.service().recordProxyFailure(report).get("eventId"));
+        var event=f.base.events.getFirst();assertEquals("FAILED",event.outcome());assertEquals("ApiKeyExpired",event.failureCode());
+        assertEquals(0L,event.policyRevision());assertEquals(42L,event.principalAccountId());assertEquals(7L,event.accountId());
+        assertEquals("exec",event.operation());assertEquals("1i9",event.targetId());
+        assertFalse(claims.containsKey(ApiKeyDelegationService.CLAIM));
+        assertEquals(f.base.engine.now.plusSeconds(60).getEpochSecond(),claims.get("exp"));
+        assertNull(ApiContext.getContext().getPolicy());assertNull(ApiKeyCredentialContext.get(report));
+    }
+
     @Test public void handlerCommitsMinimalHttp200NoStoreAndRejectsOtherMethods() throws Exception {
         Fixture f=new Fixture();ByteArrayOutputStream output=new ByteArrayOutputStream();Map<String,String> headers=new HashMap<>();
         ServletOutputStream stream=new ServletOutputStream(){public void write(int b){output.write(b);}public boolean isReady(){return true;}public void setWriteListener(WriteListener l){}};

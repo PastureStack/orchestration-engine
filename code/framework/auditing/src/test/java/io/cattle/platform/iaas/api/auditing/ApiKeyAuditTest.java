@@ -275,6 +275,82 @@ public class ApiKeyAuditTest {
     }
 
     @Test
+    public void signedIntrospectionDenialCanonicalizesOnlyOutboundNumericTargetsWithoutApiContext() throws Exception {
+        ApiContext.remove();
+        for (Map.Entry<String, String> target : Map.of("container", "1i12", "host", "1h12").entrySet()) {
+            for (String signedId : List.of("12", target.getValue())) {
+                List<Map<String, Object>> delivered = new ArrayList<>();
+                List<Long> accounts = new ArrayList<>();
+                AuditServiceImpl service = service(delivered);
+                DefaultIdFormatter formatter = typedFormatter();
+                service.idFormatter = formatter;
+                service.auditLogDao = accountCapturingDao(delivered, accounts);
+                ApiRequest request = request("POST", "DENY", 403);
+                request.setType("apiKeyDelegation"); request.setId("introspect");
+                request.setAttribute("apiKey.audit.keyId", "1c42");
+                request.setAttribute("apiKey.audit.targetType", target.getKey());
+                request.setAttribute("apiKey.audit.targetId", signedId);
+                request.setAttribute("apiKey.audit.operation", "logs");
+                request.setAttribute("apiKey.audit.reason", "ApiKeyPolicyChanged");
+                request.setAttribute("apiKey.audit.preview", true);
+                request.setAttribute("apiKey.audit.verifiedPrincipalAccountId", 2L);
+                request.setAttribute("apiKey.audit.verifiedAccountId", 5L);
+                service.complete(request, null); service.complete(request, null);
+                assertEquals(1, delivered.size());
+                Map<String, Object> event = delivered.getFirst();
+                assertEquals(target.getValue(), event.get("targetId"));
+                assertEquals(formatter.formatId("container".equals(target.getKey()) ? "instance" : target.getKey(), 12L), event.get("targetId"));
+                assertEquals(target.getKey(), event.get("targetType"));
+                assertEquals("1c42", event.get("keyId")); assertEquals("1a2", event.get("actor"));
+                assertEquals(List.of(5L, 2L), accounts);
+                assertEquals("response", event.get("phase")); assertEquals("DENIED", event.get("outcome"));
+                assertEquals(403, event.get("httpStatus")); assertEquals(true, event.get("preview"));
+                assertEquals("ApiKeyPolicyChanged", event.get("reason"));
+                assertEquals(signedId, request.getAttribute("apiKey.audit.targetId"));
+                assertEquals("introspect", request.getId()); assertNull(ApiContext.getContext());
+            }
+        }
+    }
+
+    @Test
+    public void allowedIntrospectionUsesContextFormatterWithoutChangingSignedOrExternalIds() throws Exception {
+        AuditServiceImpl service = service(new ArrayList<>());
+        DefaultIdFormatter formatter = typedFormatter();
+        ApiContext.newContext().setIdFormatter(formatter);
+        try {
+            for (String signedId : List.of("12", "1i12")) {
+                ApiRequest request = request("POST", "ALLOW", 200);
+                request.setType("apiKeyDelegation"); request.setId("introspect");
+                request.setAttribute("apiKey.audit.targetType", "container");
+                request.setAttribute("apiKey.audit.targetId", signedId);
+                request.setAttribute("apiKey.audit.preview", true);
+                Map<String, Object> event = service.apiKeyAuditData(request, policy(), "response");
+                assertEquals("1i12", event.get("targetId")); assertEquals("container", event.get("targetType"));
+                assertEquals("NOT_EXECUTED", event.get("outcome")); assertEquals("ALLOW", event.get("decision"));
+                assertEquals(signedId, request.getAttribute("apiKey.audit.targetId"));
+                assertEquals("introspect", request.getId());
+            }
+            assertEquals("1c12", formatter.formatId("container", 12L));
+        } finally { ApiContext.remove(); }
+    }
+
+    @Test
+    public void requestAndCreatedResourceFallbackTargetsUseTheSameOutboundCanonicalBoundary() throws Exception {
+        AuditServiceImpl service = service(new ArrayList<>()); service.idFormatter = typedFormatter();
+        ApiRequest request = request("GET", "ALLOW", 200);
+        request.setType("container"); request.setAttribute("apiKey.audit.targetType", "container");
+        request.setAttribute("apiKey.audit.targetId", null);
+        assertEquals("1i12", service.apiKeyAuditData(request, policy(), "response").get("targetId"));
+        assertEquals("12", request.getId());
+        request.setMethod("POST"); request.setId(null); request.setResponseCode(201);
+        request.setResponseObject(new ResourceImpl("12", "container", Map.of()));
+        assertEquals("", service.apiKeyAuditData(request, policy(), "decision").get("targetId"));
+        assertEquals("1i12", service.apiKeyAuditData(request, policy(), "response").get("targetId"));
+        request.setAttribute("apiKey.audit.targetId", "named-setting");
+        assertEquals("named-setting", service.apiKeyAuditData(request, policy(), "response").get("targetId"));
+    }
+
+    @Test
     public void actualProcessCompletionIsSeparateFromAcceptanceAndChain() throws Exception {
         List<Map<String, Object>> delivered = new ArrayList<>();
         AuditServiceImpl service = service(delivered);
@@ -516,6 +592,33 @@ public class ApiKeyAuditTest {
                         "logs", "container", "12", "request1", invalid, "DelegationRouteDenied", "host-uuid"));
                 fail("Route denial must not claim execution or cancellation");
             } catch (IllegalStateException expected) { }
+        }
+        assertEquals(1, delivered.size());
+    }
+
+    @Test
+    public void expiredVerifiedHandshakeRetainsActual401AndActorWithoutClaimingExecution() throws Exception {
+        List<Map<String, Object>> delivered = new ArrayList<>();
+        List<Long> accounts = new ArrayList<>();
+        AuditServiceImpl service = service(delivered); service.idFormatter = typedFormatter();
+        service.auditLogDao = (AuditLogDao) Proxy.newProxyInstance(AuditLogDao.class.getClassLoader(), new Class<?>[]{AuditLogDao.class},
+                (proxy, method, args) -> {
+                    assertEquals("createDelegatedOnce", method.getName());
+                    @SuppressWarnings("unchecked") Map<String, Object> data = (Map<String, Object>) args[3];
+                    delivered.add(new HashMap<>(data)); accounts.add((Long) args[5]); accounts.add((Long) args[6]); return null;
+                });
+        service.recordDelegatedOutcome(new ApiKeyDelegatedAuditEvent("a".repeat(64), "1c99", 2L, 5L, 3L,
+                "logs", "container", "1i12", "request1", "FAILED", "ApiKeyExpired", "host-uuid"));
+        assertEquals(1, delivered.size()); Map<String, Object> event = delivered.getFirst();
+        assertEquals("handshake", event.get("phase")); assertEquals("DENY", event.get("decision"));
+        assertEquals("FAILED", event.get("outcome")); assertEquals(401, event.get("httpStatus"));
+        assertEquals(401, event.get("responseCode")); assertEquals("ApiKeyExpired", event.get("reason"));
+        assertEquals("1a2", event.get("actor")); assertEquals("1c99", event.get("keyId"));
+        assertEquals("1i12", event.get("targetId")); assertEquals(false, event.get("preview"));
+        assertEquals(List.of(5L, 2L), accounts);
+        for (String invalid : List.of("SUCCEEDED", "CANCELLED", "CANCELED")) {
+            assertThrows(IllegalStateException.class, () -> service.recordDelegatedOutcome(new ApiKeyDelegatedAuditEvent(
+                    "b".repeat(64), "1c99", 2L, 5L, 3L, "logs", "container", "1i12", "request1", invalid, "ApiKeyExpired", "host-uuid")));
         }
         assertEquals(1, delivered.size());
     }

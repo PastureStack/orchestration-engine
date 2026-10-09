@@ -178,9 +178,11 @@ public class ApiKeyDelegationService implements ApiKeyDelegationTokenProvider {
         Map<String, Object> body = map(request.getRequestObject());
         boolean routeDenied = body.keySet().equals(Set.of("token", "backendToken", "failureCode", "attemptId"))
                 && "DelegationRouteDenied".equals(body.get("failureCode"));
-        if (!routeDenied && !body.keySet().equals(Set.of("token", "backendToken"))) denied("ApiKeyDelegationInvalid");
-        String attemptId = routeDenied ? text(body, "attemptId") : null;
-        if (routeDenied && !attemptId.matches("[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}"))
+        boolean expired = body.keySet().equals(Set.of("token", "backendToken", "failureCode", "attemptId"))
+                && "ApiKeyExpired".equals(body.get("failureCode"));
+        if (!routeDenied && !expired && !body.keySet().equals(Set.of("token", "backendToken"))) denied("ApiKeyDelegationInvalid");
+        String attemptId = routeDenied || expired ? text(body, "attemptId") : null;
+        if (attemptId != null && !attemptId.matches("[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}"))
             denied("ApiKeyDelegationInvalid");
         Map<String, Object> backend = auditClaims(text(body, "backendToken"));
         if (!"host-api-backend-v1".equals(backend.get("purpose"))) denied("DelegatedAuditAgentRequired");
@@ -192,8 +194,9 @@ public class ApiKeyDelegationService implements ApiKeyDelegationTokenProvider {
         // identity, resource, successful outcome, or arbitrary failure code.
         // Both identities and the original operation come from signed tickets.
         return recordEvidence(text(body, "token"), "FAILED",
-                routeDenied ? "DelegationRouteDenied" : "BackendAuditCapabilityUnavailable", agentId,
-                routeDenied ? "apiKey-stream-route-denial-v1|" + attemptId + "|" : "apiKey-stream-handshake-failure-v1|",
+                expired ? "ApiKeyExpired" : routeDenied ? "DelegationRouteDenied" : "BackendAuditCapabilityUnavailable", agentId,
+                expired ? "apiKey-stream-expired-handshake-v1|" + attemptId + "|"
+                        : routeDenied ? "apiKey-stream-route-denial-v1|" + attemptId + "|" : "apiKey-stream-handshake-failure-v1|",
                 text(backend, "reportedUuid"));
     }
 
@@ -235,6 +238,13 @@ public class ApiKeyDelegationService implements ApiKeyDelegationTokenProvider {
         Map<String, Object> claims = auditClaims(token);
         boolean scoped = claims.containsKey(CLAIM);
         Map<String, Object> grant = map(claims.get(scoped ? CLAIM : AUDIT_CLAIM));
+        if ("ApiKeyExpired".equals(failureCode)) {
+            try {
+                for (String field : List.of("version", "keyId", "principalId", "accountId", "revision", "issuedAt")) number(grant, field);
+                number(claims, "exp");
+                if (scoped) number(grant, "expiresAt");
+            } catch (IllegalArgumentException malformed) { denied("ApiKeyDelegationInvalid"); }
+        }
         long issuedAt = number(grant, "issuedAt");
         // Cleanup does not treat zero/negative retention as disabled. Do not accept
         // a new receipt after its persisted dedupe row could already be purged.
@@ -243,6 +253,12 @@ public class ApiKeyDelegationService implements ApiKeyDelegationTokenProvider {
                 || number(grant, "keyId") < 1 || number(grant, "principalId") < 1 || number(grant, "accountId") < 1) denied("ApiKeyDelegationInvalid");
         if (scoped && (number(grant, "expiresAt") != number(claims, "exp")
                 || number(grant, "expiresAt") <= issuedAt || number(grant, "expiresAt") - issuedAt > MAX_LIFETIME_SECONDS)) denied("ApiKeyDelegationInvalid");
+        if ("ApiKeyExpired".equals(failureCode)) {
+            // A legacy full trace is audit identity only, not a scoped grant.
+            // Keep its original JWT TTL while independently requiring expiry.
+            long expiry = scoped ? number(grant, "expiresAt") : number(claims, "exp");
+            if (expiry <= issuedAt || expiry > clock.instant().getEpochSecond()) denied("ApiKeyDelegationInvalid");
+        }
         Map<String, Object> payload = scoped ? map(grant.get("payload")) : claims;
         String hostUuid = text(payload, "hostUuid");
         Host host = agentDao.getHosts(agentId).get(hostUuid);
