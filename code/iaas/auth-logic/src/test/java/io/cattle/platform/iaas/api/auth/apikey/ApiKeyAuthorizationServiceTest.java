@@ -3,20 +3,28 @@ package io.cattle.platform.iaas.api.auth.apikey;
 import static org.junit.Assert.*;
 import static org.mockito.Mockito.*;
 import io.cattle.platform.api.auth.ApiKeyAuditSink;
+import io.cattle.platform.api.auth.ApiResourceAccess;
 import io.cattle.platform.api.auth.Policy;
+import io.cattle.platform.api.resource.jooq.AbstractJooqResourceManager;
+import io.cattle.platform.api.resource.jooq.DefaultJooqResourceManager;
 import io.cattle.platform.object.ObjectManager;
 import io.github.ibuildthecloud.gdapi.context.ApiContext;
 import io.github.ibuildthecloud.gdapi.exception.ClientVisibleException;
 import io.github.ibuildthecloud.gdapi.factory.SchemaFactory;
 import io.github.ibuildthecloud.gdapi.model.Schema;
+import io.github.ibuildthecloud.gdapi.model.ListOptions;
 import io.github.ibuildthecloud.gdapi.request.ApiRequest;
 import io.github.ibuildthecloud.gdapi.request.resource.ResourceManagerLocator;
+import io.github.ibuildthecloud.gdapi.request.resource.AbstractResourceManagerFilter;
+import io.github.ibuildthecloud.gdapi.request.resource.ResourceManager;
 import io.github.ibuildthecloud.gdapi.request.resource.impl.AbstractNoOpResourceManager;
+import io.github.ibuildthecloud.gdapi.request.resource.impl.FilteredResourceManager;
 import io.cattle.platform.core.model.tables.InstanceTable;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import org.junit.Before;
 import org.junit.After;
@@ -130,6 +138,53 @@ public class ApiKeyAuthorizationServiceTest {
         request.setMethod("GET"); request.setId(null); use(custom("read"));
         when(service.resourceManagers.getResourceManagerByType("container")).thenReturn(mock(AbstractNoOpResourceManager.class));
         denied("KeyScopeDenied");
+    }
+    private DefaultJooqResourceManager guardedSqlManager(ApiResourceAccess guard) throws ReflectiveOperationException {
+        DefaultJooqResourceManager manager = new DefaultJooqResourceManager();
+        var access = AbstractJooqResourceManager.class.getDeclaredField("resourceAccess");
+        access.setAccessible(true);
+        access.set(manager, List.of(guard));
+        return manager;
+    }
+    @Test public void transparentFilteredSqlCollectionIsAdmittedForNarrowing() throws ReflectiveOperationException {
+        request.setMethod("GET"); request.setId(null); use(custom("read"));
+        when(service.resourceManagers.getResourceManagerByType("container")).thenReturn(
+                new FilteredResourceManager(new AbstractResourceManagerFilter() { }, guardedSqlManager(service)));
+        service.authorize(request, owner);
+        assertEquals("ALLOW", request.getAttribute("apiKey.audit.decision"));
+        assertEquals("KeyScopedCollection", request.getAttribute("apiKey.audit.reason"));
+        verifyNoInteractions(targets);
+        verify(sink).recordDecision(request, owner);
+    }
+    @Test public void filteredSyntheticCollectionStillCannotBorrowSqlAdmission() {
+        request.setMethod("GET"); request.setId(null); use(custom("read"));
+        when(service.resourceManagers.getResourceManagerByType("container")).thenReturn(
+                new FilteredResourceManager(new AbstractResourceManagerFilter() { }, mock(AbstractNoOpResourceManager.class)));
+        denied("KeyScopeDenied");
+    }
+    @Test public void listInterceptingFilterCannotBorrowSqlAdmission() throws ReflectiveOperationException {
+        request.setMethod("GET"); request.setId(null); use(custom("read"));
+        var filter = new AbstractResourceManagerFilter() {
+            @Override public List<?> list(String type, Map<Object, Object> criteria, ListOptions options, ResourceManager next) {
+                return List.of();
+            }
+        };
+        when(service.resourceManagers.getResourceManagerByType("container")).thenReturn(
+                new FilteredResourceManager(filter, guardedSqlManager(service)));
+        denied("KeyScopeDenied");
+    }
+    @Test public void unrelatedGuardCannotClaimScopedSqlAdmission() throws ReflectiveOperationException {
+        request.setMethod("GET"); request.setId(null); use(custom("read"));
+        when(service.resourceManagers.getResourceManagerByType("container")).thenReturn(guardedSqlManager(mock(ApiResourceAccess.class)));
+        denied("KeyScopeDenied");
+    }
+    @Test public void fullCollectionStillBypassesNewScopedAdmissionContract() {
+        request.setMethod("GET"); request.setId(null);
+        use(new ApiKeyPolicy(ApiKeyPolicy.Mode.FULL, ApiKeyPolicy.Effect.ALLOW, null, List.of()));
+        service.authorize(request, owner);
+        assertEquals("ALLOW", request.getAttribute("apiKey.audit.decision"));
+        assertEquals("KeyFullAccess", request.getAttribute("apiKey.audit.reason"));
+        verifyNoInteractions(service.resourceManagers, targets);
     }
     @Test public void collectionOutputGuardUsesExactSetAndDoesNotTouchFull() {
         Object permitted = new Object(), forbidden = new Object();

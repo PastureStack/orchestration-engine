@@ -66,6 +66,71 @@ public class ApiKeyTargetResolverTest {
         when(service.getAccountId()).thenReturn(6L);
         assertThrows(ClientVisibleException.class, () -> resolver.resolveImageDependency(service, image(), owner));
     }
+    @Test public void persistedUpgradeMapPreservesParentsForOldChildAndImageDependency() {
+        Instance instance = imageInstance(); when(instance.getStackId()).thenReturn(null);
+        Service service = mapService(instance, 2L, 5L, 8L);
+        when(resolver.objectManager.find(ServiceExposeMap.class, SERVICE_EXPOSE_MAP.INSTANCE_ID, instance.getId(),
+                SERVICE_EXPOSE_MAP.REMOVED, null, SERVICE_EXPOSE_MAP.MANAGED, true)).thenReturn(List.of());
+        upgradeMap(instance, service);
+        var target = resolver.resolveObject("container", instance, owner);
+        assertEquals("1st8", target.stackId()); assertEquals("1a5", target.projectId()); assertEquals("1i3", target.resourceId());
+        var dependency = resolver.resolveImageDependency(service, image(), owner);
+        assertEquals("1st8", dependency.scope().stackId());
+        assertEquals(List.of(ApiKeyPolicyEvaluator.Target.stackResource("container", "1i3", "1a5", "1st8")), dependency.instances());
+    }
+    @Test public void upgradeMapCannotBeOrdinaryUnmanagedForeignRemovedOrContradictory() {
+        for (String invalid : List.of("not-upgrade", "null-upgrade", "null-managed", "removed", "foreign-account", "foreign-instance", "missing-service", "removed-service", "owner-denied", "different-stack")) {
+            Instance instance = instance();
+            Service service = mapService(instance, 2L, 5L, 8L);
+            when(resolver.objectManager.find(ServiceExposeMap.class, SERVICE_EXPOSE_MAP.INSTANCE_ID, instance.getId(),
+                    SERVICE_EXPOSE_MAP.REMOVED, null, SERVICE_EXPOSE_MAP.MANAGED, true)).thenReturn(List.of());
+            ServiceExposeMap map = upgradeMap(instance, service);
+            switch (invalid) {
+                case "not-upgrade" -> when(map.getUpgrade()).thenReturn(false);
+                case "null-upgrade" -> when(map.getUpgrade()).thenReturn(null);
+                case "null-managed" -> when(map.getManaged()).thenReturn(null);
+                case "removed" -> when(map.getRemoved()).thenReturn(new java.util.Date());
+                case "foreign-account" -> when(map.getAccountId()).thenReturn(6L);
+                case "foreign-instance" -> when(map.getInstanceId()).thenReturn(99L);
+                case "missing-service" -> when(map.getServiceId()).thenReturn(null);
+                case "removed-service" -> when(service.getRemoved()).thenReturn(new java.util.Date());
+                case "owner-denied" -> when(owner.authorizeObject(service)).thenReturn(null);
+                case "different-stack" -> when(instance.getStackId()).thenReturn(9L);
+            }
+            if (List.of("not-upgrade", "null-upgrade", "null-managed").contains(invalid)) {
+                // The constrained persisted query excludes these ordinary maps;
+                // resolving the container may retain only its Project, never its Service Stack.
+                when(resolver.objectManager.find(ServiceExposeMap.class, SERVICE_EXPOSE_MAP.INSTANCE_ID, instance.getId(),
+                        SERVICE_EXPOSE_MAP.REMOVED, null, SERVICE_EXPOSE_MAP.MANAGED, false, SERVICE_EXPOSE_MAP.UPGRADE, true))
+                        .thenReturn(List.of());
+                assertNull(invalid, resolver.resolveObject("container", instance, owner).stackId());
+            } else {
+                assertThrows(invalid, ClientVisibleException.class, () -> resolver.resolveObject("container", instance, owner));
+            }
+        }
+    }
+    @Test public void ordinaryUnmanagedMapIsNotQueriedAsAnOwnedParent() {
+        Instance instance = instance();
+        Service service = mapService(instance, 2L, 5L, 8L);
+        when(resolver.objectManager.find(ServiceExposeMap.class, SERVICE_EXPOSE_MAP.INSTANCE_ID, instance.getId(),
+                SERVICE_EXPOSE_MAP.REMOVED, null, SERVICE_EXPOSE_MAP.MANAGED, true)).thenReturn(List.of());
+        ServiceExposeMap ordinary = mock(ServiceExposeMap.class); when(ordinary.getManaged()).thenReturn(false); when(ordinary.getUpgrade()).thenReturn(false);
+        when(resolver.objectManager.find(ServiceExposeMap.class, SERVICE_EXPOSE_MAP.INSTANCE_ID, instance.getId(),
+                SERVICE_EXPOSE_MAP.REMOVED, null, SERVICE_EXPOSE_MAP.MANAGED, false)).thenReturn(List.of(ordinary));
+        assertNull(resolver.resolveObject("container", instance, owner).stackId());
+        verify(resolver.objectManager, never()).find(ServiceExposeMap.class, SERVICE_EXPOSE_MAP.INSTANCE_ID, instance.getId(),
+                SERVICE_EXPOSE_MAP.REMOVED, null, SERVICE_EXPOSE_MAP.MANAGED, false);
+        verify(resolver.objectManager, never()).loadResource(Service.class, 2L);
+    }
+    private ServiceExposeMap upgradeMap(Instance instance, Service service) {
+        Long instanceId = instance.getId(), accountId = instance.getAccountId(), serviceId = service.getId();
+        ServiceExposeMap map = mock(ServiceExposeMap.class);
+        when(map.getInstanceId()).thenReturn(instanceId); when(map.getAccountId()).thenReturn(accountId);
+        when(map.getServiceId()).thenReturn(serviceId); when(map.getManaged()).thenReturn(false); when(map.getUpgrade()).thenReturn(true);
+        when(resolver.objectManager.find(ServiceExposeMap.class, SERVICE_EXPOSE_MAP.INSTANCE_ID, instanceId,
+                SERVICE_EXPOSE_MAP.REMOVED, null, SERVICE_EXPOSE_MAP.MANAGED, false, SERVICE_EXPOSE_MAP.UPGRADE, true)).thenReturn(List.of(map));
+        return map;
+    }
     @Test public void managedMapCannotContradictExplicitStackOrItsOwnAccount() {
         Instance instance = imageInstance(); Service service = mapService(instance, 2L, 5L, 9L);
         assertThrows(ClientVisibleException.class, () -> resolver.resolveObject("container", instance, owner));

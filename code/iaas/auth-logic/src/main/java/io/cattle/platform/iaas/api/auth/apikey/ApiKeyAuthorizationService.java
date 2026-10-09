@@ -3,7 +3,6 @@ package io.cattle.platform.iaas.api.auth.apikey;
 import io.cattle.platform.api.auth.ApiKeyAuditSink;
 import io.cattle.platform.api.auth.ApiResourceAccess;
 import io.cattle.platform.api.auth.Policy;
-import io.cattle.platform.api.resource.jooq.AbstractJooqResourceManager;
 import io.github.ibuildthecloud.gdapi.context.ApiContext;
 import io.github.ibuildthecloud.gdapi.exception.ClientVisibleException;
 import io.github.ibuildthecloud.gdapi.factory.SchemaFactory;
@@ -59,7 +58,8 @@ public class ApiKeyAuthorizationService implements ApiResourceAccess {
                 if (collection) {
                     // Synthetic managers have no row-scoping query. Never return
                     // unfiltered data for a partially granted collection.
-                    boolean sql = usesScopedSql(resourceManagers.getResourceManagerByType(request.getType()));
+                    var manager = resourceManagers.getResourceManagerByType(request.getType());
+                    boolean sql = manager != null && manager.supportsScopedCollectionQuery(this);
                     // ProjectResourceManager obtains an already RBAC-filtered,
                     // unpaginated list from AuthDao; the common list guard below
                     // scopes it before any response is constructed.
@@ -115,18 +115,6 @@ public class ApiKeyAuthorizationService implements ApiResourceAccess {
             if (rule.scope().kind() == ApiKeyPolicy.ScopeKind.GLOBAL) allow = true;
         }
         return allow;
-    }
-
-    private boolean usesScopedSql(Object manager) {
-        if (!(manager instanceof AbstractJooqResourceManager)) return false;
-        for (Class<?> c = manager.getClass(); c != null; c = c.getSuperclass()) {
-            try {
-                c.getDeclaredMethod("listInternal", SchemaFactory.class, String.class, Map.class,
-                        io.github.ibuildthecloud.gdapi.model.ListOptions.class);
-                return c == AbstractJooqResourceManager.class;
-            } catch (NoSuchMethodException ignored) { /* inspect the actual implementation, not its role name */ }
-        }
-        return false;
     }
 
     @Override public List<?> filterCollection(ApiRequest request, List<?> values) {

@@ -138,7 +138,7 @@ public class ApiKeyTargetResolver {
 
     private record InstanceParents(Long stackId, Set<Long> serviceIds) { }
 
-    /** Service-managed instances use the persisted managed expose map; older
+    /** Service-owned instances use the persisted managed or upgrade expose map; older
      * denormalized service/stack columns, when present, must agree with it. */
     private InstanceParents instanceParents(Instance instance, Policy owner) {
         Long stackId = instance.getStackId();
@@ -149,13 +149,22 @@ public class ApiKeyTargetResolver {
             hasParent = true;
             serviceIds.add(instance.getServiceId());
         }
-        List<ServiceExposeMap> maps = objectManager.find(ServiceExposeMap.class,
+        List<ServiceExposeMap> maps = new ArrayList<>();
+        List<ServiceExposeMap> managedMaps = objectManager.find(ServiceExposeMap.class,
                 SERVICE_EXPOSE_MAP.INSTANCE_ID, instance.getId(), SERVICE_EXPOSE_MAP.REMOVED, null,
                 SERVICE_EXPOSE_MAP.MANAGED, true);
-        if (maps != null) for (ServiceExposeMap map : maps) {
+        if (managedMaps != null) maps.addAll(managedMaps);
+        // UpgradeManager persists managed=false, upgrade=true before stopping
+        // an old child. That precise live map still establishes its Service parent.
+        List<ServiceExposeMap> upgradeMaps = objectManager.find(ServiceExposeMap.class,
+                SERVICE_EXPOSE_MAP.INSTANCE_ID, instance.getId(), SERVICE_EXPOSE_MAP.REMOVED, null,
+                SERVICE_EXPOSE_MAP.MANAGED, false, SERVICE_EXPOSE_MAP.UPGRADE, true);
+        if (upgradeMaps != null) maps.addAll(upgradeMaps);
+        for (ServiceExposeMap map : maps) {
             if (!Objects.equals(instance.getId(), map.getInstanceId())
                     || !Objects.equals(instance.getAccountId(), map.getAccountId())
-                    || map.getRemoved() != null || !Boolean.TRUE.equals(map.getManaged())
+                    || map.getRemoved() != null || !(Boolean.TRUE.equals(map.getManaged())
+                        || (Boolean.FALSE.equals(map.getManaged()) && Boolean.TRUE.equals(map.getUpgrade())))
                     || map.getServiceId() == null) denied("KeyScopeDenied");
             stackId = serviceStack(instance, map.getServiceId(), stackId, hasParent, owner);
             hasParent = true;

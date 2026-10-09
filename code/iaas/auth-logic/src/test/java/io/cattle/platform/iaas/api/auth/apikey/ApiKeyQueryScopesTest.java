@@ -82,6 +82,26 @@ public class ApiKeyQueryScopesTest {
         assertTrue(sql, sql.contains("`key_scope_managed_service`.`removed` is null"));
         assertTrue(sql, sql.contains("`key_scope_managed_service`.`id` = `key_scope_managed_map`.`service_id`"));
     }
+    @Test public void persistedUpgradeMapHasSameOwnershipPredicateInAggregateAndCoherenceGuard() {
+        for (ApiKeyPolicy.Effect base : ApiKeyPolicy.Effect.values()) {
+            String sql = sql("container", InstanceTable.INSTANCE, base,
+                    rule("allow", ApiKeyPolicy.Effect.ALLOW, ApiKeyPolicy.Scope.stack("1st8")),
+                    rule("deny", ApiKeyPolicy.Effect.DENY, ApiKeyPolicy.Scope.resource("container", "1i3")));
+            for (String alias : List.of("key_scope_managed_map", "key_scope_checked_map")) {
+                String field = "`" + alias + "`";
+                assertTrue(sql, sql.contains("(" + field + ".`managed` = true or (" + field + ".`managed` = false and " + field + ".`upgrade` = true))"));
+                assertTrue(sql, sql.contains(field + ".`removed` is null"));
+            }
+            assertTrue(sql, sql.contains("`key_scope_managed_map`.`account_id` = `instance`.`account_id`"));
+            assertTrue(sql, sql.contains("`key_scope_managed_service`.`removed` is null"));
+            assertTrue(sql, sql.contains("not(`key_scope_checked_map`.`account_id` <=>"));
+            assertTrue(sql, sql.contains("`key_scope_checked_service`.`id` is null"));
+            assertTrue(sql, sql.contains("not(`key_scope_checked_service`.`environment_id` <=> coalesce(`instance`.`environment_id`"));
+            assertTrue(sql, sql.indexOf("not exists") < sql.indexOf("`instance`.`id` = 3"));
+            assertTrue(sql, sql.contains("and not (false or coalesce"));
+            assertTrue(sql, sql.indexOf("`instance`.`id` = 3") < sql.indexOf("limit"));
+        }
+    }
     @Test public void foreignOrDanglingManagedMapInvalidatesWholeRowRatherThanBeingFilteredOut() {
         String sql = sql("container", InstanceTable.INSTANCE, ApiKeyPolicy.Effect.ALLOW);
         assertTrue(sql, sql.contains("not exists"));

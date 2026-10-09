@@ -24,7 +24,11 @@ from POST. Ordinary resource relationship links remain read operations.
 Creation scope uses only typed parent fields that the API schema actually accepts;
 ignored or read-only payload fields cannot grant access to a different destination.
 Service-managed container ancestry uses persisted managed relationships, including
-when denormalized parent columns are empty. Internal image creation verifies its
+when denormalized parent columns are empty. During a service upgrade, a live,
+same-account relationship explicitly marked `upgrade=true, managed=false` retains
+that ancestry while the old instance is replaced. Ordinary unmanaged, removed,
+foreign or contradictory relationships cannot supply a parent grant. Direct
+authorization and collection SQL use the same rule. Internal image creation verifies its
 persisted container dependency; it does not grant global image access.
 A parent grant cannot override an explicit denial on its lifecycle dependencies.
 Broadening an existing policy or extending its lifetime requires an actor-bound,
@@ -32,6 +36,12 @@ single-use MFA confirmation of the exact change. Policy updates use the stored
 revision and existing conflict/error handling; client input cannot replace
 ownership, revision or raw credential data. New secrets are delivered only at
 creation, not returned by later GET/list/detail responses.
+
+Custom collection scope is applied before SQL pagination. Transparent resource
+manager filters retain that guarded capability only when the same authorization
+guard is installed on the underlying query. Unknown, synthetic or overridden
+collection paths cannot advertise it; the normal owner authorization and filter
+chain is still executed. Full and legacy policies do not acquire this restriction.
 
 ## Identity and durable audit
 

@@ -7,6 +7,10 @@ import io.cattle.platform.core.model.Credential;
 import io.cattle.platform.core.model.Account;
 import io.cattle.platform.core.model.Instance;
 import io.cattle.platform.core.model.Image;
+import io.cattle.platform.core.model.Service;
+import io.cattle.platform.core.model.ServiceExposeMap;
+import io.cattle.platform.core.model.Stack;
+import static io.cattle.platform.core.model.tables.ServiceExposeMapTable.SERVICE_EXPOSE_MAP;
 import io.github.ibuildthecloud.gdapi.exception.ClientVisibleException;
 import io.cattle.platform.api.auth.impl.NoPolicyOptions;
 import io.cattle.platform.iaas.api.auth.impl.AccountPolicy;
@@ -18,6 +22,7 @@ import io.github.ibuildthecloud.gdapi.factory.SchemaFactory;
 import io.github.ibuildthecloud.gdapi.model.Action;
 import io.github.ibuildthecloud.gdapi.model.Schema;
 import io.github.ibuildthecloud.gdapi.context.ApiContext;
+import io.github.ibuildthecloud.gdapi.id.IdFormatter;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
@@ -213,5 +218,81 @@ public class ApiKeyProcessAuthorizationTest {
         assertEquals("OwnerPermissionDenied", assertThrows(ProcessAuthorizationDeniedException.class,
                 () -> hook.beforeExecution(imageJob, metadata)).getCode());
         verify(hook.targets, times(1)).resolveImageDependency(root, image, owner);
+    }
+    @Test public void actualResolverAndLiveAccountPolicyAuthorizeUpgradeStopAndRemoveAfterMapUnmanaged() {
+        upgradeLifecycle();
+        ApiContext.remove();
+        for (String action : List.of("upgrade", "finishupgrade")) {
+            metadata.put("requestAction", action);
+            for (String process : List.of("instance.stop", "instance.remove")) {
+                hook.beforeExecution(new LaunchConfiguration(process, "instance", "3", 5L, 0, Map.of()), metadata);
+            }
+        }
+        assertNull(ApiContext.getContext());
+    }
+    @Test public void upgradeLifecycleStillRejectsForeignOrUnmarkedMapAndExplicitChildDeny() {
+        ServiceExposeMap map = upgradeLifecycle();
+        LaunchConfiguration stop = new LaunchConfiguration("instance.stop", "instance", "3", 5L, 0, Map.of());
+        when(map.getAccountId()).thenReturn(6L);
+        assertEquals("KeyScopeDenied", assertThrows(ProcessAuthorizationDeniedException.class,
+                () -> hook.beforeExecution(stop, metadata)).getCode());
+        when(map.getAccountId()).thenReturn(5L); when(map.getUpgrade()).thenReturn(false);
+        when(hook.objectManager.find(ServiceExposeMap.class, SERVICE_EXPOSE_MAP.INSTANCE_ID, 3L,
+                SERVICE_EXPOSE_MAP.REMOVED, null, SERVICE_EXPOSE_MAP.MANAGED, false, SERVICE_EXPOSE_MAP.UPGRADE, true)).thenReturn(List.of());
+        assertEquals("KeyScopeDenied", assertThrows(ProcessAuthorizationDeniedException.class,
+                () -> hook.beforeExecution(stop, metadata)).getCode());
+        when(map.getUpgrade()).thenReturn(true);
+        when(hook.objectManager.find(ServiceExposeMap.class, SERVICE_EXPOSE_MAP.INSTANCE_ID, 3L,
+                SERVICE_EXPOSE_MAP.REMOVED, null, SERVICE_EXPOSE_MAP.MANAGED, false, SERVICE_EXPOSE_MAP.UPGRADE, true)).thenReturn(List.of(map));
+        policy(new ApiKeyPolicy(ApiKeyPolicy.Mode.CUSTOM, ApiKeyPolicy.Effect.DENY, null, List.of(
+                new ApiKeyPolicy.Rule("root", ApiKeyPolicy.Effect.ALLOW, ApiKeyPolicy.Scope.stack("1st8"), Set.of("upgrade")),
+                new ApiKeyPolicy.Rule("child-deny", ApiKeyPolicy.Effect.DENY, ApiKeyPolicy.Scope.resource("container", "1i3"), Set.of("upgrade")))));
+        assertEquals("KeyPolicyDenied", assertThrows(ProcessAuthorizationDeniedException.class,
+                () -> hook.beforeExecution(stop, metadata)).getCode());
+    }
+    private ServiceExposeMap upgradeLifecycle() {
+        Account project = mock(Account.class), principal = mock(Account.class);
+        when(project.getId()).thenReturn(5L); when(project.getKind()).thenReturn("project"); when(principal.getId()).thenReturn(10L);
+        AccountPolicy real = new AccountPolicy(project, principal, Set.of(), new NoPolicyOptions());
+        Service service = mock(Service.class); when(service.getId()).thenReturn(2L);
+        when(service.getAccountId()).thenReturn(5L); when(service.getStackId()).thenReturn(8L);
+        Instance instance = mock(Instance.class); when(instance.getId()).thenReturn(3L); when(instance.getAccountId()).thenReturn(5L);
+        // The real old upgrade child has NULL denormalized parents. Mockito's
+        // boxed Long defaults are zero, which would create a spurious Service 0.
+        when(instance.getServiceId()).thenReturn(null); when(instance.getStackId()).thenReturn(null);
+        Stack stack = mock(Stack.class); when(stack.getId()).thenReturn(8L); when(stack.getAccountId()).thenReturn(5L);
+        ServiceExposeMap map = mock(ServiceExposeMap.class);
+        when(map.getInstanceId()).thenReturn(3L); when(map.getServiceId()).thenReturn(2L); when(map.getAccountId()).thenReturn(5L);
+        when(map.getManaged()).thenReturn(false); when(map.getUpgrade()).thenReturn(true);
+        when(hook.objectManager.loadResource(Account.class, 5L)).thenReturn(project);
+        when(hook.objectManager.loadResource(Stack.class, 8L)).thenReturn(stack);
+        when(hook.objectManager.loadResource(Service.class, 2L)).thenReturn(service);
+        when(hook.objectManager.loadResource("service", 2L)).thenReturn(service);
+        when(hook.objectManager.loadResource("instance", "3")).thenReturn(instance);
+        when(hook.objectManager.find(ServiceExposeMap.class, SERVICE_EXPOSE_MAP.INSTANCE_ID, 3L,
+                SERVICE_EXPOSE_MAP.REMOVED, null, SERVICE_EXPOSE_MAP.MANAGED, true)).thenReturn(List.of());
+        when(hook.objectManager.find(ServiceExposeMap.class, SERVICE_EXPOSE_MAP.INSTANCE_ID, 3L,
+                SERVICE_EXPOSE_MAP.REMOVED, null, SERVICE_EXPOSE_MAP.MANAGED, false, SERVICE_EXPOSE_MAP.UPGRADE, true)).thenReturn(List.of(map));
+        ApiKeyTargetResolver actual = new ApiKeyTargetResolver(); actual.objectManager = hook.objectManager;
+        actual.idFormatter = mock(IdFormatter.class);
+        when(actual.idFormatter.parseId(anyString())).thenAnswer(i -> i.<String>getArgument(0).replaceFirst("^1[a-z]+", ""));
+        when(actual.idFormatter.formatId(anyString(), any())).thenAnswer(i -> "1" +
+                Map.of("credential", "c", "project", "a", "stack", "st", "service", "s", "container", "i").get(i.<String>getArgument(0)) + i.getArgument(1));
+        hook.targets = actual;
+        SchemaFactory factory = mock(SchemaFactory.class); when(factory.getSchema("service")).thenReturn(schema);
+        when(schema.getResourceActions()).thenReturn(Map.of("upgrade", mock(Action.class), "finishupgrade", mock(Action.class)));
+        when(hook.authenticator.currentAuthorization(eq(10L), eq(5L), any())).thenReturn(new ApiAuthenticator.CurrentAuthorization(real, factory));
+        metadata.put("targetType", "service"); metadata.put("targetId", "2"); metadata.put("operation", "upgrade");
+        metadata.put("requestMethod", "POST"); metadata.put("requestCollection", false); metadata.put("requestAction", "upgrade");
+        policy(new ApiKeyPolicy(ApiKeyPolicy.Mode.CUSTOM, ApiKeyPolicy.Effect.DENY, null,
+                List.of(new ApiKeyPolicy.Rule("root", ApiKeyPolicy.Effect.ALLOW, ApiKeyPolicy.Scope.stack("1st8"), Set.of("upgrade")))));
+        // Exercise the actual resolver outside the process hook's exception
+        // translation so a fixture/round-trip error retains its original source.
+        assertEquals(Long.valueOf(1L), actual.parseScopeId("credential", "1c1"));
+        assertEquals(ApiKeyPolicyEvaluator.Target.stackResource("service", "1s2", "1a5", "1st8"),
+                actual.resolveObject("service", service, real));
+        assertEquals(ApiKeyPolicyEvaluator.Target.stackResource("container", "1i3", "1a5", "1st8"),
+                actual.resolveObject("container", instance, real));
+        return map;
     }
 }
