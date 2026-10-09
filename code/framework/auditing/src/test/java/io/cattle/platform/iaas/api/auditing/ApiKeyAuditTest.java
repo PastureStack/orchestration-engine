@@ -203,6 +203,28 @@ public class ApiKeyAuditTest {
     }
 
     @Test
+    public void failureEnvelopesNeverBecomeAnAuditTargetResource() throws Exception {
+        AuditServiceImpl service = service(new ArrayList<>());
+        for (int status : new int[]{400, 401, 403, 500}) {
+            for (String method : List.of("GET", "POST")) {
+                ApiRequest request = request(method, "DENY", status);
+                request.setId(null);
+                request.setAttribute("apiKey.audit.targetId", null);
+                request.setResponseObject(new ResourceImpl("error-uuid", "error", Map.of()));
+                assertEquals("", service.apiKeyAuditData(request, policy(), "response").get("targetId"));
+            }
+        }
+        ApiRequest wrongType = request("POST", "ALLOW", 201);
+        wrongType.setId(null); wrongType.setAttribute("apiKey.audit.targetId", null);
+        wrongType.setResponseObject(new ResourceImpl("1i42", "container", Map.of()));
+        assertEquals("", service.apiKeyAuditData(wrongType, policy(), "response").get("targetId"));
+        ApiRequest read = request("GET", "ALLOW", 200);
+        read.setId(null); read.setAttribute("apiKey.audit.targetId", null);
+        read.setResponseObject(new ResourceImpl("1st42", "stack", Map.of()));
+        assertEquals("", service.apiKeyAuditData(read, policy(), "response").get("targetId"));
+    }
+
+    @Test
     public void finallyRecordsCanceledStreamWithActualStatusAndNoPrivateException() throws Exception {
         List<Map<String, Object>> delivered = new ArrayList<>();
         AuditServiceImpl service = service(delivered);
@@ -552,6 +574,10 @@ public class ApiKeyAuditTest {
         service.auditLogDao = (AuditLogDao) Proxy.newProxyInstance(AuditLogDao.class.getClassLoader(), new Class<?>[]{AuditLogDao.class},
                 (proxy, method, arguments) -> {
                     @SuppressWarnings("unchecked") Map<String, Object> data = (Map<String, Object>) arguments[method.getName().equals("createDelegatedOnce") ? 3 : 2];
+                    if (data.containsKey("eventId")) {
+                        assertTrue("API-key outbox events use trusted persistence", "createApiKeyEvent".equals(method.getName())
+                                || "createDelegatedOnce".equals(method.getName()));
+                    }
                     delivered.add(new HashMap<>(data));
                     return null;
                 });

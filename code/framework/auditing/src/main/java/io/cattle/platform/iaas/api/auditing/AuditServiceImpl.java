@@ -462,7 +462,10 @@ public class AuditServiceImpl implements AuditService, ApiKeyAuditSink, ApiReque
             // A create has no request resource ID. The response Resource is a
             // server-produced envelope; take only its ID, never its payload.
             Object targetId = request.getId();
-            if (!"decision".equals(phase) && targetId == null && request.getResponseObject() instanceof Resource resource) {
+            if (!"decision".equals(phase) && targetId == null && "POST".equals(request.getMethod())
+                    && request.getAction() == null && request.getResponseCode() >= 200 && request.getResponseCode() < 300
+                    && request.getResponseObject() instanceof Resource resource
+                    && String.valueOf(data.get("targetType")).equals(resource.getType())) {
                 targetId = resource.getId();
             }
             data.put("targetId", metadataValue(targetId, ""));
@@ -559,7 +562,7 @@ public class AuditServiceImpl implements AuditService, ApiKeyAuditSink, ApiReque
         } else {
             Number accountId = (Number) event.get("accountId");
             Number principalId = (Number) event.get("authenticatedAsAccountId");
-            auditLogDao.create((String) event.get("resourceType"), resourceId == null ? null : resourceId.longValue(), data, null,
+            auditLogDao.createApiKeyEvent((String) event.get("resourceType"), resourceId == null ? null : resourceId.longValue(), data, null,
                     accountId == null ? null : accountId.longValue(), principalId == null ? null : principalId.longValue(),
                     (String) event.get("eventType"), (String) event.get("authType"), ((Number) event.get("runtime")).longValue(),
                     null, (String) event.get("clientIp"));

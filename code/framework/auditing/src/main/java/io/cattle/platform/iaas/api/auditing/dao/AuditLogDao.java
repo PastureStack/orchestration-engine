@@ -9,6 +9,12 @@ public interface AuditLogDao {
     AuditLog create(String resourceType, Long resourceId, Map<String, Object> data, Identity identity, Long accountId, Long authenticatedAsAccountId,
                     String eventType, String authType, Long runTime, String description, String clientIp);
 
+    default AuditLog createApiKeyEvent(String resourceType, Long resourceId, Map<String, Object> data, Identity identity,
+            Long accountId, Long authenticatedAsAccountId, String eventType, String authType, Long runTime,
+            String description, String clientIp) {
+        throw new IllegalStateException("API-key event persistence is unavailable");
+    }
+
     default AuditLog createDelegatedOnce(String eventId, String resourceType, Long resourceId, Map<String, Object> data,
             Identity identity, Long accountId, Long authenticatedAsAccountId, String eventType, String authType,
             Long runTime, String description, String clientIp) {

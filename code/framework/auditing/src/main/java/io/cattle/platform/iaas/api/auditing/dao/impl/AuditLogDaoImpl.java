@@ -4,6 +4,7 @@ import io.cattle.platform.api.auth.Identity;
 import io.cattle.platform.core.model.AuditLog;
 import io.cattle.platform.core.model.tables.AuditLogTable;
 import io.cattle.platform.core.model.tables.AccountTable;
+import io.cattle.platform.core.model.tables.records.AuditLogRecord;
 import io.cattle.platform.db.jooq.dao.impl.AbstractJooqDao;
 import io.cattle.platform.iaas.api.auditing.dao.AuditLogDao;
 import io.cattle.platform.object.ObjectManager;
@@ -61,7 +62,31 @@ public class AuditLogDaoImpl extends AbstractJooqDao implements AuditLogDao {
     public AuditLog create(String resourceType, Long resourceId, Map<String, Object> data, Identity identity,
                            Long accountId, Long authenticatedAsAccountId, String eventType, String authType, Long runTime,
                            String description, String clientIp) {
-        AuditLog logs = create().newRecord(AuditLogTable.AUDIT_LOG);
+        AuditLog logs = newAuditLog(resourceType, resourceId, data, identity, accountId, authenticatedAsAccountId,
+                eventType, authType, runTime, description, clientIp);
+        objectManager.create(logs);
+        return objectManager.reload(logs);
+    }
+
+    @Override
+    public AuditLog createApiKeyEvent(String resourceType, Long resourceId, Map<String, Object> data, Identity identity,
+            Long accountId, Long authenticatedAsAccountId, String eventType, String authType, Long runTime,
+            String description, String clientIp) {
+        // These account fields came from the verified event, not the request
+        // which happens to replay the outbox. ObjectManager post-init would
+        // replace them with that unrelated request's ApiContext policy.
+        var logs = newAuditLog(resourceType, resourceId, data, identity, accountId, authenticatedAsAccountId,
+                eventType, authType, runTime, description, clientIp);
+        logs.setKind("auditLog");
+        logs.setCreated(new Date());
+        logs.store();
+        return logs;
+    }
+
+    private AuditLogRecord newAuditLog(String resourceType,
+            Long resourceId, Map<String, Object> data, Identity identity, Long accountId, Long authenticatedAsAccountId,
+            String eventType, String authType, Long runTime, String description, String clientIp) {
+        var logs = create().newRecord(AuditLogTable.AUDIT_LOG);
         logs.setAccountId(accountId);
         logs.setAuthenticatedAsAccountId(authenticatedAsAccountId);
         logs.setEventType(eventType);
@@ -75,7 +100,6 @@ public class AuditLogDaoImpl extends AbstractJooqDao implements AuditLogDao {
         logs.setResourceId(resourceId);
         logs.setResourceType(resourceType);
         logs.setClientIp(clientIp);
-        objectManager.create(logs);
-        return objectManager.reload(logs);
+        return logs;
     }
 }
