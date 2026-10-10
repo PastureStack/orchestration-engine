@@ -10,7 +10,9 @@ upstream history, authorship, licenses, and dependency notices.
 
 ## Current build
 
-Engine `0.183.334` is the component candidate for Server `v1.6.519`.
+[Engine 0.183.334](https://github.com/PastureStack/orchestration-engine/releases/tag/v0.183.334)
+is published as a component. The matching Server `v1.6.519` remains an unpublished
+assembly candidate pending release-artifact acceptance.
 Both API roots support full, closed or custom Key access, optional expiry and
 per-Key durable audit. Full and untouched legacy Keys keep their existing scope;
 all policies remain bounded by the owner's live RBAC, and explicit denies win.
