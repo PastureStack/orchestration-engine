@@ -69,6 +69,13 @@ agent-only schemas without a `container` alias.
 
 ## Integration and compatibility
 
+Collection filters retain all supported conditions on a field as AND leaves,
+including both date bounds regardless of parameter order. ISO-8601 date inputs
+use their explicit offset and retain fractional seconds, instead of interpreting
+`Z` in the host timezone or leaving millisecond inputs as raw strings. This
+shared parser is used by both API roots; null, `now`, output formatting and the
+existing invalid-filter fallback are unchanged.
+
 Delegated operations require host-api 0.38.5, websocket-proxy 0.23.15 and Linux
 node-agent 0.13.28. The existing full bootstrap image remains 1.2.31; the Server
 distributes the independently versioned Node and Host archives through its

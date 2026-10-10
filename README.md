@@ -21,6 +21,9 @@ Upgrade cleanup verifies the owned lifecycle graph and queued-child identity;
 retired relationships are cleanup evidence, not additional public permissions.
 See the [API Key policy and audit contract](docs/api-key-policy.md) for ancestry,
 revision, error and delegated-stream details.
+Collection queries preserve both range bounds on the same field. API timestamps
+are parsed with their UTC offset, including fractional seconds; the host timezone
+does not change the requested audit interval.
 
 The component artifact alone is not proof of complete platform acceptance.
 Use the [current Server release](https://github.com/PastureStack/server#current-release)
