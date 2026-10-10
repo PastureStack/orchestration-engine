@@ -92,7 +92,13 @@ public class DefaultPolicy implements Policy {
     }
 
     protected <T> boolean hasGrantedAccess(T obj) {
-        ApiRequest request = ApiContext.getContext().getApiRequest();
+        ApiContext context = ApiContext.getContext();
+        ApiRequest request = context == null ? null : context.getApiRequest();
+        // Background processes have no request-local grants; account authorization
+        // still applies rather than creating a synthetic HTTP context or grant.
+        if (request == null) {
+            return false;
+        }
         Set<Object> whitelist = whitelist(request);
         return (null != whitelist && whitelist.contains(obj));
     }

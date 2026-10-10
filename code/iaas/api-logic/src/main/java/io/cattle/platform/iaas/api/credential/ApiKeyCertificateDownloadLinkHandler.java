@@ -40,7 +40,7 @@ public class ApiKeyCertificateDownloadLinkHandler implements LinkHandler {
 
     @Override
     public String[] getTypes() {
-        return new String[] { "apiKey", CredentialConstants.TYPE };
+        return new String[] { "apiKey", CredentialConstants.KIND_API_KEY_RESTRICTED, CredentialConstants.TYPE };
     }
 
     @Override
@@ -52,6 +52,9 @@ public class ApiKeyCertificateDownloadLinkHandler implements LinkHandler {
     public Object link(String name, Object obj, ApiRequest request) throws IOException {
         if (obj instanceof Credential) {
             Credential cred = (Credential)obj;
+            if (CredentialConstants.KIND_API_KEY_RESTRICTED.equals(cred.getKind())) {
+                throw new ClientVisibleException(ResponseCodes.FORBIDDEN, "ApiKeyRestrictedDelegationUnsupported");
+            }
             String publicValue = cred.getPublicValue();
             String secretValue = cred.getSecretValue();
             if (secretValue == null || publicValue == null) {

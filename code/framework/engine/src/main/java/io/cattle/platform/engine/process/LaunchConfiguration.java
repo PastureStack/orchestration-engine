@@ -14,6 +14,7 @@ public class LaunchConfiguration {
     Predicate predicate;
     ProcessState parentProcessState;
     Date runAfter;
+    boolean authorizationCaptured;
 
     public LaunchConfiguration() {
     }
@@ -37,6 +38,7 @@ public class LaunchConfiguration {
         this.runAfter = config.getRunAfter();
         this.accountId = config.getAccountId();
         this.priority = config.getPriority();
+        this.authorizationCaptured = config.isAuthorizationCaptured();
     }
 
     public String getResourceType() {
@@ -113,6 +115,10 @@ public class LaunchConfiguration {
     public Integer getPriority() {
         return priority;
     }
+
+    public boolean isAuthorizationCaptured() { return authorizationCaptured; }
+
+    public void setAuthorizationCaptured(boolean captured) { this.authorizationCaptured = captured; }
 
     public void setPriority(Integer priority) {
         this.priority = priority;

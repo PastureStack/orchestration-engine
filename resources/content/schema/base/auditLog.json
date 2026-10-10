@@ -1,5 +1,23 @@
 {
     "resourceFields": {
+        "eventId": { "type": "string", "create": false, "update": false },
+        "keyId": { "type": "string", "create": false, "update": false },
+        "decision": { "type": "string", "create": false, "update": false },
+        "outcome": { "type": "string", "create": false, "update": false },
+        "httpStatus": { "type": "int", "create": false, "update": false },
+        "requestId": { "type": "string", "create": false, "update": false },
+        "actor": { "type": "string", "create": false, "update": false },
+        "targetType": { "type": "string", "create": false, "update": false },
+        "targetId": { "type": "string", "create": false, "update": false },
+        "operation": { "type": "string", "create": false, "update": false },
+        "policyRevision": { "type": "string", "create": false, "update": false },
+        "reason": { "type": "string", "create": false, "update": false },
+        "phase": { "type": "string", "create": false, "update": false },
+        "preview": { "type": "boolean", "create": false, "update": false },
+        "processId": { "type": "string", "create": false, "update": false },
+        "processName": { "type": "string", "create": false, "update": false },
+        "hostUuid": { "type": "string", "create": false, "update": false },
+        "failureCode": { "type": "string", "create": false, "update": false },
         "responseCode":{
             "type":"int"
         },

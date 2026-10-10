@@ -8,14 +8,27 @@ Rancher 1.6 ecosystem. It is not affiliated with Rancher Labs or SUSE.
 This fork of [`rancher/cattle`](https://github.com/rancher/cattle) preserves
 upstream history, authorship, licenses, and dependency notices.
 
-## Current release
+## Current build
 
-[Engine v0.183.333](https://github.com/PastureStack/orchestration-engine/releases/tag/v0.183.333)
-is included in the [current Server release](https://github.com/PastureStack/server#current-release).
-It returns create-only fields only for actual resource creation, not POST actions
-such as API Key deactivation. Other readable fields and v1/v2 role schemas are
-unchanged. See the [current release note](docs/releases/orchestration-engine-0.183.333.md)
-for source identity, artifact checksum, tests, and verification limits.
+Engine `0.183.334` is the component candidate for Server `v1.6.519`.
+Both API roots support full, closed or custom Key access, optional expiry and
+per-Key durable audit. Full and untouched legacy Keys keep their existing scope;
+all policies remain bounded by the owner's live RBAC, and explicit denies win.
+A broader policy or longer validity uses the existing actor-bound, single-use MFA
+confirmation. Secret delivery is creation-only; audit never records credentials
+or request payloads. HTTP acceptance is separate from job or stream completion.
+Upgrade cleanup verifies the owned lifecycle graph and queued-child identity;
+retired relationships are cleanup evidence, not additional public permissions.
+See the [API Key policy and audit contract](docs/api-key-policy.md) for ancestry,
+revision, error and delegated-stream details.
+Collection queries preserve both range bounds on the same field. API timestamps
+are parsed with their UTC offset, including fractional seconds; the host timezone
+does not change the requested audit interval.
+
+The component artifact alone is not proof of complete platform acceptance.
+Use the [current Server release](https://github.com/PastureStack/server#current-release)
+for the published platform version. Source identities, checksums and acceptance
+evidence belong in [release notes](docs/releases), not installation commands.
 
 Use the Server image to deploy the complete platform; `cattle.jar` is a component
 artifact, not a replacement for its database, authentication, agent, or proxy.
@@ -33,7 +46,7 @@ Before publishing an Engine artifact, run the complete package gate:
 
 ```sh
 bash scripts/check-cattle-jdk25-full-package
-ENGINE_VERSION=0.183.333 bash scripts/build --release
+ENGINE_VERSION=0.183.334 bash scripts/build --release
 bash scripts/check-release-artifact dist/artifacts/cattle.jar
 ```
 

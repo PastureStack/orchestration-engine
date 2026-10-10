@@ -7,6 +7,12 @@ import io.cattle.platform.core.constants.ProjectConstants;
 import io.cattle.platform.core.dao.AccountDao;
 import io.cattle.platform.core.model.Account;
 import io.cattle.platform.iaas.api.auth.AuthorizationProvider;
+import io.cattle.platform.iaas.api.auth.apikey.ApiKeyAuthorizationService;
+import io.cattle.platform.iaas.api.auth.apikey.ApiKeyDelegationService;
+import io.cattle.platform.iaas.api.auth.apikey.ApiKeyAuthenticationAudit;
+import io.cattle.platform.iaas.api.auth.apikey.ApiKeyCredentialContext;
+import io.cattle.platform.api.auth.ApiKeyAuditSink;
+import io.cattle.platform.iaas.api.auth.integration.internal.rancher.BasicAuthImpl;
 import io.cattle.platform.iaas.api.auth.SecurityConstants;
 import io.cattle.platform.iaas.api.auth.dao.AuthDao;
 import io.cattle.platform.iaas.api.auth.integration.external.ExternalServiceAuthProvider;
@@ -58,13 +64,35 @@ public class ApiAuthenticator extends AbstractApiRequestHandler {
     @Inject
     AccountDao accountDao;
 
+    @Inject ApiKeyAuthorizationService apiKeyAuthorization;
+    @Inject ApiKeyDelegationService delegationService;
+    @Inject List<ApiKeyAuditSink> auditSinks = java.util.Collections.emptyList();
+
     @Override
     public void handle(ApiRequest request) throws IOException {
+        try {
+            authenticate(request);
+        } catch (RuntimeException failure) {
+            if ((ApiKeyCredentialContext.get(request) != null || "apiKeyDelegationFailure".equals(request.getType()))
+                    && !Boolean.TRUE.equals(request.getAttribute("apiKey.audit.admitted"))
+                    && !(failure instanceof ClientVisibleException visible && "AuditUnavailable".equals(visible.getCode()))) {
+                ApiKeyAuthenticationAudit.deny(request, auditSinks,
+                        failure instanceof ClientVisibleException visible ? visible.getCode() : "AuthenticationUnavailable");
+            }
+            throw failure;
+        }
+    }
+
+    protected void authenticate(ApiRequest request) throws IOException {
         if (ApiContext.getContext().getPolicy() != null) {
             return;
         }
         if (ApiContext.getContext().getTransformationService() == null){
             ApiContext.getContext().setTransformationService(transformationService);
+        }
+        if (delegationService != null && (delegationService.handleProxyFailure(request)
+                || delegationService.handleIntrospection(request))) {
+            return;
         }
 
         Account authenticatedAsAccount = getAccount(request);
@@ -73,7 +101,7 @@ public class ApiAuthenticator extends AbstractApiRequestHandler {
             throw new ClientVisibleException(ResponseCodes.UNAUTHORIZED);
         }
 
-        Set<Identity> identities = getIdentities(authenticatedAsAccount);
+        Set<Identity> identities = getIdentities(authenticatedAsAccount, ApiKeyCredentialContext.get(request) != null);
         if (identities == null || identities.size() == 0) {
             throw new ClientVisibleException(ResponseCodes.UNAUTHORIZED);
         }
@@ -100,10 +128,32 @@ public class ApiAuthenticator extends AbstractApiRequestHandler {
             }
         }
         saveInContext(request, policy, schemaFactory, authenticatedAsAccount);
+        apiKeyAuthorization.authorize(request, policy);
     }
 
     protected void throwUnauthorized() {
         throw new ClientVisibleException(ResponseCodes.UNAUTHORIZED);
+    }
+
+    public record CurrentAuthorization(Policy policy, SchemaFactory schemas) { }
+
+    /** Rebuild, rather than cache, RBAC for queued Key work at execution time. */
+    public CurrentAuthorization currentAuthorization(long principalId, long accountId, ApiRequest request) {
+        Account principal = authDao.getAccountById(principalId);
+        Account account = authDao.getAccountById(accountId);
+        if (principal == null || account == null || !accountDao.isActiveAccount(principal) || !accountDao.isActiveAccount(account)) {
+            throw new ClientVisibleException(ResponseCodes.FORBIDDEN, "OwnerPermissionDenied", "The key owner no longer has access.", null);
+        }
+        Set<Identity> identities = getIdentities(principal, true);
+        Policy personal = getPolicy(principal, principal, identities, request);
+        if (personal == null || (principalId != accountId && !authDao.hasAccessToProject(accountId, principalId,
+                personal.isOption(Policy.AUTHORIZED_FOR_ALL_ACCOUNTS), identities))) {
+            throw new ClientVisibleException(ResponseCodes.FORBIDDEN, "OwnerPermissionDenied", "The key owner no longer has access.", null);
+        }
+        Policy policy = getPolicy(account, principal, identities, request);
+        SchemaFactory factory = getSchemaFactory(account, policy, request);
+        if (policy == null || factory == null) throw new ClientVisibleException(ResponseCodes.FORBIDDEN);
+        return new CurrentAuthorization(policy, factory);
     }
 
     protected void saveInContext(ApiRequest request, Policy policy, SchemaFactory schemaFactory, Account authorizedAccount) {
@@ -148,6 +198,20 @@ public class ApiAuthenticator extends AbstractApiRequestHandler {
     protected Account getAccount(ApiRequest request) {
         Account account = null;
 
+        String authorization = request.getServletContext().getRequest().getHeader("Authorization");
+        if (BasicAuthImpl.isBasicHeader(authorization)) {
+            // An explicitly supplied API credential must not silently turn into
+            // the broader browser-cookie session selected by an earlier lookup.
+            for (AccountLookup lookup : accountLookups) {
+                if ("BasicAuth".equals(lookup.getName()) && lookup.isConfigured()) {
+                    account = lookup.getAccount(request);
+                    if (account != null) request.setAttribute(AccountConstants.AUTH_TYPE, lookup.getName());
+                    return account;
+                }
+            }
+            return null;
+        }
+
         for (AccountLookup lookup : accountLookups) {
             if (lookup.isConfigured()){
                 account = lookup.getAccount(request);
@@ -173,12 +237,13 @@ public class ApiAuthenticator extends AbstractApiRequestHandler {
         return null;
     }
 
-    private Set<Identity> getIdentities(Account account) {
+    protected Set<Identity> getIdentities(Account account, boolean principalBound) {
         Set<Identity> identities = new HashSet<>();
         for (IdentityProvider identityProvider : identityProviders) {
            identities.addAll(identityProvider.getIdentities(account));
         }
-        identities.addAll(externalAuthProvider.getIdentities(account));
+        identities.addAll(principalBound ? externalAuthProvider.getPrincipalIdentities(account)
+                : externalAuthProvider.getIdentities(account));
         identities.remove(null);
         return identities;
     }

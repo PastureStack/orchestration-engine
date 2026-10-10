@@ -15,4 +15,9 @@ public interface TokenService {
 
     Map<String, Object> getJsonPayload(String token, boolean encrypted) throws TokenException;
 
+    /** Audit evidence only. NEVER use this expiry-ignoring result to authorize work. */
+    default Map<String, Object> getAuditSignaturePayload(String token) throws TokenException {
+        throw new TokenException("Signature-only audit verification is unavailable");
+    }
+
 }

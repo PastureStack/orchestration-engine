@@ -2,6 +2,7 @@ package io.cattle.platform.api.resource;
 
 import io.cattle.platform.api.action.ActionHandler;
 import io.cattle.platform.api.auth.Policy;
+import io.cattle.platform.api.auth.ApiResourceAccess;
 import io.cattle.platform.api.link.LinkHandler;
 import io.cattle.platform.api.utils.ApiUtils;
 import io.cattle.platform.engine.manager.ProcessNotFoundException;
@@ -71,6 +72,7 @@ public abstract class AbstractObjectResourceManager extends AbstractBaseResource
     List<ActionHandler> actionHandlers;
     Map<String, List<LinkHandler>> linkHandlersMap;
     List<LinkHandler> linkHandlers;
+    @Inject List<ApiResourceAccess> resourceAccess;
 
     protected AbstractObjectResourceManager() {
         this(DEFAULT_SETTINGS);
@@ -85,7 +87,14 @@ public abstract class AbstractObjectResourceManager extends AbstractBaseResource
 
     @Override
     protected Object authorize(Object object) {
-        return ApiUtils.authorizeObjectOrList(object);
+        Object authorized = ApiUtils.authorizeObjectOrList(object);
+        if (authorized instanceof List<?> values && resourceAccess != null) {
+            for (ApiResourceAccess access : resourceAccess) {
+                values = access.filterCollection(ApiContext.getContext().getApiRequest(), values);
+            }
+            return values;
+        }
+        return authorized;
     }
 
     @Override
@@ -379,7 +388,7 @@ public abstract class AbstractObjectResourceManager extends AbstractBaseResource
     @Override
     protected Resource constructResource(IdFormatter idFormatter, SchemaFactory schemaFactory, Schema schema, Object obj, ApiRequest apiRequest) {
         Map<String, Object> transitioningFields = metaDataManager.getTransitionFields(schema, obj);
-        return ApiUtils.createResourceWithAttachments(this, apiRequest, idFormatter, schemaFactory, schema, obj, transitioningFields);
+        return ApiUtils.createResourceWithAttachments(this, apiRequest, idFormatter, schemaFactory, schema, obj, transitioningFields, resourceAccess);
     }
 
     @Override

@@ -68,6 +68,8 @@ public class FileSchemaFactory extends AbstractSchemaFactory implements Initiali
             throw new IllegalStateException(e);
         }
 
+        addApiKeyPolicySchemas();
+
         init = true;
     }
 
@@ -93,6 +95,9 @@ public class FileSchemaFactory extends AbstractSchemaFactory implements Initiali
         mergeProjectMemberExternalIdTypeOptions(schema, coreSchema);
         mergeProjectTemplatePublicReadField(schema, coreSchema);
         mergeVolumeNativeReadField(schema, coreSchema);
+        mergeApiKeyPolicyFields(schema, coreSchema);
+        mergeApiKeyMfaPurposeOption(schema, coreSchema);
+        mergeAuditLogReadFields(schema, coreSchema);
         Class<?> clz =  parentSchemaFactory.getSchemaClass(schema.getId());
         if (clz == null) {
             return;
@@ -109,6 +114,95 @@ public class FileSchemaFactory extends AbstractSchemaFactory implements Initiali
             }
             ((FieldImpl) entry.getValue()).setReadMethod(((FieldImpl) parentField).getReadMethod());
         }
+    }
+
+    private void mergeApiKeyPolicyFields(Schema schema, Schema coreSchema) {
+        if (coreSchema == null || !("apiKey".equals(schema.getId()) || "apiKeyRestricted".equals(schema.getId()))) {
+            return;
+        }
+        for (String name : List.of("apiKeyPolicy", "apiKeyPolicyRevision", "securityConfirmation")) {
+            Field coreField = coreSchema.getResourceFields().get(name);
+            if (!(coreField instanceof FieldImpl) || schema.getResourceFields().containsKey(name)) continue;
+            FieldImpl field = new FieldImpl(coreField);
+            field.setName(name);
+            field.setCreate(field.isCreate() && schema.getCollectionMethods().contains("POST"));
+            field.setUpdate(field.isUpdate() && schema.getResourceMethods().contains("PUT"));
+            schema.getResourceFields().put(name, field);
+        }
+    }
+
+    private void mergeApiKeyMfaPurposeOption(Schema schema, Schema coreSchema) {
+        if (coreSchema == null || !"mfaOperation".equals(schema.getId())
+                || !schema.getCollectionMethods().contains("POST")) return;
+        Field field = schema.getResourceFields().get("purpose");
+        Field coreField = coreSchema.getResourceFields().get("purpose");
+        if (!(field instanceof FieldImpl) || !field.isCreate() || coreField == null
+                || coreField.getOptions() == null || !coreField.getOptions().contains("apiKeyPolicyUpdate")
+                || (field.getOptions() != null && field.getOptions().contains("apiKeyPolicyUpdate"))) return;
+        // Extend only the purpose already writable by this frozen role, without
+        // importing other core options or changing any field permissions.
+        List<String> options = field.getOptions() == null ? new ArrayList<>() : new ArrayList<>(field.getOptions());
+        options.add("apiKeyPolicyUpdate");
+        ((FieldImpl) field).setOptions(options);
+    }
+
+    private void mergeAuditLogReadFields(Schema schema, Schema coreSchema) {
+        if (coreSchema == null || !"auditLog".equals(schema.getId())) return;
+        // Extend only an audit schema already granted by the frozen role. These
+        // are server-owned, non-secret metadata; neither role access nor writes
+        // are added, and existing fields/methods/actions remain untouched.
+        for (String name : List.of("eventId", "keyId", "decision", "outcome", "httpStatus", "requestId",
+                "actor", "targetType", "targetId", "operation", "policyRevision", "reason", "phase",
+                "preview", "processId", "processName", "hostUuid", "failureCode")) {
+            Field coreField = coreSchema.getResourceFields().get(name);
+            if (!(coreField instanceof FieldImpl) || schema.getResourceFields().containsKey(name)) continue;
+            FieldImpl field = new FieldImpl(coreField);
+            field.setName(name);
+            field.setCreate(false);
+            field.setUpdate(false);
+            field.setReadOnCreateOnly(false);
+            field.setIncludeInList(true);
+            schema.getResourceFields().put(name, field);
+        }
+    }
+
+    /** Only these new contracts are added to the frozen v1 role schemas. */
+    private void addApiKeyPolicySchemas() {
+        Schema apiKey = getSchema("apiKey");
+        if (apiKey == null) return;
+        Schema restrictedCore = schemaFactory.getSchema("apiKeyRestricted");
+        if (restrictedCore != null && getSchema("apiKeyRestricted") == null) {
+            SchemaImpl restricted = new SchemaImpl();
+            restricted.setId("apiKeyRestricted");
+            restricted.setType("schema");
+            restricted.setPluralName(restrictedCore.getPluralName());
+            restricted.setParent("apiKey");
+            restricted.setCollectionMethods(new ArrayList<>(apiKey.getCollectionMethods()));
+            restricted.setResourceMethods(new ArrayList<>(apiKey.getResourceMethods()));
+            restricted.setResourceActions(new HashMap<>(apiKey.getResourceActions()));
+            restricted.setCollectionActions(new HashMap<>(apiKey.getCollectionActions()));
+            apiKey.getResourceFields().forEach((name, field) -> restricted.getResourceFields().put(name, new FieldImpl(field)));
+            addSupplementalSchema(restricted);
+        }
+        Schema previewCore = schemaFactory.getSchema("apiKeyPolicyPreview");
+        if (previewCore != null && getSchema("apiKeyPolicyPreview") == null
+                && (apiKey.getCollectionMethods().contains("POST") || apiKey.getResourceMethods().contains("PUT"))) {
+            SchemaImpl preview = new SchemaImpl();
+            preview.setId("apiKeyPolicyPreview");
+            preview.setType("schema");
+            preview.setPluralName(previewCore.getPluralName());
+            preview.setCollectionMethods(new ArrayList<>(previewCore.getCollectionMethods()));
+            preview.setResourceMethods(new ArrayList<>());
+            previewCore.getResourceFields().forEach((name, field) -> preview.getResourceFields().put(name, new FieldImpl(field)));
+            addSupplementalSchema(preview);
+        }
+    }
+
+    private void addSupplementalSchema(SchemaImpl schema) {
+        copyAccessors(schema);
+        schemaMap.put(schema.getId().toLowerCase(), schema);
+        if (StringUtils.isNotBlank(schema.getPluralName())) schemaMap.put(schema.getPluralName().toLowerCase(), schema);
+        schemas.add(schema);
     }
 
     protected void mergeProjectMemberExternalIdTypeOptions(Schema schema, Schema parentSchema) {

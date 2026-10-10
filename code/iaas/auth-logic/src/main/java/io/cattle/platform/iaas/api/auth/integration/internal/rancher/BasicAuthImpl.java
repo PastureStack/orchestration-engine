@@ -14,6 +14,11 @@ import io.cattle.platform.core.model.Account;
 import io.cattle.platform.core.model.Agent;
 import io.cattle.platform.iaas.api.auth.SecurityConstants;
 import io.cattle.platform.iaas.api.auth.dao.AuthDao;
+import io.cattle.platform.iaas.api.auth.apikey.ApiKeyCredentialContext;
+import io.cattle.platform.iaas.api.auth.apikey.ApiKeyPolicy;
+import io.cattle.platform.iaas.api.auth.apikey.VerifiedApiCredential;
+import io.cattle.platform.iaas.api.auth.apikey.ApiKeyAuthenticationAudit;
+import io.cattle.platform.api.auth.ApiKeyAuditSink;
 import io.cattle.platform.iaas.api.auth.integration.interfaces.AccountLookup;
 import io.cattle.platform.object.ObjectManager;
 import io.cattle.platform.object.util.DataAccessor;
@@ -22,6 +27,8 @@ import io.github.ibuildthecloud.gdapi.condition.Condition;
 import io.github.ibuildthecloud.gdapi.condition.ConditionType;
 import io.github.ibuildthecloud.gdapi.context.ApiContext;
 import io.github.ibuildthecloud.gdapi.request.ApiRequest;
+import io.github.ibuildthecloud.gdapi.exception.ClientVisibleException;
+import io.github.ibuildthecloud.gdapi.util.ResponseCodes;
 
 import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
@@ -51,15 +58,44 @@ public class BasicAuthImpl implements AccountLookup, Priority {
     ObjectManager objectManager;
     @Inject
     TokenAuthLookup tokenAuthLookUp;
+    @Inject
+    List<ApiKeyAuditSink> auditSinks = java.util.Collections.emptyList();
 
     @Override
     public Account getAccount(ApiRequest request) {
-        String[] auth = getUsernamePassword(request.getServletContext().getRequest().getHeader(AUTH_HEADER));
+        String header = request.getServletContext().getRequest().getHeader(AUTH_HEADER);
+        String[] auth = getUsernamePassword(header);
         if (auth == null) {
+            if (isBasicHeader(header)) {
+                ApiKeyAuthenticationAudit.deny(request, auditSinks, "MalformedBasicCredentials");
+            }
             return null;
         }
-        Account account = authDao.getAccountByKeys(auth[0], auth[1], ApiContext.getContext().getTransformationService());
+        VerifiedApiCredential verified;
+        try {
+            verified = authDao.getVerifiedApiCredential(auth[0], auth[1], ApiContext.getContext().getTransformationService());
+        } catch (RuntimeException failure) {
+            ApiKeyAuthenticationAudit.deny(request, auditSinks,
+                    failure instanceof ClientVisibleException visible ? visible.getCode() : "AuthenticationUnavailable");
+            throw failure;
+        }
+        if (verified != null && verified.context() != null) {
+            ApiKeyCredentialContext.attach(request, verified.context());
+            if (verified.denialCode() != null) {
+                ApiKeyAuthenticationAudit.deny(request, auditSinks, verified.denialCode());
+                throw new ClientVisibleException(ResponseCodes.FORBIDDEN, verified.denialCode());
+            }
+        }
+        Account account = verified == null ? null : verified.account();
         if (account != null) {
+            if (verified.context() != null) {
+                ApiKeyPolicy policy = verified.context().policy();
+                if (policy != null && policy.getExpiresAt() != null
+                        && !java.time.Instant.now().isBefore(policy.getExpiresAt())) {
+                    ApiKeyAuthenticationAudit.deny(request, auditSinks, "ApiKeyExpired");
+                    throw new ClientVisibleException(ResponseCodes.FORBIDDEN, "ApiKeyExpired");
+                }
+            }
             return switchAccount(account, request);
         } else if (auth[0].toLowerCase().startsWith(ProjectConstants.OAUTH_BASIC.toLowerCase()) && SecurityConstants.SECURITY.get()) {
             String[] splits = auth[0].split("=");
@@ -71,6 +107,9 @@ public class BasicAuthImpl implements AccountLookup, Priority {
             String projectId = splits.length == 2 ? splits[1] : null;
             request.setAttribute(ProjectConstants.PROJECT_HEADER, projectId);
             account = adminAuthLookUp.getAccount(request);
+        }
+        if (account == null && ApiKeyCredentialContext.get(request) == null) {
+            ApiKeyAuthenticationAudit.deny(request, auditSinks, "InvalidApiCredential");
         }
         return account;
     }
@@ -192,6 +231,15 @@ public class BasicAuthImpl implements AccountLookup, Priority {
     @Inject
     public void setAuthDao(AuthDao authDao) {
         this.authDao = authDao;
+    }
+
+    public static boolean isBasicHeader(String header) {
+        String[] parts = StringUtils.split(header);
+        return parts != null && parts.length > 0 && BASIC.equalsIgnoreCase(parts[0]);
+    }
+
+    public void setAuditSinks(List<ApiKeyAuditSink> sinks) {
+        auditSinks = sinks == null ? java.util.Collections.emptyList() : List.copyOf(sinks);
     }
 
     @Override

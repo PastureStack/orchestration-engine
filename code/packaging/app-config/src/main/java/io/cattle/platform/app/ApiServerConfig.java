@@ -93,6 +93,7 @@ import io.github.ibuildthecloud.gdapi.factory.impl.SubSchemaFactory;
 import io.github.ibuildthecloud.gdapi.id.IdFormatter;
 import io.github.ibuildthecloud.gdapi.response.impl.ResourceOutputFilterManagerImpl;
 import io.github.ibuildthecloud.gdapi.servlet.ApiRequestFilterDelegate;
+import io.github.ibuildthecloud.gdapi.request.handler.ApiRequestCompletionSink;
 import io.github.ibuildthecloud.gdapi.version.Versions;
 
 import java.net.URL;
@@ -100,6 +101,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
+import java.util.List;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 
@@ -173,13 +175,15 @@ public class ApiServerConfig {
 
     @Bean
     ApiRequestFilterDelegate ApiRequestFilterDelegate(@Qualifier("DefaultIdFormatter") IdFormatter idF,
-            @Qualifier("v1-base-factory") SchemaFactory v1, @Qualifier("CoreSchemaFactory") SchemaFactory core) {
+            @Qualifier("v1-base-factory") SchemaFactory v1, @Qualifier("CoreSchemaFactory") SchemaFactory core,
+            List<ApiRequestCompletionSink> completionSinks) {
         Map<String, SchemaFactory> factories = new HashMap<>();
         factories.put("v1", v1);
         factories.put("v2-beta", core);
         io.github.ibuildthecloud.gdapi.servlet.ApiRequestFilterDelegate delegate = new ApiRequestFilterDelegate();
         delegate.setSchemaFactories(factories);
         delegate.setIdFormatter(idF);
+        delegate.setCompletionSinks(completionSinks);
         return delegate;
     }
 

@@ -1,6 +1,7 @@
 package io.cattle.platform.api.utils;
 
 import io.cattle.platform.api.auth.Policy;
+import io.cattle.platform.api.auth.ApiResourceAccess;
 import io.cattle.platform.api.auth.impl.DefaultPolicy;
 import io.cattle.platform.object.meta.ObjectMetaDataManager;
 import io.cattle.platform.object.util.DataUtils;
@@ -18,6 +19,7 @@ import io.github.ibuildthecloud.gdapi.util.RequestUtils;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -199,6 +201,13 @@ public class ApiUtils {
 
     public static Resource createResourceWithAttachments(final ResourceManager resourceManager, final ApiRequest request, final IdFormatter idFormatter,
             final SchemaFactory schemaFactory, final Schema schema, Object obj, Map<String, Object> inputAdditionalFields) {
+        return createResourceWithAttachments(resourceManager, request, idFormatter, schemaFactory, schema, obj, inputAdditionalFields,
+                Collections.emptyList());
+    }
+
+    public static Resource createResourceWithAttachments(final ResourceManager resourceManager, final ApiRequest request, final IdFormatter idFormatter,
+            final SchemaFactory schemaFactory, final Schema schema, Object obj, Map<String, Object> inputAdditionalFields,
+            final List<ApiResourceAccess> resourceAccess) {
         Integer depth = DEPTH.get();
 
         try {
@@ -217,6 +226,21 @@ public class ApiUtils {
                         input = ApiUtils.authorizeObjectOrList(input);
                         if (input == null)
                             return null;
+
+                        // Include/join objects are ordinary readable resources,
+                        // not an escape from the same guard used by root lists.
+                        List<?> permitted = input instanceof List<?> values ? values : List.of(input);
+                        if (resourceAccess != null) {
+                            for (ApiResourceAccess access : resourceAccess) {
+                                permitted = access.filterCollection(request, permitted);
+                            }
+                        }
+                        if (input instanceof List<?>) {
+                            input = permitted;
+                        } else {
+                            if (permitted.isEmpty()) return null;
+                            input = permitted.get(0);
+                        }
 
                         return resourceManager.convertResponse(input, request);
                     }

@@ -1,0 +1,12 @@
+{
+  "id": "apiKeyDelegationCompletion",
+  "collectionMethods": ["POST"],
+  "resourceMethods": [],
+  "resourceFields": {
+    "token": {"type": "password", "create": true, "required": true, "readOnCreateOnly": false, "read": false},
+    "outcome": {"type": "enum", "create": true, "required": true, "options": ["SUCCEEDED", "FAILED", "CANCELLED"]},
+    "failureCode": {"type": "string", "create": true, "maxLength": 128},
+    "accepted": {"type": "boolean"},
+    "eventId": {"type": "string"}
+  }
+}

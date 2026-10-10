@@ -160,6 +160,21 @@ public class JwtTokenServiceImpl implements TokenService {
         return jose.getPayload().toJSONObject();
     }
 
+    @Override
+    public Map<String, Object> getAuditSignaturePayload(String token) throws TokenException {
+        if (token == null || token.isEmpty() || token.length() > 16 * 1024) throw new TokenException("Invalid audit ticket");
+        try {
+            JWSObject jws = JWSObject.parse(token);
+            if (!JWSAlgorithm.RS256.equals(jws.getHeader().getAlgorithm())
+                    || !jws.verify(new RSASSAVerifier((RSAPublicKey) keyProvider.getDefaultPublicKey()))) {
+                throw new TokenException("Invalid audit ticket signature");
+            }
+            return jws.getPayload().toJSONObject();
+        } catch (ParseException | JOSEException invalid) {
+            throw new TokenException("Invalid audit ticket signature", invalid);
+        }
+    }
+
     @Inject
     public void setKeyProvider(RSAKeyProvider keyProvider) {
         this.keyProvider = keyProvider;
