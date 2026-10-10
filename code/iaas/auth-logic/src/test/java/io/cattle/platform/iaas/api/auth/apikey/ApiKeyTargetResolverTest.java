@@ -14,6 +14,9 @@ import io.cattle.platform.core.model.ImageStoragePoolMap;
 import io.cattle.platform.core.model.StoragePool;
 import io.cattle.platform.core.model.Credential;
 import io.cattle.platform.engine.context.EngineContext;
+import io.cattle.platform.engine.process.LaunchConfiguration;
+import io.cattle.platform.engine.process.ProcessAuthorization;
+import io.cattle.platform.engine.manager.impl.ProcessRecord;
 import io.cattle.platform.core.model.ServiceExposeMap;
 import static io.cattle.platform.core.model.tables.InstanceTable.INSTANCE;
 import static io.cattle.platform.core.model.tables.ServiceExposeMapTable.SERVICE_EXPOSE_MAP;
@@ -287,6 +290,372 @@ public class ApiKeyTargetResolverTest {
         f.instance.setRemoved(new java.util.Date(1));
         for (Object child : f.children()) {
             assertThrows(ClientVisibleException.class, () -> resolver.resolveLifecycleDependency(f.service, child, owner));
+        }
+    }
+    private Map<String, Object> finishUpgradeBinding() {
+        return new HashMap<>(Map.of("targetType", "service", "targetId", "2", "operation", "upgrade",
+                "requestAction", "finishupgrade", "requestMethod", "POST", "requestCollection", false, "preview", false));
+    }
+    private Lifecycle removalLifecycle() {
+        Lifecycle f = lifecycle();
+        f.instance.setState("removing"); f.expose.setState("removed"); f.expose.setRemoved(new java.util.Date(1));
+        f.volume.setDeviceNumber(0); f.volume.setImageId(7L); f.volume.setState("detached");
+        when(resolver.objectManager.find(ServiceExposeMap.class, SERVICE_EXPOSE_MAP.INSTANCE_ID, 3L,
+                SERVICE_EXPOSE_MAP.SERVICE_ID, 2L, SERVICE_EXPOSE_MAP.MANAGED, false,
+                SERVICE_EXPOSE_MAP.UPGRADE, true, SERVICE_EXPOSE_MAP.STATE, "removed")).thenReturn(List.of(f.expose));
+        when(resolver.objectManager.find(ServiceExposeMap.class, SERVICE_EXPOSE_MAP.INSTANCE_ID, 3L,
+                SERVICE_EXPOSE_MAP.REMOVED, null)).thenReturn(List.of());
+        return f;
+    }
+    @Test public void finishUpgradeRetainsExactTombstoneOnlyForRemovingInstanceAndItsOsVolume() {
+        Lifecycle f = removalLifecycle(); var binding = finishUpgradeBinding();
+        var queued = resolver.resolveUpgradeRemovalDependency(f.service, f.instance, owner, "instance.remove", "instance", null, binding);
+        assertEquals(ApiKeyPolicyEvaluator.Target.stackResource("container", "1i3", "1a5", "1st8"), queued.scope());
+        // Generic public/lifecycle resolution still does not revive removed maps.
+        assertEquals(ApiKeyPolicyEvaluator.Target.projectResource("container", "1i3", "1a5"), resolver.resolveObject("container", f.instance, owner));
+        assertThrows(ClientVisibleException.class, () -> resolver.resolveLifecycleDependency(f.service, f.volume, owner));
+        assertThrows(ClientVisibleException.class, () -> resolver.resolveLifecycleDependency(f.service, f.expose, owner));
+        EngineContext engine = EngineContext.getEngineContext();
+        var instanceFrame = engine.pushVerifiedExecution("instance", "3", binding);
+        try {
+            assertNotNull(resolver.resolveUpgradeRemovalDependency(f.service, f.instance, owner, "instance.deallocate", "instance", instanceFrame, binding));
+            var volume = resolver.resolveUpgradeRemovalDependency(f.service, f.volume, owner, "volume.remove", "volume", instanceFrame, binding);
+            assertEquals(ApiKeyPolicyEvaluator.Target.stackResource("volume", "1v6", "1a5", "1st8"), volume.scope());
+            assertTrue(volume.resources().containsAll(queued.resources()));
+            assertTrue(volume.resources().stream().anyMatch(t -> "serviceExposeMap".equals(t.resourceType())));
+        } finally { engine.popVerifiedExecution(instanceFrame); }
+        var volumeFrame = engine.pushVerifiedExecution("volume", "6", binding);
+        try { assertNotNull(resolver.resolveUpgradeRemovalDependency(f.service, f.volume, owner, "volume.deallocate", "volume", volumeFrame, binding)); }
+        finally { engine.popVerifiedExecution(volumeFrame); }
+        f.service.setStackId(null);
+        assertEquals(ApiKeyPolicyEvaluator.Target.projectResource("container", "1i3", "1a5"),
+                resolver.resolveUpgradeRemovalDependency(f.service, f.instance, owner, "instance.remove", "instance", null, binding).scope());
+    }
+    @Test public void removalTombstoneReloadRejectsMissingForeignUnmarkedAndContradictoryRows() {
+        for (String invalid : List.of("missing-map", "map-id", "map-account", "map-service", "map-instance", "managed", "upgrade",
+                "map-live", "map-purged", "instance-account", "instance-service", "instance-stack", "missing-instance",
+                "removed-instance", "missing-service", "removed-service", "foreign-stack", "removed-stack", "removed-project")) {
+            Lifecycle f = removalLifecycle(); var binding = finishUpgradeBinding();
+            switch (invalid) {
+                case "missing-map" -> f.rows.get(ServiceExposeMap.class).clear();
+                case "map-id" -> f.expose.setId(99L);
+                case "map-account" -> f.expose.setAccountId(6L);
+                case "map-service" -> f.expose.setServiceId(99L);
+                case "map-instance" -> f.expose.setInstanceId(99L);
+                case "managed" -> f.expose.setManaged(true);
+                case "upgrade" -> f.expose.setUpgrade(false);
+                case "map-live" -> f.expose.setRemoved(null);
+                case "map-purged" -> f.expose.setState("purged");
+                case "instance-account" -> f.instance.setAccountId(6L);
+                case "instance-service" -> f.instance.setServiceId(99L);
+                case "instance-stack" -> f.instance.setStackId(99L);
+                case "missing-instance" -> f.rows.get(Instance.class).clear();
+                case "removed-instance" -> f.instance.setRemoved(new java.util.Date(1));
+                case "missing-service" -> f.rows.get(Service.class).clear();
+                case "removed-service" -> f.service.setRemoved(new java.util.Date(1));
+                case "foreign-stack" -> f.stack.setAccountId(6L);
+                case "removed-stack" -> f.stack.setRemoved(new java.util.Date(1));
+                case "removed-project" -> ((Account) f.rows.get(Account.class).get(5L)).setRemoved(new java.util.Date(1));
+            }
+            assertThrows(invalid, ClientVisibleException.class, () -> resolver.resolveUpgradeRemovalDependency(
+                    f.service, f.instance, owner, "instance.remove", "instance", null, binding));
+        }
+        Lifecycle f = removalLifecycle(); var binding = finishUpgradeBinding();
+        ServiceExposeMapRecord forged = new ServiceExposeMapRecord(); forged.from(f.expose); forged.setRemoved(new java.util.Date(2));
+        when(resolver.objectManager.find(ServiceExposeMap.class, SERVICE_EXPOSE_MAP.INSTANCE_ID, 3L,
+                SERVICE_EXPOSE_MAP.SERVICE_ID, 2L, SERVICE_EXPOSE_MAP.MANAGED, false,
+                SERVICE_EXPOSE_MAP.UPGRADE, true, SERVICE_EXPOSE_MAP.STATE, "removed")).thenReturn(List.of(forged));
+        assertThrows(ClientVisibleException.class, () -> resolver.resolveUpgradeRemovalDependency(
+                f.service, f.instance, owner, "instance.remove", "instance", null, binding));
+    }
+    @Test public void removalCannotBorrowTombstoneAfterLiveInstanceReassignment() {
+        Lifecycle f = removalLifecycle(); var binding = finishUpgradeBinding();
+        ServiceExposeMapRecord other = new ServiceExposeMapRecord(); other.from(f.expose);
+        other.setId(99L); other.setServiceId(99L); other.setRemoved(null); other.setState("active"); f.add(ServiceExposeMap.class, other);
+        when(resolver.objectManager.find(ServiceExposeMap.class, SERVICE_EXPOSE_MAP.INSTANCE_ID, 3L,
+                SERVICE_EXPOSE_MAP.REMOVED, null)).thenReturn(List.of(other));
+        assertThrows(ClientVisibleException.class, () -> resolver.resolveUpgradeRemovalDependency(
+                f.service, f.instance, owner, "instance.remove", "instance", null, binding));
+        other.setServiceId(2L); other.setManaged(true); other.setUpgrade(false);
+        assertThrows(ClientVisibleException.class, () -> resolver.resolveUpgradeRemovalDependency(
+                f.service, f.instance, owner, "instance.remove", "instance", null, binding));
+    }
+    @Test public void removalBindingAndCurrentFrameCannotBeReconstructedFromANameOrPayload() {
+        for (String field : List.of("targetType", "targetId", "operation", "requestAction", "requestMethod", "requestCollection", "preview")) {
+            Lifecycle f = removalLifecycle(); var binding = finishUpgradeBinding(); binding.remove(field);
+            assertThrows(field, ClientVisibleException.class, () -> resolver.resolveUpgradeRemovalDependency(
+                    f.service, f.instance, owner, "instance.remove", "instance", null, binding));
+        }
+        Lifecycle f = removalLifecycle(); var binding = finishUpgradeBinding();
+        assertThrows(ClientVisibleException.class, () -> resolver.resolveUpgradeRemovalDependency(f.service, f.volume, owner, "volume.remove", "volume", null, binding));
+        assertThrows(ClientVisibleException.class, () -> resolver.resolveUpgradeRemovalDependency(f.service, f.instance, owner, "instance.deallocate", "instance", null, binding));
+        EngineContext engine = EngineContext.getEngineContext();
+        for (String invalid : List.of("instance-id", "resource-type", "root-binding")) {
+            var frame = engine.pushVerifiedExecution(invalid.equals("resource-type") ? "service" : "instance",
+                    invalid.equals("instance-id") ? "99" : "3", invalid.equals("root-binding") ? Map.of("targetId", "99") : binding);
+            try { assertThrows(invalid, ClientVisibleException.class, () -> resolver.resolveUpgradeRemovalDependency(
+                    f.service, f.volume, owner, "volume.remove", "volume", frame, binding)); }
+            finally { engine.popVerifiedExecution(frame); }
+        }
+        assertNull(resolver.resolveUpgradeRemovalDependency(f.service, f.instance, owner, "instance.stop", "instance", null, binding));
+        assertNull(resolver.resolveUpgradeRemovalDependency(f.service, f.instance, owner, "instance.remove", "volume", null, binding));
+        assertNull(resolver.resolveUpgradeRemovalDependency(f.service, f.volume, owner, "volume.activate", "volume", null, binding));
+        assertNull(resolver.resolveUpgradeRemovalDependency(f.stack, f.instance, owner, "instance.remove", "instance", null, binding));
+    }
+    @Test public void osVolumeRemovalRejectsForeignDeviceAndOutsideMountOrForgedPersistedReferences() {
+        for (String invalid : List.of("account", "device", "instance", "stack", "removed", "outside-mount", "foreign-mount", "forged-image")) {
+            Lifecycle f = removalLifecycle(); var binding = finishUpgradeBinding(); VolumeRecord attempted = f.volume;
+            switch (invalid) {
+                case "account" -> f.volume.setAccountId(6L);
+                case "device" -> f.volume.setDeviceNumber(1);
+                case "instance" -> f.volume.setInstanceId(99L);
+                case "stack" -> f.volume.setStackId(99L);
+                case "removed" -> f.volume.setRemoved(new java.util.Date(1));
+                case "outside-mount" -> f.mount.setInstanceId(99L);
+                case "foreign-mount" -> f.mount.setAccountId(6L);
+                case "forged-image" -> { attempted = new VolumeRecord(); attempted.from(f.volume); attempted.setImageId(99L); }
+            }
+            VolumeRecord resource = attempted;
+            EngineContext engine = EngineContext.getEngineContext(); var frame = engine.pushVerifiedExecution("instance", "3", binding);
+            try { assertThrows(invalid, ClientVisibleException.class, () -> resolver.resolveUpgradeRemovalDependency(
+                    f.service, resource, owner, "volume.remove", "volume", frame, binding)); }
+            finally { engine.popVerifiedExecution(frame); }
+        }
+    }
+    @Test public void removalStillRequiresOwnerAccessAndPreservesEveryDependencyDenial() {
+        Lifecycle f = removalLifecycle(); var binding = finishUpgradeBinding();
+        for (Object blocked : List.of(f.instance, f.service, f.expose, f.stack, f.volume)) {
+            Policy live = mock(Policy.class);
+            when(live.authorizeObject(any())).thenAnswer(i -> i.getArgument(0) == blocked ? null : i.getArgument(0));
+            EngineContext engine = EngineContext.getEngineContext(); var frame = engine.pushVerifiedExecution("instance", "3", binding);
+            try { assertThrows(ClientVisibleException.class, () -> resolver.resolveUpgradeRemovalDependency(
+                    f.service, f.volume, live, "volume.remove", "volume", frame, binding)); }
+            finally { engine.popVerifiedExecution(frame); }
+        }
+        var dependency = resolver.resolveUpgradeRemovalDependency(f.service, f.instance, owner, "instance.remove", "instance", null, binding);
+        for (var target : dependency.resources()) {
+            ApiKeyPolicy policy = new ApiKeyPolicy(ApiKeyPolicy.Mode.CUSTOM, ApiKeyPolicy.Effect.DENY, null, List.of(
+                    new ApiKeyPolicy.Rule("root", ApiKeyPolicy.Effect.ALLOW, ApiKeyPolicy.Scope.resource("service", "1s2"), java.util.Set.of("upgrade")),
+                    new ApiKeyPolicy.Rule("deny", ApiKeyPolicy.Effect.DENY, ApiKeyPolicy.Scope.resource(target.resourceType(), target.resourceId()), java.util.Set.of("upgrade"))));
+            assertEquals(ApiKeyPolicyEvaluator.Reason.POLICY_DENIED, new ApiKeyPolicyEvaluator().evaluateAuthorizedDependency(policy,
+                    new ApiKeyPolicyEvaluator.Request(true, "upgrade", true, dependency.resources()), java.time.Instant.EPOCH).reason());
+        }
+    }
+    private Lifecycle cleanupLifecycle() {
+        Lifecycle f = removalLifecycle(); f.volume.setState("removing"); f.volume.setUuid("private-volume");
+        f.instance.setImageId(7L); f.poolMap.setState("inactive"); f.poolMap.setUuid("private-allocation");
+        ImageRecord image = new ImageRecord(); image.setId(7L); image.setUuid("private-image"); image.setFormat("docker");
+        image.setInstanceKind("container"); image.setState("active"); f.add(Image.class, image);
+        ImageStoragePoolMapRecord cache = new ImageStoragePoolMapRecord(); cache.setId(14L); cache.setUuid("private-cache");
+        cache.setImageId(7L); cache.setStoragePoolId(9L); cache.setState("active"); f.add(ImageStoragePoolMap.class, cache);
+        StoragePoolRecord pool = new StoragePoolRecord(); pool.setId(9L); pool.setAccountId(5L); pool.setUuid("pool-nine"); f.add(StoragePool.class, pool);
+        HostRecord host = new HostRecord(); host.setId(9L); host.setAccountId(5L); f.add(io.cattle.platform.core.model.Host.class, host);
+        when(resolver.objectManager.find(VolumeStoragePoolMap.class, VOLUME_STORAGE_POOL_MAP.VOLUME_ID, 6L)).thenAnswer(i ->
+                f.rows.get(VolumeStoragePoolMap.class).values().stream().map(VolumeStoragePoolMap.class::cast).toList());
+        when(resolver.objectManager.find(ImageStoragePoolMap.class,
+                io.cattle.platform.core.model.tables.ImageStoragePoolMapTable.IMAGE_STORAGE_POOL_MAP.IMAGE_ID, 7L)).thenAnswer(i ->
+                f.rows.get(ImageStoragePoolMap.class).values().stream().map(ImageStoragePoolMap.class::cast).toList());
+        when(resolver.objectManager.find(Volume.class, io.cattle.platform.core.model.tables.VolumeTable.VOLUME.IMAGE_ID, 7L,
+                io.cattle.platform.core.model.tables.VolumeTable.VOLUME.REMOVED, null)).thenAnswer(i ->
+                f.rows.get(Volume.class).values().stream().map(Volume.class::cast).filter(v -> v.getRemoved() == null && Long.valueOf(7).equals(v.getImageId())).toList());
+        when(resolver.objectManager.find(Instance.class, INSTANCE.IMAGE_ID, 7L, INSTANCE.REMOVED, null)).thenAnswer(i ->
+                f.rows.get(Instance.class).values().stream().map(Instance.class::cast).filter(v -> v.getRemoved() == null && Long.valueOf(7).equals(v.getImageId())).toList());
+        return f;
+    }
+    private LaunchConfiguration cleanupJob(String type, String action, long id) {
+        return new LaunchConfiguration(type.toLowerCase() + "." + action, type, Long.toString(id), 5L, 0, new HashMap<>());
+    }
+    private ProcessRecord queuedMap(Lifecycle f, Map<String, Object> binding) {
+        EngineContext engine = EngineContext.getEngineContext(); engine.pushAuthorization(binding);
+        var frame = engine.pushVerifiedExecution("volume", "6", binding);
+        try {
+            LaunchConfiguration config = cleanupJob("volumeStoragePoolMap", "remove", 12);
+            ProcessAuthorization.prepare(config, List.of());
+            ProcessRecord record = new ProcessRecord(config, 99L, "server");
+            assertNotNull(resolver.resolveUpgradeCleanupDependency(f.service, f.poolMap, owner, record, frame, null, binding));
+            return record;
+        } finally { engine.popVerifiedExecution(frame); engine.popAuthorization(); }
+    }
+    @Test public void exactImageAndAllPrivateCachePoolsCleanUpOnlyUnderVerifiedVolume() {
+        Lifecycle f = cleanupLifecycle(); var binding = finishUpgradeBinding(); EngineContext engine = EngineContext.getEngineContext();
+        var volume = engine.pushVerifiedExecution("volume", "6", binding);
+        try {
+            Image image = (Image) f.rows.get(Image.class).get(7L);
+            for (String action : List.of("deactivate", "remove")) {
+                var dependency = resolver.resolveUpgradeCleanupDependency(f.service, image, owner, cleanupJob("image", action, 7), volume, null, binding);
+                assertEquals("volume", dependency.scope().resourceType());
+                assertTrue(dependency.resources().stream().anyMatch(t -> "image".equals(t.resourceType()) && "1img7".equals(t.resourceId())));
+            }
+            var imageFrame = engine.pushVerifiedExecution("image", "7", binding);
+            try {
+                ImageStoragePoolMap cache = (ImageStoragePoolMap) f.rows.get(ImageStoragePoolMap.class).get(14L);
+                for (String action : List.of("deactivate", "remove"))
+                    assertNotNull(resolver.resolveUpgradeCleanupDependency(f.service, cache, owner,
+                            cleanupJob("imageStoragePoolMap", action, 14), imageFrame, volume, binding));
+            } finally { engine.popVerifiedExecution(imageFrame); }
+            // Removed allocation history remains private relationship evidence.
+            f.poolMap.setState("removed"); f.poolMap.setRemoved(new java.util.Date(1));
+            assertNotNull(resolver.resolveUpgradeCleanupDependency(f.service, image, owner, cleanupJob("image", "remove", 7), volume, null, binding));
+            assertThrows(ClientVisibleException.class, () -> resolver.resolveObject("image", image, owner));
+        } finally { engine.popVerifiedExecution(volume); }
+    }
+    @Test public void queuedMapRemoveRetainsExactPinAfterOwnedParentsAreRemovedWithoutFakeFrame() {
+        Lifecycle f = cleanupLifecycle(); var binding = finishUpgradeBinding(); ProcessRecord record = queuedMap(f, binding);
+        f.volume.setState("removed"); f.volume.setRemoved(new java.util.Date(1));
+        f.instance.setState("removed"); f.instance.setRemoved(new java.util.Date(1));
+        assertNull(EngineContext.getEngineContext().currentVerifiedExecution());
+        assertNotNull(resolver.resolveUpgradeCleanupDependency(f.service, f.poolMap, owner, record, null, null, binding));
+        assertThrows(ClientVisibleException.class, () -> resolver.resolveLifecycleDependency(f.service, f.poolMap, owner));
+    }
+    @Test public void queuedMapRejectsPoolDriftRebuiltRowsAndUnverifiedRetryPayload() {
+        for (String invalid : List.of("pool", "map-uuid", "volume-uuid", "pool-uuid", "child", "process", "root", "payload")) {
+            Lifecycle f = cleanupLifecycle(); var binding = finishUpgradeBinding(); ProcessRecord record = queuedMap(f, binding);
+            switch (invalid) {
+                case "pool" -> { StoragePoolRecord pool = new StoragePoolRecord(); pool.setId(10L); pool.setAccountId(5L); pool.setUuid("pool-ten"); f.add(StoragePool.class, pool); f.poolMap.setStoragePoolId(10L); }
+                case "map-uuid" -> f.poolMap.setUuid("rebuilt");
+                case "volume-uuid" -> f.volume.setUuid("rebuilt");
+                case "pool-uuid" -> ((StoragePool) f.rows.get(StoragePool.class).get(9L)).setUuid("rebuilt");
+                case "child" -> record.setResourceId("13");
+                case "process" -> record.setProcessName("volumestoragepoolmap.deactivate");
+                case "root" -> binding.put("targetId", "99");
+                case "payload" -> { LaunchConfiguration raw = cleanupJob("volumeStoragePoolMap", "remove", 12); raw.setData(new HashMap<>(record.getData())); ProcessAuthorization.prepare(raw, List.of()); record = new ProcessRecord(raw, 100L, "server"); }
+            }
+            ProcessRecord attempted = record;
+            assertThrows(invalid, ClientVisibleException.class, () -> resolver.resolveUpgradeCleanupDependency(f.service, f.poolMap, owner, attempted, null, null, binding));
+        }
+    }
+    @Test public void imageCleanupRejectsSharedForeignDriftedOrUnknownRelations() {
+        for (String invalid : List.of("other-volume", "other-instance", "image-id", "image-owner", "image-format", "image-registry", "missing-image",
+                "missing-allocation", "foreign-pool", "unallocated-cache-pool", "missing-volume", "removed-owner", "removed-service", "outside-mount")) {
+            Lifecycle f = cleanupLifecycle(); var binding = finishUpgradeBinding(); Image image = (Image) f.rows.get(Image.class).get(7L);
+            switch (invalid) {
+                case "other-volume" -> { VolumeRecord other = new VolumeRecord(); other.setId(99L); other.setAccountId(5L); other.setImageId(7L); f.add(Volume.class, other); }
+                case "other-instance" -> { InstanceRecord other = new InstanceRecord(); other.setId(99L); other.setAccountId(5L); other.setImageId(7L); f.add(Instance.class, other); }
+                case "image-id" -> f.instance.setImageId(99L);
+                case "image-owner" -> image.setAccountId(6L);
+                case "image-format" -> image.setFormat("other");
+                case "image-registry" -> image.setRegistryCredentialId(99L);
+                case "missing-image" -> f.rows.get(Image.class).clear();
+                case "missing-allocation" -> f.rows.get(VolumeStoragePoolMap.class).clear();
+                case "foreign-pool" -> ((StoragePool) f.rows.get(StoragePool.class).get(9L)).setAccountId(6L);
+                case "unallocated-cache-pool" -> ((ImageStoragePoolMap) f.rows.get(ImageStoragePoolMap.class).get(14L)).setStoragePoolId(10L);
+                case "missing-volume" -> f.rows.get(Volume.class).clear();
+                case "removed-owner" -> ((Account) f.rows.get(Account.class).get(5L)).setRemoved(new java.util.Date(1));
+                case "removed-service" -> f.service.setRemoved(new java.util.Date(1));
+                case "outside-mount" -> f.mount.setInstanceId(99L);
+            }
+            EngineContext engine = EngineContext.getEngineContext(); var frame = engine.pushVerifiedExecution("volume", "6", binding);
+            try { assertThrows(invalid, ClientVisibleException.class, () -> resolver.resolveUpgradeCleanupDependency(f.service, image, owner,
+                    cleanupJob("image", "remove", 7), frame, null, binding)); }
+            finally { engine.popVerifiedExecution(frame); }
+        }
+    }
+    @Test public void imageCleanupNeedsBothActualFramesAndPreservesEveryExplicitDenial() {
+        Lifecycle f = cleanupLifecycle(); var binding = finishUpgradeBinding(); Image image = (Image) f.rows.get(Image.class).get(7L);
+        ImageStoragePoolMap cache = (ImageStoragePoolMap) f.rows.get(ImageStoragePoolMap.class).get(14L);
+        assertThrows(ClientVisibleException.class, () -> resolver.resolveUpgradeCleanupDependency(f.service, image, owner, cleanupJob("image", "remove", 7), null, null, binding));
+        EngineContext engine = EngineContext.getEngineContext(); var volume = engine.pushVerifiedExecution("volume", "6", binding);
+        try {
+            assertThrows(ClientVisibleException.class, () -> resolver.resolveUpgradeCleanupDependency(f.service, cache, owner,
+                    cleanupJob("imageStoragePoolMap", "remove", 14), volume, null, binding));
+            var dependency = resolver.resolveUpgradeCleanupDependency(f.service, image, owner, cleanupJob("image", "remove", 7), volume, null, binding);
+            for (var target : dependency.resources()) {
+                ApiKeyPolicy policy = new ApiKeyPolicy(ApiKeyPolicy.Mode.CUSTOM, ApiKeyPolicy.Effect.DENY, null, List.of(
+                        new ApiKeyPolicy.Rule("allow", ApiKeyPolicy.Effect.ALLOW, ApiKeyPolicy.Scope.resource("service", "1s2"), java.util.Set.of("upgrade")),
+                        new ApiKeyPolicy.Rule("deny", ApiKeyPolicy.Effect.DENY, ApiKeyPolicy.Scope.resource(target.resourceType(), target.resourceId()), java.util.Set.of("upgrade"))));
+                assertFalse(new ApiKeyPolicyEvaluator().evaluateAuthorizedDependency(policy,
+                        new ApiKeyPolicyEvaluator.Request(true, "upgrade", true, dependency.resources()), java.time.Instant.EPOCH).allowed());
+            }
+            assertNull(resolver.resolveUpgradeCleanupDependency(f.service, image, owner, cleanupJob("image", "purge", 7), volume, null, binding));
+        } finally { engine.popVerifiedExecution(volume); }
+    }
+    @Test public void fullOwnedContainerAndVolumeImageCleanupDoesNotRequireCustomServiceTombstone() {
+        Lifecycle f = cleanupLifecycle(); EngineContext engine = EngineContext.getEngineContext();
+        for (Object root : List.of(f.instance, f.volume)) {
+            var binding = new HashMap<String, Object>(Map.of("targetType", root == f.instance ? "container" : "volume", "targetId", root == f.instance ? "3" : "6", "operation", "remove"));
+            var frame = engine.pushVerifiedExecution("volume", "6", binding);
+            try {
+                Image image = (Image) f.rows.get(Image.class).get(7L);
+                assertNotNull(resolver.resolveOwnedImageCleanupDependency(root, image, owner, cleanupJob("image", "remove", 7), frame, null, binding));
+                assertNull(resolver.resolveUpgradeCleanupDependency(root, image, owner, cleanupJob("image", "remove", 7), frame, null, binding));
+                assertNull(resolver.resolveOwnedImageCleanupDependency(image, image, owner, cleanupJob("image", "remove", 7), frame, null, binding));
+            } finally { engine.popVerifiedExecution(frame); }
+        }
+    }
+    @Test public void everyImageCachePoolMustHaveItsOwnAllocationHistoryAndActualParentFrames() {
+        Lifecycle f = cleanupLifecycle(); var binding = finishUpgradeBinding();
+        StoragePoolRecord pool = new StoragePoolRecord(); pool.setId(10L); pool.setAccountId(5L); pool.setUuid("pool-ten"); f.add(StoragePool.class, pool);
+        VolumeStoragePoolMapRecord allocation = new VolumeStoragePoolMapRecord(); allocation.setId(22L); allocation.setVolumeId(6L);
+        allocation.setStoragePoolId(10L); allocation.setUuid("allocation-two"); allocation.setState("removed"); allocation.setRemoved(new java.util.Date(1)); f.add(VolumeStoragePoolMap.class, allocation);
+        ImageStoragePoolMapRecord cache = new ImageStoragePoolMapRecord(); cache.setId(24L); cache.setImageId(7L); cache.setStoragePoolId(10L);
+        cache.setUuid("cache-two"); cache.setState("inactive"); f.add(ImageStoragePoolMap.class, cache);
+        EngineContext engine = EngineContext.getEngineContext(); var volume = engine.pushVerifiedExecution("volume", "6", binding);
+        var image = engine.pushVerifiedExecution("image", "7", binding);
+        try {
+            var dependency = resolver.resolveUpgradeCleanupDependency(f.service, cache, owner, cleanupJob("imageStoragePoolMap", "remove", 24), image, volume, binding);
+            assertEquals(2, dependency.resources().stream().filter(t -> "imageStoragePoolMap".equals(t.resourceType())).count());
+            assertEquals(2, dependency.resources().stream().filter(t -> "storagePool".equals(t.resourceType())).count());
+            f.rows.get(VolumeStoragePoolMap.class).remove(22L);
+            assertThrows(ClientVisibleException.class, () -> resolver.resolveUpgradeCleanupDependency(f.service, cache, owner,
+                    cleanupJob("imageStoragePoolMap", "remove", 24), image, volume, binding));
+            f.add(VolumeStoragePoolMap.class, allocation);
+            var wrongParent = engine.pushVerifiedExecution("volume", "99", binding);
+            try { assertThrows(ClientVisibleException.class, () -> resolver.resolveUpgradeCleanupDependency(f.service, cache, owner,
+                    cleanupJob("imageStoragePoolMap", "remove", 24), image, wrongParent, binding)); }
+            finally { engine.popVerifiedExecution(wrongParent); }
+        } finally { engine.popVerifiedExecution(image); engine.popVerifiedExecution(volume); }
+    }
+    @Test public void exactHostAndVolumeMapsUseTheirRealParentAndDoNotGrantOtherCleanupNames() {
+        Lifecycle f = cleanupLifecycle(); var binding = finishUpgradeBinding(); EngineContext engine = EngineContext.getEngineContext();
+        var instance = engine.pushVerifiedExecution("instance", "3", binding);
+        try {
+            for (String action : List.of("deactivate", "remove"))
+                assertNotNull(resolver.resolveUpgradeCleanupDependency(f.service, f.hostMap, owner,
+                        cleanupJob("instanceHostMap", action, 4), instance, null, binding));
+            assertThrows(ClientVisibleException.class, () -> resolver.resolveUpgradeCleanupDependency(f.service, f.poolMap, owner,
+                    cleanupJob("volumeStoragePoolMap", "remove", 12), instance, null, binding));
+        } finally { engine.popVerifiedExecution(instance); }
+        var volume = engine.pushVerifiedExecution("volume", "6", binding);
+        try {
+            assertNotNull(resolver.resolveUpgradeCleanupDependency(f.service, f.poolMap, owner,
+                    cleanupJob("volumeStoragePoolMap", "deactivate", 12), volume, null, binding));
+            for (String invalid : List.of("update", "purge", "activate"))
+                assertNull(resolver.resolveUpgradeCleanupDependency(f.service, f.poolMap, owner,
+                        cleanupJob("volumeStoragePoolMap", invalid, 12), volume, null, binding));
+        } finally { engine.popVerifiedExecution(volume); }
+    }
+    @Test public void ordinaryLiveUpgradeMappingsDoNotGainANewVerifiedFrameRequirement() {
+        Lifecycle f = cleanupLifecycle(); f.expose.setRemoved(null); f.expose.setState("active"); var binding = finishUpgradeBinding();
+        when(resolver.objectManager.find(ServiceExposeMap.class, SERVICE_EXPOSE_MAP.INSTANCE_ID, 3L,
+                SERVICE_EXPOSE_MAP.SERVICE_ID, 2L, SERVICE_EXPOSE_MAP.MANAGED, false,
+                SERVICE_EXPOSE_MAP.UPGRADE, true, SERVICE_EXPOSE_MAP.STATE, "removed")).thenReturn(List.of());
+        for (String action : List.of("upgrade", "finishupgrade")) {
+            binding.put("requestAction", action);
+            assertNull(resolver.resolveUpgradeCleanupDependency(f.service, f.hostMap, owner,
+                    cleanupJob("instanceHostMap", "deactivate", 4), null, null, binding));
+            assertNull(resolver.resolveUpgradeCleanupDependency(f.service, f.poolMap, owner,
+                    cleanupJob("volumeStoragePoolMap", "remove", 12), null, null, binding));
+            assertNotNull(resolver.resolveLifecycleDependency(f.service, f.hostMap, owner));
+            assertNotNull(resolver.resolveLifecycleDependency(f.service, f.poolMap, owner));
+        }
+    }
+    @Test public void fullPrivateCleanupStillRejectsForeignRootSharedImageAndDirectPublicImage() {
+        for (String invalid : List.of("root-id", "root-account", "outside-volume", "direct-image", "no-frame")) {
+            Lifecycle f = cleanupLifecycle(); var binding = new HashMap<String, Object>(Map.of("targetType", "container", "targetId", "3", "operation", "remove"));
+            Image image = (Image) f.rows.get(Image.class).get(7L); Object root = f.instance;
+            switch (invalid) {
+                case "root-id" -> binding.put("targetId", "99");
+                case "root-account" -> f.instance.setAccountId(6L);
+                case "outside-volume" -> { VolumeRecord other = new VolumeRecord(); other.setId(99L); other.setAccountId(5L); other.setImageId(7L); f.add(Volume.class, other); }
+                case "direct-image" -> root = image;
+            }
+            EngineContext engine = EngineContext.getEngineContext(); var frame = engine.pushVerifiedExecution("volume", "6", binding); Object attemptedRoot = root;
+            try {
+                if (invalid.equals("direct-image")) assertNull(resolver.resolveOwnedImageCleanupDependency(root, image, owner,
+                        cleanupJob("image", "remove", 7), frame, null, binding));
+                else assertThrows(invalid, ClientVisibleException.class, () -> resolver.resolveOwnedImageCleanupDependency(attemptedRoot, image, owner,
+                        cleanupJob("image", "remove", 7), invalid.equals("no-frame") ? null : frame, null, binding));
+            } finally { engine.popVerifiedExecution(frame); }
         }
     }
     private Lifecycle lifecycle() {

@@ -110,6 +110,7 @@ public class ProcessAuthorizationExecutionTest {
             TestProcess child = process(childRecord, List.of(authorizer(false), validation, audit()));
             child.onRun = () -> {
                 assertNotSame(original, engine.currentVerifiedExecution());
+                assertSame(original, engine.parentVerifiedExecution());
                 assertEquals("volume", engine.currentVerifiedExecution().resourceType());
                 assertEquals("6", engine.currentVerifiedExecution().resourceId());
                 assertThrows(IllegalStateException.class, () -> engine.popVerifiedExecution(original));
@@ -120,6 +121,7 @@ public class ProcessAuthorizationExecutionTest {
             assertSame(original, engine.currentVerifiedExecution());
         };
         assertEquals(ExitReason.DONE, parent.run()); assertNull(engine.currentVerifiedExecution());
+        assertNull(engine.parentVerifiedExecution());
     }
 
     @Test

@@ -63,6 +63,11 @@ public class EngineContext {
         return verifiedExecutions.isEmpty() ? null : verifiedExecutions.peek();
     }
 
+    /** Read-only caller of the current verified frame, never log-derived. */
+    public VerifiedExecutionFrame parentVerifiedExecution() {
+        return verifiedExecutions.size() < 2 ? null : verifiedExecutions.get(verifiedExecutions.size() - 2);
+    }
+
     public void pushAuthorization(Map<String, Object> metadata) { currentAuthorization.push(metadata); }
 
     public void popAuthorization() { currentAuthorization.pop(); }

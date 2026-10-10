@@ -86,17 +86,28 @@ public class ApiKeyProcessAuthorization implements ProcessAuthorizationHook {
             // authorized through live owner access, never a blanket internal bypass.
             ApiKeyTargetResolver.ImageDependency dependency = null;
             ApiKeyTargetResolver.LifecycleDependency ensure = null;
+            ApiKeyTargetResolver.LifecycleDependency cleanup = null;
             boolean imageDependency = child instanceof Image && !(root instanceof Image)
                     && "image.create".equals(config.getProcessName()) && "image".equals(config.getResourceType());
             boolean imageEnsure = !(root instanceof Image) && (child instanceof Image
                     && "image".equals(config.getResourceType()) && "image.activate".equals(config.getProcessName())
                     || child instanceof ImageStoragePoolMap && "imageStoragePoolMap".equalsIgnoreCase(config.getResourceType())
                     && ("imagestoragepoolmap.create".equals(config.getProcessName()) || "imagestoragepoolmap.activate".equals(config.getProcessName())));
+            boolean imageCleanup = !(root instanceof Image) && (child instanceof Image && "image".equals(config.getResourceType())
+                    && ("image.deactivate".equals(config.getProcessName()) || "image.remove".equals(config.getProcessName()))
+                    || child instanceof ImageStoragePoolMap && "imageStoragePoolMap".equalsIgnoreCase(config.getResourceType())
+                    && ("imagestoragepoolmap.deactivate".equals(config.getProcessName()) || "imagestoragepoolmap.remove".equals(config.getProcessName())));
             if (current.policy().authorizeObject(child) == null) {
                 if (imageDependency) dependency = targets.resolveImageDependency(root, (Image) child, current.policy());
                 else if (imageEnsure) ensure = targets.resolveImageEnsureDependency(root, child, current.policy(),
                         EngineContext.getEngineContext().currentVerifiedExecution(), metadata);
+                else if (imageCleanup) cleanup = policy == null || policy.getMode() == ApiKeyPolicy.Mode.FULL
+                        ? targets.resolveOwnedImageCleanupDependency(root, child, current.policy(), config,
+                                EngineContext.getEngineContext().currentVerifiedExecution(), EngineContext.getEngineContext().parentVerifiedExecution(), metadata)
+                        : targets.resolveUpgradeCleanupDependency(root, child, current.policy(), config,
+                                EngineContext.getEngineContext().currentVerifiedExecution(), EngineContext.getEngineContext().parentVerifiedExecution(), metadata);
                 else denied("OwnerPermissionDenied");
+                if (imageCleanup && cleanup == null) denied("OwnerPermissionDenied");
             }
             if (policy == null || policy.getMode() == ApiKeyPolicy.Mode.FULL) {
                 if (policy != null && policy.getExpiresAt() != null && !clock.instant().isBefore(policy.getExpiresAt())) denied("ApiKeyExpired");
@@ -111,7 +122,12 @@ public class ApiKeyProcessAuthorization implements ProcessAuthorizationHook {
             }
             if (imageEnsure && ensure == null) ensure = targets.resolveImageEnsureDependency(root, child, current.policy(),
                     EngineContext.getEngineContext().currentVerifiedExecution(), metadata);
-            var lifecycle = ensure != null ? ensure : dependency == null ? targets.resolveLifecycleDependency(root, child, current.policy()) : null;
+            if (cleanup == null) cleanup = targets.resolveUpgradeCleanupDependency(root, child, current.policy(), config,
+                    EngineContext.getEngineContext().currentVerifiedExecution(), EngineContext.getEngineContext().parentVerifiedExecution(), metadata);
+            var lifecycle = cleanup != null ? cleanup : ensure != null ? ensure : dependency == null
+                    ? targets.resolveUpgradeRemovalDependency(root, child, current.policy(), config.getProcessName(), config.getResourceType(),
+                            EngineContext.getEngineContext().currentVerifiedExecution(), metadata) : null;
+            if (lifecycle == null && dependency == null) lifecycle = targets.resolveLifecycleDependency(root, child, current.policy());
             var descendant = lifecycle != null ? lifecycle.scope() : dependency == null
                     ? targets.resolveObject(ApiKeyQueryScopes.canonical(config.getResourceType()), child, current.policy()) : dependency.scope();
             if (target.projectId() != null && !target.projectId().equals(descendant.projectId())) denied("KeyScopeDenied");

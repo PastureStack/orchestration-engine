@@ -12,13 +12,26 @@ import io.cattle.platform.core.model.ImageStoragePoolMap;
 import io.cattle.platform.core.model.Service;
 import io.cattle.platform.core.model.ServiceExposeMap;
 import io.cattle.platform.core.model.Stack;
+import io.cattle.platform.core.model.Volume;
+import io.cattle.platform.core.model.Mount;
 import io.cattle.platform.core.model.InstanceHostMap;
+import io.cattle.platform.core.model.StoragePool;
+import io.cattle.platform.core.model.VolumeStoragePoolMap;
+import io.cattle.platform.core.model.tables.records.ImageRecord;
+import io.cattle.platform.core.model.tables.records.ImageStoragePoolMapRecord;
+import io.cattle.platform.core.model.tables.records.StoragePoolRecord;
+import io.cattle.platform.core.model.tables.records.VolumeStoragePoolMapRecord;
 import io.cattle.platform.core.model.tables.records.InstanceHostMapRecord;
+import io.cattle.platform.core.model.tables.records.VolumeRecord;
 import static io.cattle.platform.core.model.tables.ServiceExposeMapTable.SERVICE_EXPOSE_MAP;
+import static io.cattle.platform.core.model.tables.MountTable.MOUNT;
+import static io.cattle.platform.core.model.tables.VolumeStoragePoolMapTable.VOLUME_STORAGE_POOL_MAP;
 import io.github.ibuildthecloud.gdapi.exception.ClientVisibleException;
 import io.cattle.platform.api.auth.impl.NoPolicyOptions;
 import io.cattle.platform.iaas.api.auth.impl.AccountPolicy;
 import io.cattle.platform.engine.process.LaunchConfiguration;
+import io.cattle.platform.engine.process.ProcessAuthorization;
+import io.cattle.platform.engine.manager.impl.ProcessRecord;
 import io.cattle.platform.engine.process.ProcessAuthorizationDeniedException;
 import io.cattle.platform.engine.context.EngineContext;
 import io.cattle.platform.iaas.api.auth.impl.ApiAuthenticator;
@@ -393,6 +406,220 @@ public class ApiKeyProcessAuthorizationTest {
                 new ApiKeyPolicy.Rule("child-deny", ApiKeyPolicy.Effect.DENY, ApiKeyPolicy.Scope.resource("container", "1i3"), Set.of("upgrade")))));
         assertEquals("KeyPolicyDenied", assertThrows(ProcessAuthorizationDeniedException.class,
                 () -> hook.beforeExecution(stop, metadata)).getCode());
+    }
+    private Volume removalLifecycle() {
+        ServiceExposeMap map = upgradeLifecycle();
+        when(map.getId()).thenReturn(1L); when(map.getState()).thenReturn("removed"); when(map.getRemoved()).thenReturn(new java.util.Date(1));
+        Instance instance = hook.objectManager.loadResource("instance", "3");
+        when(instance.getState()).thenReturn("removing"); when(instance.getRemoved()).thenReturn(null);
+        when(hook.objectManager.loadResource(Instance.class, 3L)).thenReturn(instance);
+        when(hook.objectManager.loadResource(ServiceExposeMap.class, 1L)).thenReturn(map);
+        when(hook.objectManager.find(ServiceExposeMap.class, SERVICE_EXPOSE_MAP.INSTANCE_ID, 3L,
+                SERVICE_EXPOSE_MAP.REMOVED, null, SERVICE_EXPOSE_MAP.MANAGED, false, SERVICE_EXPOSE_MAP.UPGRADE, true)).thenReturn(List.of());
+        when(hook.objectManager.find(ServiceExposeMap.class, SERVICE_EXPOSE_MAP.INSTANCE_ID, 3L,
+                SERVICE_EXPOSE_MAP.SERVICE_ID, 2L, SERVICE_EXPOSE_MAP.MANAGED, false,
+                SERVICE_EXPOSE_MAP.UPGRADE, true, SERVICE_EXPOSE_MAP.STATE, "removed")).thenReturn(List.of(map));
+        when(hook.objectManager.find(ServiceExposeMap.class, SERVICE_EXPOSE_MAP.INSTANCE_ID, 3L,
+                SERVICE_EXPOSE_MAP.REMOVED, null)).thenReturn(List.of());
+        VolumeRecord volume = new VolumeRecord(); volume.setId(6L); volume.setAccountId(5L); volume.setInstanceId(3L);
+        volume.setDeviceNumber(0); volume.setImageId(7L); volume.setState("detached");
+        when(hook.objectManager.loadResource(Volume.class, 6L)).thenReturn(volume);
+        when(hook.objectManager.loadResource("volume", "6")).thenReturn(volume);
+        when(hook.objectManager.find(Mount.class, MOUNT.VOLUME_ID, 6L, MOUNT.REMOVED, null)).thenReturn(List.of());
+        when(hook.targets.idFormatter.formatId(anyString(), any())).thenAnswer(i -> "1" +
+                Map.of("credential", "c", "project", "a", "stack", "st", "service", "s", "container", "i",
+                        "volume", "v", "serviceExposeMap", "sem").getOrDefault(i.<String>getArgument(0), "internal") + i.getArgument(1));
+        metadata.put("requestAction", "finishupgrade"); metadata.put("preview", false);
+        return volume;
+    }
+    @Test public void stillLiveUpgradeMapKeepsOriginalRemovalResolverWithoutNewFrameRequirement() {
+        upgradeLifecycle(); metadata.put("requestAction", "finishupgrade");
+        Instance instance = hook.objectManager.loadResource("instance", "3"); when(instance.getState()).thenReturn("removing");
+        when(hook.objectManager.loadResource(Instance.class, 3L)).thenReturn(instance);
+        when(hook.objectManager.find(ServiceExposeMap.class, SERVICE_EXPOSE_MAP.INSTANCE_ID, 3L,
+                SERVICE_EXPOSE_MAP.SERVICE_ID, 2L, SERVICE_EXPOSE_MAP.MANAGED, false,
+                SERVICE_EXPOSE_MAP.UPGRADE, true, SERVICE_EXPOSE_MAP.STATE, "removed")).thenReturn(List.of());
+        VolumeRecord volume = new VolumeRecord(); volume.setId(6L); volume.setAccountId(5L); volume.setInstanceId(3L); volume.setDeviceNumber(0);
+        when(hook.objectManager.loadResource(Volume.class, 6L)).thenReturn(volume);
+        when(hook.objectManager.loadResource("volume", "6")).thenReturn(volume);
+        when(hook.objectManager.find(Mount.class, MOUNT.VOLUME_ID, 6L, MOUNT.REMOVED, null)).thenReturn(List.of());
+        assertNull(EngineContext.getEngineContext().currentVerifiedExecution());
+        hook.beforeExecution(new LaunchConfiguration("instance.remove", "instance", "3", 5L, 0, Map.of()), metadata);
+        hook.beforeExecution(new LaunchConfiguration("volume.remove", "volume", "6", 5L, 0, Map.of()), metadata);
+    }
+    @Test public void queuedFinishUpgradeRemovalAndVerifiedOsVolumeKeepExactRootGrantAfterPreListener() {
+        removalLifecycle(); ApiContext.remove();
+        assertNull(EngineContext.getEngineContext().currentVerifiedExecution());
+        hook.beforeExecution(new LaunchConfiguration("instance.remove", "instance", "3", 5L, 0, Map.of()), metadata);
+        EngineContext engine = EngineContext.getEngineContext(); var instanceFrame = engine.pushVerifiedExecution("instance", "3", metadata);
+        try {
+            hook.beforeExecution(new LaunchConfiguration("volume.remove", "volume", "6", 5L, 0, Map.of()), metadata);
+            hook.beforeExecution(new LaunchConfiguration("instance.deallocate", "instance", "3", 5L, 0, Map.of()), metadata);
+        } finally { engine.popVerifiedExecution(instanceFrame); }
+        var volumeFrame = engine.pushVerifiedExecution("volume", "6", metadata);
+        try { hook.beforeExecution(new LaunchConfiguration("volume.deallocate", "volume", "6", 5L, 0, Map.of()), metadata); }
+        finally { engine.popVerifiedExecution(volumeFrame); }
+        assertNull(ApiContext.getContext());
+    }
+    @Test public void finishUpgradeRemovalCannotHideContainerVolumeOrTombstoneExplicitDeny() {
+        removalLifecycle();
+        for (var scope : List.of(ApiKeyPolicy.Scope.resource("container", "1i3"), ApiKeyPolicy.Scope.resource("volume", "1v6"),
+                ApiKeyPolicy.Scope.resource("serviceExposeMap", "1sem1"))) {
+            policy(new ApiKeyPolicy(ApiKeyPolicy.Mode.CUSTOM, ApiKeyPolicy.Effect.DENY, null, List.of(
+                    new ApiKeyPolicy.Rule("root", ApiKeyPolicy.Effect.ALLOW, ApiKeyPolicy.Scope.stack("1st8"), Set.of("upgrade")),
+                    new ApiKeyPolicy.Rule("deny", ApiKeyPolicy.Effect.DENY, scope, Set.of("upgrade")))));
+            EngineContext engine = EngineContext.getEngineContext(); var frame = engine.pushVerifiedExecution("instance", "3", metadata);
+            try { assertEquals("KeyPolicyDenied", assertThrows(ProcessAuthorizationDeniedException.class,
+                    () -> hook.beforeExecution(new LaunchConfiguration("volume.remove", "volume", "6", 5L, 0, Map.of()), metadata)).getCode()); }
+            finally { engine.popVerifiedExecution(frame); }
+        }
+    }
+    @Test public void finishUpgradeRemovalRechecksKeyRevisionOwnerSchemaAndExpiryBeforeAncestry() {
+        for (String invalid : List.of("revoked", "revision", "owner", "schema", "expired", "no-root-grant")) {
+            setup(); removalLifecycle();
+            String expected = "OwnerPermissionDenied";
+            switch (invalid) {
+                case "revoked" -> { when(key.getState()).thenReturn("inactive"); expected = "ApiKeyRevoked"; }
+                case "revision" -> { metadata.put("policyRevision", 0L); expected = "ApiKeyPolicyChanged"; }
+                case "owner" -> {
+                    Policy noOwner = mock(Policy.class); SchemaFactory factory = mock(SchemaFactory.class); when(factory.getSchema("service")).thenReturn(schema);
+                    when(hook.authenticator.currentAuthorization(eq(10L), eq(5L), any())).thenReturn(new ApiAuthenticator.CurrentAuthorization(noOwner, factory));
+                }
+                case "schema" -> when(schema.getResourceActions()).thenReturn(Map.of("upgrade", mock(Action.class)));
+                case "expired" -> { policy(new ApiKeyPolicy(ApiKeyPolicy.Mode.CUSTOM, ApiKeyPolicy.Effect.ALLOW, now, List.of())); expected = "ApiKeyExpired"; }
+                case "no-root-grant" -> { policy(new ApiKeyPolicy(ApiKeyPolicy.Mode.CUSTOM, ApiKeyPolicy.Effect.DENY, null, List.of())); expected = "KeyScopeDenied"; }
+            }
+            assertEquals(invalid, expected, assertThrows(ProcessAuthorizationDeniedException.class,
+                    () -> hook.beforeExecution(new LaunchConfiguration("instance.remove", "instance", "3", 5L, 0, Map.of()), metadata)).getCode());
+        }
+    }
+    @Test public void upgradeOrForgedProcessDataCannotUseFinishUpgradeTombstoneAndFrame() {
+        removalLifecycle();
+        metadata.put("requestAction", "upgrade");
+        assertEquals("KeyScopeDenied", assertThrows(ProcessAuthorizationDeniedException.class,
+                () -> hook.beforeExecution(new LaunchConfiguration("instance.remove", "instance", "3", 5L, 0, Map.of()), metadata)).getCode());
+        metadata.put("requestAction", "finishupgrade");
+        assertEquals("KeyScopeDenied", assertThrows(ProcessAuthorizationDeniedException.class,
+                () -> hook.beforeExecution(new LaunchConfiguration("volume.remove", "volume", "6", 5L, 0,
+                        Map.of("verifiedExecution", Map.of("resourceType", "instance", "resourceId", "3"), "_apiKeyAudit", metadata)), metadata)).getCode());
+    }
+    @Test public void fullAndLegacyRemovalGetNoNewTombstoneOrFrameRestriction() {
+        removalLifecycle(); hook.targets = spy(hook.targets);
+        for (boolean full : List.of(false, true)) {
+            if (full) policy(new ApiKeyPolicy(ApiKeyPolicy.Mode.FULL, ApiKeyPolicy.Effect.ALLOW, null, List.of()));
+            else { when(key.getData()).thenReturn(Map.of()); metadata.put("policyRevision", 0L); }
+            hook.beforeExecution(new LaunchConfiguration("instance.remove", "instance", "3", 5L, 0, Map.of()), metadata);
+            hook.beforeExecution(new LaunchConfiguration("volume.remove", "volume", "6", 5L, 0, Map.of()), metadata);
+        }
+        verify(hook.targets, never()).resolveUpgradeRemovalDependency(any(), any(), any(), anyString(), anyString(), any(), any());
+    }
+
+    private Volume cleanupLifecycle() {
+        Volume volume = removalLifecycle(); volume.setState("removing"); volume.setUuid("private-volume");
+        Instance instance = hook.objectManager.loadResource(Instance.class, 3L);
+        when(instance.getImageId()).thenReturn(7L); when(instance.getRegistryCredentialId()).thenReturn(null);
+        ImageRecord image = new ImageRecord(); image.setId(7L); image.setUuid("private-image"); image.setFormat("docker");
+        image.setInstanceKind("container"); image.setState("active");
+        ImageStoragePoolMapRecord cache = new ImageStoragePoolMapRecord(); cache.setId(14L); cache.setUuid("private-cache");
+        cache.setImageId(7L); cache.setStoragePoolId(9L); cache.setState("active");
+        StoragePoolRecord pool = new StoragePoolRecord(); pool.setId(9L); pool.setAccountId(5L); pool.setUuid("pool-nine");
+        VolumeStoragePoolMapRecord allocation = new VolumeStoragePoolMapRecord(); allocation.setId(12L); allocation.setUuid("private-allocation");
+        allocation.setVolumeId(6L); allocation.setStoragePoolId(9L); allocation.setState("inactive");
+        when(hook.objectManager.loadResource(Image.class, 7L)).thenReturn(image);
+        when(hook.objectManager.loadResource("image", "7")).thenReturn(image);
+        when(hook.objectManager.loadResource(ImageStoragePoolMap.class, 14L)).thenReturn(cache);
+        when(hook.objectManager.loadResource("imageStoragePoolMap", "14")).thenReturn(cache);
+        when(hook.objectManager.loadResource(VolumeStoragePoolMap.class, 12L)).thenReturn(allocation);
+        when(hook.objectManager.loadResource("volumeStoragePoolMap", "12")).thenReturn(allocation);
+        when(hook.objectManager.loadResource(StoragePool.class, 9L)).thenReturn(pool);
+        when(hook.objectManager.find(VolumeStoragePoolMap.class, VOLUME_STORAGE_POOL_MAP.VOLUME_ID, 6L)).thenReturn(List.of(allocation));
+        when(hook.objectManager.find(ImageStoragePoolMap.class,
+                io.cattle.platform.core.model.tables.ImageStoragePoolMapTable.IMAGE_STORAGE_POOL_MAP.IMAGE_ID, 7L)).thenReturn(List.of(cache));
+        when(hook.objectManager.find(Volume.class, io.cattle.platform.core.model.tables.VolumeTable.VOLUME.IMAGE_ID, 7L,
+                io.cattle.platform.core.model.tables.VolumeTable.VOLUME.REMOVED, null)).thenReturn(List.of(volume));
+        when(hook.objectManager.find(Instance.class, io.cattle.platform.core.model.tables.InstanceTable.INSTANCE.IMAGE_ID, 7L,
+                io.cattle.platform.core.model.tables.InstanceTable.INSTANCE.REMOVED, null)).thenReturn(List.of(instance));
+        return volume;
+    }
+    private void executePrivateImageCleanup() {
+        EngineContext engine = EngineContext.getEngineContext(); var volume = engine.pushVerifiedExecution("volume", "6", metadata);
+        try {
+            for (String action : List.of("deactivate", "remove"))
+                hook.beforeExecution(new LaunchConfiguration("image." + action, "image", "7", null, 0, Map.of()), metadata);
+            var image = engine.pushVerifiedExecution("image", "7", metadata);
+            try {
+                for (String action : List.of("deactivate", "remove"))
+                    hook.beforeExecution(new LaunchConfiguration("imagestoragepoolmap." + action, "imageStoragePoolMap", "14", null, 0, Map.of()), metadata);
+            } finally { engine.popVerifiedExecution(image); }
+        } finally { engine.popVerifiedExecution(volume); }
+    }
+    @Test public void actualNullAclPrivateImageAndCacheCleanupKeepsCustomRootGrantAndFullLegacyCompatibility() {
+        cleanupLifecycle();
+        var current = hook.authenticator.currentAuthorization(10L, 5L, new io.github.ibuildthecloud.gdapi.request.ApiRequest(null, null));
+        assertNull(current.policy().authorizeObject(hook.objectManager.loadResource(Image.class, 7L)));
+        // AccountPolicy allows mappings without an accountId property; image
+        // rows themselves have NULL accountId and require the narrow fallback.
+        assertNotNull(current.policy().authorizeObject(hook.objectManager.loadResource(ImageStoragePoolMap.class, 14L)));
+        executePrivateImageCleanup();
+        Policy cacheDenied = mock(Policy.class);
+        when(cacheDenied.authorizeObject(any())).thenAnswer(i -> i.getArgument(0) instanceof ImageStoragePoolMap ? null : current.policy().authorizeObject(i.getArgument(0)));
+        when(hook.authenticator.currentAuthorization(eq(10L), eq(5L), any()))
+                .thenReturn(new ApiAuthenticator.CurrentAuthorization(cacheDenied, current.schemas()));
+        executePrivateImageCleanup();
+        Instance instance = hook.objectManager.loadResource(Instance.class, 3L);
+        when(hook.objectManager.loadResource("container", 3L)).thenReturn(instance);
+        metadata.put("targetType", "container"); metadata.put("targetId", "3"); metadata.put("operation", "remove");
+        metadata.put("requestMethod", "DELETE"); metadata.remove("requestAction");
+        SchemaFactory factory = mock(SchemaFactory.class); when(factory.getSchema("container")).thenReturn(schema);
+        when(schema.getResourceMethods()).thenReturn(List.of("DELETE"));
+        when(hook.authenticator.currentAuthorization(eq(10L), eq(5L), any()))
+                .thenReturn(new ApiAuthenticator.CurrentAuthorization(cacheDenied, factory));
+        for (boolean full : List.of(false, true)) {
+            if (full) policy(new ApiKeyPolicy(ApiKeyPolicy.Mode.FULL, ApiKeyPolicy.Effect.ALLOW, null, List.of()));
+            else { when(key.getData()).thenReturn(Map.of()); metadata.put("policyRevision", 0L); }
+            executePrivateImageCleanup();
+        }
+        assertNull(EngineContext.getEngineContext().currentVerifiedExecution());
+    }
+    @Test public void customPrivateCleanupKeepsEveryExplicitChildDenialAndFreshCredentialBarrier() {
+        for (String invalid : List.of("image-deny", "cache-deny", "pool-deny", "revoked", "revision", "expired", "schema", "owner", "no-root-grant")) {
+            setup(); cleanupLifecycle(); String expected = "KeyPolicyDenied";
+            switch (invalid) {
+                case "image-deny", "cache-deny", "pool-deny" -> {
+                    String type = invalid.equals("image-deny") ? "image" : invalid.equals("cache-deny") ? "imageStoragePoolMap" : "storagePool";
+                    String id = invalid.equals("image-deny") ? "7" : invalid.equals("cache-deny") ? "14" : "9";
+                    policy(new ApiKeyPolicy(ApiKeyPolicy.Mode.CUSTOM, ApiKeyPolicy.Effect.DENY, null, List.of(
+                            new ApiKeyPolicy.Rule("root", ApiKeyPolicy.Effect.ALLOW, ApiKeyPolicy.Scope.stack("1st8"), Set.of("upgrade")),
+                            new ApiKeyPolicy.Rule("deny", ApiKeyPolicy.Effect.DENY, ApiKeyPolicy.Scope.resource(type, "1internal" + id), Set.of("upgrade")))));
+                }
+                case "revoked" -> { when(key.getState()).thenReturn("inactive"); expected = "ApiKeyRevoked"; }
+                case "revision" -> { metadata.put("policyRevision", 0L); expected = "ApiKeyPolicyChanged"; }
+                case "expired" -> { policy(new ApiKeyPolicy(ApiKeyPolicy.Mode.CUSTOM, ApiKeyPolicy.Effect.ALLOW, now, List.of())); expected = "ApiKeyExpired"; }
+                case "schema" -> { when(schema.getResourceActions()).thenReturn(Map.of()); expected = "OwnerPermissionDenied"; }
+                case "owner" -> { Policy deniedOwner = mock(Policy.class); SchemaFactory factory = mock(SchemaFactory.class); when(factory.getSchema("service")).thenReturn(schema);
+                    when(hook.authenticator.currentAuthorization(eq(10L), eq(5L), any())).thenReturn(new ApiAuthenticator.CurrentAuthorization(deniedOwner, factory)); expected = "OwnerPermissionDenied"; }
+                case "no-root-grant" -> { policy(new ApiKeyPolicy(ApiKeyPolicy.Mode.CUSTOM, ApiKeyPolicy.Effect.DENY, null, List.of())); expected = "KeyScopeDenied"; }
+            }
+            assertEquals(invalid, expected, assertThrows(ProcessAuthorizationDeniedException.class, this::executePrivateImageCleanup).getCode());
+        }
+    }
+    @Test public void queuedPrivateMapRetryUsesFreshKeyPolicyAndRootNotParentRoleSnapshot() {
+        cleanupLifecycle(); EngineContext engine = EngineContext.getEngineContext(); engine.pushAuthorization(metadata);
+        var frame = engine.pushVerifiedExecution("volume", "6", metadata); ProcessRecord queued;
+        try {
+            LaunchConfiguration launch = new LaunchConfiguration("volumestoragepoolmap.remove", "volumeStoragePoolMap", "12", null, 0, Map.of());
+            ProcessAuthorization.prepare(launch, List.of()); queued = new ProcessRecord(launch, 99L, "server");
+            hook.beforeExecution(queued, metadata);
+        } finally { engine.popVerifiedExecution(frame); engine.popAuthorization(); }
+        assertNull(engine.currentVerifiedExecution()); hook.beforeExecution(queued, metadata);
+        policy(new ApiKeyPolicy(ApiKeyPolicy.Mode.CUSTOM, ApiKeyPolicy.Effect.DENY, null, List.of(
+                new ApiKeyPolicy.Rule("root", ApiKeyPolicy.Effect.ALLOW, ApiKeyPolicy.Scope.stack("1st8"), Set.of("upgrade")),
+                new ApiKeyPolicy.Rule("deny", ApiKeyPolicy.Effect.DENY, ApiKeyPolicy.Scope.resource("volume", "1v6"), Set.of("upgrade")))));
+        assertEquals("KeyPolicyDenied", assertThrows(ProcessAuthorizationDeniedException.class, () -> hook.beforeExecution(queued, metadata)).getCode());
+        metadata.put("policyRevision", 0L);
+        assertEquals("ApiKeyPolicyChanged", assertThrows(ProcessAuthorizationDeniedException.class, () -> hook.beforeExecution(queued, metadata)).getCode());
+        when(key.getState()).thenReturn("inactive");
+        assertEquals("ApiKeyRevoked", assertThrows(ProcessAuthorizationDeniedException.class, () -> hook.beforeExecution(queued, metadata)).getCode());
     }
     private ServiceExposeMap upgradeLifecycle() {
         Account project = mock(Account.class), principal = mock(Account.class);

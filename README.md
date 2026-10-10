@@ -17,6 +17,8 @@ all policies remain bounded by the owner's live RBAC, and explicit denies win.
 A broader policy or longer validity uses the existing actor-bound, single-use MFA
 confirmation. Secret delivery is creation-only; audit never records credentials
 or request payloads. HTTP acceptance is separate from job or stream completion.
+Upgrade cleanup verifies the owned lifecycle graph and queued-child identity;
+retired relationships are cleanup evidence, not additional public permissions.
 See the [API Key policy and audit contract](docs/api-key-policy.md) for ancestry,
 revision, error and delegated-stream details.
 

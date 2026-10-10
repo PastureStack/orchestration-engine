@@ -37,6 +37,16 @@ owning account and container/service/Stack relationship is checked again; an
 internal dependency is not a public resource permission or a process-name bypass.
 Removed, foreign, contradictory or ambiguous ancestry fails closed, while
 in-progress removal retains its verified ancestry until the removal completes.
+The `finishupgrade` cleanup path may use the exact retired upgrade relationship
+after its removal listener has run, but only for the same owned instance and its
+OS volume. Private per-instance Image/cache rows require the actual verified
+Volume/Image execution chain and each cache pool's allocation history. A queued
+volume-map removal carries framework-owned parent/child/process and relationship
+pins; retries reload the graph and current Key revision, expiry and owner RBAC.
+These proofs cannot authorize a public request, another resource, purge, or a
+contradictory/shared dependency; explicit denials still apply to every dependency.
+Full and legacy Keys retain their ordinary lifecycle behavior, including the
+same narrowly verified private-image cleanup, without requiring a custom policy.
 Broadening an existing policy or extending its lifetime requires an actor-bound,
 single-use MFA confirmation of the exact change. Policy updates use the stored
 revision and existing conflict/error handling; client input cannot replace
