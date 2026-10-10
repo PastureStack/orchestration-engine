@@ -5,6 +5,8 @@ import static io.cattle.platform.engine.process.ProcessResult.*;
 public enum ExitReason {
     ALREADY_DONE(SUCCESS),
     CANCELED(ProcessResult.CANCELED, true),
+    AUTHORIZATION_DENIED(ProcessResult.CANCELED, true),
+    AUDIT_PENDING(true),
     DELAY(true, false, false, null),
     STATE_CHANGED(false, false, false, null),
     DONE(SUCCESS),

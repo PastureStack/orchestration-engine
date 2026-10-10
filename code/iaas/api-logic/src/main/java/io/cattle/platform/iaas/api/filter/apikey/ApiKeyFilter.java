@@ -10,6 +10,7 @@ import io.github.ibuildthecloud.gdapi.request.ApiRequest;
 import io.github.ibuildthecloud.gdapi.request.resource.ResourceManager;
 
 import java.security.SecureRandom;
+import jakarta.inject.Inject;
 
 import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.codec.binary.Hex;
@@ -19,15 +20,24 @@ public class ApiKeyFilter extends AbstractDefaultResourceManagerFilter {
 
     public static final ConfigProperty<String> BAD_CHARACTERS = ArchaiusUtil.getStringProperty("process.credential.create.bad.characters");
     private final static SecureRandom RANDOM = new SecureRandom();
+    @Inject
+    ApiKeyPolicyManager policyManager;
 
     @Override
     public String[] getTypes() {
-        return new String[] {CredentialConstants.KIND_API_KEY};
+        return new String[] {CredentialConstants.KIND_API_KEY, CredentialConstants.KIND_API_KEY_RESTRICTED,
+                CredentialConstants.TYPE};
     }
 
     @Override
     public Object create(String type, ApiRequest request, ResourceManager next) {
         Credential cred = request.proxyRequestObject(Credential.class);
+        String kind = cred.getKind() == null ? type : cred.getKind();
+        if (!CredentialConstants.KIND_API_KEY.equals(kind)
+                && !CredentialConstants.KIND_API_KEY_RESTRICTED.equals(kind)) {
+            return super.create(type, request, next);
+        }
+        policyManager.prepareCreate(cred, request);
         if (cred.getPublicValue() == null) {
             String[] keys = generateKeys();
             cred.setPublicValue(keys[0]);
@@ -40,6 +50,11 @@ public class ApiKeyFilter extends AbstractDefaultResourceManagerFilter {
         cred = (Credential) super.create(type, request, next);
         cred.setSecretValue(clearSecret);
         return cred;
+    }
+
+    @Override
+    public Object update(String type, String id, ApiRequest request, ResourceManager next) {
+        return policyManager.update(type, id, request, next);
     }
 
     public static String[] generateKeys() {

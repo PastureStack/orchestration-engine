@@ -22,6 +22,12 @@ public interface ResourceManager {
 
     List<?> list(String type, Map<Object, Object> criteria, ListOptions options);
 
+    /** Admission capability only; never bypass the normal manager/filter chain.
+     * True requires this exact guard to constrain rows before SQL pagination.
+     * Synthetic, intercepted and unknown collection paths remain deny-by-default.
+     */
+    default boolean supportsScopedCollectionQuery(Object guard) { return false; }
+
     Object create(String type, ApiRequest request);
 
     Object update(String type, String id, ApiRequest request);

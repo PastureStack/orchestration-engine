@@ -9,6 +9,8 @@ import io.cattle.platform.server.context.ServerContext;
 import java.util.EmptyStackException;
 import java.util.Objects;
 import java.util.Stack;
+import java.util.Map;
+import java.util.Collections;
 
 import org.apache.cloudstack.managed.threadlocal.ManagedThreadLocal;
 import org.slf4j.MDC;
@@ -23,6 +25,56 @@ public class EngineContext {
     };
 
     Stack<ParentLog> currentLog = new Stack<ParentLog>();
+    private final Stack<Map<String, Object>> currentAuthorization = new Stack<>();
+    private final Stack<VerifiedExecutionFrame> verifiedExecutions = new Stack<>();
+
+    /** Runtime execution identity, never reconstructed from payload/log/MDC data. */
+    public static final class VerifiedExecutionFrame {
+        private final String resourceType;
+        private final String resourceId;
+        private final Map<String, Object> rootAuthorization;
+
+        private VerifiedExecutionFrame(String resourceType, String resourceId, Map<String, Object> rootAuthorization) {
+            this.resourceType = resourceType;
+            this.resourceId = resourceId;
+            this.rootAuthorization = Map.copyOf(rootAuthorization);
+        }
+        public String resourceType() { return resourceType; }
+        public String resourceId() { return resourceId; }
+        public Map<String, Object> rootAuthorization() { return rootAuthorization; }
+    }
+
+    /** Framework-only lifecycle: call after every authorization hook passed. */
+    public VerifiedExecutionFrame pushVerifiedExecution(String resourceType, String resourceId, Map<String, Object> binding) {
+        VerifiedExecutionFrame frame = new VerifiedExecutionFrame(resourceType, resourceId, binding);
+        verifiedExecutions.push(frame);
+        return frame;
+    }
+
+    public void popVerifiedExecution(VerifiedExecutionFrame expected) {
+        if (verifiedExecutions.isEmpty() || verifiedExecutions.peek() != expected) {
+            throw new IllegalStateException("Unbalanced verified execution frame");
+        }
+        verifiedExecutions.pop();
+    }
+
+    /** During a pending child's beforeExecution this is its executing parent. */
+    public VerifiedExecutionFrame currentVerifiedExecution() {
+        return verifiedExecutions.isEmpty() ? null : verifiedExecutions.peek();
+    }
+
+    /** Read-only caller of the current verified frame, never log-derived. */
+    public VerifiedExecutionFrame parentVerifiedExecution() {
+        return verifiedExecutions.size() < 2 ? null : verifiedExecutions.get(verifiedExecutions.size() - 2);
+    }
+
+    public void pushAuthorization(Map<String, Object> metadata) { currentAuthorization.push(metadata); }
+
+    public void popAuthorization() { currentAuthorization.pop(); }
+
+    public Map<String, Object> peekAuthorization() {
+        return currentAuthorization.isEmpty() ? Collections.emptyMap() : currentAuthorization.peek();
+    }
 
     public void pushLog(ParentLog log) {
         currentLog.push(log);

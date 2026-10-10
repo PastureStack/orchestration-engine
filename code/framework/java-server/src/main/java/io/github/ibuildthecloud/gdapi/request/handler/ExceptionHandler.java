@@ -61,16 +61,26 @@ public class ExceptionHandler implements ApiRequestHandler {
 
     protected ApiError getUnknownError(ApiRequest apiRequest, Throwable t) throws IOException, ServletException {
         if (throwUnknownErrors) {
-            log.error("Rethrowing exception in API for request [{}]", apiRequest, t);
+            if (containsKeyAuthentication(apiRequest)) log.error("Rethrowing exception in API-key request");
+            else log.error("Rethrowing exception in API for request [{}]", apiRequest, t);
             ExceptionUtils.rethrowRuntime(t);
             ExceptionUtils.rethrow(t, IOException.class);
             ExceptionUtils.rethrow(t, ServletException.class);
             throw new ServletException(t);
         } else {
             ErrorImpl e = new ErrorImpl(ResponseCodes.INTERNAL_SERVER_ERROR);
-            log.error("Exception in API for request [{}]. Error id: [{}].", apiRequest, e.getId(), t);
+            if (containsKeyAuthentication(apiRequest)) log.error("Exception in API-key request. Error id: [{}].", e.getId());
+            else log.error("Exception in API for request [{}]. Error id: [{}].", apiRequest, e.getId(), t);
             return populateError(e, apiRequest.getLocale());
         }
+    }
+
+    private static boolean containsKeyAuthentication(ApiRequest request) {
+        return request.getAttribute("apiKey.audit.keyId") instanceof String
+                || Boolean.TRUE.equals(request.getAttribute("apiKey.audit.authenticationFailed"))
+                || "apiKeyDelegationCompletion".equalsIgnoreCase(request.getType())
+                || "apiKeyDelegationFailure".equalsIgnoreCase(request.getType())
+                || "apiKeyDelegation".equalsIgnoreCase(request.getType());
     }
 
     protected ApiError populateError(ErrorImpl error, Locale locale) {

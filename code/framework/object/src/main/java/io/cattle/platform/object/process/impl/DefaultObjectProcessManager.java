@@ -7,6 +7,8 @@ import io.cattle.platform.engine.process.ExitReason;
 import io.cattle.platform.engine.process.LaunchConfiguration;
 import io.cattle.platform.engine.process.Predicate;
 import io.cattle.platform.engine.process.ProcessInstance;
+import io.cattle.platform.engine.process.ProcessAuthorization;
+import io.cattle.platform.engine.process.ProcessAuthorizationHook;
 import io.cattle.platform.engine.process.impl.ProcessCancelException;
 import io.cattle.platform.object.ObjectManager;
 import io.cattle.platform.object.process.ObjectProcessManager;
@@ -16,6 +18,8 @@ import io.github.ibuildthecloud.gdapi.factory.SchemaFactory;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.List;
+import java.util.Collections;
 
 import jakarta.inject.Inject;
 
@@ -24,6 +28,10 @@ public class DefaultObjectProcessManager implements ObjectProcessManager {
     ProcessManager processManager;
     SchemaFactory schemaFactory;
     ObjectManager objectManager;
+    List<ProcessAuthorizationHook> authorizationHooks = Collections.emptyList();
+
+    @Inject
+    public void setAuthorizationHooks(List<ProcessAuthorizationHook> hooks) { authorizationHooks = hooks; }
 
     @Override
     public ExitReason executeStandardProcess(StandardProcess process, Object resource, Map<String, Object> data) {
@@ -112,10 +120,12 @@ public class DefaultObjectProcessManager implements ObjectProcessManager {
     @Override
     public void scheduleProcessInstanceAsync(final String processName, final Object resource,
             final Map<String, Object> data) {
+        final LaunchConfiguration config = ObjectLaunchConfigurationUtils.createConfig(schemaFactory, processName, resource, data);
+        ProcessAuthorization.prepare(config, authorizationHooks);
         DeferredUtils.nest(new Runnable() {
             @Override
             public void run() {
-                scheduleProcessInstance(processName, resource, data);
+                processManager.scheduleProcessInstance(config);
             }
         });
     }
@@ -123,12 +133,7 @@ public class DefaultObjectProcessManager implements ObjectProcessManager {
     @Override
     public void scheduleStandardProcessAsync(final StandardProcess process, final Object resource,
             final Map<String, Object> data) {
-        DeferredUtils.nest(new Runnable() {
-            @Override
-            public void run() {
-                scheduleStandardProcess(process, resource, data);
-            }
-        });
+        scheduleProcessInstanceAsync(getProcessName(resource, process), resource, data);
     }
 
     @Override

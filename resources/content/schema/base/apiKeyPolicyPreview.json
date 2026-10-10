@@ -1,0 +1,12 @@
+{
+    "collectionMethods": [ "POST" ],
+    "resourceMethods": [],
+    "resourceFields": {
+        "apiKeyId": { "type": "reference[credential]", "create": true, "nullable": true },
+        "apiKeyPolicy": { "type": "map[json]", "create": true, "nullable": false },
+        "apiKeyPolicyRevision": { "type": "int", "create": true, "nullable": true },
+        "purpose": { "type": "string", "create": false, "update": false },
+        "requestDigest": { "type": "string", "create": false, "update": false },
+        "confirmationRequired": { "type": "boolean", "create": false, "update": false }
+    }
+}

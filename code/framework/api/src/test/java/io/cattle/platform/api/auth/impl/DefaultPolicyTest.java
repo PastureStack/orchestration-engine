@@ -30,6 +30,18 @@ public class DefaultPolicyTest {
     }
 
     @Test
+    public void backgroundWorkHasNoRequestWhitelist() {
+        ApiContext.remove();
+        assertFalse(new TestPolicy().hasAccess(new Object()));
+    }
+
+    @Test
+    public void contextWithoutRequestHasNoWhitelist() {
+        ApiContext.newContext();
+        assertFalse(new TestPolicy().hasAccess(new Object()));
+    }
+
+    @Test
     public void grantObjectAccessCreatesWhitelistForCurrentRequest() {
         TestPolicy policy = policyWithRequest();
         Object granted = new Object();

@@ -8,12 +8,16 @@ import io.cattle.platform.core.constants.StoragePoolConstants;
 import io.cattle.platform.core.dao.GenericResourceDao;
 import io.cattle.platform.core.dao.StoragePoolDao;
 import io.cattle.platform.core.model.Image;
+import io.cattle.platform.core.model.Instance;
+import static io.cattle.platform.core.model.tables.InstanceTable.INSTANCE;
 import io.cattle.platform.core.model.StorageDriver;
 import io.cattle.platform.core.model.StoragePool;
 import io.cattle.platform.core.model.StoragePoolHostMap;
 import io.cattle.platform.lock.LockCallbackNoReturn;
 import io.cattle.platform.lock.LockManager;
 import io.cattle.platform.object.ObjectManager;
+import io.cattle.platform.object.process.ObjectProcessManager;
+import io.cattle.platform.object.process.StandardProcess;
 import io.cattle.platform.object.util.DataAccessor;
 import io.cattle.platform.storage.pool.StoragePoolDriver;
 import io.cattle.platform.storage.service.StorageService;
@@ -38,6 +42,8 @@ public class StorageServiceImpl implements StorageService {
     LockManager lockManager;
     @Inject
     StoragePoolDao storagePoolDao;
+    @Inject
+    ObjectProcessManager processManager;
 
 
     @Override
@@ -60,13 +66,38 @@ public class StorageServiceImpl implements StorageService {
     }
 
     protected Image populateNewRecord(String uuid) {
+        return genericResourceDao.createAndSchedule(newImageRecord(uuid));
+    }
+
+    @Override
+    public Image registerRemoteImageForInstance(String uuid, Instance instance) {
+        if (uuid == null) return null;
+        if (instance == null || instance.getId() == null) {
+            throw new IllegalArgumentException("A persisted instance is required");
+        }
+        Image image = objectManager.create(newImageRecord(uuid, true));
+        // CREATE can execute synchronously. Authorization must see the actual
+        // persisted dependency, not a client-supplied image or process-data hint.
+        objectManager.setFields(instance, INSTANCE.IMAGE_ID, image.getId());
+        processManager.scheduleStandardProcess(StandardProcess.CREATE, image, null);
+        return objectManager.reload(image);
+    }
+
+    protected Image newImageRecord(String uuid) {
+        return newImageRecord(uuid, false);
+    }
+
+    private Image newImageRecord(String uuid, boolean requireRecognizedImage) {
         Image image = objectManager.newRecord(Image.class);
+        boolean populated = false;
         for (StoragePoolDriver driver : drivers) {
             if (driver.populateImage(uuid, image)) {
+                populated = true;
                 break;
             }
         }
-        return genericResourceDao.createAndSchedule(image);
+        if (requireRecognizedImage && !populated) throw new IllegalArgumentException("Unrecognized remote image");
+        return image;
     }
 
     public List<StoragePoolDriver> getDrivers() {

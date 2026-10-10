@@ -10,6 +10,8 @@ public class CredentialConstants {
     public static final String TYPE = "credential";
 
     public static final String KIND_API_KEY = "apiKey";
+    /** Old engines must reject this kind rather than ignore its attenuation. */
+    public static final String KIND_API_KEY_RESTRICTED = "apiKeyRestricted";
     public static final String KIND_PASSWORD = "password";
     public static final String KIND_AGENT_API_KEY = "agentApiKey";
     public static final String KIND_SSH_KEY = "sshKey";
@@ -45,7 +47,7 @@ public class CredentialConstants {
 
     public static final Set<String> CREDENTIAL_TYPES_TO_FILTER = Collections.unmodifiableSet(new HashSet<>(Arrays
             .asList(
-                    KIND_API_KEY, KIND_PASSWORD
+                    KIND_API_KEY, KIND_API_KEY_RESTRICTED, KIND_PASSWORD
             )));
 
     public static final Set<String> INTERNAL_CREDENTIAL_TYPES = Collections.unmodifiableSet(new HashSet<>(Arrays

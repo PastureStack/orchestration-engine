@@ -81,10 +81,10 @@ download_agent()
 
 start_agent()
 {
-    local main=${CATTLE_HOME}/pyagent/apply.sh
+    local main=${CATTLE_HOME}/node-agent/apply.sh
     export AGENT_PARENT_PID=$PPID
     info Starting agent $main
-    exec $main start
+    exec "$main" start
 }
 
 print_config()

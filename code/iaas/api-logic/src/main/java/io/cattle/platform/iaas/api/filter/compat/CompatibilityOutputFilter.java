@@ -33,6 +33,13 @@ public class CompatibilityOutputFilter implements ResourceOutputFilter {
             return converted;
         }
 
+        // Only advertise the legacy alias when this API actually serves it.
+        // Modern v1 factories expose stack: inventing /environments links
+        // yields 404s and mismatched resource IDs for both reads and writes.
+        if (request.getSchemaFactory() == null || request.getSchemaFactory().getSchema("environment") == null) {
+            return converted;
+        }
+
         switch(converted.getType()) {
         case "stack":
             mapStack(request, original, converted);

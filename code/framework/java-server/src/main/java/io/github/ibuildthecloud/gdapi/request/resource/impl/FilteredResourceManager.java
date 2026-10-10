@@ -6,6 +6,7 @@ import io.github.ibuildthecloud.gdapi.model.Resource;
 import io.github.ibuildthecloud.gdapi.request.ApiRequest;
 import io.github.ibuildthecloud.gdapi.request.resource.ResourceManager;
 import io.github.ibuildthecloud.gdapi.request.resource.ResourceManagerFilter;
+import io.github.ibuildthecloud.gdapi.request.resource.AbstractResourceManagerFilter;
 
 import java.util.List;
 import java.util.Map;
@@ -49,6 +50,26 @@ public class FilteredResourceManager implements ResourceManager {
     @Override
     public List<?> list(String type, Map<Object, Object> criteria, ListOptions options) {
         return filter.list(type, criteria, options, next);
+    }
+
+    @Override
+    public final boolean supportsScopedCollectionQuery(Object guard) {
+        if (guard == null || filter == null || next == null) return false;
+        try {
+            // Both wrapper entry points and both filter overloads must remain
+            // pure delegation. An override may synthesize an unscoped list.
+            boolean transparent = getClass().getMethod("list", String.class, ApiRequest.class)
+                    .getDeclaringClass() == FilteredResourceManager.class
+                    && getClass().getMethod("list", String.class, Map.class, ListOptions.class)
+                    .getDeclaringClass() == FilteredResourceManager.class
+                    && filter.getClass().getMethod("list", String.class, ApiRequest.class, ResourceManager.class)
+                    .getDeclaringClass() == AbstractResourceManagerFilter.class
+                    && filter.getClass().getMethod("list", String.class, Map.class, ListOptions.class, ResourceManager.class)
+                    .getDeclaringClass() == AbstractResourceManagerFilter.class;
+            return transparent && next.supportsScopedCollectionQuery(guard);
+        } catch (NoSuchMethodException | SecurityException unknownPath) {
+            return false;
+        }
     }
 
     @Override
