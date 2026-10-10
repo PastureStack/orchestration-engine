@@ -14,6 +14,8 @@ import io.cattle.platform.engine.process.ProcessInstance;
 import io.cattle.platform.engine.process.ProcessInstanceException;
 import io.cattle.platform.engine.process.ProcessServiceContext;
 import io.cattle.platform.engine.process.ProcessState;
+import io.cattle.platform.engine.process.ProcessAuthorization;
+import io.cattle.platform.engine.process.ProcessAuthorizationHook;
 import io.cattle.platform.engine.process.StateChangeMonitor;
 import io.cattle.platform.engine.process.impl.DefaultProcessInstanceImpl;
 import io.cattle.platform.engine.server.ProcessInstanceReference;
@@ -30,6 +32,7 @@ import java.util.Map;
 import java.util.concurrent.DelayQueue;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.Collections;
 
 import jakarta.inject.Inject;
 
@@ -56,14 +59,20 @@ public class DefaultProcessManager implements ProcessManager, InitializationTask
     ExecutionExceptionHandler exceptionHandler;
     @Inject
     List<StateChangeMonitor> changeMonitors;
+    List<ProcessAuthorizationHook> authorizationHooks = Collections.emptyList();
+
+    @Inject
+    public void setAuthorizationHooks(List<ProcessAuthorizationHook> hooks) { authorizationHooks = hooks; }
 
     @Override
     public ProcessInstance createProcessInstance(LaunchConfiguration config) {
+        ProcessAuthorization.prepare(config, authorizationHooks);
         return createProcessInstance(new ProcessRecord(config, null, null), false, false);
     }
 
     @Override
     public void scheduleProcessInstance(LaunchConfiguration config) {
+        ProcessAuthorization.prepare(config, authorizationHooks);
         ProcessInstance pi = createProcessInstance(new ProcessRecord(config, null, null), true, false);
         try {
             pi.execute();
@@ -93,6 +102,7 @@ public class DefaultProcessManager implements ProcessManager, InitializationTask
             record = processRecordDao.insert(record);
 
         ProcessServiceContext context = new ProcessServiceContext(lockManager, eventService, this, exceptionHandler, changeMonitors);
+        context.setAuthorizationHooks(authorizationHooks);
         DefaultProcessInstanceImpl process = new DefaultProcessInstanceImpl(context, record, processDef, state, schedule, replay);
 
         if (record.getId() != null)

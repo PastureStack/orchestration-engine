@@ -76,7 +76,10 @@ public class ParseCollectionAttributes extends AbstractApiRequestHandler {
 
             for (String mod : filter.getModifiers()) {
                 if (nameAndOp.getOp().equals(mod)) {
-                    List<Condition> conditionList = new ArrayList<Condition>();
+                    // Multiple modifiers on one field are AND leaves, not
+                    // replacements for a previously parsed bound.
+                    List<Condition> conditionList = conditions.computeIfAbsent(
+                            nameAndOp.getName(), name -> new ArrayList<Condition>());
                     ConditionType conditionType = ConditionType.valueOf(nameAndOp.getOp().toUpperCase());
 
                     for (Object obj : RequestUtils.toList(entry.getValue())) {
@@ -94,7 +97,6 @@ public class ParseCollectionAttributes extends AbstractApiRequestHandler {
                         conditionList.add(new Condition(conditionType, obj));
                     }
 
-                    conditions.put(nameAndOp.getName(), conditionList);
                 }
             }
         }
@@ -105,6 +107,9 @@ public class ParseCollectionAttributes extends AbstractApiRequestHandler {
     protected void parseSort(Schema schema, Map<String, Object> params, ApiRequest request) {
         SortOrder orderEnum = SortOrder.ASC;
         String sort = RequestUtils.getSingularStringValue(Collection.SORT, params);
+        if (sort == null) {
+            return;
+        }
         String order = RequestUtils.getSingularStringValue(Collection.ORDER, params);
         if (order != null) {
             try {

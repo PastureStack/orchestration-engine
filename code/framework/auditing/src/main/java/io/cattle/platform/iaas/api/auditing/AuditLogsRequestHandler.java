@@ -17,10 +17,18 @@ public class AuditLogsRequestHandler extends AbstractApiRequestHandler {
 
     @Override
     public void handle(ApiRequest request) throws IOException {
-        if (!Schema.Method.GET.isMethod(request.getMethod())){
+        // Key requests are recorded by the response-finally sink, including EOF.
+        if (!AuditServiceImpl.isApiKeyRequest(request) && !AuditServiceImpl.isApiKeyGovernanceRequest(request)
+                && !Schema.Method.GET.isMethod(request.getMethod())){
             request.setAttribute("requestEndTime", System.currentTimeMillis());
             Policy policy = (Policy) ApiContext.getContext().getPolicy();
             auditService.logRequest(request, policy);
         }
+    }
+
+    @Override
+    public boolean handleException(ApiRequest request, Throwable error) throws IOException {
+        // Completion is deferred until the actual servlet response status is known.
+        return false;
     }
 }

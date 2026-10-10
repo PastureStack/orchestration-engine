@@ -5,6 +5,7 @@ import io.cattle.platform.eventing.EventService;
 import io.cattle.platform.lock.LockManager;
 
 import java.util.List;
+import java.util.Collections;
 
 public class ProcessServiceContext {
 
@@ -13,6 +14,7 @@ public class ProcessServiceContext {
     ProcessManager processManager;
     ExecutionExceptionHandler exceptionHandler;
     List<StateChangeMonitor> changeMonitors;
+    List<ProcessAuthorizationHook> authorizationHooks = Collections.emptyList();
 
     public ProcessServiceContext(LockManager lockManager, EventService eventService, ProcessManager processManager, ExecutionExceptionHandler exceptionHandler,
             List<StateChangeMonitor> changeMonitors) {
@@ -43,5 +45,9 @@ public class ProcessServiceContext {
     public List<StateChangeMonitor> getChangeMonitors() {
         return changeMonitors;
     }
+
+    public List<ProcessAuthorizationHook> getAuthorizationHooks() { return authorizationHooks; }
+
+    public void setAuthorizationHooks(List<ProcessAuthorizationHook> hooks) { authorizationHooks = hooks; }
 
 }

@@ -2,11 +2,12 @@ package io.cattle.platform.api.settings.model;
 
 import io.cattle.platform.archaius.util.ArchaiusUtil;
 import io.cattle.platform.core.model.Setting;
+import io.cattle.platform.api.resource.NamedResourceIdentity;
 import io.github.ibuildthecloud.gdapi.annotation.Field;
 import io.github.ibuildthecloud.gdapi.annotation.Type;
 
 @Type(update = true)
-public class ActiveSetting {
+public class ActiveSetting implements NamedResourceIdentity {
 
     String id;
     String name;
@@ -34,6 +35,19 @@ public class ActiveSetting {
     }
 
     public String getName() {
+        return name;
+    }
+
+    @Override
+    @Field(include = false)
+    public String getApiResourceType() {
+        return "setting";
+    }
+
+    @Override
+    @Field(include = false)
+    public String getApiResourceId() {
+        // SettingManager renders the name even when getId() is a DB row ID.
         return name;
     }
 

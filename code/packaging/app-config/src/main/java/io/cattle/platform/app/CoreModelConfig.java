@@ -122,6 +122,7 @@ public class CoreModelConfig {
                 "addRemoveServiceLinkInput",
                 "changeSecretInput",
                 "apiKey,parent=credential",
+                "apiKeyRestricted,parent=apiKey",
                 "composeConfigInput",
                 "container,parent=instance",
                 "instanceConsole",

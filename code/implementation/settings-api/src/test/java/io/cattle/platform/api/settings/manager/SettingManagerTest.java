@@ -9,6 +9,16 @@ import io.cattle.platform.api.settings.model.ActiveSetting;
 import io.cattle.platform.archaius.util.ConfigurationView;
 import io.cattle.platform.core.model.Setting;
 import io.cattle.platform.core.model.tables.records.SettingRecord;
+import io.github.ibuildthecloud.gdapi.context.ApiContext;
+import io.github.ibuildthecloud.gdapi.factory.SchemaFactory;
+import io.github.ibuildthecloud.gdapi.factory.impl.SchemaFactoryImpl;
+import io.github.ibuildthecloud.gdapi.id.IdFormatter;
+import io.github.ibuildthecloud.gdapi.model.Resource;
+import io.github.ibuildthecloud.gdapi.model.Schema;
+import io.github.ibuildthecloud.gdapi.model.impl.SchemaImpl;
+import io.github.ibuildthecloud.gdapi.model.impl.ResourceImpl;
+import io.github.ibuildthecloud.gdapi.request.ApiRequest;
+import io.github.ibuildthecloud.gdapi.url.NullUrlBuilder;
 
 import java.util.Arrays;
 import java.util.Iterator;
@@ -55,6 +65,47 @@ public class SettingManagerTest {
 
         assertEquals(1, result.size());
         assertSame(dbSetting, result.get(0));
+    }
+
+    @Test
+    public void namedIdentityMatchesRenderedSettingNameWithAndWithoutDatabaseRow() {
+        ApiRequest request = new ApiRequest(null, new SchemaFactoryImpl());
+        request.setMethod("GET");
+        request.setUrlBuilder(new NullUrlBuilder());
+        ApiContext.newContext().setApiRequest(request);
+        try {
+            ActiveSetting configured = new ActiveSetting("named.setting", "active-value", "DefaultsConfig");
+            ActiveSetting database = new ActiveSetting("ignored", "active-value", "DatabaseConfig");
+            database.setSetting(new SettingRecord(42L, "db.named.setting", "db-value"));
+            assertEquals("42", database.getId());
+            for (ActiveSetting value : Arrays.asList(configured, database)) {
+                Resource rendered = new IdentityRenderingSettingManager().render(value, request);
+                assertEquals("setting", value.getApiResourceType());
+                assertEquals(value.getName(), value.getApiResourceId());
+                assertEquals(value.getApiResourceId(), rendered.getId());
+                assertEquals("activeSetting", rendered.getType());
+                assertEquals("setting", rendered.getFields().get("baseType"));
+            }
+        } finally {
+            ApiContext.remove();
+        }
+    }
+
+    private static class IdentityRenderingSettingManager extends SettingManager {
+        Resource render(ActiveSetting value, ApiRequest request) {
+            return createResource(value, ApiContext.getContext().getIdFormatter(), request);
+        }
+        @Override protected Schema getSchemaForDisplay(SchemaFactory factory, Object value) {
+            SchemaImpl schema = new SchemaImpl();
+            schema.setId("activeSetting");
+            return schema;
+        }
+        @Override protected Resource constructResource(IdFormatter formatter, SchemaFactory factory, Schema schema, Object value, ApiRequest request) {
+            ActiveSetting setting = (ActiveSetting) value;
+            return new ResourceImpl(setting.getId(), "activeSetting", new LinkedHashMap<>(Map.of("name", setting.getName())));
+        }
+        @Override protected void addLinks(Object obj, SchemaFactory factory, Schema schema, Resource resource) { }
+        @Override protected void addActions(Object obj, SchemaFactory factory, Schema schema, Resource resource) { }
     }
 
     private Map<String, ActiveSetting> byName(List<ActiveSetting> settings) {

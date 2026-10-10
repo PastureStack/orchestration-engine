@@ -13,6 +13,7 @@ import io.cattle.platform.host.service.HostApiService;
 import io.cattle.platform.host.stats.utils.StatsConstants;
 import io.cattle.platform.object.ObjectManager;
 import io.cattle.platform.token.TokenService;
+import io.cattle.platform.iaas.api.filter.apikey.ApiKeyDelegationTokenProvider;
 import io.github.ibuildthecloud.gdapi.context.ApiContext;
 import io.github.ibuildthecloud.gdapi.request.ApiRequest;
 
@@ -34,6 +35,7 @@ public class HostStatsLinkHandler implements LinkHandler {
     ObjectManager objectManager;
     @Inject
     TokenService tokenService;
+    @Inject ApiKeyDelegationTokenProvider delegationTokens;
 
     @Override
     public String[] getTypes() {
@@ -95,7 +97,9 @@ public class HostStatsLinkHandler implements LinkHandler {
         Map<String, Object> metaQueryPayload = new HashMap<>();
         metaQueryPayload.put(ProjectConstants.TYPE, serviceStatsQuery);
 
-        meta.setToken(tokenService.generateToken(metaQueryPayload));
+        String delegated = delegationTokens == null ? null : delegationTokens.token(request, metaQueryPayload, null);
+        meta.setToken(delegated == null ? tokenService.generateToken(metaQueryPayload) : delegated);
+        request.setAttribute("apiKey.audit.actualOutcome", "ACCEPTED");
         meta.setUrl(metaUrl);
 
         return meta;

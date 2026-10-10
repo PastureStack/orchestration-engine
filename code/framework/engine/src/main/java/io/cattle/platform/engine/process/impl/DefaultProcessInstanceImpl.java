@@ -27,6 +27,9 @@ import io.cattle.platform.engine.process.ProcessDefinition;
 import io.cattle.platform.engine.process.ProcessInstance;
 import io.cattle.platform.engine.process.ProcessInstanceException;
 import io.cattle.platform.engine.process.ProcessPhase;
+import io.cattle.platform.engine.process.ProcessAuthorization;
+import io.cattle.platform.engine.process.ProcessAuthorizationHook;
+import io.cattle.platform.engine.process.ProcessAuthorizationDeniedException;
 import io.cattle.platform.engine.process.ProcessResult;
 import io.cattle.platform.engine.process.ProcessServiceContext;
 import io.cattle.platform.engine.process.ProcessState;
@@ -153,10 +156,56 @@ public class DefaultProcessInstanceImpl implements ProcessInstance {
 
     protected ExitReason executeWithProcessInstanceLock() {
         EngineContext engineContext = EngineContext.getEngineContext();
+        Map<String, Object> metadata = ProcessAuthorization.metadata(record);
+        engineContext.pushAuthorization(metadata);
+        boolean completionReplay = false;
+        EngineContext.VerifiedExecutionFrame verifiedFrame = null;
         try {
+            if (!metadata.isEmpty() && record.getData().get(ProcessAuthorization.COMPLETION_PENDING_KEY) instanceof String pending) {
+                completionReplay = true;
+                ExitReason completedReason = ExitReason.valueOf(pending);
+                try {
+                    if (context.getAuthorizationHooks().stream().noneMatch(ProcessAuthorizationHook::recordsCompletion)) {
+                        throw new IllegalStateException("Process completion audit is unavailable");
+                    }
+                    for (ProcessAuthorizationHook hook : context.getAuthorizationHooks()) {
+                        hook.afterExecution(record, metadata, completedReason);
+                    }
+                } catch (RuntimeException unavailable) {
+                    record.setRunAfter(new Date(System.currentTimeMillis() + 5000));
+                    throw new ProcessExecutionExitException(AUDIT_PENDING);
+                }
+                record.getData().remove(ProcessAuthorization.COMPLETION_PENDING_KEY);
+                record.setEndTime(new Date());
+                return exit(completedReason);
+            }
+            if (!metadata.isEmpty()) {
+                if (context.getAuthorizationHooks().stream().noneMatch(ProcessAuthorizationHook::authorizesExecution)) {
+                    throw new ProcessAuthorizationDeniedException("authorization_hook_unavailable");
+                }
+                if (context.getAuthorizationHooks().stream().noneMatch(ProcessAuthorizationHook::recordsCompletion)) {
+                    throw new ProcessAuthorizationDeniedException("completion_audit_unavailable");
+                }
+                try {
+                    for (ProcessAuthorizationHook hook : context.getAuthorizationHooks()) {
+                        hook.beforeExecution(record, metadata);
+                    }
+                } catch (ProcessAuthorizationDeniedException denied) {
+                    throw denied;
+                } catch (RuntimeException unavailable) {
+                    // Revalidation outages must not run process side effects or
+                    // leave a process marked running indefinitely.
+                    throw new ProcessExecutionExitException(RETRY_EXCEPTION);
+                }
+            }
+            verifiedFrame = engineContext.pushVerifiedExecution(record.getResourceType(), record.getResourceId(), metadata);
             runDelegateLoop(engineContext);
 
             return exit(ExitReason.DONE);
+        } catch (ProcessAuthorizationDeniedException denied) {
+            record.setEndTime(new Date());
+            exit(AUTHORIZATION_DENIED);
+            throw new ProcessInstanceException(this, new ProcessExecutionExitException(AUTHORIZATION_DENIED));
         } catch (ProcessExecutionExitException e) {
             exit(e.getExitReason());
             if (e.getExitReason() != null && e.getExitReason().getResult() == ProcessResult.SUCCESS) {
@@ -170,7 +219,35 @@ public class DefaultProcessInstanceImpl implements ProcessInstance {
 
             throw new ProcessInstanceException(this, e);
         } finally {
-            context.getProcessManager().persistState(this, schedule);
+            try {
+                if (!metadata.isEmpty() && !completionReplay && finalReason != null && finalReason != SCHEDULED) {
+                    try {
+                        if (context.getAuthorizationHooks().stream().noneMatch(ProcessAuthorizationHook::recordsCompletion)) {
+                            throw new IllegalStateException("Process completion audit is unavailable");
+                        }
+                        for (ProcessAuthorizationHook hook : context.getAuthorizationHooks()) {
+                            hook.afterExecution(record, metadata, finalReason);
+                        }
+                    } catch (RuntimeException unavailable) {
+                        // Retry delivery only; never repeat completed side effects.
+                        record.getData().put(ProcessAuthorization.COMPLETION_PENDING_KEY, finalReason.name());
+                        record.setEndTime(null);
+                        record.setRunAfter(new Date(System.currentTimeMillis() + 5000));
+                        exit(AUDIT_PENDING);
+                        throw new ProcessInstanceException(this, new ProcessExecutionExitException(AUDIT_PENDING));
+                    }
+                }
+            } finally {
+                try {
+                    context.getProcessManager().persistState(this, schedule);
+                } finally {
+                    try {
+                        if (verifiedFrame != null) engineContext.popVerifiedExecution(verifiedFrame);
+                    } finally {
+                        engineContext.popAuthorization();
+                    }
+                }
+            }
         }
     }
 

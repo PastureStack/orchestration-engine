@@ -14,6 +14,7 @@ import io.cattle.platform.host.service.HostApiService;
 import io.cattle.platform.object.ObjectManager;
 import io.cattle.platform.object.util.DataAccessor;
 import io.cattle.platform.token.TokenService;
+import io.cattle.platform.iaas.api.filter.apikey.ApiKeyDelegationTokenProvider;
 import io.github.ibuildthecloud.gdapi.exception.ClientVisibleException;
 import io.github.ibuildthecloud.gdapi.request.ApiRequest;
 import io.github.ibuildthecloud.gdapi.util.ResponseCodes;
@@ -38,6 +39,7 @@ public class HostApiServiceImpl implements HostApiService {
     ObjectManager objectManager;
     TokenService tokenService;
     HostApiRSAKeyProvider keyProvider;
+    @Inject ApiKeyDelegationTokenProvider delegationTokens;
 
     public HostApiServiceImpl() {
         this(ArchaiusHostApiSettings.create());
@@ -62,10 +64,12 @@ public class HostApiServiceImpl implements HostApiService {
             return null;
         }
 
-        String token = getToken(host, data, expiration);
+        String token = getToken(request, host, data, expiration);
         if (token == null) {
             return null;
         }
+        // HTTP success here means ticket issuance, not remote execution success.
+        request.setAttribute("apiKey.audit.actualOutcome", "ACCEPTED");
 
         Map<String, String> values = new HashMap<String, String>();
         values.put(settings.authHeader(), String.format(settings.authHeaderValueFormat(), token));
@@ -114,12 +118,21 @@ public class HostApiServiceImpl implements HostApiService {
     }
 
     protected String getToken(Host host, Map<String, Object> inputData, Date expiration) {
+        return getToken(null, host, inputData, expiration);
+    }
+
+    protected String getToken(ApiRequest request, Host host, Map<String, Object> inputData, Date expiration) {
         Map<String, Object> data = new HashMap<String, Object>(inputData);
         String uuid = DataAccessor.fields(host).withKey(HostConstants.FIELD_REPORTED_UUID).as(String.class);
         if (uuid != null) {
             data.put(HOST_UUID, uuid);
         } else {
             data.put(HOST_UUID, host.getUuid());
+        }
+
+        if (delegationTokens != null && request != null) {
+            String delegated = delegationTokens.token(request, data, expiration);
+            if (delegated != null) return delegated;
         }
 
         if (expiration == null) {

@@ -4,11 +4,17 @@
     <parent>
         <artifactId>cattle-parent</artifactId>
         <groupId>io.cattle</groupId>
-        <version>0.183.333</version>
+        <version>0.183.334</version>
         <relativePath>../../parent/pom.xml</relativePath>
     </parent>
     
     <dependencies>
+        <dependency>
+            <groupId>org.mockito</groupId>
+            <artifactId>mockito-core</artifactId>
+            <version>5.23.0</version>
+            <scope>test</scope>
+        </dependency>
         <dependency>
             <groupId>io.cattle</groupId>
             <artifactId>cattle-framework-utils</artifactId>

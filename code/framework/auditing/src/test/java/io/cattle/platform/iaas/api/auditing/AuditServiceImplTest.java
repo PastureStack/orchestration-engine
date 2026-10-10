@@ -60,7 +60,8 @@ public class AuditServiceImplTest {
                 "password", "identityProof", "providerSwitchCode", "localPassword",
                 "mfaCode", "recoveryCode", "verificationCode", "webAuthnResponse",
                 "challengeId", "totpSecret", "totpProvisioningUri", "recoveryCodes",
-                "publicKey", "smtpPassword", "emailCode", "email", "testRecipient"
+                "publicKey", "smtpPassword", "emailCode", "email", "testRecipient", "securityConfirmation", "purposeDigest",
+                "token", "backendToken"
         };
         for (String field : sensitive) {
             input.put(field, "must-not-be-recorded");

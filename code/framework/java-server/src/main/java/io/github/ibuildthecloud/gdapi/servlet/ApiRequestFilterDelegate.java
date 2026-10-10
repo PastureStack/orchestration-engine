@@ -7,6 +7,7 @@ import io.github.ibuildthecloud.gdapi.id.IdFormatter;
 import io.github.ibuildthecloud.gdapi.model.Schema;
 import io.github.ibuildthecloud.gdapi.request.ApiRequest;
 import io.github.ibuildthecloud.gdapi.request.handler.ApiRequestHandler;
+import io.github.ibuildthecloud.gdapi.request.handler.ApiRequestCompletionSink;
 import io.github.ibuildthecloud.gdapi.request.parser.ApiRequestParser;
 import io.github.ibuildthecloud.gdapi.server.model.ApiServletContext;
 import io.github.ibuildthecloud.gdapi.util.ExceptionUtils;
@@ -16,6 +17,7 @@ import java.io.EOFException;
 import java.io.IOException;
 import java.net.URL;
 import java.util.List;
+import java.util.Collections;
 import java.util.Map;
 
 import jakarta.inject.Inject;
@@ -39,6 +41,7 @@ public class ApiRequestFilterDelegate {
     Versions versions;
     ApiRequestParser parser;
     List<ApiRequestHandler> handlers;
+    List<ApiRequestCompletionSink> completionSinks = Collections.emptyList();
     boolean throwErrors = false;
     Map<String, SchemaFactory> schemaFactories;
     IdFormatter idFormatter;
@@ -59,6 +62,7 @@ public class ApiRequestFilterDelegate {
         ApiRequest apiRequest = new ApiRequest(new ApiServletContext(httpRequest, httpResponse, chain), schemaFactory);
         apiRequest.setAttribute("requestStartTime", System.currentTimeMillis());
         ApiContext context = null;
+        Throwable completionError = null;
 
         try {
             context = ApiContext.newContext();
@@ -120,10 +124,19 @@ public class ApiRequestFilterDelegate {
                 throw currentError;
             }
         } catch (EOFException e) {
-            log.trace("Caught EOFException, ignoring", e);
+            completionError = e;
+            if (!isKeyRequest(apiRequest)) {
+                log.trace("Caught EOFException, ignoring", e);
+            }
             throw e;
         } catch (Throwable t) {
-            log.error("Unhandled exception in API for request [{}]", apiRequest, t);
+            completionError = t;
+            if (isKeyRequest(apiRequest)) {
+                // URLs, query strings and exception causes can contain credentials.
+                log.error("Unhandled exception in API-key request");
+            } else {
+                log.error("Unhandled exception in API for request [{}]", apiRequest, t);
+            }
             if (throwErrors) {
                 ExceptionUtils.rethrowRuntime(t);
                 ExceptionUtils.rethrow(t, IOException.class);
@@ -131,15 +144,53 @@ public class ApiRequestFilterDelegate {
                 throw new ServletException(t);
             } else {
                 if (!httpResponse.isCommitted()) {
+                    apiRequest.setResponseCode(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
                     httpResponse.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
                 }
             }
         } finally {
-            apiRequest.commit();
-            ApiContext.remove();
+            try {
+                finishRequest(apiRequest, httpResponse, completionError);
+            } finally {
+                ApiContext.remove();
+            }
         }
 
         return context;
+    }
+
+    protected void finishRequest(ApiRequest request, HttpServletResponse response, Throwable failure) throws IOException {
+        Throwable finalError = failure;
+        try {
+            request.commit();
+        } catch (RuntimeException commitError) {
+            finalError = commitError;
+            throw commitError;
+        } finally {
+            request.setResponseCode(response.getStatus());
+            for (ApiRequestCompletionSink sink : completionSinks) {
+                try {
+                    sink.complete(request, finalError);
+                } catch (RuntimeException unavailable) {
+                    // Never attach the cause: audit storage errors may contain values.
+                    log.error("Request completion persistence is unavailable");
+                    if (finalError == null) {
+                        throw new IOException("Request completion persistence is unavailable");
+                    }
+                }
+            }
+        }
+    }
+
+    private static boolean isKeyRequest(ApiRequest request) {
+        return request.getAttribute("apiKey.audit.keyId") instanceof String
+                || Boolean.TRUE.equals(request.getAttribute("apiKey.audit.authenticationFailed"))
+                || "apiKeyDelegationCompletion".equalsIgnoreCase(request.getType())
+                || "apiKeyDelegation".equalsIgnoreCase(request.getType());
+    }
+
+    public void setCompletionSinks(List<ApiRequestCompletionSink> sinks) {
+        completionSinks = sinks == null ? Collections.emptyList() : List.copyOf(sinks);
     }
 
     public ApiRequestParser getParser() {

@@ -39,6 +39,17 @@ import io.cattle.platform.iaas.api.auth.identity.ProviderSwitchTokenService;
 import io.cattle.platform.iaas.api.auth.identity.TokenResourceManager;
 import io.cattle.platform.iaas.api.auth.impl.AgentQualifierAuthorizationProvider;
 import io.cattle.platform.iaas.api.auth.impl.ApiAuthenticator;
+import io.cattle.platform.iaas.api.auth.apikey.ApiKeyAuthorizationService;
+import io.cattle.platform.iaas.api.auth.apikey.ApiKeyTargetResolver;
+import io.cattle.platform.iaas.api.auth.apikey.ApiKeyPolicyManagementService;
+import io.cattle.platform.iaas.api.auth.apikey.ApiKeyPolicyInputHandler;
+import io.cattle.platform.iaas.api.auth.apikey.ApiKeyPolicyPreviewResourceManager;
+import io.cattle.platform.iaas.api.auth.apikey.ApiKeyPolicyPreview;
+import io.cattle.platform.iaas.api.auth.apikey.ApiKeyProcessAuthorization;
+import io.cattle.platform.iaas.api.auth.apikey.ApiKeyDelegationService;
+import io.cattle.platform.iaas.api.auth.apikey.ApiKeySubscriptionAuthorization;
+import io.cattle.platform.iaas.api.auth.apikey.ApiKeyDelegationCompletion;
+import io.cattle.platform.iaas.api.auth.apikey.ApiKeyDelegationCompletionResourceManager;
 import io.cattle.platform.iaas.api.auth.impl.DefaultAuthorizationProvider;
 import io.cattle.platform.iaas.api.auth.integration.azure.AzureConfigManager;
 import io.cattle.platform.iaas.api.auth.integration.azure.AzureIdentityProvider;
@@ -581,6 +592,11 @@ public class IaasApiConfig {
     }
 
     @Bean
+    ApiKeyPolicyInputHandler ApiKeyPolicyInputHandler(ExtensionManagerImpl em) {
+        return EMUtils.add(em, ApiRequestHandler.class, new ApiKeyPolicyInputHandler());
+    }
+
+    @Bean
     ValidationHandler ValidationHandler(ExtensionManagerImpl em, ResourceManagerReferenceValidator validator) {
         ValidationHandler handler = EMUtils.add(em, ApiRequestHandler.class, new ValidationHandler());
         handler.setReferenceValidator(validator);
@@ -815,6 +831,39 @@ public class IaasApiConfig {
     @Bean
     ApiAuthenticator ApiAuthenticator() {
         return new ApiAuthenticator();
+    }
+
+    @Bean
+    ApiKeyAuthorizationService ApiKeyAuthorizationService() { return new ApiKeyAuthorizationService(); }
+
+    @Bean
+    ApiKeyTargetResolver ApiKeyTargetResolver() { return new ApiKeyTargetResolver(); }
+
+    @Bean
+    ApiKeyProcessAuthorization ApiKeyProcessAuthorization() { return new ApiKeyProcessAuthorization(); }
+
+    @Bean
+    ApiKeyDelegationService ApiKeyDelegationService() { return new ApiKeyDelegationService(); }
+
+    @Bean
+    ApiKeySubscriptionAuthorization ApiKeySubscriptionAuthorization() { return new ApiKeySubscriptionAuthorization(); }
+
+    @Bean
+    ApiKeyDelegationCompletionResourceManager ApiKeyDelegationCompletionResourceManager() {
+        return new ApiKeyDelegationCompletionResourceManager();
+    }
+
+    @Bean
+    ApiKeyPolicyManagementService ApiKeyPolicyManagementService() { return new ApiKeyPolicyManagementService(); }
+
+    @Bean
+    ApiKeyPolicyPreviewResourceManager ApiKeyPolicyPreviewResourceManager() { return new ApiKeyPolicyPreviewResourceManager(); }
+
+    @Bean
+    TypeSet ApiKeyPolicyTypes() {
+        TypeSet types = new TypeSet("ApiKeyPolicyTypes");
+        types.setTypeClasses(Arrays.<Class<?>>asList(ApiKeyPolicyPreview.class, ApiKeyDelegationCompletion.class));
+        return types;
     }
 
     @Bean

@@ -65,10 +65,19 @@ public abstract class NonBlockingSubscriptionHandler implements SubscriptionHand
     RetryTimeoutService retryTimeout;
     ExecutorService executorService;
     List<ApiPubSubEventPostProcessor> eventProcessors;
+    @Inject List<SubscriptionAuthorization> subscriptionAuthorizations;
 
     @Override
     public boolean subscribe(Collection<String> eventNames, final ApiRequest apiRequest, final boolean strip) throws IOException {
         ApiContext apiContext = ApiContext.getContext();
+
+        final java.util.ArrayList<SubscriptionAuthorization.Session> authorizations = new java.util.ArrayList<>();
+        if (subscriptionAuthorizations != null) {
+            for (SubscriptionAuthorization authorization : subscriptionAuthorizations) {
+                SubscriptionAuthorization.Session session = authorization.capture(apiRequest);
+                if (session != null) authorizations.add(session);
+            }
+        }
 
         final Object writeLock = new Object();
         final MessageWriter writer = getMessageWriter(apiRequest);
@@ -88,7 +97,12 @@ public abstract class NonBlockingSubscriptionHandler implements SubscriptionHand
                     EventVO<Object> modified = new EventVO<Object>(event);
 
                     ApiRequest request = new ApiRequest(apiRequest);
-                    if (!postProcess(modified, idFormatter, request, policy)) {
+                    Object currentPolicy = policy;
+                    for (SubscriptionAuthorization.Session session : authorizations) {
+                        currentPolicy = session.currentPolicy(modified);
+                        if (currentPolicy == null) return;
+                    }
+                    if (!postProcess(modified, idFormatter, request, currentPolicy)) {
                         return;
                     }
                     obfuscateIds(modified, idFormatter);
@@ -97,6 +111,10 @@ public abstract class NonBlockingSubscriptionHandler implements SubscriptionHand
                 } catch (IOException e) {
                     log.trace("IOException on write to client for pub sub, disconnecting", e);
                     disconnect.set(true);
+                } catch (RuntimeException denied) {
+                    // A live authorization failure also closes idle streams on
+                    // the next scheduled ping, without emitting an event body.
+                    unsubscribe(disconnect, writer, this);
                 }
             }
         };
