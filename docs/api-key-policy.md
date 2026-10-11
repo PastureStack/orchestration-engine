@@ -1,8 +1,9 @@
 # API Key policy and audit contract
 
-This is the Engine `0.183.335` contract for the Server `v1.6.519` source
-candidate. Component/source validation is separate from platform acceptance
-and publication.
+This is the released Engine `0.183.337` contract for Server `v1.6.521` with
+Web Console `1.6.181`. Publication and focused validation do not establish
+complete UI/API and role/resource matrix acceptance; that matrix is not yet
+complete.
 
 ## Authorization and updates
 
@@ -86,6 +87,13 @@ Key management through the web UI is linked to the managed Key's account and aud
 history, with the operator recorded separately, without recording secret delivery
 or MFA inputs.
 
+Governance audit uses the same typed public Key ID before and after request
+validation, including failed edits. The identity comes from authoritative request
+or response state, never an untrusted request body. Server `v1.6.521` also includes
+historical numeric Key IDs in per-Key audit queries within existing RBAC, without
+rewriting stored events. This normalization does not change authorization, MFA,
+Key persistence or audit ownership.
+
 Container audit targets use the persisted instance ID (`1i` prefix) for decision,
 response and terminal records, including agent-only schemas without a `container`
 alias. A logical resource type must not create a different ID for the same target.
@@ -110,7 +118,12 @@ returns `ApiKeyExpired` (401) and records `DENY`/`FAILED`, phase `handshake`.
 Missing proof or durable acceptance returns `AuditUnavailable` (503); no backend
 or persistent session is started, and no durable receipt is falsely claimed.
 
-For matching producer versions, lifecycle and rollback boundaries, see the
-[0.183.335 integration contract](releases/orchestration-engine-0.183.335.md).
+For the current audit identity change, see the
+[0.183.337 release notes](releases/v0.183.337.md). The
+[0.183.335 integration contract](releases/orchestration-engine-0.183.335.md)
+records the Project membership, lifecycle and rollback boundaries introduced
+with that release. Published companion versions are
+[Server v1.6.521](https://github.com/PastureStack/server/releases/tag/v1.6.521)
+and [Web Console 1.6.181](https://github.com/PastureStack/web-console/releases/tag/1.6.181).
 Use the complete compatible Server image; the component alone does not prove
 every platform role/resource combination.
