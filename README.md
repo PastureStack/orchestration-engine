@@ -10,7 +10,7 @@ upstream history, authorship, licenses, and dependency notices.
 
 ## Current build
 
-Engine `0.183.335` and Server `v1.6.519` are released.
+Engine `0.183.336` and Server `v1.6.520` are released.
 Engine `0.183.336` records HTTP 101 as a successful handshake, not stream completion; actual failure and cancellation outcomes still take precedence.
 Both API roots support full, closed or custom Key access, optional expiry and
 per-Key durable audit. Full and untouched legacy Keys keep their existing scope;
