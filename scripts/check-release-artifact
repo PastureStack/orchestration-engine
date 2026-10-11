@@ -283,7 +283,7 @@ unzip -p "$workdir/$app_config_entry" \
     grep -aF IdentitySecurityApiTypes >/dev/null
 unzip -p "$workdir/$app_config_entry" \
     io/cattle/platform/app/IaasApiConfig.class |
-    grep -aF projectAccessService >/dev/null
+    grep -aF ProjectAccessService >/dev/null
 unzip -p "$workdir/$app_config_entry" \
     META-INF/cattle/legacy/spring-legacy-context.xml |
     grep -F '<tx:method name="assertAllowed" propagation="REQUIRES_NEW" read-only="true" />' >/dev/null
