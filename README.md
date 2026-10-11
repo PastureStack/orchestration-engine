@@ -10,7 +10,7 @@ upstream history, authorship, licenses, and dependency notices.
 
 ## Current build
 
-Engine `0.183.335` is released; Server `v1.6.519` remains a candidate.
+Engine `0.183.335` and Server `v1.6.519` are released.
 Both API roots support full, closed or custom Key access, optional expiry and
 per-Key durable audit. Full and untouched legacy Keys keep their existing scope;
 all policies remain bounded by the owner's live RBAC, and explicit denies win.
