@@ -9,7 +9,7 @@ import io.github.ibuildthecloud.gdapi.model.impl.SchemaImpl;
 import io.github.ibuildthecloud.gdapi.request.ApiRequest;
 import io.cattle.platform.core.model.tables.records.StackRecord;
 import java.lang.reflect.Proxy;
-import java.net.URL;
+import java.net.URI;
 import java.util.HashMap;
 import org.junit.Test;
 
@@ -50,8 +50,8 @@ public class CompatibilityOutputFilterTest {
     }
     private ResourceImpl resource(String type, String id) throws Exception {
         ResourceImpl resource = new ResourceImpl(id, type, new HashMap<>());
-        resource.setLinks(new HashMap<>(java.util.Map.of("self", new URL("http://qa/v1/stacks/1st1"))));
-        resource.getActions().put("update", new URL("http://qa/v1/stacks/1st1/?action=update"));
+        resource.setLinks(new HashMap<>(java.util.Map.of("self", URI.create("http://qa/v1/stacks/1st1").toURL())));
+        resource.getActions().put("update", URI.create("http://qa/v1/stacks/1st1/?action=update").toURL());
         return resource;
     }
 }
