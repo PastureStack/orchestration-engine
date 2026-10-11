@@ -177,6 +177,14 @@ public class AuditServiceImpl implements AuditService, ApiKeyAuditSink, ApiReque
                 && ("apiKey".equalsIgnoreCase(resource.getType()) || "apiKeyRestricted".equalsIgnoreCase(resource.getType()))) {
             targetId = metadataValue(resource.getId(), targetId);
         }
+        // Validation replaces a public credential ID with its internal numeric
+        // ID. Failed updates have no Resource response to format it again.
+        // Use one public identity before and after validation, including errors.
+        if (targetId.matches("[0-9]+")) {
+            IdFormatter formatter = ApiContext.getContext() == null ? null : ApiContext.getContext().getIdFormatter();
+            if (formatter == null) formatter = idFormatter;
+            if (formatter != null) targetId = String.valueOf(formatter.formatId(CredentialConstants.TYPE, targetId));
+        }
         String requestId = metadataValue(request.getAttribute(API_KEY_AUDIT_PREFIX + "requestId"), "");
         if (requestId.isEmpty()) {
             requestId = UUID.randomUUID().toString();
