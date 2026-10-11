@@ -38,8 +38,8 @@ public class HostApiProxyProofTest {
         Fixture f=new Fixture();assertThrows(ValidationErrorException.class,()->f.manager.getToken("other-host"));assertNull(f.claims);
     }
     interface Call {Object call(String method,Object[] args);}
-    @SuppressWarnings("unchecked") static <T>T proxy(Class<T> type,Call call){return (T)Proxy.newProxyInstance(type.getClassLoader(),new Class<?>[]{type},
-            (instance,method,args)->call.call(method.getName(),args));}
+    static <T>T proxy(Class<T> type,Call call){return type.cast(Proxy.newProxyInstance(type.getClassLoader(),new Class<?>[]{type},
+            (instance,method,args)->call.call(method.getName(),args)));}
     static final class Fixture {
         final HostApiProxyTokenManager manager=new HostApiProxyTokenManager();Map<String,Object> claims;
         Fixture(){

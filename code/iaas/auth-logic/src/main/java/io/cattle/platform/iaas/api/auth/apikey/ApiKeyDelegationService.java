@@ -21,6 +21,7 @@ import io.cattle.platform.json.JsonMapper;
 import io.cattle.platform.object.ObjectManager;
 import io.cattle.platform.object.util.DataAccessor;
 import io.cattle.platform.token.TokenService;
+import io.cattle.platform.util.type.CollectionUtils;
 import io.github.ibuildthecloud.gdapi.context.ApiContext;
 import io.github.ibuildthecloud.gdapi.exception.ClientVisibleException;
 import io.github.ibuildthecloud.gdapi.model.Schema;
@@ -433,9 +434,9 @@ public class ApiKeyDelegationService implements ApiKeyDelegationTokenProvider {
         List<String> methods = request.getId() == null ? schema.getCollectionMethods() : schema.getResourceMethods();
         return methods != null && methods.contains(request.getMethod());
     }
-    @SuppressWarnings("unchecked") static Map<String, Object> map(Object value) {
+    static Map<String, Object> map(Object value) {
         if (!(value instanceof Map<?, ?> map) || map.size() > 256) { denied("ApiKeyDelegationInvalid"); return null; }
-        return (Map<String, Object>) value;
+        return CollectionUtils.castMap(value);
     }
     static long number(Map<String, Object> grant, String field) { return ApiKeyPolicyCodec.number(grant.get(field)); }
     static String text(Map<String, Object> grant, String field) {
