@@ -10,7 +10,7 @@ upstream history, authorship, licenses, and dependency notices.
 
 ## Current build
 
-Engine `0.183.337` is the component candidate for Server `v1.6.521`.
+Engine `0.183.337` and Server `v1.6.521` are released.
 API Key governance audit uses the same public Key ID before and after request
 validation, including rejected edits. HTTP 101 remains a successful handshake,
 not stream completion; actual failure and cancellation outcomes take precedence.
