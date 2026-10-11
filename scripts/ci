@@ -44,6 +44,7 @@ ensure_docker()
 ensure_docker
 
 python3 ./test-jackson-security-floors.py -v
+python3 ./test-cattle-jdk25-standalone.py -v
 ./check-cattle-dependency-hygiene
 ./check-cattle-archaius-boundary
 ./check-cattle-jmx-boundary
@@ -160,6 +161,7 @@ CI_PLAN=${CI_PLAN:-unit}
 DEFAULT_UNIT_MAVEN_ARGS='-B -q'
 CI=true MAVEN_ARGS="${MAVEN_ARGS:-$DEFAULT_UNIT_MAVEN_ARGS}" MAVEN_TARGET="${MAVEN_TARGET:-clean package}" run ./build --release
 ./check-cattle-jdk25-bytecode
+./check-cattle-jdk25-standalone
 
 if [ "$CI_PLAN" = "unit" ]; then
     gist
