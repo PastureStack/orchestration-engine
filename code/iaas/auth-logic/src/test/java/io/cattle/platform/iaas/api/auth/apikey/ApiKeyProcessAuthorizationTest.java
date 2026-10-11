@@ -55,6 +55,7 @@ public class ApiKeyProcessAuthorizationTest {
     Credential key;
     Schema schema;
     Policy owner;
+    io.cattle.platform.iaas.api.auth.dao.AuthDao projectAuthorityDao;
     Map<String, Object> metadata;
     LaunchConfiguration job = new LaunchConfiguration("instance.update", "instance", "3", 5L, 0, Map.of());
     Instant now = Instant.parse("2026-10-08T00:00:00Z");
@@ -365,6 +366,13 @@ public class ApiKeyProcessAuthorizationTest {
         }
         assertNull(ApiContext.getContext());
     }
+    @Test public void backgroundProjectAuthorityIsFreshAndCreatesNoRequest() {
+        removalLifecycle(); ApiContext.remove();
+        when(projectAuthorityDao.hasAccessToProject(eq(5L), eq(5L), eq(false), any())).thenReturn(false);
+        assertEquals("OwnerPermissionDenied", assertThrows(ProcessAuthorizationDeniedException.class,
+                () -> hook.beforeExecution(new LaunchConfiguration("instance.remove", "instance", "3", 5L, 0, Map.of()), metadata)).getCode());
+        assertNull(ApiContext.getContext());
+    }
     @Test public void upgradeHostMapUsesActualPersistedInstanceAndPreservesChildDenial() {
         upgradeLifecycle();
         DefaultIdFormatter formatter = new DefaultIdFormatter(); formatter.setSchemaFactory(mock(SchemaFactory.class));
@@ -561,8 +569,9 @@ public class ApiKeyProcessAuthorizationTest {
         // rows themselves have NULL accountId and require the narrow fallback.
         assertNotNull(current.policy().authorizeObject(hook.objectManager.loadResource(ImageStoragePoolMap.class, 14L)));
         executePrivateImageCleanup();
-        Policy cacheDenied = mock(Policy.class);
-        when(cacheDenied.authorizeObject(any())).thenAnswer(i -> i.getArgument(0) instanceof ImageStoragePoolMap ? null : current.policy().authorizeObject(i.getArgument(0)));
+        Policy cacheDenied = spy(current.policy());
+        doAnswer(i -> i.getArgument(0) instanceof ImageStoragePoolMap ? null : current.policy().authorizeObject(i.getArgument(0)))
+                .when(cacheDenied).authorizeObject(any());
         when(hook.authenticator.currentAuthorization(eq(10L), eq(5L), any()))
                 .thenReturn(new ApiAuthenticator.CurrentAuthorization(cacheDenied, current.schemas()));
         executePrivateImageCleanup();
@@ -645,6 +654,11 @@ public class ApiKeyProcessAuthorizationTest {
         when(hook.objectManager.find(ServiceExposeMap.class, SERVICE_EXPOSE_MAP.INSTANCE_ID, 3L,
                 SERVICE_EXPOSE_MAP.REMOVED, null, SERVICE_EXPOSE_MAP.MANAGED, false, SERVICE_EXPOSE_MAP.UPGRADE, true)).thenReturn(List.of(map));
         ApiKeyTargetResolver actual = new ApiKeyTargetResolver(); actual.objectManager = hook.objectManager;
+        projectAuthorityDao = mock(io.cattle.platform.iaas.api.auth.dao.AuthDao.class);
+        var projectAccounts = mock(io.cattle.platform.core.dao.AccountDao.class);
+        when(projectAuthorityDao.hasAccessToProject(eq(5L), eq(5L), eq(false), any())).thenReturn(true);
+        when(projectAccounts.isActiveAccount(project)).thenReturn(true);
+        actual.projectAccess = new io.cattle.platform.iaas.api.auth.projects.ProjectAccessService(projectAuthorityDao, projectAccounts);
         actual.idFormatter = mock(IdFormatter.class);
         when(actual.idFormatter.parseId(anyString())).thenAnswer(i -> i.<String>getArgument(0).replaceFirst("^1[a-z]+", ""));
         when(actual.idFormatter.formatId(anyString(), any())).thenAnswer(i -> "1" +

@@ -1,6 +1,6 @@
 # API Key policy and audit contract
 
-This is the Engine `0.183.334` contract for the Server `v1.6.519` source
+This is the Engine `0.183.335` contract for the Server `v1.6.519` source
 candidate. Component/source validation is separate from platform acceptance
 and publication.
 
@@ -11,6 +11,15 @@ Full and untouched legacy Keys retain the account's existing authorization;
 an upgrade does not automatically narrow them. Custom policies can narrow
 access by persisted environment, Stack or resource IDs, but never grant more
 than the owner's current permissions. Explicit denials take priority.
+
+Project objects are Accounts internally, but their access is determined by the
+normal Project membership contract, not equality with the user's Account ID.
+The Key resolver and Project resource manager share the existing live AuthDao
+check, active-state rules, owner and member-management capabilities. The resolver
+runs this check before evaluating custom Key scope, including accepted parent
+references and background lifecycle ancestry. Background checks do not create an
+HTTP context or object-access grant. Other Account kinds and child resources keep
+their own existing authorization; Project membership alone cannot authorize them.
 
 Policy-bearing writes are checked after authentication and before schema
 sanitization. Forbidden owner or credential fields are rejected before they
@@ -102,6 +111,6 @@ Missing proof or durable acceptance returns `AuditUnavailable` (503); no backend
 or persistent session is started, and no durable receipt is falsely claimed.
 
 For matching producer versions, lifecycle and rollback boundaries, see the
-[0.183.334 integration contract](releases/orchestration-engine-0.183.334.md).
+[0.183.335 integration contract](releases/orchestration-engine-0.183.335.md).
 Use the complete compatible Server image; the component alone does not prove
 every platform role/resource combination.

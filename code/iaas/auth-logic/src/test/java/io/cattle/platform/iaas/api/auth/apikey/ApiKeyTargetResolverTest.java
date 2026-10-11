@@ -54,6 +54,26 @@ public class ApiKeyTargetResolverTest {
     ApiKeyTargetResolver resolver;
     Policy owner;
     Stack stack;
+    @Test public void liveProjectMemberIsResolvedBeforeManagerGrantsAccess() {
+        var context = io.github.ibuildthecloud.gdapi.context.ApiContext.newContext();
+        try {
+            AccountRecord principal = new AccountRecord(); principal.setId(1L); principal.setKind("user");
+            AccountRecord project = new AccountRecord(); project.setId(5L); project.setKind("project");
+            Policy personal = new AccountPolicy(principal, principal, java.util.Set.of(), new NoPolicyOptions());
+            context.setPolicy(personal);
+            context.setApiRequest(new ApiRequest(null, null));
+            var dao = mock(io.cattle.platform.iaas.api.auth.dao.AuthDao.class);
+            var accounts = mock(io.cattle.platform.core.dao.AccountDao.class);
+            when(dao.hasAccessToProject(5L, 1L, false, personal.getIdentities())).thenReturn(true);
+            when(accounts.isActiveAccount(project)).thenReturn(true);
+            resolver.projectAccess = new io.cattle.platform.iaas.api.auth.projects.ProjectAccessService(dao, accounts);
+            assertNull("The generic Account policy has not yet received Project membership", personal.authorizeObject(project));
+            var target = resolver.resolveObject("project", project, personal);
+            assertEquals("1a5", target.projectId());
+            assertEquals(ApiKeyPolicyEvaluator.TargetLevel.PROJECT, target.level());
+            assertSame(project, personal.authorizeObject(project));
+        } finally { io.github.ibuildthecloud.gdapi.context.ApiContext.remove(); }
+    }
     @Test public void persistedUpgradeLifecycleGraphResolvesOnlyForItsLiveRoots() {
         Lifecycle f = lifecycle();
         io.github.ibuildthecloud.gdapi.context.ApiContext.remove();
@@ -1117,6 +1137,8 @@ public class ApiKeyTargetResolverTest {
     @Before public void setup() {
         resolver = new ApiKeyTargetResolver();
         resolver.objectManager = mock(ObjectManager.class);
+        resolver.projectAccess = mock(io.cattle.platform.iaas.api.auth.projects.ProjectAccessService.class);
+        when(resolver.projectAccess.authorize(any(), any())).thenAnswer(i -> i.getArgument(0));
         resolver.idFormatter = mock(IdFormatter.class);
         when(resolver.idFormatter.parseId(anyString())).thenAnswer(i -> i.<String>getArgument(0).replaceFirst("^1[a-z]+", ""));
         when(resolver.idFormatter.formatId(anyString(), any())).thenAnswer(i -> {

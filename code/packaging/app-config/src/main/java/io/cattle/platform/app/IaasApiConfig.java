@@ -87,6 +87,7 @@ import io.cattle.platform.iaas.api.auth.mfa.TotpService;
 import io.cattle.platform.iaas.api.auth.mfa.WebAuthnService;
 import io.cattle.platform.iaas.api.auth.projects.ProjectMemberResourceManager;
 import io.cattle.platform.iaas.api.auth.projects.ProjectResourceManager;
+import io.cattle.platform.iaas.api.auth.projects.ProjectAccessService;
 import io.cattle.platform.iaas.api.auth.projects.SetProjectMembersActionHandler;
 import io.cattle.platform.iaas.api.change.impl.ResourceChangeEventListenerImpl;
 import io.cattle.platform.iaas.api.change.impl.ResourceChangeEventProcessor;
@@ -889,6 +890,12 @@ public class IaasApiConfig {
     @Bean
     ProjectResourceManager ProjectResourceManager() {
         return new ProjectResourceManager();
+    }
+
+    @Bean
+    ProjectAccessService ProjectAccessService(io.cattle.platform.iaas.api.auth.dao.AuthDao authDao,
+            io.cattle.platform.core.dao.AccountDao accountDao) {
+        return new ProjectAccessService(authDao, accountDao);
     }
 
     @Bean

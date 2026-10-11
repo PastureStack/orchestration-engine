@@ -1,6 +1,7 @@
 package io.cattle.platform.iaas.api.auth.apikey;
 
 import io.cattle.platform.api.auth.Policy;
+import io.cattle.platform.iaas.api.auth.projects.ProjectAccessService;
 import io.cattle.platform.api.resource.NamedResourceIdentity;
 import io.cattle.platform.core.constants.AccountConstants;
 import io.cattle.platform.core.model.Account;
@@ -61,6 +62,7 @@ public class ApiKeyTargetResolver {
     static final Set<String> PROJECT_ONLY = Set.of("host", "network", "secret", "certificate", "registry", "storagePool", "storagePoolHostMap", "networkPolicy", "projectMember");
     static final Set<String> PLATFORM = Set.of("schema", "setting", "userPreference", "account", "apiKey", "apiKeyRestricted", "auditLog");
     @Inject ObjectManager objectManager;
+    @Inject ProjectAccessService projectAccess;
     @Inject @Named("DefaultIdFormatter") IdFormatter idFormatter;
 
     public List<ApiKeyPolicyEvaluator.Target> resolve(ApiRequest request, Policy owner) {
@@ -89,7 +91,7 @@ public class ApiKeyTargetResolver {
 
     public ApiKeyPolicyEvaluator.Target resolveObject(String type, Object value, Policy owner) {
         type = ApiKeyQueryScopes.canonical(type);
-        if (owner.authorizeObject(value) == null) denied("OwnerPermissionDenied");
+        if (!ownerAuthorizes(value, owner)) denied("OwnerPermissionDenied");
         if (value instanceof NamedResourceIdentity named) {
             String namedType = ApiKeyQueryScopes.canonical(named.getApiResourceType());
             if (!Set.of("setting", "schema").contains(namedType)) denied("KeyScopeDenied");
@@ -116,6 +118,15 @@ public class ApiKeyTargetResolver {
         }
         if (PLATFORM.contains(type)) return ApiKeyPolicyEvaluator.Target.platformResource(type, id);
         return ApiKeyPolicyEvaluator.Target.unresolved(type, id);
+    }
+
+    private boolean ownerAuthorizes(Object value, Policy owner) {
+        // Project membership is not a generic Account object grant. Use the
+        // normal manager's live authority; every other object keeps its policy.
+        if (value instanceof Account project && AccountConstants.PROJECT_KIND.equals(project.getKind())) {
+            return projectAccess.authorize(project, owner) != null;
+        }
+        return owner.authorizeObject(value) != null;
     }
 
     public record ImageDependency(ApiKeyPolicyEvaluator.Target scope, List<ApiKeyPolicyEvaluator.Target> instances) {
@@ -296,7 +307,7 @@ public class ApiKeyTargetResolver {
                 || ObjectUtils.getPropertyIgnoreErrors(stored, "removed") != null) denied("KeyScopeDenied");
         Object state = ObjectUtils.getPropertyIgnoreErrors(stored, "state");
         if (state instanceof String name && Set.of("removed", "purging", "purged").contains(name)) denied("KeyScopeDenied");
-        if (owner.authorizeObject(stored) == null) denied("OwnerPermissionDenied");
+        if (!ownerAuthorizes(stored, owner)) denied("OwnerPermissionDenied");
         return stored;
     }
 
@@ -599,7 +610,7 @@ public class ApiKeyTargetResolver {
                 || Set.of("purging", "purged").contains(String.valueOf(ObjectUtils.getPropertyIgnoreErrors(stored, "state")))) denied("KeyScopeDenied");
         Object removed = ObjectUtils.getPropertyIgnoreErrors(stored, "removed");
         if ((removed != null) != "removed".equals(ObjectUtils.getPropertyIgnoreErrors(stored, "state"))) denied("KeyScopeDenied");
-        if (owner.authorizeObject(stored) == null) denied("OwnerPermissionDenied");
+        if (!ownerAuthorizes(stored, owner)) denied("OwnerPermissionDenied");
         return stored;
     }
 
@@ -793,7 +804,7 @@ public class ApiKeyTargetResolver {
         addDestinationParents(request, owner, targets);
         if (targets.isEmpty()) {
             Account project = objectManager.loadResource(Account.class, owner.getAccountId());
-            if (project != null && AccountConstants.PROJECT_KIND.equals(project.getKind()) && owner.authorizeObject(project) != null) {
+            if (project != null && AccountConstants.PROJECT_KIND.equals(project.getKind()) && ownerAuthorizes(project, owner)) {
                 String projectId = format("project", project.getId());
                 targets.add(ApiKeyPolicyEvaluator.Target.projectResource("project", projectId, projectId));
             }
