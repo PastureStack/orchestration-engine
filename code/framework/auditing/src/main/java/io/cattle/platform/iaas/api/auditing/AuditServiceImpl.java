@@ -497,7 +497,7 @@ public class AuditServiceImpl implements AuditService, ApiKeyAuditSink, ApiReque
         data.put("httpStatus", status);
         data.put("responseCode", status);
         String outcome = "decision".equals(phase) ? "PENDING" : status == 202 ? "ACCEPTED"
-                : status >= 200 && status < 400 ? "SUCCEEDED" : "FAILED";
+                : status == 101 || status >= 200 && status < 400 ? "SUCCEEDED" : "FAILED";
         if (!"decision".equals(phase)) {
             String actualOutcome = metadataValue(request.getAttribute(API_KEY_AUDIT_PREFIX + "actualOutcome"), "");
             if ("FAILED".equals(actualOutcome) || "CANCELED".equals(actualOutcome) || "ACCEPTED".equals(actualOutcome)) {
