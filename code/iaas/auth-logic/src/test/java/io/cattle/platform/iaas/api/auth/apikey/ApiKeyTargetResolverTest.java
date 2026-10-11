@@ -13,6 +13,7 @@ import io.cattle.platform.core.model.Image;
 import io.cattle.platform.core.model.ImageStoragePoolMap;
 import io.cattle.platform.core.model.StoragePool;
 import io.cattle.platform.core.model.Credential;
+import io.cattle.platform.core.model.Setting;
 import io.cattle.platform.engine.context.EngineContext;
 import io.cattle.platform.engine.process.LaunchConfiguration;
 import io.cattle.platform.engine.process.ProcessAuthorization;
@@ -1298,6 +1299,60 @@ public class ApiKeyTargetResolverTest {
         var target = resolver.resolve(request, owner).getFirst();
         assertEquals("api.host", target.resourceId()); assertEquals(ApiKeyPolicyEvaluator.TargetLevel.PLATFORM, target.level());
         verifyNoInteractions(resolver.objectManager);
+    }
+    @Test public void numericSettingIdCannotBypassNamedUpdateDenial() {
+        SettingRecord setting = new SettingRecord(42L, "api.security.enabled", "true");
+        when(resolver.objectManager.loadResource(Setting.class, 42L)).thenReturn(setting);
+        ApiRequest request = new ApiRequest(null, null); request.setType("setting"); request.setMethod("PUT");
+        request.setId("42");
+        var policy = new ApiKeyPolicy(ApiKeyPolicy.Mode.CUSTOM, ApiKeyPolicy.Effect.DENY, null, List.of(
+                new ApiKeyPolicy.Rule("global-update", ApiKeyPolicy.Effect.ALLOW, ApiKeyPolicy.Scope.global(), java.util.Set.of("update")),
+                new ApiKeyPolicy.Rule("security-setting", ApiKeyPolicy.Effect.DENY,
+                        ApiKeyPolicy.Scope.resource("setting", "api.security.enabled"), java.util.Set.of("update"))));
+        var targets = resolver.resolve(request, owner);
+        var decision = new ApiKeyPolicyEvaluator().evaluate(policy,
+                new ApiKeyPolicyEvaluator.Request(true, "update", true, targets), java.time.Instant.now());
+        assertFalse("A numeric URL must match the actual setting name's DENY rule", decision.allowed());
+        assertEquals("api.security.enabled", targets.getFirst().resourceId());
+    }
+    @Test public void encodedSettingIdAndManagerAliasUseThePersistedName() {
+        SettingRecord setting = new SettingRecord(42L, "api.host", "localhost");
+        when(resolver.objectManager.loadResource(Setting.class, 42L)).thenReturn(setting);
+        ApiRequest request = new ApiRequest(null, null); request.setType("activeSetting"); request.setMethod("PUT");
+        request.setId("1s42");
+        request.setRequestObject(Map.of("name", "api.security.enabled"));
+        var target = resolver.resolve(request, owner).getFirst();
+        assertEquals("setting", target.resourceType());
+        assertEquals("api.host", target.resourceId());
+        assertEquals("api.host", resolver.settingName(request));
+    }
+    @Test public void missingNumericSettingOrMissingPersistedNameFailsClosed() {
+        ApiRequest request = new ApiRequest(null, null); request.setType("setting"); request.setMethod("GET");
+        for (String id : List.of("42", "1s42", "999999999999999999999999999999")) {
+            request.setId(id);
+            assertThrows(ClientVisibleException.class, () -> resolver.resolve(request, owner));
+        }
+        SettingRecord setting = new SettingRecord(); setting.setId(42L);
+        when(resolver.objectManager.loadResource(Setting.class, 42L)).thenReturn(setting);
+        request.setId("42");
+        assertThrows(ClientVisibleException.class, () -> resolver.settingName(request));
+        setting.setName(" ");
+        assertThrows(ClientVisibleException.class, () -> resolver.settingName(request));
+    }
+    @Test public void settingCreateNameComesOnlyFromThePostBody() {
+        ApiRequest request = new ApiRequest(null, null); request.setType("setting"); request.setMethod("POST");
+        request.setRequestObject(Map.of("name", "api.auth.provider.configured"));
+        assertEquals("api.auth.provider.configured", resolver.settingName(request));
+        verifyNoInteractions(resolver.objectManager, resolver.idFormatter);
+        for (Object body : List.of(Map.of(), Map.of("name", 42), Map.of("name", " "), List.of("api.host"))) {
+            request.setRequestObject(body);
+            assertThrows(ClientVisibleException.class, () -> resolver.settingName(request));
+        }
+        request.setRequestObject(Map.of("name", "api.host")); request.setMethod("PUT");
+        assertThrows(ClientVisibleException.class, () -> resolver.settingName(request));
+        request.setMethod("GET");
+        assertThrows(ClientVisibleException.class, () -> resolver.settingName(request));
+        assertThrows(ClientVisibleException.class, () -> resolver.settingName(null));
     }
     @Test public void syntheticIdentityUsesExplicitModelContractNotUnknownTypeGuess() {
         NamedResourceIdentity setting = mock(NamedResourceIdentity.class);
