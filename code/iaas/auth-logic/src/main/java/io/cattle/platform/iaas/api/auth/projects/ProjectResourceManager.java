@@ -61,6 +61,9 @@ public class ProjectResourceManager extends AbstractObjectResourceManager {
     @Inject
     AccountDao accountDao;
 
+    @Inject
+    ProjectAccessService projectAccess;
+
     @Override
     public String[] getTypes() {
         return new String[]{"project"};
@@ -110,32 +113,7 @@ public class ProjectResourceManager extends AbstractObjectResourceManager {
     }
 
     private Account giveProjectAccess(Account project, Policy policy) {
-        if (project == null || !ProjectConstants.TYPE.equalsIgnoreCase(project.getKind())) {
-            return null;
-        }
-        if (!authDao.hasAccessToProject(project.getId(), policy.getAccountId(),
-                policy.isOption(Policy.AUTHORIZED_FOR_ALL_ACCOUNTS), policy.getIdentities())) {
-            return null;
-        }
-        boolean isOwner = authDao.isProjectOwner(project.getId(), policy.getAccountId(), policy.isOption(Policy.AUTHORIZED_FOR_ALL_ACCOUNTS), policy
-                .getIdentities());
-        boolean setMem = authDao.canSetProjectMembers(project.getId(), policy.getAccountId(), policy.isOption(Policy.AUTHORIZED_FOR_ALL_ACCOUNTS), policy
-                .getIdentities());
-
-        if (!accountDao.isActiveAccount(project) && !isOwner) {
-            return null;
-        }
-
-        if (isOwner) {
-            ApiContext.getContext().addCapability(project, ProjectConstants.OWNER);
-            ApiContext.getContext().addCapability(project, ProjectConstants.SET_MEMBERS);
-        } else if (setMem) {
-            ApiContext.getContext().addCapability(project, ProjectConstants.SET_MEMBERS);
-        } else {
-            ApiContext.getContext().setCapabilities(project, new ArrayList<String>());
-        }
-        policy.grantObjectAccess(project);
-        return project;
+        return projectAccess.authorize(project, policy);
     }
 
     @Override
