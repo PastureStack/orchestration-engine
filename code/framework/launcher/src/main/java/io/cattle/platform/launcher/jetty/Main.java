@@ -96,6 +96,13 @@ public class Main {
         }
     }
 
+    static void configureHttpBind(ServerConnector connector) {
+        String address = System.getProperty("cattle.http.bind.address");
+        if (address != null && !address.isBlank()) {
+            connector.setHost(address);
+        }
+    }
+
     public static void main(String... args) {
         /*
          * The world is better place without time zones. Well, at least for
@@ -114,6 +121,7 @@ public class Main {
             httpConfig.setSendServerVersion(false);
             ServerConnector http = new ServerConnector(s, new HttpConnectionFactory(httpConfig));
             http.setPort(Integer.parseInt(getHttpPort()));
+            configureHttpBind(http);
             s.setConnectors(new Connector[] {http});
             s.setAttribute("org.eclipse.jetty.server.Request.maxFormContentSize", -1);
 

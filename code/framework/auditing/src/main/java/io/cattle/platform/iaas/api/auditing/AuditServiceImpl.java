@@ -563,7 +563,6 @@ public class AuditServiceImpl implements AuditService, ApiKeyAuditSink, ApiReque
         return apiKeyOutbox;
     }
 
-    @SuppressWarnings("unchecked")
     private void deliverApiKeyEvent(Map<String, Object> event) {
         Map<String, Object> data = new HashMap<>();
         Map<?, ?> storedData = (Map<?, ?>) event.get("data");

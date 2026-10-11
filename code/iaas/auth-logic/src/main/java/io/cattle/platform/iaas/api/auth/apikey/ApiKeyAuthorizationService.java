@@ -3,6 +3,8 @@ package io.cattle.platform.iaas.api.auth.apikey;
 import io.cattle.platform.api.auth.ApiKeyAuditSink;
 import io.cattle.platform.api.auth.ApiResourceAccess;
 import io.cattle.platform.api.auth.Policy;
+import io.cattle.platform.core.model.Account;
+import io.cattle.platform.object.util.ObjectUtils;
 import io.github.ibuildthecloud.gdapi.context.ApiContext;
 import io.github.ibuildthecloud.gdapi.exception.ClientVisibleException;
 import io.github.ibuildthecloud.gdapi.factory.SchemaFactory;
@@ -16,6 +18,9 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.Set;
 import java.util.ArrayList;
+import java.util.Locale;
+import java.util.Objects;
+import java.util.LinkedHashMap;
 import io.cattle.platform.object.ObjectManager;
 import jakarta.inject.Inject;
 import org.jooq.Condition;
@@ -54,6 +59,7 @@ public class ApiKeyAuthorizationService implements ApiResourceAccess {
                 if (policy.getMode() == ApiKeyPolicy.Mode.CLOSED) throw forbidden("KeyPolicyDenied");
                 if (!operation.registered()) throw forbidden("UnknownOperation");
                 if (delegatesUnboundAuthority(request)) throw forbidden("ApiKeyRestrictedDelegationUnsupported");
+                if (changesSecurityAuthority(request)) throw forbidden("ApiKeyRestrictedDelegationUnsupported");
                 boolean collection = request.getId() == null && "read".equals(operation.id());
                 if (collection) {
                     // Synthetic managers have no row-scoping query. Never return
@@ -105,6 +111,66 @@ public class ApiKeyAuthorizationService implements ApiResourceAccess {
         if ("token".equals(type)) return true;
         return "apiKey".equals(type) && (!"GET".equalsIgnoreCase(request.getMethod())
                 || Set.of("pem", "certificate").contains(String.valueOf(request.getLink()).toLowerCase(java.util.Locale.ROOT)));
+    }
+
+    /** A business-resource grant cannot bootstrap a new, unscoped identity. */
+    private boolean changesSecurityAuthority(ApiRequest request) {
+        if (Set.of("GET", "HEAD", "OPTIONS").contains(request.getMethod().toUpperCase(Locale.ROOT))) return false;
+        String type = request.getType();
+        if (Set.of("mfaOperation", "mfaSettings", "authIdentityOperation", "localAuthConfig", "password").contains(type)) return true;
+        if ("setting".equals(type) || "activeSetting".equals(type)) {
+            // Resolve numeric/encoded IDs to the same authoritative name that
+            // SettingManager will update; a body name cannot shadow a URL ID.
+            String name = targets.settingName(request);
+            return name == null || name.startsWith("api.auth.") || name.startsWith("api.security.")
+                    || "system.stack.auth.url".equals(name);
+        }
+        if (!(request.getRequestObject() instanceof Map<?, ?> body)) return false;
+        if ("project".equals(type) && request.getId() == null) {
+            Object members = body.get("members");
+            if (members != null && (!(members instanceof List<?> list) || !list.isEmpty())) return true;
+        }
+        if (!"account".equals(type)) return false;
+        Account existing = null;
+        boolean loaded = false;
+        Map<Object, Object> metadata = new LinkedHashMap<>(body);
+        boolean hasSecurityFields = false;
+        for (Map.Entry<?, ?> entry : body.entrySet()) {
+            if (!(entry.getKey() instanceof String field)) continue;
+            String property = switch (field.toLowerCase(Locale.ROOT)) {
+                case "kind" -> "kind";
+                case "externalid" -> "externalId";
+                case "externalidtype" -> "externalIdType";
+                default -> null;
+            };
+            if (property == null) continue;
+            hasSecurityFields = true;
+            if (!loaded) {
+                loaded = true;
+                if (request.getId() != null) {
+                    String rawId = request.getId();
+                    String id = rawId.matches("[0-9]+") ? rawId
+                            : ApiContext.getContext().getIdFormatter().parseId(rawId);
+                    if (id != null && id.matches("[0-9]+")) {
+                        try {
+                            Long.parseLong(id);
+                            existing = objectManager.loadResource(Account.class, id);
+                        } catch (NumberFormatException invalid) {
+                            return true;
+                        }
+                    }
+                }
+            }
+            // Full account DTOs include unchanged identity fields. Preserve
+            // ordinary metadata edits, but never silently accept a role or
+            // identity change (including explicit clearing) with a scoped Key.
+            if (existing == null || !Objects.equals(ObjectUtils.getPropertyIgnoreErrors(existing, property), entry.getValue())) return true;
+            metadata.remove(entry.getKey());
+        }
+        // Do not replay the validated snapshot after a concurrent legitimate
+        // downgrade/rebind. The later manager may reload a newer Account.
+        if (hasSecurityFields) request.setRequestObject(metadata);
+        return false;
     }
 
     private boolean unscopedReadAllowed(ApiKeyPolicy policy) {

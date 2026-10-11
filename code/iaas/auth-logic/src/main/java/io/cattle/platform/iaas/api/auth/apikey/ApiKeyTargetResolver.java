@@ -20,6 +20,7 @@ import io.cattle.platform.core.model.ImageStoragePoolMap;
 import io.cattle.platform.core.model.StoragePool;
 import io.cattle.platform.core.model.Host;
 import io.cattle.platform.core.model.Credential;
+import io.cattle.platform.core.model.Setting;
 import io.cattle.platform.core.constants.CredentialConstants;
 import io.cattle.platform.core.constants.StoragePoolConstants;
 import io.cattle.platform.engine.context.EngineContext;
@@ -68,10 +69,10 @@ public class ApiKeyTargetResolver {
     public List<ApiKeyPolicyEvaluator.Target> resolve(ApiRequest request, Policy owner) {
         String type = request.getType();
         if (request.getId() != null) {
-            if ("schema".equals(type) || "setting".equals(type)) {
-                // These are named, synthetic API resources, not numeric model
-                // rows. Existing schema authorization and managers validate the
-                // requested name; never reinterpret it as a DB row ID.
+            if ("setting".equals(type) || "activeSetting".equals(type)) {
+                return List.of(ApiKeyPolicyEvaluator.Target.platformResource("setting", settingName(request)));
+            }
+            if ("schema".equals(type)) {
                 return List.of(ApiKeyPolicyEvaluator.Target.platformResource(type, request.getId()));
             }
             Object value = objectManager.loadResource(type, parentId(type, request.getId()));
@@ -87,6 +88,52 @@ public class ApiKeyTargetResolver {
             return resolveCreate(request, owner);
         }
         return List.of(); // Collection access is narrowed by SQL, not a fake ID.
+    }
+
+    /**
+     * The setting name consumed by SettingManager, for a resource URL or a POST
+     * collection body. Named settings need not have a database row. Numeric IDs
+     * identify persisted rows and must never become a different policy name.
+     */
+    public String settingName(ApiRequest request) {
+        if (request == null) {
+            denied("KeyScopeDenied");
+        }
+        String id = request.getId();
+        if (id == null) {
+            if (!"POST".equalsIgnoreCase(request.getMethod())
+                    || !(request.getRequestObject() instanceof Map<?, ?> body)) {
+                denied("KeyScopeDenied");
+                return null;
+            }
+            return settingNameValue(body.get("name"));
+        }
+        // ValidationHandler performs this decoding before SettingManager runs.
+        // Raw numeric IDs also occur with the existing _plainId option.
+        String decoded = id.matches("[0-9]+") ? id : idFormatter.parseId(id);
+        decoded = settingNameValue(decoded);
+        if (!decoded.matches("[0-9]+")) return decoded;
+        final long rowId;
+        try {
+            rowId = Long.parseLong(decoded);
+        } catch (NumberFormatException invalid) {
+            denied("KeyScopeDenied");
+            return null;
+        }
+        Setting setting = objectManager.loadResource(Setting.class, rowId);
+        if (setting == null) {
+            denied("KeyScopeDenied");
+            return null;
+        }
+        return settingNameValue(setting.getName());
+    }
+
+    private String settingNameValue(Object value) {
+        if (!(value instanceof String name) || name.isBlank()) {
+            denied("KeyScopeDenied");
+            return null;
+        }
+        return name;
     }
 
     public ApiKeyPolicyEvaluator.Target resolveObject(String type, Object value, Policy owner) {

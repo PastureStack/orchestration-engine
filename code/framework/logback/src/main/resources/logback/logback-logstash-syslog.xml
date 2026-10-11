@@ -14,6 +14,7 @@
         <syslogHost>${logstashSyslogHost}</syslogHost>
         <port>${logstashSyslogPort}</port>
         <facility>USER</facility>
+        <layout class="net.logstash.logback.layout.LogstashLayout" />
     </appender>
 
     <root>

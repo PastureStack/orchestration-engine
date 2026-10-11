@@ -32,6 +32,10 @@
         <name>logback.output.logstash.console</name>
     </define>
 
+    <define name="logstashSyslog" class="io.cattle.platform.logback.ArchaiusProperty" >
+        <name>logback.output.logstash.syslog</name>
+    </define>
+
     <define name="pattern" class="io.cattle.platform.logback.ArchaiusProperty" >
         <name>logback.pattern</name>
     </define>
@@ -94,49 +98,81 @@
 
     <turboFilter class="io.cattle.platform.logback.MariaDbOptimisticConflictTurboFilter" />
 
-    <if condition='property("logstashConsole").equals("true")' >
+    <condition class="ch.qos.logback.core.boolex.PropertyEqualityCondition">
+        <key>logstashConsole</key>
+        <value>true</value>
+    </condition>
+    <if>
         <then>
             <include resource="logback/logback-logstash-console.xml" />
         </then>
     </if>
 
-    <if condition='property("logstashFile").equals("true")' >
+    <condition class="ch.qos.logback.core.boolex.PropertyEqualityCondition">
+        <key>logstashFile</key>
+        <value>true</value>
+    </condition>
+    <if>
         <then>
             <include resource="logback/logback-logstash-file.xml" />
         </then>
     </if>
 
-    <if condition='property("logstashSyslog").equals("true")' >
+    <condition class="ch.qos.logback.core.boolex.PropertyEqualityCondition">
+        <key>logstashSyslog</key>
+        <value>true</value>
+    </condition>
+    <if>
         <then>
             <include resource="logback/logback-logstash-syslog.xml" />
         </then>
     </if>
 
-    <if condition='property("file").equals("true")' >
+    <condition class="ch.qos.logback.core.boolex.PropertyEqualityCondition">
+        <key>file</key>
+        <value>true</value>
+    </condition>
+    <if>
         <then>
             <include resource="logback/logback-file.xml" />
         </then>
     </if>
 
-    <if condition='property("error").equals("true")' >
+    <condition class="ch.qos.logback.core.boolex.PropertyEqualityCondition">
+        <key>error</key>
+        <value>true</value>
+    </condition>
+    <if>
         <then>
             <include resource="logback/logback-error.xml" />
         </then>
     </if>
 
-    <if condition='property("events").equals("true")' >
+    <condition class="ch.qos.logback.core.boolex.PropertyEqualityCondition">
+        <key>events</key>
+        <value>true</value>
+    </condition>
+    <if>
         <then>
             <include resource="logback/logback-events.xml" />
         </then>
     </if>
 
-    <if condition='property("gelf").equals("true")' >
+    <condition class="ch.qos.logback.core.boolex.PropertyEqualityCondition">
+        <key>gelf</key>
+        <value>true</value>
+    </condition>
+    <if>
         <then>
             <include resource="logback/logback-gelf.xml" />
         </then>
     </if>
 
-    <if condition='property("console").equals("true")' >
+    <condition class="ch.qos.logback.core.boolex.PropertyEqualityCondition">
+        <key>console</key>
+        <value>true</value>
+    </condition>
+    <if>
         <then>
             <include resource="logback/logback-console.xml" />
         </then>

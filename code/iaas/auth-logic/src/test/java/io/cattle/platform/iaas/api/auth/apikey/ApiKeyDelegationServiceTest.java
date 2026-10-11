@@ -127,8 +127,8 @@ public class ApiKeyDelegationServiceTest {
         assertEquals(code,assertThrows(ClientVisibleException.class,call).getCode());
     }
     interface Call {Object call(String method,Object[] args) throws Throwable;}
-    @SuppressWarnings("unchecked") static <T>T proxy(Class<T> type,Call call) {
-        return (T)Proxy.newProxyInstance(type.getClassLoader(),new Class<?>[]{type},(proxy,method,args)->call.call(method.getName(),args));
+    static <T>T proxy(Class<T> type,Call call) {
+        return type.cast(Proxy.newProxyInstance(type.getClassLoader(),new Class<?>[]{type},(proxy,method,args)->call.call(method.getName(),args)));
     }
 
     static final class Fixture {

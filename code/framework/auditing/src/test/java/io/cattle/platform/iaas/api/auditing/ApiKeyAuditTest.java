@@ -12,6 +12,7 @@ import io.cattle.platform.object.ObjectManager;
 import io.cattle.platform.iaas.api.auditing.dao.AuditLogDao;
 import io.cattle.platform.engine.process.ExitReason;
 import io.cattle.platform.engine.process.LaunchConfiguration;
+import io.cattle.platform.util.type.CollectionUtils;
 import io.github.ibuildthecloud.gdapi.json.JacksonMapper;
 import io.github.ibuildthecloud.gdapi.request.ApiRequest;
 import io.github.ibuildthecloud.gdapi.context.ApiContext;
@@ -226,7 +227,7 @@ public class ApiKeyAuditTest {
     private AuditLogDao accountCapturingDao(List<Map<String, Object>> delivered, List<Long> accounts) {
         return (AuditLogDao) Proxy.newProxyInstance(AuditLogDao.class.getClassLoader(), new Class<?>[]{AuditLogDao.class},
                 (proxy, method, args) -> {
-                    @SuppressWarnings("unchecked") Map<String, Object> data = (Map<String, Object>) args[2];
+                    Map<String, Object> data = CollectionUtils.castMap(args[2]);
                     delivered.add(new HashMap<>(data)); accounts.add((Long) args[4]); accounts.add((Long) args[5]);
                     return null;
                 });
@@ -502,7 +503,7 @@ public class ApiKeyAuditTest {
         restart.auditLogDao = (AuditLogDao) Proxy.newProxyInstance(AuditLogDao.class.getClassLoader(), new Class<?>[]{AuditLogDao.class},
                 (proxy, method, args) -> {
                     assertNull(args[4]); assertNull(args[5]);
-                    @SuppressWarnings("unchecked") Map<String, Object> data = (Map<String, Object>) args[2];
+                    Map<String, Object> data = CollectionUtils.castMap(args[2]);
                     delivered.add(new HashMap<>(data)); return null;
                 });
         request.setResponseCode(401); restart.complete(request, null); restart.complete(request, null);
@@ -675,7 +676,7 @@ public class ApiKeyAuditTest {
         service.auditLogDao = (AuditLogDao) Proxy.newProxyInstance(AuditLogDao.class.getClassLoader(), new Class<?>[]{AuditLogDao.class},
                 (proxy, method, args) -> {
                     assertEquals("createDelegatedOnce", method.getName());
-                    @SuppressWarnings("unchecked") Map<String, Object> data = (Map<String, Object>) args[3];
+                    Map<String, Object> data = CollectionUtils.castMap(args[3]);
                     delivered.add(new HashMap<>(data)); accounts.add((Long) args[5]); accounts.add((Long) args[6]); return null;
                 });
         service.recordDelegatedOutcome(new ApiKeyDelegatedAuditEvent("a".repeat(64), "1c99", 2L, 5L, 3L,
@@ -748,7 +749,7 @@ public class ApiKeyAuditTest {
         service.apiKeyOutbox = new ApiKeyAuditOutbox(temporary.newFolder().toPath(), service.jsonMapper);
         service.auditLogDao = (AuditLogDao) Proxy.newProxyInstance(AuditLogDao.class.getClassLoader(), new Class<?>[]{AuditLogDao.class},
                 (proxy, method, arguments) -> {
-                    @SuppressWarnings("unchecked") Map<String, Object> data = (Map<String, Object>) arguments[method.getName().equals("createDelegatedOnce") ? 3 : 2];
+                    Map<String, Object> data = CollectionUtils.castMap(arguments[method.getName().equals("createDelegatedOnce") ? 3 : 2]);
                     if (data.containsKey("eventId")) {
                         assertTrue("API-key outbox events use trusted persistence", "createApiKeyEvent".equals(method.getName())
                                 || "createDelegatedOnce".equals(method.getName()));
