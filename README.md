@@ -10,7 +10,7 @@ upstream history, authorship, licenses, and dependency notices.
 
 ## Current build
 
-Engine `0.183.334` is the component candidate for Server `v1.6.519`.
+Engine `0.183.335` is the component candidate for Server `v1.6.519`.
 Both API roots support full, closed or custom Key access, optional expiry and
 per-Key durable audit. Full and untouched legacy Keys keep their existing scope;
 all policies remain bounded by the owner's live RBAC, and explicit denies win.
@@ -21,6 +21,9 @@ Upgrade cleanup verifies the owned lifecycle graph and queued-child identity;
 retired relationships are cleanup evidence, not additional public permissions.
 See the [API Key policy and audit contract](docs/api-key-policy.md) for ancestry,
 revision, error and delegated-stream details.
+Project targets use the same live membership check as the normal Project API,
+before a custom Key is evaluated. Membership does not bypass Key rules or grant
+access to unrelated child resources; background work does not inherit HTTP grants.
 Collection queries preserve both range bounds on the same field. API timestamps
 are parsed with their UTC offset, including fractional seconds; the host timezone
 does not change the requested audit interval.
@@ -46,7 +49,7 @@ Before publishing an Engine artifact, run the complete package gate:
 
 ```sh
 bash scripts/check-cattle-jdk25-full-package
-ENGINE_VERSION=0.183.334 bash scripts/build --release
+ENGINE_VERSION=0.183.335 bash scripts/build --release
 bash scripts/check-release-artifact dist/artifacts/cattle.jar
 ```
 

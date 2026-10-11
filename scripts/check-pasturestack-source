@@ -51,7 +51,7 @@ fi
 
 project_version=$(sed -n 's/^[[:space:]]*<version>\([^<]*\)<\/version>[[:space:]]*$/\1/p' code/meta-parent/pom.xml | head -n 1)
 [[ "$project_version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || fail non_numeric_project_version
-require_line code/meta-parent/pom.xml '    <version>0.183.334</version>'
+require_line code/meta-parent/pom.xml '    <version>0.183.335</version>'
 require_line code/meta-parent/pom.xml '                <version>2.3.35</version>'
 require_line "$iaas_api_defaults" 'auth.service.external.id.types=github_user,github_org,github_team,shibboleth_user,shibboleth_group,ldap_user,ldap_group,oidc_user,oidc_group'
 require_line code/meta-parent/pom.xml '    <url>https://github.com/PastureStack/orchestration-engine</url>'
