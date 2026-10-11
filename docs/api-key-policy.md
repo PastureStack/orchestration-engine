@@ -1,9 +1,10 @@
 # API Key policy and audit contract
 
-This is the released Engine `0.183.337` contract for Server `v1.6.521` with
-Web Console `1.6.181`. Publication and focused validation do not establish
-complete UI/API and role/resource matrix acceptance; that matrix is not yet
-complete.
+This describes released Engine `0.183.338`. It is an independent component;
+published Server `v1.6.521` still packages Engine `0.183.337` with Web Console
+`1.6.181`. The new component does not change that deployed contract. Matching
+Server integration and live acceptance remain separate from publication and
+focused validation; complete UI/API and role/resource acceptance is not claimed.
 
 ## Authorization and updates
 
@@ -30,6 +31,18 @@ The sensitive `secretValues` and `dbdump` links are classified as `export`,
 not `read`. Full and untouched legacy Keys retain their existing live RBAC;
 custom policies reject unregistered actions rather than inferring `create`
 from POST. Ordinary resource relationship links remain read operations.
+
+In `0.183.338`, custom resource grants cannot create credentials, change account
+roles or identities, enroll authentication factors, or change authentication/security
+settings outside their policy. These security-management writes are rejected with
+`ApiKeyRestrictedDelegationUnsupported` and the existing denial audit. Setting
+targets use their stored names, including numeric and typed aliases. Unchanged
+role/identity fields in a full account representation are removed before persistence
+so ordinary metadata edits cannot replay stale authority. Full and untouched legacy
+Keys retain their normal owner authorization; this is not a ban on all management
+operations. Returning to `0.183.337` restores the known scoped security-management
+escape and is not a security-equivalent rollback for custom Keys. See the
+[0.183.338 release note](releases/orchestration-engine-0.183.338.md).
 
 Creation scope uses only typed parent fields that the API schema actually accepts;
 ignored or read-only payload fields cannot grant access to a different destination.
