@@ -10,7 +10,11 @@ upstream history, authorship, licenses, and dependency notices.
 
 ## Current build
 
-Engine `0.183.337` and Server `v1.6.521` are released.
+Engine `0.183.338` is released as an independent component. Published Server
+`v1.6.521` still packages Engine `0.183.337` with Web Console `1.6.181`;
+the new Engine artifact does not change that Server release pairing.
+Custom Keys reject security-management writes that would escape their policy;
+full and untouched legacy Keys retain the normal owner authorization pipeline.
 API Key governance audit uses the same public Key ID before and after request
 validation, including rejected edits. HTTP 101 remains a successful handshake,
 not stream completion; actual failure and cancellation outcomes take precedence.
@@ -34,7 +38,9 @@ does not change the requested audit interval.
 The component artifact alone is not proof of complete platform acceptance.
 Use the [current Server release](https://github.com/PastureStack/server#current-release)
 for the published platform version. Source identities, checksums and acceptance
-evidence belong in [release notes](docs/releases), not installation commands.
+evidence are recorded in the
+[0.183.338 release notes](docs/releases/orchestration-engine-0.183.338.md),
+not installation commands.
 
 Use the Server image to deploy the complete platform; `cattle.jar` is a component
 artifact, not a replacement for its database, authentication, agent, or proxy.
@@ -52,7 +58,7 @@ Before publishing an Engine artifact, run the complete package gate:
 
 ```sh
 bash scripts/check-cattle-jdk25-full-package
-ENGINE_VERSION=0.183.337 bash scripts/build --release
+ENGINE_VERSION=0.183.338 bash scripts/build --release
 bash scripts/check-release-artifact dist/artifacts/cattle.jar
 ```
 
