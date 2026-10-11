@@ -38,24 +38,42 @@ public class ApiKeyAuditTest {
 
     @Test
     public void readDecisionAndActualResponseContainOnlyMetadata() throws Exception {
-        List<Map<String, Object>> delivered = new ArrayList<>();
-        AuditServiceImpl service = service(delivered);
-        ApiRequest request = request("GET", "ALLOW", 200);
-        request.setRequestObject(Map.of("Authorization", "Bearer-secret", "password", "payload-secret"));
-        request.setResponseObject(Map.of("secretValue", "key-secret", "Cookie", "session-secret"));
-        service.recordDecision(request, policy());
-        service.recordDecision(request, policy());
-        service.logRequest(request, policy());
-        service.logRequest(request, policy());
-        assertEquals(2, delivered.size());
-        assertEquals("PENDING", delivered.get(0).get("outcome"));
-        assertEquals("decision", delivered.get(0).get("phase"));
-        assertEquals("SUCCEEDED", delivered.get(1).get("outcome"));
-        assertEquals(200, delivered.get(1).get("httpStatus"));
-        assertEquals(delivered.get(0).get("requestId"), delivered.get(1).get("requestId"));
-        assertFalse(delivered.toString().contains("secret"));
-        assertFalse(delivered.get(1).containsKey("requestObject"));
-        assertFalse(delivered.get(1).containsKey("responseObject"));
+        for (int status : new int[]{200, 101}) {
+            List<Map<String, Object>> delivered = new ArrayList<>();
+            AuditServiceImpl service = service(delivered);
+            ApiRequest request = request("GET", "ALLOW", status);
+            String type = status == 101 ? "subscribe" : "stack";
+            String targetId = status == 101 ? "" : "12";
+            String reason = status == 101 ? "KeyScopedCollection" : "KeyRuleAllowed";
+            request.setType(type); request.setId(targetId.isEmpty() ? null : targetId);
+            request.setAttribute("apiKey.audit.targetType", type);
+            request.setAttribute("apiKey.audit.targetId", targetId);
+            request.setAttribute("apiKey.audit.reason", reason);
+            request.setRequestObject(Map.of("Authorization", "Bearer-secret", "password", "payload-secret"));
+            request.setResponseObject(Map.of("secretValue", "key-secret", "Cookie", "session-secret"));
+            service.recordDecision(request, policy());
+            service.recordDecision(request, policy());
+            service.logRequest(request, policy());
+            service.logRequest(request, policy());
+            assertEquals(2, delivered.size());
+            String requestId = (String) delivered.getFirst().get("requestId");
+            UUID.fromString(requestId);
+            for (int phase = 0; phase < 2; phase++) {
+                Map<String, Object> data = delivered.get(phase);
+                UUID.fromString((String) data.get("eventId"));
+                Map<String, Object> expected = new HashMap<>(Map.of(
+                        "keyId", "1a99", "decision", "ALLOW", "operation", "read", "targetType", type,
+                        "targetId", targetId, "policyRevision", "3", "reason", reason, "actor", "2", "preview", false));
+                expected.put("eventId", data.get("eventId")); expected.put("requestId", requestId);
+                expected.put("phase", phase == 0 ? "decision" : "response");
+                expected.put("outcome", phase == 0 ? "PENDING" : "SUCCEEDED");
+                expected.put("httpStatus", phase == 0 ? 0 : status);
+                expected.put("responseCode", phase == 0 ? 0 : status);
+                assertEquals(expected, data);
+            }
+            assertNotEquals(delivered.get(0).get("eventId"), delivered.get(1).get("eventId"));
+            assertFalse(delivered.toString().contains("secret"));
+        }
     }
 
     @Test
@@ -174,6 +192,7 @@ public class ApiKeyAuditTest {
     public void authorizationDecisionDoesNotImplySuccessAndPreviewNeverExecutes() throws Exception {
         AuditServiceImpl service = service(new ArrayList<>());
         assertEquals("FAILED", service.apiKeyAuditData(request("PUT", "ALLOW", 500), policy(), "response").get("outcome"));
+        assertEquals("FAILED", service.apiKeyAuditData(request("GET", "ALLOW", 100), policy(), "response").get("outcome"));
         assertEquals("DENIED", service.apiKeyAuditData(request("GET", "DENY", 403), policy(), "response").get("outcome"));
         assertEquals("ACCEPTED", service.apiKeyAuditData(request("POST", "ALLOW", 202), policy(), "response").get("outcome"));
         ApiRequest streamTicket = request("POST", "ALLOW", 200);
@@ -181,9 +200,12 @@ public class ApiKeyAuditTest {
         Map<String, Object> ticketAudit = service.apiKeyAuditData(streamTicket, policy(), "response");
         assertEquals("ACCEPTED", ticketAudit.get("outcome"));
         assertEquals(200, ticketAudit.get("httpStatus"));
-        ApiRequest preview = request("POST", "ALLOW", 200);
-        preview.setAttribute("apiKey.audit.preview", true);
-        assertEquals("NOT_EXECUTED", service.apiKeyAuditData(preview, policy(), "response").get("outcome"));
+        for (int status : new int[]{200, 101}) {
+            assertEquals("DENIED", service.apiKeyAuditData(request("GET", "DENY", status), policy(), "response").get("outcome"));
+            ApiRequest preview = request("GET", "ALLOW", status);
+            preview.setAttribute("apiKey.audit.preview", true);
+            assertEquals("NOT_EXECUTED", service.apiKeyAuditData(preview, policy(), "response").get("outcome"));
+        }
     }
 
     @Test
@@ -226,21 +248,26 @@ public class ApiKeyAuditTest {
 
     @Test
     public void finallyRecordsCanceledStreamWithActualStatusAndNoPrivateException() throws Exception {
-        List<Map<String, Object>> delivered = new ArrayList<>();
-        AuditServiceImpl service = service(delivered);
-        ApiRequest request = request("GET", "ALLOW", 200);
-        ApiContext.newContext().setPolicy(policy());
-        try {
-            service.recordDecision(request, policy());
-            service.complete(request, new EOFException("private JWT payload"));
-            service.complete(request, null);
-        } finally {
-            ApiContext.remove();
+        for (int status : new int[]{200, 101}) {
+            for (Throwable failure : List.of(new EOFException("private JWT payload"), new IllegalStateException("private failure"))) {
+                List<Map<String, Object>> delivered = new ArrayList<>();
+                AuditServiceImpl service = service(delivered);
+                ApiRequest request = request("GET", "ALLOW", status);
+                ApiContext.newContext().setPolicy(policy());
+                try {
+                    service.recordDecision(request, policy());
+                    service.complete(request, failure);
+                    service.complete(request, null);
+                } finally {
+                    ApiContext.remove();
+                }
+                assertEquals(2, delivered.size());
+                assertEquals(failure instanceof EOFException ? "CANCELED" : "FAILED", delivered.get(1).get("outcome"));
+                assertEquals(status, delivered.get(1).get("httpStatus"));
+                assertEquals(status, delivered.get(1).get("responseCode"));
+                assertFalse(delivered.toString().contains("private"));
+            }
         }
-        assertEquals(2, delivered.size());
-        assertEquals("CANCELED", delivered.get(1).get("outcome"));
-        assertEquals(200, delivered.get(1).get("httpStatus"));
-        assertFalse(delivered.toString().contains("private"));
     }
 
     @Test
