@@ -4,9 +4,23 @@ The migration preserves established `io.cattle.*` Java packages, Maven coordinat
 
 New operator-facing names use PastureStack and `PASTURESTACK_*`. Compatibility identifiers must be changed only with an explicit data migration, a dual-read or dual-write transition, a rollback plan, and cross-repository verification.
 
+## Current release: Engine 0.183.338
+
+Published `0.183.338` prevents custom resource grants from escaping their policy
+through credential, account-role/identity, authentication-factor or security-setting
+writes. Full and untouched legacy Keys retain normal owner authorization.
+See the [API Key contract](docs/api-key-policy.md) and
+[release note](docs/releases/orchestration-engine-0.183.338.md) for exact scope.
+
+This is an independently published component. Published Server `v1.6.521` still
+packages Engine `0.183.337` and Web Console `1.6.181`; matching Server integration
+and live acceptance remain separate. Returning to Engine `0.183.337` restores
+the known scoped security-management escape and is not security-equivalent for
+custom Keys. The versioned notes below retain their historical scope.
+
 ## Read-on-create-only responses
 
-Candidate `0.183.333` applies the existing schema `o` flag only to real resource
+Published `0.183.333` applies the existing schema `o` flag only to real resource
 creation (`POST` with no action), matching resource-manager dispatch. API Key
 deactivate, activate, remove and other POST actions must not return a stored
 create-only value. Existing null-redaction representation, ordinary readable
@@ -16,8 +30,9 @@ without action context keep their signatures but fail closed; callers needing a
 creation response must pass the explicit create decision. No database,
 authentication, authorization, proxy or stored-state migration is introduced.
 Rollback restores the older POST-action exposure and is not a security fix.
-Local focused verification passed 19 tests; immutable release and QA8080 native
-API Key lifecycle checks are still pending.
+The original focused verification passed 19 tests. Publication and remaining
+acceptance are recorded in the [versioned release note](docs/releases/orchestration-engine-0.183.333.md);
+that historical test result does not establish complete native lifecycle acceptance.
 
 ## Volume native classification
 
