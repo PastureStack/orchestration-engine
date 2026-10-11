@@ -135,6 +135,50 @@ public class ApiKeyAuditTest {
     }
 
     @Test
+    public void governanceErrorsUseTheSamePublicKeyIdentityBeforeAndAfterValidation() throws Exception {
+        for (String type : List.of("apiKey", "apiKeyRestricted")) {
+            for (String id : List.of("1c42", "42")) {
+                for (int status : new int[]{400, 401, 403, 409, 500}) {
+                    List<Map<String, Object>> delivered = new ArrayList<>();
+                    AuditServiceImpl service = service(delivered);
+                    service.idFormatter = typedFormatter();
+                    ApiRequest request = new ApiRequest(null, null);
+                    request.setType(type); request.setId(id); request.setMethod("PUT"); request.setResponseCode(status);
+                    request.setRequestObject(Map.of("id", "1c99", "accountId", "1a99", "secretValue", "private-secret"));
+                    ApiContext.newContext().setPolicy(policy());
+                    ApiContext.getContext().setIdFormatter(service.idFormatter);
+                    try {
+                        service.complete(request, null); service.complete(request, null);
+                    } finally { ApiContext.remove(); }
+                    assertEquals(1, delivered.size());
+                    Map<String, Object> event = delivered.getFirst();
+                    assertEquals("1c42", event.get("keyId")); assertEquals("1c42", event.get("targetId"));
+                    assertEquals("1a2", event.get("actor")); assertEquals("apiKey", event.get("targetType"));
+                    assertEquals("update", event.get("operation")); assertEquals(status, event.get("httpStatus"));
+                    assertEquals(status == 401 || status == 403 ? "DENIED" : "FAILED", event.get("outcome"));
+                    assertFalse(delivered.toString().contains("private")); assertFalse(delivered.toString().contains("1c99"));
+                }
+            }
+        }
+    }
+
+    @Test
+    public void governanceSuccessFormatsTheServerResourceNotThePayloadOrRequestId() throws Exception {
+        for (String id : List.of("42", "1c42")) {
+            List<Map<String, Object>> delivered = new ArrayList<>();
+            AuditServiceImpl service = service(delivered); service.idFormatter = typedFormatter();
+            ApiRequest request = new ApiRequest(null, null);
+            request.setType("apiKey"); request.setId("99"); request.setMethod("PUT"); request.setResponseCode(200);
+            request.setResponseObject(new ResourceImpl(id, "apiKeyRestricted", Map.of("apiKeyPolicyRevision", 2L)));
+            request.setRequestObject(Map.of("id", "1c88"));
+            service.logRequest(request, policy());
+            assertEquals(1, delivered.size()); assertEquals("1c42", delivered.getFirst().get("keyId"));
+            assertEquals("1c42", delivered.getFirst().get("targetId"));
+            assertEquals("SUCCEEDED", delivered.getFirst().get("outcome"));
+        }
+    }
+
+    @Test
     public void otherOwnerGovernanceUsesDurableTargetAccountAndKeepsTheActorSeparate() throws Exception {
         for (String method : new String[]{"POST", "PUT"}) {
             List<Map<String, Object>> delivered = new ArrayList<>();
