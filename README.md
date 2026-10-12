@@ -10,6 +10,11 @@ upstream history, authorship, licenses, and dependency notices.
 
 ## Current build
 
+Engine `0.183.339` is the current source candidate, not a published component or
+Server image. This minimal hotfix restores dedicated registration-token Basic
+authentication without falling back to an API Key or browser session after token
+rejection. See the [candidate release note](docs/releases/orchestration-engine-0.183.339.md).
+
 Engine `0.183.338` is released as an independent component. Published Server
 `v1.6.521` still packages Engine `0.183.337` with Web Console `1.6.181`;
 the new Engine artifact does not change that Server release pairing.
@@ -58,7 +63,7 @@ Before publishing an Engine artifact, run the complete package gate:
 
 ```sh
 bash scripts/check-cattle-jdk25-full-package
-ENGINE_VERSION=0.183.338 bash scripts/build --release
+ENGINE_VERSION=0.183.339 bash scripts/build --release
 bash scripts/check-release-artifact dist/artifacts/cattle.jar
 ```
 
