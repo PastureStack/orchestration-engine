@@ -15,8 +15,9 @@ public final class ProcessAuthorization {
     public static final String DATA_KEY = "_apiKeyAudit";
     public static final String COMPLETION_PENDING_KEY = "_apiKeyAuditCompletionPending";
     public static final String VERIFIED_CHILD_KEY = "_apiKeyVerifiedChild";
+    public static final String CAPTURED_EXECUTION_KEY = "_apiKeyCapturedExecution";
     private static final Set<String> FIELDS = Set.of("keyId", "policyRevision", "principalAccountId", "accountId",
-            "requestId", "operation", "targetType", "targetId", "preview", "requestMethod", "requestAction", "requestLink", "requestCollection");
+            "requestId", "operation", "targetType", "targetId", "preview", "requestMethod", "requestAction", "requestLink", "requestCollection", "projectCreation");
 
     private ProcessAuthorization() { }
 
@@ -25,7 +26,7 @@ public final class ProcessAuthorization {
         if (source != null) {
             for (String name : FIELDS) {
                 Object value = source.get(name);
-                if (name.equals("requestCollection") && !(value instanceof Boolean)) {
+                if ((name.equals("requestCollection") || name.equals("projectCreation")) && !(value instanceof Boolean)) {
                     continue;
                 }
                 if (value instanceof String text) {
@@ -58,6 +59,7 @@ public final class ProcessAuthorization {
         data.remove(DATA_KEY);
         data.remove(COMPLETION_PENDING_KEY);
         data.remove(VERIFIED_CHILD_KEY);
+        data.remove(CAPTURED_EXECUTION_KEY);
         Map<String, Object> metadata = EngineContext.getEngineContext().peekAuthorization();
         if (metadata.isEmpty()) {
             for (ProcessAuthorizationHook hook : hooks) {
@@ -72,8 +74,19 @@ public final class ProcessAuthorization {
         }
         if (!metadata.isEmpty()) {
             data.put(DATA_KEY, sanitize(metadata));
+            if (Boolean.TRUE.equals(metadata.get("projectCreation")) && config.getResourceType() != null
+                    && config.getResourceId() != null && config.getProcessName() != null
+                    && (config.getAccountId() == null || config.getAccountId() instanceof Number)) {
+                Map<String, Object> binding = new HashMap<>();
+                binding.put("version", 1); binding.put("resourceType", config.getResourceType());
+                binding.put("resourceId", config.getResourceId()); binding.put("processName", config.getProcessName());
+                binding.put("accountId", config.getAccountId() == null ? null : ((Number) config.getAccountId()).longValue());
+                binding.put("authorization", sanitize(metadata));
+                data.put(CAPTURED_EXECUTION_KEY, Collections.unmodifiableMap(binding));
+            }
             var parent = EngineContext.getEngineContext().currentVerifiedExecution();
-            if (parent != null && Set.of("volume", "instance").contains(parent.resourceType())
+            if (parent != null && (Set.of("volume", "instance").contains(parent.resourceType())
+                    || projectNetworkCreationEdge(parent.resourceType(), parent.resourceId(), config, metadata))
                     && parent.resourceId() != null && parent.resourceId().matches("[0-9]+")
                     && parent.rootAuthorization().equals(metadata)
                     && config.getResourceType() != null && config.getResourceId() != null && config.getProcessName() != null) {
@@ -89,6 +102,31 @@ public final class ProcessAuthorization {
     public static Map<String, Object> metadata(LaunchConfiguration config) {
         Object value = config.getData() == null ? null : config.getData().get(DATA_KEY);
         return value instanceof Map<?, ?> map ? sanitize(map) : Collections.emptyMap();
+    }
+
+    /** Persisted creation work or a synchronous child of a still-live verified parent. */
+    public static boolean executionBound(LaunchConfiguration config) {
+        if (config instanceof ProcessRecord record && record.getId() != null) return capturedExecution(config);
+        var parent = EngineContext.getEngineContext().currentVerifiedExecution();
+        return config.isAuthorizationCaptured() && parent != null
+                && parent.rootAuthorization().equals(metadata(config)) && capturedExecution(config);
+    }
+
+    private static boolean capturedExecution(LaunchConfiguration config) {
+        if (config.getData() == null || !(config.getData().get(CAPTURED_EXECUTION_KEY) instanceof Map<?, ?> proof)
+                || proof.size() != 6 || !(proof.get("version") instanceof Number version) || version.intValue() != 1
+                || !Objects.equals(proof.get("resourceType"), config.getResourceType())
+                || !Objects.equals(proof.get("resourceId"), config.getResourceId())
+                || !Objects.equals(proof.get("processName"), config.getProcessName())
+                || !proof.containsKey("accountId") || !sameAccount(proof.get("accountId"), config.getAccountId())
+                || !(proof.get("authorization") instanceof Map<?, ?> raw)) return false;
+        Map<String, Object> metadata = metadata(config);
+        return !metadata.isEmpty() && metadata.equals(raw) && sanitize(raw).equals(raw);
+    }
+
+    private static boolean sameAccount(Object expected, Object actual) {
+        return expected == null && actual == null || expected instanceof Number left && actual instanceof Number right
+                && left.longValue() == right.longValue();
     }
 
     /** A durable scheduling edge is not a live execution frame. Only framework
@@ -108,10 +146,10 @@ public final class ProcessAuthorization {
     }
 
     public static VerifiedChild verifiedChild(LaunchConfiguration config) {
-        if (!(config instanceof ProcessRecord record) || record.getId() == null || config.getData() == null) return null;
+        if (!(config instanceof ProcessRecord record) || config.getData() == null) return null;
         Object value = config.getData().get(VERIFIED_CHILD_KEY);
         if (!(value instanceof Map<?, ?> proof) || (proof.size() != 6 && proof.size() != 7)
-                || !(proof.get("parentType") instanceof String parentType) || !Set.of("volume", "instance").contains(parentType)
+                || !(proof.get("parentType") instanceof String parentType)
                 || !(proof.get("parentId") instanceof String parentId) || !parentId.matches("[0-9]+")
                 || !Objects.equals(proof.get("childType"), config.getResourceType())
                 || !Objects.equals(proof.get("childId"), config.getResourceId())
@@ -119,6 +157,14 @@ public final class ProcessAuthorization {
                 || !(proof.get("rootAuthorization") instanceof Map<?, ?> rawBinding)) return null;
         Map<String, Object> binding = sanitize(rawBinding);
         if (binding.isEmpty() || !binding.equals(rawBinding) || !binding.equals(metadata(config))) return null;
+        boolean creationEdge = projectNetworkCreationEdge(parentType, parentId, config, binding);
+        if (!Set.of("volume", "instance").contains(parentType) && !creationEdge) return null;
+        if (creationEdge && !executionBound(config)) return null;
+        if (record.getId() == null) {
+            var parent = EngineContext.getEngineContext().currentVerifiedExecution();
+            if (!creationEdge || parent == null || !parentType.equals(parent.resourceType())
+                    || !parentId.equals(parent.resourceId()) || !parent.rootAuthorization().equals(binding)) return null;
+        }
         Map<String, String> references = new HashMap<>();
         if (proof.containsKey("references")) {
             if (!(proof.get("references") instanceof Map<?, ?> raw) || raw.isEmpty()) return null;
@@ -130,6 +176,16 @@ public final class ProcessAuthorization {
             }
         }
         return new VerifiedChild(parentType, parentId, binding, references);
+    }
+
+    private static boolean projectNetworkCreationEdge(String parentType, String parentId,
+            LaunchConfiguration config, Map<String, Object> metadata) {
+        return "account".equals(parentType) && Objects.equals(parentId, metadata.get("targetId"))
+                && "network".equals(config.getResourceType()) && "network.create".equals(config.getProcessName())
+                && Boolean.TRUE.equals(metadata.get("projectCreation")) && "project".equals(metadata.get("targetType"))
+                && "create".equals(metadata.get("operation")) && "POST".equals(metadata.get("requestMethod"))
+                && Boolean.TRUE.equals(metadata.get("requestCollection"))
+                && !metadata.containsKey("requestAction") && !metadata.containsKey("requestLink");
     }
 
     /** Pin source-owned relationships during the first verified scheduling call.

@@ -130,18 +130,37 @@ public class ProjectResourceManager extends AbstractObjectResourceManager {
         if (authDao.getAccountById(policy.getAccountId()).getKind().equalsIgnoreCase(ProjectConstants.TYPE)) {
             throw new ClientVisibleException(ResponseCodes.FORBIDDEN);
         }
-        Object object = super.createInternal(type, apiRequest);
-        if (object instanceof Account) {
-            Account newProject = (Account) object;
-            newProject.setKind(AccountConstants.PROJECT_KIND);
-            objectManager.persist(newProject);
-            List<Map<String, String>> members = ProjectMemberInput.memberMapList(
-                    project.get(ProjectMemberInput.MEMBERS));
-            projectMemberResourceManager.setMembers(newProject, members, true);
-            policy.grantObjectAccess(newProject);
-            return objectManager.reload(newProject);
-        } else {
-            throw new ClientVisibleException(ResponseCodes.INTERNAL_SERVER_ERROR);
+        try (ProjectCreationScope ignored = ProjectCreationScope.open()) {
+            Object object = super.createInternal(type, apiRequest);
+            if (object instanceof Account) {
+                Account newProject = (Account) object;
+                newProject.setKind(AccountConstants.PROJECT_KIND);
+                objectManager.persist(newProject);
+                List<Map<String, String>> members = ProjectMemberInput.memberMapList(
+                        project.get(ProjectMemberInput.MEMBERS));
+                projectMemberResourceManager.setMembers(newProject, members, true);
+                policy.grantObjectAccess(newProject);
+                return objectManager.reload(newProject);
+            } else {
+                throw new ClientVisibleException(ResponseCodes.INTERNAL_SERVER_ERROR);
+            }
+        }
+    }
+
+    @Override
+    protected Object createAndScheduleObject(Class<?> clz, Map<String, Object> properties) {
+        // The inherited account default is user. Establish the actual project
+        // kind before insertion, manager-owned binding and the first process.
+        Map<String, Object> projectProperties = new HashMap<>(properties);
+        projectProperties.put("kind", AccountConstants.PROJECT_KIND);
+        Object result = objectManager.create(clz, projectProperties);
+        if (!(result instanceof Account project)) throw new ClientVisibleException(ResponseCodes.INTERNAL_SERVER_ERROR);
+        ProjectCreationScope.bindCreated(project);
+        try {
+            scheduleProcess(StandardProcess.CREATE, result, projectProperties);
+            return objectManager.reload(result);
+        } catch (io.cattle.platform.engine.manager.ProcessNotFoundException absent) {
+            return result;
         }
     }
 
