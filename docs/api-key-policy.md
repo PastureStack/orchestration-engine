@@ -1,10 +1,10 @@
 # API Key policy and audit contract
 
-This describes released Engine `0.183.338`. It is an independent component;
-published Server `v1.6.521` still packages Engine `0.183.337` with Web Console
-`1.6.181`. The new component does not change that deployed contract. Matching
-Server integration and live acceptance remain separate from publication and
-focused validation; complete UI/API and role/resource acceptance is not claimed.
+This describes released Engine `0.183.341`, packaged in published Server
+`v1.6.523` with Web Console `1.6.183`. Engine `0.183.341` changes HA database
+export, not the Key policy or authorization contract described here. Publication,
+focused validation and live acceptance remain separate; complete UI/API and
+role/resource acceptance is not claimed.
 
 ## Authorization and updates
 
@@ -32,7 +32,7 @@ not `read`. Full and untouched legacy Keys retain their existing live RBAC;
 custom policies reject unregistered actions rather than inferring `create`
 from POST. Ordinary resource relationship links remain read operations.
 
-In `0.183.338`, custom resource grants cannot create credentials, change account
+Since `0.183.338`, custom resource grants cannot create credentials, change account
 roles or identities, enroll authentication factors, or change authentication/security
 settings outside their policy. These security-management writes are rejected with
 `ApiKeyRestrictedDelegationUnsupported` and the existing denial audit. Setting
@@ -102,7 +102,7 @@ or MFA inputs.
 
 Governance audit uses the same typed public Key ID before and after request
 validation, including failed edits. The identity comes from authoritative request
-or response state, never an untrusted request body. Server `v1.6.521` also includes
+or response state, never an untrusted request body. Server `v1.6.521` and later include
 historical numeric Key IDs in per-Key audit queries within existing RBAC, without
 rewriting stored events. This normalization does not change authorization, MFA,
 Key persistence or audit ownership.
@@ -131,12 +131,13 @@ returns `ApiKeyExpired` (401) and records `DENY`/`FAILED`, phase `handshake`.
 Missing proof or durable acceptance returns `AuditUnavailable` (503); no backend
 or persistent session is started, and no durable receipt is falsely claimed.
 
-For the current audit identity change, see the
+For the original audit identity change, see the
 [0.183.337 release notes](releases/v0.183.337.md). The
 [0.183.335 integration contract](releases/orchestration-engine-0.183.335.md)
 records the Project membership, lifecycle and rollback boundaries introduced
-with that release. Published companion versions are
-[Server v1.6.521](https://github.com/PastureStack/server/releases/tag/v1.6.521)
-and [Web Console 1.6.181](https://github.com/PastureStack/web-console/releases/tag/1.6.181).
+with that release. The [current component boundary](releases/orchestration-engine-0.183.341.md)
+matches published companion versions
+[Server v1.6.523](https://github.com/PastureStack/server/releases/tag/v1.6.523)
+and [Web Console 1.6.183](https://github.com/PastureStack/web-console/releases/tag/1.6.183).
 Use the complete compatible Server image; the component alone does not prove
 every platform role/resource combination.
