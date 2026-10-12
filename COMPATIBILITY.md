@@ -4,17 +4,24 @@ The migration preserves established `io.cattle.*` Java packages, Maven coordinat
 
 New operator-facing names use PastureStack and `PASTURESTACK_*`. Compatibility identifiers must be changed only with an explicit data migration, a dual-read or dual-write transition, a rollback plan, and cross-repository verification.
 
-## Current release: Engine 0.183.338
+## Current release: Engine 0.183.341
 
-Published `0.183.338` prevents custom resource grants from escaping their policy
+Published `0.183.341` uses the configured database connection for native HA dumps
+and private temporary output. It commits a ZIP only after successful, nonempty
+SQL output; failure and timeout clean up owned files without returning CLI
+stderr or secrets. Existing export authorization is unchanged.
+
+Custom resource grants remain prevented from escaping their policy
 through credential, account-role/identity, authentication-factor or security-setting
 writes. Full and untouched legacy Keys retain normal owner authorization.
 See the [API Key contract](docs/api-key-policy.md) and
-[release note](docs/releases/orchestration-engine-0.183.338.md) for exact scope.
+[release note](docs/releases/orchestration-engine-0.183.341.md) for exact scope.
 
-This is an independently published component. Published Server `v1.6.521` still
-packages Engine `0.183.337` and Web Console `1.6.181`; matching Server integration
-and live acceptance remain separate. Returning to Engine `0.183.337` restores
+This is an independently published component. Published Server `v1.6.523`
+packages Engine `0.183.341` and Web Console `1.6.183`. Six native Server HA
+cases passed on both API roots; the complete role matrix and deployment
+acceptance remain separate gates.
+Returning to Engine `0.183.337` restores
 the known scoped security-management escape and is not security-equivalent for
 custom Keys. The versioned notes below retain their historical scope.
 
