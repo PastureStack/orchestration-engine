@@ -10,10 +10,14 @@ upstream history, authorship, licenses, and dependency notices.
 
 ## Current build
 
-Engine [0.183.339](https://github.com/PastureStack/orchestration-engine/releases/tag/v0.183.339)
-is available as an independent component. It restores dedicated registration-token
-Basic authentication without falling back to an API Key or browser session after
-token rejection. Ordinary Keys retain their existing authentication path.
+Engine `0.183.340` is a source candidate for native environment creation with
+legacy/full API Keys. A new environment establishes its actual type before the
+first lifecycle job. Initial owner/network work is bound to that manager-created
+resource, while live Key, schema and ownership checks remain in force.
+Publication and assembled Server acceptance are pending. The available component
+is [0.183.339](https://github.com/PastureStack/orchestration-engine/releases/tag/v0.183.339),
+which restores dedicated registration-token Basic authentication but still has
+the known legacy/full Key environment-creation defect.
 
 API Key policies support full, closed and custom access, optional expiry and
 per-Key audit on both API roots. Grants remain bounded by the owner's live RBAC;
@@ -26,7 +30,7 @@ The component artifact alone is not proof of complete platform acceptance.
 Use the [current Server release](https://github.com/PastureStack/server#current-release)
 for the published platform version. Source identities, checksums and acceptance
 evidence are recorded in the
-[0.183.339 release notes](docs/releases/orchestration-engine-0.183.339.md),
+[0.183.340 candidate note](docs/releases/orchestration-engine-0.183.340.md),
 not installation commands.
 
 Use the Server image to deploy the complete platform; `cattle.jar` is a component
@@ -45,7 +49,7 @@ Before publishing an Engine artifact, run the complete package gate:
 
 ```sh
 bash scripts/check-cattle-jdk25-full-package
-ENGINE_VERSION=0.183.339 bash scripts/build --release
+ENGINE_VERSION=0.183.340 bash scripts/build --release
 bash scripts/check-release-artifact dist/artifacts/cattle.jar
 ```
 

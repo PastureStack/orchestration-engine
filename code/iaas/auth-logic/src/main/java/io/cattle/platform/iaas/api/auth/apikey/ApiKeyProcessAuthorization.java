@@ -2,6 +2,10 @@ package io.cattle.platform.iaas.api.auth.apikey;
 
 import io.cattle.platform.api.auth.Policy;
 import io.cattle.platform.core.constants.CredentialConstants;
+import io.cattle.platform.core.constants.NetworkConstants;
+import io.cattle.platform.core.model.Account;
+import io.cattle.platform.core.model.Network;
+import io.cattle.platform.core.model.ProjectMember;
 import io.cattle.platform.core.model.Credential;
 import io.cattle.platform.core.model.Image;
 import io.cattle.platform.core.model.ImageStoragePoolMap;
@@ -10,6 +14,7 @@ import io.cattle.platform.engine.process.LaunchConfiguration;
 import io.cattle.platform.engine.process.ProcessAuthorizationHook;
 import io.cattle.platform.engine.process.ProcessAuthorizationDeniedException;
 import io.cattle.platform.iaas.api.auth.impl.ApiAuthenticator;
+import io.cattle.platform.iaas.api.auth.projects.ProjectCreationScope;
 import io.cattle.platform.object.ObjectManager;
 import io.github.ibuildthecloud.gdapi.context.ApiContext;
 import io.github.ibuildthecloud.gdapi.exception.ClientVisibleException;
@@ -19,6 +24,7 @@ import java.time.Clock;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import jakarta.inject.Inject;
 
 /** No token or role snapshot enters process data. Every execution uses live RBAC. */
@@ -54,6 +60,12 @@ public class ApiKeyProcessAuthorization implements ProcessAuthorizationHook {
         if (request.getLink() != null) metadata.put("requestLink", request.getLink());
         metadata.put("targetType", request.getType());
         metadata.put("targetId", request.getId() == null ? config.getResourceId() : request.getId());
+        Long createdProjectId = ProjectCreationScope.currentProjectId();
+        if (createdProjectId != null && "project".equals(request.getType()) && request.getId() == null
+                && "POST".equals(request.getMethod()) && request.getAction() == null && request.getLink() == null) {
+            metadata.put("projectCreation", true);
+            metadata.put("targetId", createdProjectId.toString());
+        }
         metadata.put("preview", false);
         return metadata;
     }
@@ -77,10 +89,11 @@ public class ApiKeyProcessAuthorization implements ProcessAuthorizationHook {
             var current = authenticator.currentAuthorization(credential.getAccountId(), number(metadata, "accountId"), request);
             Object root = objectManager.loadResource(type, parseNumeric(type, text(metadata, "targetId")));
             Object child = objectManager.loadResource(config.getResourceType(), config.getResourceId());
-            if (root == null || child == null || current.policy().authorizeObject(root) == null
-                    || !schemaAllows(current.schemas().getSchema(type), metadata)) {
+            if (root == null || child == null || !schemaAllows(current.schemas().getSchema(type), metadata)) {
                 denied("OwnerPermissionDenied");
             }
+            if (authorizedProjectCreation(config, metadata, policy, current.policy(), root, child)) return;
+            if (current.policy().authorizeObject(root) == null) denied("OwnerPermissionDenied");
             // Image CREATE runs before the caller returns. Its actual instance
             // relation is persisted by storage first; that narrow dependency is
             // authorized through live owner access, never a blanket internal bypass.
@@ -146,6 +159,62 @@ public class ApiKeyProcessAuthorization implements ProcessAuthorizationHook {
         catch (IllegalArgumentException invalid) { denied("KeyScopeDenied"); }
         // Transient DB/provider failures remain retryable engine failures. They
         // must not be mislabeled as a permanent permission denial.
+    }
+
+    private boolean authorizedProjectCreation(LaunchConfiguration config, Map<String, Object> metadata,
+            ApiKeyPolicy policy, Policy owner, Object root, Object child) {
+        // Creating a namespace cannot require a membership that its creation
+        // will establish. Keep the live principal/schema checks above, and only
+        // authorize work bound by the project manager to this exact new row.
+        if (!Boolean.TRUE.equals(metadata.get("projectCreation"))
+                || !"project".equals(metadata.get("targetType")) || !"create".equals(metadata.get("operation"))
+                || !"POST".equals(metadata.get("requestMethod")) || !Boolean.TRUE.equals(metadata.get("requestCollection"))
+                || metadata.containsKey("requestAction") || metadata.containsKey("requestLink")
+                || !(root instanceof Account project) || !"project".equals(project.getKind())
+                || project.getRemoved() != null || (policy != null && policy.getMode() != ApiKeyPolicy.Mode.FULL)) return false;
+        if (!io.cattle.platform.engine.process.ProcessAuthorization.executionBound(config)) denied("KeyScopeDenied");
+        if (policy != null && policy.getExpiresAt() != null && !clock.instant().isBefore(policy.getExpiresAt())) denied("ApiKeyExpired");
+        // A captured creation marker is not a permanent membership bypass.
+        // Only this live manager scope bootstraps membership; detached work
+        // must recheck current ownership, including withdrawals.
+        if (!Objects.equals(project.getId(), ProjectCreationScope.currentProjectId())
+                && !authenticator.getAuthDao().isProjectOwner(project.getId(), owner.getAccountId(),
+                        owner.isOption(Policy.AUTHORIZED_FOR_ALL_ACCOUNTS), owner.getIdentities())) {
+            denied("OwnerPermissionDenied");
+        }
+        if (child instanceof Account account && "account".equals(config.getResourceType())
+                && "account.create".equals(config.getProcessName()) && Objects.equals(project.getId(), account.getId())
+                && project.getId().toString().equals(config.getResourceId())
+                && "project".equals(account.getKind()) && account.getRemoved() == null) return true;
+        // AccountFieldPostInitHandler stamps a normal caller's personal account
+        // on the member. Only an all-account caller preserves AuthDao's explicit
+        // project accountId. Rebuild that exact expectation from live policy.
+        Long memberAccountId = owner.isOption(Policy.AUTHORIZED_FOR_ALL_ACCOUNTS)
+                ? project.getId() : owner.getAccountId();
+        if (child instanceof ProjectMember member && "projectMember".equals(config.getResourceType())
+                && "projectmember.create".equals(config.getProcessName())
+                && member.getId() != null && member.getId().toString().equals(config.getResourceId()) && member.getRemoved() == null
+                && Objects.equals(project.getId(), member.getProjectId())
+                && Objects.equals(memberAccountId, member.getAccountId())) return true;
+        // The account-create listener schedules only these four default networks.
+        // A marker alone is not authority: require its framework-captured parent
+        // edge and reload the exact network under the actual new project.
+        if (child instanceof Network network && "network".equals(config.getResourceType())
+                && "network.create".equals(config.getProcessName())) {
+            var edge = io.cattle.platform.engine.process.ProcessAuthorization.verifiedChild(config);
+            if (edge != null && "account".equals(edge.parentType()) && project.getId().toString().equals(edge.parentId())
+                    && metadata.equals(edge.rootAuthorization()) && network.getId() != null
+                    && network.getId().toString().equals(config.getResourceId()) && network.getRemoved() == null
+                    && Objects.equals(project.getId(), network.getAccountId())
+                    && network.getNetworkDriverId() == null && network.getKind() != null
+                    && io.cattle.platform.object.util.DataAccessor.field(network, NetworkConstants.FIELD_SUBNETS, Object.class) == null
+                    && java.util.Set.of(NetworkConstants.KIND_DOCKER_HOST, NetworkConstants.KIND_DOCKER_NONE,
+                            NetworkConstants.KIND_DOCKER_CONTAINER, NetworkConstants.KIND_DOCKER_BRIDGE).contains(network.getKind())) {
+                return true;
+            }
+        }
+        denied("OwnerPermissionDenied");
+        return false;
     }
 
     private Long parseNumeric(String type, String raw) {
