@@ -15,6 +15,11 @@ public class RegistrationTokenAccountLookup implements AccountLookup {
     RegistrationAuthTokenManager tokenManager;
 
     @Override
+    public boolean acceptsBasicUsername(String username) {
+        return RegisterConstants.KIND_CREDENTIAL_REGISTRATION_TOKEN.equals(username);
+    }
+
+    @Override
     public Account getAccount(ApiRequest request) {
         String[] auth = BasicAuthImpl.getUsernamePassword(request);
 
@@ -25,7 +30,7 @@ public class RegistrationTokenAccountLookup implements AccountLookup {
         String username = auth[0];
         String password = auth[1];
 
-        if (!RegisterConstants.KIND_CREDENTIAL_REGISTRATION_TOKEN.equals(username)) {
+        if (!acceptsBasicUsername(username)) {
             return null;
         }
 

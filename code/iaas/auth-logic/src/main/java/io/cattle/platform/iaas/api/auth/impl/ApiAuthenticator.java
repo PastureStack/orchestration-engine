@@ -200,6 +200,20 @@ public class ApiAuthenticator extends AbstractApiRequestHandler {
 
         String authorization = request.getServletContext().getRequest().getHeader("Authorization");
         if (BasicAuthImpl.isBasicHeader(authorization)) {
+            String[] credentials = BasicAuthImpl.getUsernamePassword(authorization);
+            if (credentials != null) {
+                // Registration and other explicitly declared protocols validate
+                // their own credential and select their own restricted schema.
+                // A rejected dedicated credential must not fall back to a Key
+                // or the shared browser session.
+                for (AccountLookup lookup : accountLookups) {
+                    if (lookup.isConfigured() && lookup.acceptsBasicUsername(credentials[0])) {
+                        account = lookup.getAccount(request);
+                        if (account != null) request.setAttribute(AccountConstants.AUTH_TYPE, lookup.getName());
+                        return account;
+                    }
+                }
+            }
             // An explicitly supplied API credential must not silently turn into
             // the broader browser-cookie session selected by an earlier lookup.
             for (AccountLookup lookup : accountLookups) {
