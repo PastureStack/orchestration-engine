@@ -10,9 +10,14 @@ upstream history, authorship, licenses, and dependency notices.
 
 ## Current build
 
-Engine [0.183.341](https://github.com/PastureStack/orchestration-engine/releases/tag/v0.183.341)
-is the published component for native environment creation with legacy/full API
-Keys. A new environment establishes its actual type before the first lifecycle
+Engine [0.183.342](https://github.com/PastureStack/orchestration-engine/releases/tag/v0.183.342)
+supports operation-specific API Key resource lookups. A Key granted update,
+delete or a registered action can load its exact authorized operand without
+an additional read grant. Public reads, collections and referenced resources
+remain read-scoped; owner RBAC, explicit denials and expiry still apply.
+
+Native environment creation remains supported with legacy/full API Keys.
+A new environment establishes its actual type before the first lifecycle
 job. Initial owner/network work is bound to that manager-created resource, while
 live Key, schema and ownership checks remain in force. Dedicated registration-token
 Basic authentication and restricted registration schemas are preserved; invalid
@@ -36,7 +41,7 @@ The component artifact alone is not proof of complete platform acceptance.
 Use the [current Server release](https://github.com/PastureStack/server#current-release)
 for the published platform version. Source identities, checksums and acceptance
 evidence are recorded in the
-[0.183.341 release note](docs/releases/orchestration-engine-0.183.341.md),
+[0.183.342 release note](docs/releases/orchestration-engine-0.183.342.md),
 not installation commands.
 
 Use the Server image to deploy the complete platform; `cattle.jar` is a component
@@ -55,7 +60,7 @@ Before publishing an Engine artifact, run the complete package gate:
 
 ```sh
 bash scripts/check-cattle-jdk25-full-package
-ENGINE_VERSION=0.183.341 bash scripts/build --release
+ENGINE_VERSION=0.183.342 bash scripts/build --release
 bash scripts/check-release-artifact dist/artifacts/cattle.jar
 ```
 

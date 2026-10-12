@@ -27,6 +27,7 @@ import io.github.ibuildthecloud.gdapi.model.Schema;
 import io.github.ibuildthecloud.gdapi.model.Sort;
 import io.github.ibuildthecloud.gdapi.request.ApiRequest;
 import io.github.ibuildthecloud.gdapi.util.ResponseCodes;
+import io.github.ibuildthecloud.gdapi.util.TypeUtils;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -96,6 +97,9 @@ public abstract class AbstractJooqResourceManager extends AbstractObjectResource
     }
 
     protected Object listInternal(SchemaFactory schemaFactory, String type, Map<Object, Object> criteria, ListOptions options, Map<Table<?>, Condition> joins) {
+        ApiRequest request = ApiContext.getContext().getApiRequest();
+        ListOptions.MutationTarget operand = options == null ? null : options.getMutationTarget();
+        boolean mutationTarget = operand != null && operand.matches(request, type, criteria.get(TypeUtils.ID_FIELD));
         Class<?> clz = getClass(schemaFactory, type, criteria, true);
         if (clz == null) {
             return null;
@@ -117,9 +121,10 @@ public abstract class AbstractJooqResourceManager extends AbstractObjectResource
         addJoins(query, joins);
         addConditions(schemaFactory, query, type, table, criteria);
         if (resourceAccess != null) {
-            ApiRequest request = ApiContext.getContext().getApiRequest();
             for (ApiResourceAccess access : resourceAccess) {
-                Condition restriction = access.constrain(request, schemaFactory, type, table);
+                Condition restriction = mutationTarget
+                        ? access.constrainMutationTarget(request, schemaFactory, type, table, operand)
+                        : access.constrain(request, schemaFactory, type, table);
                 if (restriction != null) query.addConditions(restriction);
             }
         }
