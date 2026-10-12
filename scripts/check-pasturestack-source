@@ -390,7 +390,8 @@ require_line code/iaas/service-discovery/server/src/main/java/io/cattle/platform
 require_line code/iaas/service-discovery/server/src/test/java/io/cattle/platform/servicediscovery/deployment/impl/unit/DefaultDeploymentUnitInstanceLaunchConfigTest.java '    public void serviceContainerPreservesExplicitRestartPolicy() {'
 require_line code/iaas/api-logic/src/main/java/io/cattle/platform/iaas/api/volume/VolumePreflightService.java '            "private", "rprivate", "shared", "rshared", "slave", "rslave"));'
 require_line code/iaas/api-logic/src/test/java/io/cattle/platform/iaas/api/volume/VolumePreflightServiceTest.java '    public void acceptsEveryDockerBindPropagationMode() {'
-require_line code/iaas/api-logic/src/main/java/io/cattle/platform/iaas/api/manager/HaConfigManager.java '        String prefix = "pasturestack-db-dump-" + now;'
+require_line code/iaas/api-logic/src/main/java/io/cattle/platform/iaas/api/manager/HaConfigManager.java '                String prefix = "pasturestack-db-dump-" + df.format(new Date());'
+require_line code/iaas/api-logic/src/main/java/io/cattle/platform/iaas/api/manager/HaConfigManager.java '            return withDatabaseOutput(dbDumpProcessBuilder(), 300, file -> {'
 require_line code/framework/api/src/main/java/io/cattle/platform/api/servlet/ApiRequestFilter.java '    private static final String VERSION = "X-PastureStack-Version";'
 require_line code/iaas/config-item/server/src/main/java/io/cattle/platform/configitem/context/dao/impl/MetaDataInfoDaoImpl.java '        NetworkMetaData ntwkMeta = new NetworkMetaData(name, uuid, isDefault, host_ports, meta, dpa, policy, account);'
 if grep -Fq 'new NetworkMetaData(name, uuid, host_ports, isDefault,' code/iaas/config-item/server/src/main/java/io/cattle/platform/configitem/context/dao/impl/MetaDataInfoDaoImpl.java; then
