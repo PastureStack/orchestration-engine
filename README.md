@@ -10,14 +10,14 @@ upstream history, authorship, licenses, and dependency notices.
 
 ## Current build
 
-Engine `0.183.340` is a source candidate for native environment creation with
-legacy/full API Keys. A new environment establishes its actual type before the
-first lifecycle job. Initial owner/network work is bound to that manager-created
-resource, while live Key, schema and ownership checks remain in force.
-Publication and assembled Server acceptance are pending. The available component
-is [0.183.339](https://github.com/PastureStack/orchestration-engine/releases/tag/v0.183.339),
-which restores dedicated registration-token Basic authentication but still has
-the known legacy/full Key environment-creation defect.
+Engine [0.183.340](https://github.com/PastureStack/orchestration-engine/releases/tag/v0.183.340)
+is the published component for native environment creation with legacy/full API
+Keys. A new environment establishes its actual type before the first lifecycle
+job. Initial owner/network work is bound to that manager-created resource, while
+live Key, schema and ownership checks remain in force. Dedicated registration-token
+Basic authentication and restricted registration schemas are preserved; invalid
+tokens never fall back to a browser session. Assembled Server onboarding and
+active-agent acceptance remain separate gates.
 
 API Key policies support full, closed and custom access, optional expiry and
 per-Key audit on both API roots. Grants remain bounded by the owner's live RBAC;
@@ -30,7 +30,7 @@ The component artifact alone is not proof of complete platform acceptance.
 Use the [current Server release](https://github.com/PastureStack/server#current-release)
 for the published platform version. Source identities, checksums and acceptance
 evidence are recorded in the
-[0.183.340 candidate note](docs/releases/orchestration-engine-0.183.340.md),
+[0.183.340 release note](docs/releases/orchestration-engine-0.183.340.md),
 not installation commands.
 
 Use the Server image to deploy the complete platform; `cattle.jar` is a component
