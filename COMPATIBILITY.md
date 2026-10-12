@@ -4,7 +4,14 @@ The migration preserves established `io.cattle.*` Java packages, Maven coordinat
 
 New operator-facing names use PastureStack and `PASTURESTACK_*`. Compatibility identifiers must be changed only with an explicit data migration, a dual-read or dual-write transition, a rollback plan, and cross-repository verification.
 
-## Current release: Engine 0.183.341
+## Current build: Engine 0.183.342
+
+Operation-specific Keys load only the exact update, delete or registered-action
+operand using that operation's policy. Ordinary GET, collection and referenced
+resource lookups still require read access. The internal marker is bound to the
+same request, decoded ID, type and operation; it is not supplied by clients.
+Derived schemas must prove their persisted record class, not just an alias name.
+Normal owner authorization and full/legacy Key behavior are unchanged.
 
 Published `0.183.341` uses the configured database connection for native HA dumps
 and private temporary output. It commits a ZIP only after successful, nonempty
@@ -15,12 +22,12 @@ Custom resource grants remain prevented from escaping their policy
 through credential, account-role/identity, authentication-factor or security-setting
 writes. Full and untouched legacy Keys retain normal owner authorization.
 See the [API Key contract](docs/api-key-policy.md) and
-[release note](docs/releases/orchestration-engine-0.183.341.md) for exact scope.
+[release note](docs/releases/orchestration-engine-0.183.342.md) for exact scope.
 
-This is an independently published component. Published Server `v1.6.523`
-packages Engine `0.183.341` and Web Console `1.6.183`. Six native Server HA
-cases passed on both API roots; the complete role matrix and deployment
-acceptance remain separate gates.
+This is an independently versioned component. Use the
+[current Server release](https://github.com/PastureStack/server#current-release)
+and its component manifest for the published image pairing. Component tests
+and prior native HA acceptance are not a complete role matrix or deployment gate.
 Returning to Engine `0.183.337` restores
 the known scoped security-management escape and is not security-equivalent for
 custom Keys. The versioned notes below retain their historical scope.

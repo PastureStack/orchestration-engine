@@ -119,7 +119,7 @@ public abstract class AbstractBaseResourceManager implements ResourceManager {
 
     @Override
     public final Object update(String type, String id, ApiRequest request) {
-        Object object = getById(type, id, new ListOptions(request));
+        Object object = getById(type, id, ListOptions.forMutationTarget(request, type, id));
         if (object == null) {
             return null;
         }
@@ -131,7 +131,7 @@ public abstract class AbstractBaseResourceManager implements ResourceManager {
 
     @Override
     public final Object delete(String type, String id, ApiRequest request) {
-        Object object = getById(type, id, new ListOptions(request));
+        Object object = getById(type, id, ListOptions.forMutationTarget(request, type, id));
         if (object == null) {
             return null;
         }
@@ -405,7 +405,7 @@ public abstract class AbstractBaseResourceManager implements ResourceManager {
 
     @Override
     public final Object resourceAction(String type, ApiRequest request) {
-        Object resource = getById(type, request.getId(), new ListOptions());
+        Object resource = getById(type, request.getId(), ListOptions.forResourceActionTarget(request, type, request.getId()));
 
         if (resource == null) {
             return null;

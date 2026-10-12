@@ -9,6 +9,7 @@ import io.github.ibuildthecloud.gdapi.context.ApiContext;
 import io.github.ibuildthecloud.gdapi.exception.ClientVisibleException;
 import io.github.ibuildthecloud.gdapi.factory.SchemaFactory;
 import io.github.ibuildthecloud.gdapi.model.Schema;
+import io.github.ibuildthecloud.gdapi.model.ListOptions;
 import io.github.ibuildthecloud.gdapi.request.ApiRequest;
 import io.github.ibuildthecloud.gdapi.request.resource.ResourceManagerLocator;
 import io.github.ibuildthecloud.gdapi.util.ResponseCodes;
@@ -213,14 +214,59 @@ public class ApiKeyAuthorizationService implements ApiResourceAccess {
     }
 
     @Override public Condition constrain(ApiRequest request, SchemaFactory factory, String type, Table<?> table) {
+        return constrainOperation(request, type, table, "read");
+    }
+
+    @Override public Condition constrainMutationTarget(ApiRequest request, SchemaFactory factory, String type,
+            Table<?> table, ListOptions.MutationTarget target) {
+        String wireType = queryType(request, type, table);
+        var operation = ApiKeyOperations.of(request);
+        if (target == null || !target.matches(request, request.getType(), request.getId())
+                || !operation.registered()
+                || !sameQueryResource(factory, target.type(), type, wireType)) {
+            return constrain(request, factory, type, table);
+        }
+        Condition restriction = constrainOperation(request, wireType, table, operation.id());
+        // Full/legacy retain exactly the existing RBAC pipeline. A custom Key
+        // can load only this operand, never siblings or referenced resources.
+        if (restriction == null) return null;
+        var id = table.field("id", Long.class);
+        if (id == null) return org.jooq.impl.DSL.falseCondition();
+        // ValidationHandler has already decoded the URL ID before manager
+        // dispatch. Policy scope IDs still use the strict typed-ID parser.
+        return restriction.and(id.eq(mutationId(target.id())));
+    }
+
+    private String queryType(ApiRequest request, String type, Table<?> table) {
+        // The table's core type, not a client's filter, determines row ancestry.
+        if (table.getName().equals("account") && "project".equals(request.getType())) return "project";
+        return type.equals("credential") ? request.getType() : type;
+    }
+
+    private boolean sameQueryResource(SchemaFactory factory, String operandType, String coreType, String wireType) {
+        if (ApiKeyQueryScopes.canonical(operandType).equals(ApiKeyQueryScopes.canonical(wireType))) return true;
+        // Derived schemas (for example composeProject) must prove their actual
+        // persisted record type. A caller-provided alias string is not a grant.
+        Class<?> operandClass = factory.getSchemaClass(operandType);
+        return operandClass != null && objectManager != null
+                && operandClass.equals(objectManager.getSchemaFactory().getSchemaClass(coreType));
+    }
+
+    private Long mutationId(String raw) {
+        try {
+            if (!raw.matches("[1-9][0-9]*")) throw new NumberFormatException();
+            return Long.valueOf(raw);
+        } catch (NumberFormatException invalid) {
+            throw forbidden("KeyScopeDenied");
+        }
+    }
+
+    private Condition constrainOperation(ApiRequest request, String type, Table<?> table, String operation) {
         ApiKeyCredentialContext key = ApiKeyCredentialContext.get(request);
         if (key == null || key.policy() == null || key.policy().getMode() == ApiKeyPolicy.Mode.FULL) return null;
         if (key.policy().getMode() == ApiKeyPolicy.Mode.CLOSED) throw forbidden("KeyPolicyDenied");
         if (key.policy().getExpiresAt() != null && !clock.instant().isBefore(key.policy().getExpiresAt())) throw forbidden("ApiKeyExpired");
-        // The table's core type, not a client's filter, determines row ancestry.
-        String wireType = table.getName().equals("account") && "project".equals(request.getType()) ? "project" : type;
-        if (type.equals("credential")) wireType = request.getType();
-        return ApiKeyQueryScopes.condition(key.policy(), wireType, table, "read", targets::parseScopeId);
+        return ApiKeyQueryScopes.condition(key.policy(), queryType(request, type, table), table, operation, targets::parseScopeId);
     }
 
     private static ClientVisibleException forbidden(String code) {

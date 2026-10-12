@@ -1,8 +1,7 @@
 # API Key policy and audit contract
 
-This describes released Engine `0.183.341`, packaged in published Server
-`v1.6.523` with Web Console `1.6.183`. Engine `0.183.341` changes HA database
-export, not the Key policy or authorization contract described here. Publication,
+This describes Engine `0.183.342`. Use the current Server release's component
+manifest for the immutable platform image pairing. Publication,
 focused validation and live acceptance remain separate; complete UI/API and
 role/resource acceptance is not claimed.
 
@@ -13,6 +12,13 @@ Full and untouched legacy Keys retain the account's existing authorization;
 an upgrade does not automatically narrow them. Custom policies can narrow
 access by persisted environment, Stack or resource IDs, but never grant more
 than the owner's current permissions. Explicit denials take priority.
+
+Granting update, delete or a registered action does not implicitly grant read.
+The manager can load only the exact requested mutation target using that
+operation; ordinary GET, collections and references remain read-scoped. The
+server binds this internal lookup to the same request, validated decoded ID,
+type and operation. Unrecognized or mismatched lookups fall back to the read
+contract, and derived aliases must match the persisted schema record class.
 
 Project objects are Accounts internally, but their access is determined by the
 normal Project membership contract, not equality with the user's Account ID.
@@ -135,9 +141,9 @@ For the original audit identity change, see the
 [0.183.337 release notes](releases/v0.183.337.md). The
 [0.183.335 integration contract](releases/orchestration-engine-0.183.335.md)
 records the Project membership, lifecycle and rollback boundaries introduced
-with that release. The [current component boundary](releases/orchestration-engine-0.183.341.md)
-matches published companion versions
-[Server v1.6.523](https://github.com/PastureStack/server/releases/tag/v1.6.523)
-and [Web Console 1.6.183](https://github.com/PastureStack/web-console/releases/tag/1.6.183).
+with that release. See the
+[current component boundary](releases/orchestration-engine-0.183.342.md)
+and [current Server release](https://github.com/PastureStack/server#current-release)
+for the published companion versions.
 Use the complete compatible Server image; the component alone does not prove
 every platform role/resource combination.
