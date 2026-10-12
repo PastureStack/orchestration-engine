@@ -10,41 +10,23 @@ upstream history, authorship, licenses, and dependency notices.
 
 ## Current build
 
-Engine `0.183.339` is the current source candidate, not a published component or
-Server image. This minimal hotfix restores dedicated registration-token Basic
-authentication without falling back to an API Key or browser session after token
-rejection. See the [candidate release note](docs/releases/orchestration-engine-0.183.339.md).
+Engine [0.183.339](https://github.com/PastureStack/orchestration-engine/releases/tag/v0.183.339)
+is available as an independent component. It restores dedicated registration-token
+Basic authentication without falling back to an API Key or browser session after
+token rejection. Ordinary Keys retain their existing authentication path.
 
-Engine `0.183.338` is released as an independent component. Published Server
-`v1.6.521` still packages Engine `0.183.337` with Web Console `1.6.181`;
-the new Engine artifact does not change that Server release pairing.
-Custom Keys reject security-management writes that would escape their policy;
-full and untouched legacy Keys retain the normal owner authorization pipeline.
-API Key governance audit uses the same public Key ID before and after request
-validation, including rejected edits. HTTP 101 remains a successful handshake,
-not stream completion; actual failure and cancellation outcomes take precedence.
-Both API roots support full, closed or custom Key access, optional expiry and
-per-Key durable audit. Full and untouched legacy Keys keep their existing scope;
-all policies remain bounded by the owner's live RBAC, and explicit denies win.
-A broader policy or longer validity uses the existing actor-bound, single-use MFA
-confirmation. Secret delivery is creation-only; audit never records credentials
-or request payloads. HTTP acceptance is separate from job or stream completion.
-Upgrade cleanup verifies the owned lifecycle graph and queued-child identity;
-retired relationships are cleanup evidence, not additional public permissions.
+API Key policies support full, closed and custom access, optional expiry and
+per-Key audit on both API roots. Grants remain bounded by the owner's live RBAC;
+explicit denies take precedence. Expanding access uses an actor-bound, single-use
+MFA confirmation. Secrets are creation-only and are never recorded in audit.
 See the [API Key policy and audit contract](docs/api-key-policy.md) for ancestry,
 revision, error and delegated-stream details.
-Project targets use the same live membership check as the normal Project API,
-before a custom Key is evaluated. Membership does not bypass Key rules or grant
-access to unrelated child resources; background work does not inherit HTTP grants.
-Collection queries preserve both range bounds on the same field. API timestamps
-are parsed with their UTC offset, including fractional seconds; the host timezone
-does not change the requested audit interval.
 
 The component artifact alone is not proof of complete platform acceptance.
 Use the [current Server release](https://github.com/PastureStack/server#current-release)
 for the published platform version. Source identities, checksums and acceptance
 evidence are recorded in the
-[0.183.338 release notes](docs/releases/orchestration-engine-0.183.338.md),
+[0.183.339 release notes](docs/releases/orchestration-engine-0.183.339.md),
 not installation commands.
 
 Use the Server image to deploy the complete platform; `cattle.jar` is a component
