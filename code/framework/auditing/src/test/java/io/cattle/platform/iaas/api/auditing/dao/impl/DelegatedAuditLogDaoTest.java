@@ -71,11 +71,21 @@ public class DelegatedAuditLogDaoTest {
             return new MockResult[]{new MockResult(rows.size(), rows)};
         }));
         AuditLog first = terminal(dao(configuration), eventId, "SUCCEEDED");
-        AuditLog repeated = terminal(dao(configuration), eventId, "FAILED");
+        // The new generic entry and the old delegated alias share one durable
+        // first-result identity, even after constructing a fresh DAO instance.
+        AuditLog repeated = dao(configuration).createTerminalOnce(eventId, "subscribe", null, Map.of("eventId", eventId, "outcome", "FAILED"),
+                null, 1L, 2L, "api.subscribe.read", "BasicAuth", 0L, null, "");
         assertEquals(1, inserts.get());
         assertEquals(2, commits.get());
         assertEquals(first.getId(), repeated.getId());
         assertEquals("SUCCEEDED", DataUtils.getFields(repeated).get("outcome"));
+    }
+
+    @Test
+    public void genericTerminalRejectsInvalidIdentityBeforeDatabaseAccess() {
+        AuditLogDaoImpl dao = new AuditLogDaoImpl();
+        assertThrows(IllegalStateException.class, () -> dao.createTerminalOnce("private-value", "subscribe", null, Map.of(),
+                null, 1L, 2L, "api.subscribe.read", "BasicAuth", 0L, null, ""));
     }
 
     private static AuditLogDaoImpl dao(DefaultConfiguration configuration) {

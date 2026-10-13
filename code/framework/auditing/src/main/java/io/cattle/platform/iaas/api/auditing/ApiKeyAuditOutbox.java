@@ -65,7 +65,13 @@ public final class ApiKeyAuditOutbox {
                  FileLock ignored = lockChannel.lock()) {
                 replay(deliver);
                 Path terminalPath = null;
-                if (event.get("delegatedEventId") instanceof String terminalId) {
+                Object terminal = event.get("terminalEventId");
+                Object delegated = event.get("delegatedEventId");
+                if (terminal != null && delegated != null && !terminal.equals(delegated))
+                    throw new IOException("Conflicting terminal event identity");
+                Object identity = terminal == null ? delegated : terminal; // Backward-compatible delegated alias.
+                if (identity != null && !(identity instanceof String)) throw new IOException("Invalid terminal event identity");
+                if (identity instanceof String terminalId) {
                     if (!terminalId.matches("[a-f0-9]{64}")) throw new IOException("Invalid terminal event identity");
                     terminalPath = directory.resolve("terminal-" + terminalId + ".json");
                     if (Files.exists(terminalPath)) {

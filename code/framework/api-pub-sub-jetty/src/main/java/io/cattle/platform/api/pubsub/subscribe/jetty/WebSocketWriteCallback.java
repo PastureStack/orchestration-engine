@@ -1,6 +1,7 @@
 package io.cattle.platform.api.pubsub.subscribe.jetty;
 
 import org.eclipse.jetty.websocket.api.Callback;
+import io.cattle.platform.api.pubsub.subscribe.SubscriptionCloseReason;
 
 public class WebSocketWriteCallback implements Callback {
 
@@ -12,7 +13,7 @@ public class WebSocketWriteCallback implements Callback {
 
     @Override
     public void fail(Throwable e) {
-        writer.close();
+        writer.close(SubscriptionCloseReason.IO_ERROR);
     }
 
     @Override

@@ -157,6 +157,20 @@ ALLOW or an HTTP 200/202 response is not proof of a terminal job/stream outcome.
 Audit delivery failures retain the existing `AuditUnavailable` contract, not a
 fabricated permission denial.
 
+API Key event subscriptions also record a separate `completion` with target type
+`subscribe` and no fabricated resource ID. Client/server close is cancellation;
+I/O, processor or setup failure is failure. Only a recognized live authorization
+failure is denial. The terminal uses the writer's immutable first close cause,
+not client text or a later callback. This observer does not add a grant category
+or change Full/legacy optional authorization.
+
+Physical unsubscribe and close remain exactly once. A failed terminal admission
+gets at most three metadata-only retries through the existing scheduler. Durable
+outbox replay and account-locked persistence retain the first result. Exhausted
+storage failure emits a fixed diagnostic; neither it nor abrupt server termination
+is presented as durable completion. No request, token or writer is retained by
+the retry object.
+
 ## Delegated streams and compatibility
 
 V1 responses only advertise environment aliases when its schema supports them;
@@ -178,7 +192,7 @@ For the original audit identity change, see the
 [0.183.335 integration contract](releases/orchestration-engine-0.183.335.md)
 records the Project membership, lifecycle and rollback boundaries introduced
 with that release. See the
-[current component boundary](releases/orchestration-engine-0.183.346.md)
+[current component boundary](releases/orchestration-engine-0.183.347.md)
 and [current Server release](https://github.com/PastureStack/server#current-release)
 for the published companion versions.
 Use the complete compatible Server image; the component alone does not prove

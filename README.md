@@ -10,7 +10,7 @@ upstream history, authorship, licenses, and dependency notices.
 
 ## Current build
 
-Engine [0.183.346](docs/releases/orchestration-engine-0.183.346.md)
+Engine [0.183.347](docs/releases/orchestration-engine-0.183.347.md)
 supports full, closed and custom API Key policies, expiry and per-Key audit on
 both API roots. A Key is always bounded by its owner's live permissions;
 explicit denials take precedence. Expanding access requires an actor-bound,
@@ -35,6 +35,10 @@ parent checks. Full MYSQL-dialect SELECTs were verified read-only on MariaDB
 
 The Engine also provides typed environment provisioning, dedicated agent
 registration-token authentication and private, configured-connection HA dumps.
+API Key subscriptions retain secret-free terminal metadata
+for client/server close, I/O failure and live authorization failure. Terminal
+outbox retries keep the first result; WebSocket client close text is not logged.
+Full and legacy subscription authorization remains unchanged.
 For the resource, expiry, audit and delegated-stream boundaries, see the
 [API Key contract](docs/api-key-policy.md) and
 [compatibility contract](COMPATIBILITY.md).
@@ -44,7 +48,7 @@ for the complete platform; `cattle.jar` alone is not a Server installation or a
 runtime replacement. The Server component manifest identifies its exact
 published pairing. Component checks and platform acceptance remain separate.
 Versioned evidence and upgrade boundaries are in the
-[346 release note](docs/releases/orchestration-engine-0.183.346.md);
+[347 source note](docs/releases/orchestration-engine-0.183.347.md);
 older changes remain in [release notes](docs/releases).
 
 ## Build and validation
@@ -59,7 +63,7 @@ Before publishing an Engine artifact, run the complete package gate:
 
 ```sh
 bash scripts/check-cattle-jdk25-full-package
-ENGINE_VERSION=0.183.346 bash scripts/build --release
+ENGINE_VERSION=0.183.347 bash scripts/build --release
 bash scripts/check-release-artifact dist/artifacts/cattle.jar
 ```
 
