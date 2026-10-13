@@ -10,69 +10,32 @@ upstream history, authorship, licenses, and dependency notices.
 
 ## Current build
 
-Engine [0.183.343](https://github.com/PastureStack/orchestration-engine/releases/tag/v0.183.343)
-classifies API Key operations by the actual HTTP dispatch method and only the
-selector that the handler executes. A decorated PUT or DELETE retains
-update/delete; an ignored action query cannot replace a GET/HEAD link's real
-read/export operation. Registered POST actions, including upgrade, retain their
-existing meaning. Owner RBAC, explicit deny, expiry, audit and full/legacy
-behavior remain authoritative; no additional role or read grant is introduced.
-Custom-Key queued execution independently recomputes the captured method/name
-operation and rejects contradictory stored metadata before process work.
-Full and legacy Keys retain the original owner and lifecycle authorization.
+Engine [0.183.344](https://github.com/PastureStack/orchestration-engine/releases/tag/v0.183.344)
+supports full, closed and custom API Key policies, expiry and per-Key audit on
+both API roots. A Key is always bounded by its owner's live permissions;
+explicit denials take precedence. Expanding access requires an actor-bound,
+single-use MFA confirmation. Secrets are delivered only when a Key is created.
 
-21 focused source cases passed in two separately executed scopes: 12 ingress
-method/selector cases and 9 queued regressions/related controls. These are not
-native HTTP/database or complete role/resource acceptance. Typed all-actions
-C-03 requires its own evidence; source checks do not close it.
-Component publication and assembled-Server qualification are separate gates.
-Use the [current Server release](https://github.com/PastureStack/server#current-release)
-and its component manifest for the actual published image pairing and deployment.
-See the [343 note](docs/releases/orchestration-engine-0.183.343.md); the corresponding
-Server release record supplies actual native qualification.
+Operation-specific Keys can load the exact authorized mutation, registered
+action or sensitive named-link operand without an extra read grant. Ordinary
+GETs, collections and input references still require read access. Operation
+classification follows the actual HTTP handler; ignored URL selectors cannot
+mask a mutation. Queued custom-Key work rechecks its original operation and
+current authorization before execution. Full and legacy behavior is preserved.
 
-## Published baseline: Engine 0.183.342
+The Engine also provides typed environment provisioning, dedicated agent
+registration-token authentication and private, configured-connection HA dumps.
+For the resource, expiry, audit and delegated-stream boundaries, see the
+[API Key contract](docs/api-key-policy.md) and
+[compatibility contract](COMPATIBILITY.md).
 
-Published Server `v1.6.524` packages Engine `0.183.342` and Web Console `1.6.183`.
-The following 342 description retains its original source and evidence boundary.
-
-Engine [0.183.342](https://github.com/PastureStack/orchestration-engine/releases/tag/v0.183.342)
-supports operation-specific API Key resource lookups. A Key granted update,
-delete or a registered action can load its exact authorized operand without
-an additional read grant. Public reads, collections and referenced resources
-remain read-scoped; owner RBAC, explicit denials and expiry still apply.
-
-Native environment creation remains supported with legacy/full API Keys.
-A new environment establishes its actual type before the first lifecycle
-job. Initial owner/network work is bound to that manager-created resource, while
-live Key, schema and ownership checks remain in force. Dedicated registration-token
-Basic authentication and restricted registration schemas are preserved; invalid
-tokens never fall back to a browser session. Assembled Server onboarding and
-active-agent acceptance remain separate gates.
-
-Native HA database dumps use the configured connection and a private spool.
-Only successful, nonempty SQL output is committed to the ZIP response; failure
-and timeout clean up owned files without exposing CLI stderr or secrets.
-Existing export authorization is unchanged. Component publication is not
-assembled Server HA/role acceptance.
-
-API Key policies support full, closed and custom access, optional expiry and
-per-Key audit on both API roots. Grants remain bounded by the owner's live RBAC;
-explicit denies take precedence. Expanding access uses an actor-bound, single-use
-MFA confirmation. Secrets are creation-only and are never recorded in audit.
-See the [API Key policy and audit contract](docs/api-key-policy.md) for ancestry,
-revision, error and delegated-stream details.
-
-The component artifact alone is not proof of complete platform acceptance.
-Use the [current Server release](https://github.com/PastureStack/server#current-release)
-for the published platform version. Source identities, checksums and acceptance
-evidence are recorded in the
-[0.183.342 release note](docs/releases/orchestration-engine-0.183.342.md),
-not installation commands.
-
-Use the Server image to deploy the complete platform; `cattle.jar` is a component
-artifact, not a replacement for its database, authentication, agent, or proxy.
-Historical changes are in [release notes](docs/releases).
+Deploy the [current Server release](https://github.com/PastureStack/server#current-release)
+for the complete platform; `cattle.jar` alone is not a Server installation or a
+runtime replacement. The Server component manifest identifies its exact
+published pairing. Component checks and platform acceptance remain separate.
+Versioned evidence and upgrade boundaries are in the
+[344 release note](docs/releases/orchestration-engine-0.183.344.md);
+older changes remain in [release notes](docs/releases).
 
 ## Build and validation
 
@@ -86,7 +49,7 @@ Before publishing an Engine artifact, run the complete package gate:
 
 ```sh
 bash scripts/check-cattle-jdk25-full-package
-ENGINE_VERSION=0.183.343 bash scripts/build --release
+ENGINE_VERSION=0.183.344 bash scripts/build --release
 bash scripts/check-release-artifact dist/artifacts/cattle.jar
 ```
 
