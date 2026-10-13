@@ -4,7 +4,26 @@ The migration preserves established `io.cattle.*` Java packages, Maven coordinat
 
 New operator-facing names use PastureStack and `PASTURESTACK_*`. Compatibility identifiers must be changed only with an explicit data migration, a dual-read or dual-write transition, a rollback plan, and cross-repository verification.
 
-## Current source build: Engine 0.183.346
+## Current source build: Engine 0.183.347
+
+API Key subscription completion uses a token-free lifecycle observer, separate
+from optional live authorization. Full and legacy authorization behavior is
+unchanged. Restricted streams keep their existing live owner, expiry, revision
+and resource-read checks.
+
+Client/server cancellation and I/O or processor failure retain their real first
+cause. Only a recognized live authorization failure becomes DENIED. Terminal
+outbox identity and account-row locking reuse the existing durable first-result
+contract; the delegated terminal alias remains compatible. No schema migration,
+new permission category, host ticket or client payload is introduced.
+
+WebSocket close text, arbitrary identifier text and Throwable contents are not
+logged. Physical cleanup and bounded metadata-delivery retry are separate.
+An abrupt process termination or exhausted storage failure is not represented
+as a successfully persisted completion. See the
+[347 source note](docs/releases/orchestration-engine-0.183.347.md).
+
+## Engine 0.183.346
 
 Instance Link SQL checks the parent Stack through a scalar marker instead of
 a correlated EXISTS that MariaDB can rewrite to an unsupported row/IN form.

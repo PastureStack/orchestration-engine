@@ -3,6 +3,7 @@ package io.cattle.platform.iaas.api.auditing;
 import io.cattle.platform.api.auth.Identity;
 import io.cattle.platform.api.auth.ApiKeyAuditSink;
 import io.cattle.platform.api.auth.ApiKeyDelegatedAuditEvent;
+import io.cattle.platform.api.auth.ApiKeySubscriptionAuditEvent;
 import io.cattle.platform.api.auth.Policy;
 import io.cattle.platform.core.constants.AccountConstants;
 import io.cattle.platform.core.constants.CredentialConstants;
@@ -374,6 +375,42 @@ public class AuditServiceImpl implements AuditService, ApiKeyAuditSink, ApiReque
         outbox().persist(event, this::deliverApiKeyEvent);
     }
 
+    @Override
+    public void recordSubscriptionTerminal(ApiKeySubscriptionAuditEvent terminal) {
+        Set<String> closes = Set.of("CLIENT_CLOSED", "SERVER_CLOSED", "IO_ERROR", "AUTHORIZATION_FAILED", "SUBSCRIBE_FAILED", "INTERNAL_ERROR");
+        Set<String> denials = Set.of("ApiKeyRevoked", "ApiKeyExpired", "ApiKeyPolicyChanged", "OwnerPermissionDenied", "KeyPolicyDenied");
+        if (terminal == null || terminal.eventId() == null || !terminal.eventId().matches("[a-f0-9]{64}")
+                || terminal.keyId() == null || !terminal.keyId().matches("[A-Za-z0-9]{1,64}")
+                || terminal.requestId() == null || !terminal.requestId().matches("[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}")
+                || terminal.principalAccountId() <= 0 || terminal.accountId() <= 0 || terminal.policyRevision() < 0
+                || terminal.closeReason() == null || !closes.contains(terminal.closeReason())
+                || terminal.authorizationFailureCode() != null && (!"AUTHORIZATION_FAILED".equals(terminal.closeReason())
+                    || !denials.contains(terminal.authorizationFailureCode()))) {
+            throw new IllegalStateException("Invalid subscription terminal metadata");
+        }
+        boolean denied = "AUTHORIZATION_FAILED".equals(terminal.closeReason()) && terminal.authorizationFailureCode() != null;
+        boolean cancelled = Set.of("CLIENT_CLOSED", "SERVER_CLOSED").contains(terminal.closeReason());
+        String reason = switch (terminal.closeReason()) {
+            case "CLIENT_CLOSED" -> "ClientDisconnected";
+            case "SERVER_CLOSED" -> "StreamCancelled";
+            case "AUTHORIZATION_FAILED" -> denied ? terminal.authorizationFailureCode() : "StreamFailed";
+            default -> "StreamFailed";
+        };
+        Map<String, Object> data = new HashMap<>();
+        data.put("eventId", terminal.eventId()); data.put("keyId", terminal.keyId()); data.put("requestId", terminal.requestId());
+        data.put("actor", formattedAccountId(terminal.principalAccountId())); data.put("policyRevision", terminal.policyRevision());
+        data.put("targetType", "subscribe"); data.put("targetId", ""); data.put("operation", "read");
+        data.put("decision", denied ? "DENY" : "ALLOW"); data.put("outcome", denied ? "DENIED" : cancelled ? "CANCELED" : "FAILED");
+        data.put("reason", reason); data.put("failureCode", reason); data.put("phase", "completion");
+        data.put("preview", false); data.put("httpStatus", 0); data.put("responseCode", 0);
+        Map<String, Object> event = new HashMap<>();
+        event.put("terminalEventId", terminal.eventId()); event.put("resourceType", "subscribe"); event.put("resourceId", null);
+        event.put("accountId", terminal.accountId()); event.put("authenticatedAsAccountId", terminal.principalAccountId());
+        event.put("eventType", "api.subscribe.read"); event.put("authType", "BasicAuth");
+        event.put("runtime", 0); event.put("clientIp", ""); event.put("data", data);
+        outbox().persist(event, this::deliverApiKeyEvent);
+    }
+
     private static String requiredMetadata(String value) {
         String safe = metadataValue(value, "");
         if (safe.isEmpty()) throw new IllegalStateException("Invalid delegated outcome metadata");
@@ -573,7 +610,12 @@ public class AuditServiceImpl implements AuditService, ApiKeyAuditSink, ApiReque
             }
         }
         Number resourceId = (Number) event.get("resourceId");
-        if (event.get("delegatedEventId") instanceof String eventId) {
+        if (event.get("terminalEventId") instanceof String eventId) {
+            auditLogDao.createTerminalOnce(eventId, (String) event.get("resourceType"), resourceId == null ? null : resourceId.longValue(), data, null,
+                    ((Number) event.get("accountId")).longValue(), ((Number) event.get("authenticatedAsAccountId")).longValue(),
+                    (String) event.get("eventType"), (String) event.get("authType"), ((Number) event.get("runtime")).longValue(),
+                    null, (String) event.get("clientIp"));
+        } else if (event.get("delegatedEventId") instanceof String eventId) {
             auditLogDao.createDelegatedOnce(eventId, (String) event.get("resourceType"), resourceId == null ? null : resourceId.longValue(), data, null,
                     ((Number) event.get("accountId")).longValue(), ((Number) event.get("authenticatedAsAccountId")).longValue(),
                     (String) event.get("eventType"), (String) event.get("authType"), ((Number) event.get("runtime")).longValue(),

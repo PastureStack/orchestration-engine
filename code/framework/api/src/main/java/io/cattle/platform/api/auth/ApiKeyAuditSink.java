@@ -12,4 +12,7 @@ public interface ApiKeyAuditSink {
     default void recordDelegatedOutcome(ApiKeyDelegatedAuditEvent event) {
         throw new IllegalStateException("Delegated outcome auditing is unavailable");
     }
+    default void recordSubscriptionTerminal(ApiKeySubscriptionAuditEvent event) {
+        throw new IllegalStateException("Subscription terminal auditing is unavailable");
+    }
 }

@@ -20,4 +20,10 @@ public interface AuditLogDao {
             Long runTime, String description, String clientIp) {
         throw new IllegalStateException("Delegated outcome persistence is unavailable");
     }
+
+    default AuditLog createTerminalOnce(String eventId, String resourceType, Long resourceId, Map<String, Object> data,
+            Identity identity, Long accountId, Long authenticatedAsAccountId, String eventType, String authType,
+            Long runTime, String description, String clientIp) {
+        throw new IllegalStateException("Terminal outcome persistence is unavailable");
+    }
 }

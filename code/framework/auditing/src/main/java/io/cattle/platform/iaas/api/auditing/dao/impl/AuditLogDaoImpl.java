@@ -27,8 +27,16 @@ public class AuditLogDaoImpl extends AbstractJooqDao implements AuditLogDao {
     public AuditLog createDelegatedOnce(String eventId, String resourceType, Long resourceId, Map<String, Object> data,
             Identity identity, Long accountId, Long authenticatedAsAccountId, String eventType, String authType,
             Long runTime, String description, String clientIp) {
+        return createTerminalOnce(eventId, resourceType, resourceId, data, identity, accountId, authenticatedAsAccountId,
+                eventType, authType, runTime, description, clientIp);
+    }
+
+    @Override
+    public AuditLog createTerminalOnce(String eventId, String resourceType, Long resourceId, Map<String, Object> data,
+            Identity identity, Long accountId, Long authenticatedAsAccountId, String eventType, String authType,
+            Long runTime, String description, String clientIp) {
         if (eventId == null || !eventId.matches("[a-f0-9]{64}")) {
-            throw new IllegalStateException("Invalid delegated outcome identity");
+            throw new IllegalStateException("Invalid terminal outcome identity");
         }
         // audit_log has no UUID/unique event column. The account row lock is
         // shared by all servers, unlike a possibly in-memory LockProvider.
@@ -37,7 +45,7 @@ public class AuditLogDaoImpl extends AbstractJooqDao implements AuditLogDao {
             DSLContext database = DSL.using(transaction);
             Long principal = database.select(AccountTable.ACCOUNT.ID).from(AccountTable.ACCOUNT)
                     .where(AccountTable.ACCOUNT.ID.eq(authenticatedAsAccountId)).forUpdate().fetchOne(AccountTable.ACCOUNT.ID);
-            if (principal == null) throw new IllegalStateException("Delegated audit principal is unavailable");
+            if (principal == null) throw new IllegalStateException("Terminal audit principal is unavailable");
             AuditLog existing = database.selectFrom(AuditLogTable.AUDIT_LOG)
                     .where(AuditLogTable.AUDIT_LOG.EVENT_TYPE.eq(terminalType)).fetchOne();
             if (existing != null) return existing; // First terminal result is immutable.

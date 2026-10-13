@@ -1,10 +1,13 @@
 package io.cattle.platform.api.pubsub.subscribe.jetty;
 
 import io.cattle.platform.api.pubsub.subscribe.MessageWriter;
+import io.cattle.platform.api.pubsub.subscribe.SubscriptionCloseReason;
 
 import java.io.EOFException;
 import java.io.IOException;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.Objects;
+import java.util.function.Consumer;
 
 import org.eclipse.jetty.websocket.api.Session;
 import org.eclipse.jetty.websocket.api.annotations.OnWebSocketClose;
@@ -23,10 +26,12 @@ public class WebSocketMessageWriter implements MessageWriter {
     private static final WebSocketWriterSettings DEFAULT_SETTINGS = ArchaiusWebSocketWriterSettings.create();
 
     private Session session;
-    private boolean connectionClosed = false;
+    private volatile boolean connectionClosed = false;
+    private SubscriptionCloseReason closeReason;
+    private Consumer<SubscriptionCloseReason> closeListener;
+    private boolean closeNotified;
     private AtomicInteger queuedMessageCount = new AtomicInteger();
 
-    private String identifier;
     private final WebSocketWriterSettings settings;
 
     public WebSocketMessageWriter(String identifier) {
@@ -37,10 +42,9 @@ public class WebSocketMessageWriter implements MessageWriter {
         if (settings == null) {
             throw new IllegalArgumentException("WebSocket writer settings are required");
         }
-        this.identifier = identifier;
         this.settings = settings;
         if (identifier != null) {
-            log.info("Creating websocket message writer for {}", identifier);
+            log.info("Creating websocket message writer");
         }
     }
 
@@ -51,19 +55,14 @@ public class WebSocketMessageWriter implements MessageWriter {
 
     @OnWebSocketClose
     public void onWebSocketClose(int closeCode, String message) {
-        connectionClosed = true;
-        if (identifier != null) {
-            log.info("Websocket connection closed for {}. Code: [{}], message: [{}].", identifier, closeCode, message);
-        } else {
-            log.debug("Websocket connection closed. Code: [{}], message: [{}].", closeCode, message);
-        }
+        observedClose(SubscriptionCloseReason.CLIENT_CLOSED);
+        log.debug("Websocket connection closed. Code: [{}].", closeCode);
     }
 
     @OnWebSocketError
     public void onWebSocketError(Throwable cause) {
-        if (identifier != null) {
-            log.warn("Unexpected websocket error for {}", identifier);
-        }
+        close(SubscriptionCloseReason.IO_ERROR);
+        log.warn("Unexpected websocket error");
     }
 
     @Override
@@ -84,19 +83,65 @@ public class WebSocketMessageWriter implements MessageWriter {
                 queuedMessageCount.incrementAndGet();
             } catch (WebSocketException e) {
                 // Thrown if getRemote() determines the connection was closed by the client. No need to log.
-                close();
+                close(SubscriptionCloseReason.IO_ERROR);
             }
         }
     }
 
     @Override
     public void close() {
-        if (!connectionClosed) {
-            if (session != null && session.isOpen()) {
-                session.close();
-            }
+        close(SubscriptionCloseReason.SERVER_CLOSED);
+    }
+
+    @Override
+    public void close(SubscriptionCloseReason reason) {
+        // Select the cause before session.close() can reenter the close callback.
+        boolean first;
+        synchronized (this) {
+            first = closeReason == null;
+            if (first) closeReason = Objects.requireNonNull(reason);
             connectionClosed = true;
         }
+        try {
+            if (first && session != null && session.isOpen()) session.close();
+        } finally {
+            notifyClose();
+        }
+    }
+
+    private void observedClose(SubscriptionCloseReason reason) {
+        synchronized (this) {
+            if (closeReason == null) closeReason = reason;
+            connectionClosed = true;
+        }
+        notifyClose();
+    }
+
+    @Override
+    public synchronized SubscriptionCloseReason getCloseReason() {
+        return closeReason;
+    }
+
+    @Override
+    public void setCloseListener(Consumer<SubscriptionCloseReason> listener) {
+        synchronized (this) {
+            if (closeListener != null) throw new IllegalStateException("Close listener already registered");
+            closeListener = Objects.requireNonNull(listener);
+        }
+        notifyClose();
+    }
+
+    private void notifyClose() {
+        Consumer<SubscriptionCloseReason> listener;
+        SubscriptionCloseReason reason;
+        synchronized (this) {
+            if (closeReason == null || closeListener == null || closeNotified) return;
+            closeNotified = true;
+            listener = closeListener;
+            reason = closeReason;
+        }
+        // No callback executes while holding the writer's monitor.
+        listener.accept(reason);
     }
 
     public AtomicInteger getQueuedMessageCount() {
