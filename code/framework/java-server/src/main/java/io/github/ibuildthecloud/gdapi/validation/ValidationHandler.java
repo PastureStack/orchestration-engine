@@ -74,7 +74,7 @@ public class ValidationHandler extends AbstractResponseGenerator {
         }
 
         if (referenceValidator != null && request.getId() != null) {
-            Resource resource = referenceValidator.getResourceId(request.getType(), request.getId());
+            Resource resource = referenceValidator.getActionResourceId(request);
             if (resource == null) {
                 error(ResponseCodes.NOT_FOUND);
             }

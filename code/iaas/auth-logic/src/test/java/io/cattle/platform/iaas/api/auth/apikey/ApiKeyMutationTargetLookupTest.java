@@ -25,6 +25,7 @@ import io.github.ibuildthecloud.gdapi.model.Action;
 import io.github.ibuildthecloud.gdapi.model.Include;
 import io.github.ibuildthecloud.gdapi.model.ListOptions;
 import io.github.ibuildthecloud.gdapi.model.Pagination;
+import io.github.ibuildthecloud.gdapi.model.Resource;
 import io.github.ibuildthecloud.gdapi.model.Schema;
 import io.github.ibuildthecloud.gdapi.model.Sort;
 import io.github.ibuildthecloud.gdapi.request.ApiRequest;
@@ -50,7 +51,7 @@ import org.junit.Test;
 
 /** Real manager/query dispatch, with SQL capture rather than a real database lifecycle. */
 public class ApiKeyMutationTargetLookupTest {
-    private static final Instant NOW = Instant.parse("2026-10-13T00:00:00Z");
+    static final Instant NOW = Instant.parse("2026-10-13T00:00:00Z");
 
     @After public void cleanup() { ApiContext.remove(); }
 
@@ -321,11 +322,11 @@ public class ApiKeyMutationTargetLookupTest {
         verify(f.targets, never()).parseScopeId(anyString(), eq("8"));
     }
 
-    private static ApiKeyPolicy.Rule rule(String id, ApiKeyPolicy.Effect effect, String operation) {
+    static ApiKeyPolicy.Rule rule(String id, ApiKeyPolicy.Effect effect, String operation) {
         return new ApiKeyPolicy.Rule(id, effect, ApiKeyPolicy.Scope.stack("1st8"), Set.of(operation));
     }
 
-    private static ApiKeyPolicy custom(String operation) {
+    static ApiKeyPolicy custom(String operation) {
         return new ApiKeyPolicy(ApiKeyPolicy.Mode.CUSTOM, ApiKeyPolicy.Effect.DENY, null,
                 List.of(rule("allow", ApiKeyPolicy.Effect.ALLOW, operation)));
     }
@@ -349,7 +350,7 @@ public class ApiKeyMutationTargetLookupTest {
         void register() { registerTableFields(STACK); }
     }
 
-    private static class Fixture {
+    static class Fixture {
         final SchemaFactory factory = mock(SchemaFactory.class);
         final Schema schema = mock(Schema.class);
         final ApiRequest request;
@@ -368,6 +369,7 @@ public class ApiKeyMutationTargetLookupTest {
             when(schema.getId()).thenReturn("stack");
             when(schema.getResourceMethods()).thenReturn(List.of("GET", "PUT", "DELETE"));
             when(schema.getCollectionMethods()).thenReturn(List.of("GET", "POST"));
+            when(schema.getResourceFields()).thenReturn(Map.of());
             when(schema.getResourceActions()).thenReturn(Map.of("upgrade", mock(Action.class)));
             when(factory.getSchema(anyString())).thenReturn(schema);
             when(factory.getSchema(StackRecord.class)).thenReturn(schema);
@@ -441,7 +443,7 @@ public class ApiKeyMutationTargetLookupTest {
         }
     }
 
-    private static class RecordingAccess implements ApiResourceAccess {
+    static class RecordingAccess implements ApiResourceAccess {
         final Fixture f;
         int reads, mutations;
         String operation;
@@ -456,8 +458,11 @@ public class ApiKeyMutationTargetLookupTest {
                 Table<?> table, ListOptions.MutationTarget target) {
             mutations++;
             assertTrue(target.matches(request, request.getType(), f.manager.lookupId));
-            operation = ApiKeyOperations.of(request).registered() ? ApiKeyOperations.of(request).id() : "read";
-            operand = ApiKeyOperations.of(request).registered() ? target : null;
+            var resolved = ApiKeyOperations.of(request);
+            boolean scoped = resolved.registered() && (!target.isNamedLink()
+                    || Set.of("export", "exec", "logs").contains(resolved.id()));
+            operation = scoped ? resolved.id() : "read";
+            operand = scoped ? target : null;
             return condition = f.service.constrainMutationTarget(request, factory, type, table, target);
         }
         @Override public List<?> filterCollection(ApiRequest request, List<?> values) {
@@ -465,10 +470,14 @@ public class ApiKeyMutationTargetLookupTest {
         }
     }
 
-    private static class LookupManager extends DefaultJooqResourceManager {
+    static class LookupManager extends DefaultJooqResourceManager {
         ListOptions observed;
         String lookupId;
         int mutations;
+        Resource availableResource;
+        @Override public Resource convertResponse(Object object, ApiRequest request) {
+            return availableResource == null ? super.convertResponse(object, request) : availableResource;
+        }
         @Override protected Object getByIdInternal(String type, String id, ListOptions options) {
             observed = options; lookupId = id;
             return super.getByIdInternal(type, id, options);

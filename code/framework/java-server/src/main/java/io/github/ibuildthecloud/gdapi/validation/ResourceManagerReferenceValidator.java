@@ -1,6 +1,8 @@
 package io.github.ibuildthecloud.gdapi.validation;
 
 import io.github.ibuildthecloud.gdapi.model.Resource;
+import io.github.ibuildthecloud.gdapi.model.ListOptions;
+import io.github.ibuildthecloud.gdapi.request.ApiRequest;
 import io.github.ibuildthecloud.gdapi.request.resource.ResourceManager;
 import io.github.ibuildthecloud.gdapi.request.resource.ResourceManagerLocator;
 import io.github.ibuildthecloud.gdapi.util.RequestUtils;
@@ -57,6 +59,18 @@ public class ResourceManagerReferenceValidator implements ReferenceValidator {
         }
 
         return manager.convertResponse(result, null);
+    }
+
+    @Override
+    public Resource getActionResourceId(ApiRequest request) {
+        if (!"POST".equals(request.getMethod()) || request.getAction() == null || request.getId() == null) {
+            return getResourceId(request.getType(), request.getId());
+        }
+        ResourceManager manager = locator.getResourceManagerByType(request.getType());
+        if (manager == null) return null;
+        Object result = manager.getById(request.getType(), request.getId(),
+                ListOptions.forResourceActionTarget(request, request.getType(), request.getId()));
+        return result == null ? null : manager.convertResponse(result, null);
     }
 
     public ResourceManagerLocator getLocator() {

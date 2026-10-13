@@ -23,7 +23,7 @@ SCRIPT = Path(__file__).with_name("check-cattle-jdk25-standalone.py")
 SPEC = importlib.util.spec_from_file_location("standalone_gate", SCRIPT)
 gate = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(gate)
-VERSION = "0.183.343"
+VERSION = "0.183.344"
 MANIFEST = "META-INF/MANIFEST.MF"
 PROPERTIES = "META-INF/maven/io.cattle/cattle-app/pom.properties"
 LAUNCHER = "io/cattle/platform/launcher/Main.class"

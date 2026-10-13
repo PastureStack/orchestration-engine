@@ -98,6 +98,35 @@ public class MutationTargetLookupTest {
         assertNull(new ListOptions(request).getMutationTarget());
         assertNull(new ListOptions().getMutationTarget());
     }
+    @Test public void namedLinkPurposeBindsTheSelectedGetLinkAndExactOperand() {
+        request.setMethod("GET"); request.setLink("composeconfig");
+        var target = ListOptions.forNamedLinkTarget(request, "stack", "1st8", "composeconfig").getMutationTarget();
+        assertTrue(target.isNamedLink());
+        assertTrue(target.matches(request, "stack", "1st8"));
+        assertFalse(target.matches(request, "stack", "1st9"));
+        assertFalse(target.matches(request, "service", "1st8"));
+        assertFalse(target.matches(new ApiRequest(request), "stack", "1st8"));
+        assertFalse(ListOptions.forNamedLinkTarget(request, "stack", "1st8", "other").getMutationTarget()
+                .matches(request, "stack", "1st8"));
+        request.setLink("dbdump"); assertFalse(target.matches(request, "stack", "1st8"));
+        request.setLink("composeconfig"); request.setAction("upgrade");
+        assertFalse(target.matches(request, "stack", "1st8"));
+        request.setAction(null); request.setMethod("POST");
+        assertFalse(target.matches(request, "stack", "1st8"));
+        request.setMethod("HEAD"); assertFalse(target.matches(request, "stack", "1st8"));
+        request.setMethod("GET"); request.setId(null);
+        assertFalse(target.matches(request, "stack", "1st8"));
+    }
+    @Test public void actionPurposeRequiresTheActualPostAction() {
+        request.setAction("upgrade");
+        assertFalse(ListOptions.forResourceActionTarget(request, "stack", "1st8").getMutationTarget()
+                .matches(request, "stack", "1st8"));
+        request.setMethod("POST");
+        var target = ListOptions.forResourceActionTarget(request, "stack", "1st8").getMutationTarget();
+        assertFalse(target.isNamedLink());
+        assertTrue(target.matches(request, "stack", "1st8"));
+        request.setAction(null); assertFalse(target.matches(request, "stack", "1st8"));
+    }
     private void assertTarget() {
         assertTrue(manager.options.getMutationTarget().matches(request, "stack", "1st8"));
         assertEquals("1st8", manager.criteria.get(TypeUtils.ID_FIELD));

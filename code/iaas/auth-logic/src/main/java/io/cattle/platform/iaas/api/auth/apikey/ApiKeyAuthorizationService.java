@@ -223,6 +223,9 @@ public class ApiKeyAuthorizationService implements ApiResourceAccess {
         var operation = ApiKeyOperations.of(request);
         if (target == null || !target.matches(request, request.getType(), request.getId())
                 || !operation.registered()
+                // A matched handler is a lookup purpose, not a new operation
+                // registry. Unknown and ordinary relationship links stay READ.
+                || target.isNamedLink() && !Set.of("export", "exec", "logs").contains(operation.id())
                 || !sameQueryResource(factory, target.type(), type, wireType)) {
             return constrain(request, factory, type, table);
         }

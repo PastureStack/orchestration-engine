@@ -12,15 +12,21 @@ public class ListOptions {
 
     /** Internal operand lookup, never populated from request body or query parameters. */
     public static ListOptions forMutationTarget(ApiRequest request, String type, String id) {
-        return forMutationTarget(request, type, id, new ListOptions(request));
+        return forOperand(request, type, id, new ListOptions(request), MutationTarget.Purpose.MUTATION, null);
     }
 
     public static ListOptions forResourceActionTarget(ApiRequest request, String type, String id) {
-        return forMutationTarget(request, type, id, new ListOptions());
+        return forOperand(request, type, id, new ListOptions(), MutationTarget.Purpose.RESOURCE_ACTION, null);
     }
 
-    private static ListOptions forMutationTarget(ApiRequest request, String type, String id, ListOptions options) {
-        options.mutationTarget = new MutationTarget(request, type, id);
+    /** Used only after a manager has matched the actual named LinkHandler. */
+    public static ListOptions forNamedLinkTarget(ApiRequest request, String type, String id, String link) {
+        return forOperand(request, type, id, new ListOptions(request), MutationTarget.Purpose.NAMED_LINK, link);
+    }
+
+    private static ListOptions forOperand(ApiRequest request, String type, String id, ListOptions options,
+            MutationTarget.Purpose purpose, String selectedLink) {
+        options.mutationTarget = new MutationTarget(request, type, id, purpose, selectedLink);
         return options;
     }
 
@@ -30,20 +36,26 @@ public class ListOptions {
 
     /** A local lookup purpose, not an ambient permission for the entire request. */
     public static final class MutationTarget {
+        private enum Purpose { MUTATION, RESOURCE_ACTION, NAMED_LINK }
         private final ApiRequest request;
         private final String type, id, method, action, link;
+        private final Purpose purpose;
+        private final String selectedLink;
 
-        private MutationTarget(ApiRequest request, String type, String id) {
+        private MutationTarget(ApiRequest request, String type, String id, Purpose purpose, String selectedLink) {
             this.request = Objects.requireNonNull(request);
             this.type = type;
             this.id = id;
             this.method = request.getMethod();
             this.action = request.getAction();
             this.link = request.getLink();
+            this.purpose = purpose;
+            this.selectedLink = selectedLink;
         }
 
         public String type() { return type; }
         public String id() { return id; }
+        public boolean isNamedLink() { return purpose == Purpose.NAMED_LINK; }
 
         public boolean matches(ApiRequest current, String lookupType, Object lookupId) {
             return current == request && type != null && id != null
@@ -51,8 +63,12 @@ public class ListOptions {
                     && Objects.equals(type, lookupType) && Objects.equals(id, lookupId)
                     && Objects.equals(method, current.getMethod())
                     && Objects.equals(action, current.getAction()) && Objects.equals(link, current.getLink())
-                    && (action != null || "PUT".equalsIgnoreCase(method)
-                            || "PATCH".equalsIgnoreCase(method) || "DELETE".equalsIgnoreCase(method));
+                    && (switch (purpose) {
+                        case NAMED_LINK -> "GET".equals(method) && link != null && Objects.equals(selectedLink, link);
+                        case RESOURCE_ACTION -> "POST".equals(method) && action != null;
+                        case MUTATION -> action != null || "PUT".equalsIgnoreCase(method)
+                                || "PATCH".equalsIgnoreCase(method) || "DELETE".equalsIgnoreCase(method);
+                    });
         }
     }
 

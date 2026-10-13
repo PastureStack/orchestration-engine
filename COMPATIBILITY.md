@@ -4,7 +4,25 @@ The migration preserves established `io.cattle.*` Java packages, Maven coordinat
 
 New operator-facing names use PastureStack and `PASTURESTACK_*`. Compatibility identifiers must be changed only with an explicit data migration, a dual-read or dual-write transition, a rollback plan, and cross-repository verification.
 
-## Current build: Engine 0.183.343
+## Current build: Engine 0.183.344
+
+Exact operation-operand lookups cover matched sensitive named-link handlers
+and registered POST action availability checks, in addition to mutations.
+The internal purpose is bound to the same request, method, selectors, resource
+type and decoded ID. It is not an ambient permission or a client-provided field.
+Unknown links, ordinary GETs, collections and input references remain read-scoped.
+Owner RBAC, schema-class proof, scope, explicit deny, expiry and revocation are
+still authoritative. Neither a link selector nor an action query changes the
+HTTP operation actually dispatched.
+
+This corrects the export-only GET pre-read and the related action pre-read,
+without adding read grants or changing plugin responsibilities. Full and legacy
+authorization remains unchanged. Component tests are not all-role or all-action
+platform acceptance; use the corresponding Server release for actual native
+results and image identity. See the
+[344 note](docs/releases/orchestration-engine-0.183.344.md).
+
+## Engine 0.183.343
 
 Operation classification follows the resource handler's actual HTTP method and
 executed selector. PUT/DELETE retain update/delete even with decorated action

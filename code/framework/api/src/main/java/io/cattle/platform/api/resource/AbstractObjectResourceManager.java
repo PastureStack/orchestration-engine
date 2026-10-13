@@ -193,7 +193,7 @@ public abstract class AbstractObjectResourceManager extends AbstractBaseResource
         if (linkHandlers != null) {
             for (LinkHandler linkHandler : linkHandlers) {
                 if (linkHandler.handles(type, id, link, request)) {
-                    Object currentObject = getById(type, id, new ListOptions(request));
+                    Object currentObject = getById(type, id, ListOptions.forNamedLinkTarget(request, type, id, link));
                     if (currentObject == null) {
                         return null;
                     }
