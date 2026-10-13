@@ -1,6 +1,6 @@
 # API Key policy and audit contract
 
-This describes Engine `0.183.345`. Use the current Server release and its
+This describes Engine `0.183.346` source. Use the current Server release and its
 component manifest for the actual immutable platform pairing. Component source,
 publication and assembled-Server native qualification are separate gates;
 typed all-actions C-03 and complete UI/API or role/resource acceptance are not
@@ -50,6 +50,20 @@ nor the destination Instance supplies a parent grant. Reading a Link grants no
 ordinary read access to either Instance, and a changed destination requires its own
 live reference authorization. Missing, removed, foreign or contradictory ancestry
 fails closed even with an open default or an exact Link ID.
+
+The Link parent Stack check uses a scalar marker bounded by the Stack's unique
+primary key, the same owning account and live-state predicates. Missing or
+inaccessible parents remain fail-closed. This avoids MariaDB's correlated EXISTS
+optimizer rewrite without changing database-wide optimizer settings.
+
+Shared Container/Link SQL treats nullable Stack equality as a total predicate:
+two NULL values agree, a NULL and a value differ, and two values agree only when
+equal. Both-non-NULL guards keep negated comparisons from becoming SQL UNKNOWN
+and omitting an invalid managed parent. This does not remove any live, owner,
+managed, upgrade or incoherence check. SQL rendering, database execution and
+assembled-Server native acceptance remain separate qualification gates. Full
+MYSQL runtime-dialect Link/Container SELECTs ran read-only on MariaDB 11.8.6
+using synthetic IDs; that result does not establish native business grants.
 
 Policy-bearing writes are checked after authentication and before schema
 sanitization. Forbidden owner or credential fields are rejected before they
@@ -164,7 +178,7 @@ For the original audit identity change, see the
 [0.183.335 integration contract](releases/orchestration-engine-0.183.335.md)
 records the Project membership, lifecycle and rollback boundaries introduced
 with that release. See the
-[current component boundary](releases/orchestration-engine-0.183.345.md)
+[current component boundary](releases/orchestration-engine-0.183.346.md)
 and [current Server release](https://github.com/PastureStack/server#current-release)
 for the published companion versions.
 Use the complete compatible Server image; the component alone does not prove

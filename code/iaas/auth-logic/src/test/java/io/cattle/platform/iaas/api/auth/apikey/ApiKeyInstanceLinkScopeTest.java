@@ -13,6 +13,7 @@ import io.cattle.platform.api.formatter.DefaultIdFormatter;
 import io.cattle.platform.core.model.*;
 import io.cattle.platform.core.model.Stack;
 import io.cattle.platform.core.model.tables.InstanceTable;
+import io.cattle.platform.core.model.tables.ServiceTable;
 import io.cattle.platform.core.model.tables.records.*;
 import io.cattle.platform.iaas.api.auth.impl.AccountPolicy;
 import io.cattle.platform.iaas.api.auth.projects.ProjectAccessService;
@@ -32,6 +33,7 @@ import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.*;
 import org.jooq.Condition;
+import org.jooq.Field;
 import org.jooq.SQLDialect;
 import org.jooq.Table;
 import org.jooq.conf.Settings;
@@ -220,6 +222,52 @@ public class ApiKeyInstanceLinkScopeTest {
             assertTrue(guard + ": " + sql, sql.contains(guard));
         }
         assertTrue(render(ApiKeyQueryScopes.condition(policy(ApiKeyPolicy.Effect.ALLOW), "instanceLink", InstanceTable.INSTANCE, "read", ApiKeyInstanceLinkScopeTest::parse)).contains("false"));
+    }
+
+    @Test public void scalarStackComparisonsUseTotalNullSafeEqualityOnMysqlAndMariaDb() {
+        Field<Long> scalarStack = DSL.field(DSL.select(DSL.inline(8L)));
+        ServiceTable direct = ServiceTable.SERVICE.as("key_scope_parent_service");
+        ServiceTable checked = ServiceTable.SERVICE.as("key_scope_checked_service");
+        List<Condition> comparisons = List.of(ApiKeyQueryScopes.sameNullableStack(direct.STACK_ID, scalarStack),
+                ApiKeyQueryScopes.sameNullableStack(checked.STACK_ID, scalarStack).not());
+        for (SQLDialect dialect : List.of(SQLDialect.MYSQL, SQLDialect.MARIADB)) {
+            for (Condition comparison : comparisons) {
+                String sql = DSL.using(dialect, settings()).renderInlined(comparison).toLowerCase(Locale.ROOT);
+                assertTrue(sql, sql.contains("(select 8)"));
+                assertTrue(sql, sql.contains("is null") && sql.contains("is not null") && sql.contains(" = "));
+                assertFalse(sql, sql.contains("<=>") || sql.contains("distinct from")
+                        || sql.matches("(?s).*\\b(?:row|in|all|any|intersect|except)\\b.*"));
+            }
+            for (boolean isLink : List.of(true, false)) {
+                String type = isLink ? "instanceLink" : "container";
+                Table<?> table = isLink ? INSTANCE_LINK : InstanceTable.INSTANCE;
+                Condition scoped = ApiKeyQueryScopes.condition(policy(ApiKeyPolicy.Effect.DENY,
+                        allow(ApiKeyPolicy.Scope.stack("1st8"), "read")), type, table, "read", ApiKeyInstanceLinkScopeTest::parse);
+                String sql = DSL.using(dialect, settings()).renderInlined(DSL.selectFrom(table).where(scoped).limit(1))
+                        .toLowerCase(Locale.ROOT);
+                assertTrue(sql, sql.contains("coalesce(") && sql.contains("(select"));
+                if (isLink) {
+                    assertTrue(sql, sql.matches("(?s).*\\(select\\s+coalesce\\(.*"));
+                    String stackLookup = "select 1 as `one` from `environment` as `key_scope_link_stack`";
+                    assertTrue(sql, sql.contains("(" + stackLookup));
+                    assertFalse(sql, sql.contains("exists (" + stackLookup));
+                    assertTrue(sql, sql.contains("`key_scope_link_stack`.`account_id` = `instance_link`.`account_id`"));
+                    assertTrue(sql, sql.contains("`key_scope_link_stack`.`removed` is null"));
+                }
+                for (String alias : List.of("key_scope_parent_service", "key_scope_checked_service")) {
+                    String column = "`" + alias + "`.`environment_id`";
+                    assertTrue(sql, sql.contains(column + " is null") && sql.contains(column + " is not null") && sql.contains(column + " = "));
+                    assertFalse(sql, sql.contains(column + " <=>") || sql.contains(column + " is distinct from")
+                            || sql.contains(column + " is not distinct from"));
+                }
+                int pagination = sql.contains("limit") ? sql.indexOf("limit") : sql.indexOf("fetch next");
+                assertTrue(sql, pagination > sql.indexOf("where") && sql.indexOf("where") >= 0);
+                // Opt-in stdout oracle uses synthetic constants only, never QA IDs.
+                if (Boolean.getBoolean("apiKey.nullSafeSqlOracle")) {
+                    System.out.println("NULLSAFE_STACK_SQL_ORACLE_" + type + "_" + dialect + "=" + sql);
+                }
+            }
+        }
     }
 
     private static Settings settings() { return new Settings().withRenderSchema(false); }

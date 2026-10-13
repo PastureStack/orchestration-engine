@@ -82,9 +82,13 @@ public final class ApiKeyQueryScopes {
         StackTable parentStack = StackTable.STACK.as("key_scope_link_stack");
         Condition projectValid = DSL.exists(DSL.selectOne().from(project).where(project.ID.eq(account))
                 .and(project.KIND.eq("project")).and(live(project.REMOVED, project.STATE)));
-        Condition stackValid = parents.stack().isNull().or(DSL.exists(DSL.selectOne().from(parentStack)
+        // The Stack ID is a primary key, so this lookup returns at most one
+        // marker. A missing/foreign/removed parent yields NULL, not a grant.
+        // Unlike correlated EXISTS, MariaDB cannot rewrite this scalar marker
+        // into a row-valued IN whose left side contains ancestry subqueries.
+        Condition stackValid = parents.stack().isNull().or(DSL.field(DSL.selectOne().from(parentStack)
                 .where(parentStack.ID.eq(parents.stack())).and(parentStack.ACCOUNT_ID.eq(account))
-                .and(live(parentStack.REMOVED, parentStack.STATE))));
+                .and(live(parentStack.REMOVED, parentStack.STATE))).eq(DSL.inline(1)));
         Condition sourceValid = source.ID.eq(instanceId).and(source.ACCOUNT_ID.eq(account))
                 .and(live(source.REMOVED, source.STATE)).and(parents.valid()).and(stackValid);
         Field<Long> stack = DSL.field(DSL.select(parents.stack()).from(source).where(sourceValid));
@@ -121,18 +125,28 @@ public final class ApiKeyQueryScopes {
         // even when one side's Stack is NULL. NULL is not a wildcard parent.
         Condition directValid = serviceId == null ? DSL.trueCondition() : serviceId.isNull().or(DSL.exists(
                 DSL.selectOne().from(direct).where(direct.ID.eq(serviceId)).and(direct.ACCOUNT_ID.eq(account))
-                        .and(direct.REMOVED.isNull()).and(direct.STACK_ID.isNotDistinctFrom(stack))));
+                        .and(direct.REMOVED.isNull()).and(sameNullableStack(direct.STACK_ID, stack))));
         ServiceExposeMapTable checkedMap = ServiceExposeMapTable.SERVICE_EXPOSE_MAP.as("key_scope_checked_map");
         ServiceTable checkedService = ServiceTable.SERVICE.as("key_scope_checked_service");
         // Inspect all owned references, not just the valid ones used for MIN:
         // excluding a foreign/dangling map from that aggregate must not hide it.
         Condition invalidParent = checkedMap.ACCOUNT_ID.isDistinctFrom(account).or(checkedService.ID.isNull())
                 .or(checkedService.REMOVED.isNotNull()).or(checkedService.ACCOUNT_ID.isDistinctFrom(account))
-                .or(checkedService.STACK_ID.isDistinctFrom(stack));
+                .or(sameNullableStack(checkedService.STACK_ID, stack).not());
         Condition managedValid = DSL.notExists(DSL.selectOne().from(checkedMap).leftJoin(checkedService)
                 .on(checkedService.ID.eq(checkedMap.SERVICE_ID)).where(checkedMap.INSTANCE_ID.eq(id))
                 .and(checkedMap.REMOVED.isNull()).and(ownedServiceMap(checkedMap)).and(invalidParent));
         return new Ancestry(stack, directValid.and(managedValid));
+    }
+
+    /** Total equality, including NULL/NULL, without DISTINCT FROM emulation.
+     * MariaDB rejects a scalar subquery in the row/IN shape used by that
+     * emulation. Guard ordinary equality with both non-null checks so negation
+     * cannot become UNKNOWN and omit an incoherent managed parent.
+     */
+    static Condition sameNullableStack(Field<Long> left, Field<Long> right) {
+        return left.isNull().and(right.isNull())
+                .or(left.isNotNull().and(right.isNotNull()).and(left.eq(right)));
     }
 
     private static Condition ownedServiceMap(ServiceExposeMapTable map) {
