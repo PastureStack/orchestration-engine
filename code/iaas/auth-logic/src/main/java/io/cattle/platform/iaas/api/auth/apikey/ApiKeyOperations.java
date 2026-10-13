@@ -21,13 +21,19 @@ public final class ApiKeyOperations {
     }
 
     public static Operation of(String method, String action, String link) {
-        String named = action != null ? action : link;
+        String verb = method == null ? "" : method.toUpperCase(Locale.ROOT);
+        // Match ResourceManagerRequestHandler's dispatch, not a selector that
+        // its actual sink ignores. PUT/DELETE are mutations even with a link
+        // or action in the URL; a GET link wins over an ignored action query.
+        boolean invokesAction = "POST".equals(verb) && action != null;
+        boolean invokesLink = ("GET".equals(verb) || "HEAD".equals(verb)) && link != null;
+        String named = invokesAction ? action : invokesLink ? link : null;
         if (named != null) {
             String name = named.toLowerCase(Locale.ROOT);
             if (name.equals("execute") || name.equals("exec")) return known("exec");
             if (name.equals("logs") || name.equals("log")) return known("logs");
             if (EXPORTS.contains(name)) return known("export");
-            if (action != null) {
+            if (invokesAction) {
                 if (UPGRADES.contains(name)) return known("upgrade");
                 if (UPDATES.contains(name)) return known("update");
                 if (DELETES.contains(name)) return known("delete");
@@ -35,7 +41,7 @@ public final class ApiKeyOperations {
             }
         }
         if (method == null) return new Operation("unknown", false);
-        return switch (method.toUpperCase(Locale.ROOT)) {
+        return switch (verb) {
             case "GET", "HEAD", "OPTIONS" -> known("read");
             case "POST" -> known("create");
             case "PUT", "PATCH" -> known("update");

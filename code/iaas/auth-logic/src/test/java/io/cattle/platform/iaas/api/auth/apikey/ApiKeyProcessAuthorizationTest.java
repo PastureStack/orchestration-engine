@@ -87,6 +87,54 @@ public class ApiKeyProcessAuthorizationTest {
         assertEquals(code, assertThrows(ProcessAuthorizationDeniedException.class,
                 () -> hook.beforeExecution(job, metadata)).getCode());
     }
+    private void sameScopePolicy(String operation) {
+        policy(new ApiKeyPolicy(ApiKeyPolicy.Mode.CUSTOM, ApiKeyPolicy.Effect.DENY, null,
+                List.of(new ApiKeyPolicy.Rule("scope", ApiKeyPolicy.Effect.ALLOW,
+                        ApiKeyPolicy.Scope.stack("1st8"), Set.of(operation)))));
+        when(hook.targets.resolveObject("container", root, owner)).thenReturn(
+                ApiKeyPolicyEvaluator.Target.stackResource("container", "1i3", "1a5", "1st8"));
+        when(hook.targets.resolveObject("container", child, owner)).thenReturn(
+                ApiKeyPolicyEvaluator.Target.stackResource("container", "1i4", "1a5", "1st8"));
+    }
+    @Test public void queuedOldExportClassificationCannotAuthorizeMutation() {
+        sameScopePolicy("export");
+        metadata.put("operation", "export"); metadata.put("requestLink", "composeConfig");
+        deny("KeyScopeDenied");
+        metadata.put("requestMethod", "DELETE");
+        when(schema.getResourceMethods()).thenReturn(List.of("DELETE"));
+        deny("KeyScopeDenied");
+    }
+    @Test public void queuedOldActionClassificationCannotAuthorizePut() {
+        sameScopePolicy("upgrade");
+        metadata.put("operation", "upgrade"); metadata.put("requestAction", "upgrade");
+        when(schema.getResourceActions()).thenReturn(Map.of("upgrade", mock(Action.class)));
+        deny("KeyScopeDenied");
+    }
+    @Test public void matchingQueuedDispatchKeepsActualUpdateAndUpgradeGrants() {
+        sameScopePolicy("update"); metadata.put("requestLink", "composeConfig");
+        hook.beforeExecution(job, metadata);
+        sameScopePolicy("upgrade");
+        metadata.put("operation", "upgrade"); metadata.put("requestMethod", "POST");
+        metadata.put("requestAction", "upgrade");
+        when(schema.getResourceActions()).thenReturn(Map.of("upgrade", mock(Action.class)));
+        hook.beforeExecution(job, metadata);
+    }
+    @Test public void fullLegacyQueuedMetadataRetainsOriginalOwnerBoundary() {
+        metadata.put("operation", "export"); metadata.put("requestLink", "composeConfig");
+        hook.beforeExecution(job, metadata);
+        policy(new ApiKeyPolicy(ApiKeyPolicy.Mode.FULL, ApiKeyPolicy.Effect.ALLOW, null, List.of()));
+        hook.beforeExecution(job, metadata);
+        verify(hook.targets, never()).resolveObject(anyString(), any(), any());
+    }
+    @Test public void malformedQueuedSelectorAndExpiredPolicyRemainFailClosed() {
+        sameScopePolicy("update"); metadata.put("requestLink", 7);
+        deny("KeyScopeDenied");
+        metadata.remove("requestLink"); metadata.remove("requestMethod");
+        deny("KeyScopeDenied");
+        metadata.put("requestMethod", "PUT"); metadata.put("operation", "export");
+        policy(new ApiKeyPolicy(ApiKeyPolicy.Mode.CUSTOM, ApiKeyPolicy.Effect.ALLOW, now, List.of()));
+        deny("ApiKeyExpired");
+    }
     @Test public void fullAndLegacyKeepExistingActionBoundary() {
         hook.beforeExecution(job, metadata);
         policy(new ApiKeyPolicy(ApiKeyPolicy.Mode.FULL, ApiKeyPolicy.Effect.ALLOW, null, List.of()));

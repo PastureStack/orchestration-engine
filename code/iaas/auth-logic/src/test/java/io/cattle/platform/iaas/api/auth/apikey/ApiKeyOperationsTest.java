@@ -22,4 +22,33 @@ public class ApiKeyOperationsTest {
         assertEquals("read", ApiKeyOperations.of("GET", null, "instances").id());
         assertEquals("read", ApiKeyOperations.of("GET", null, "projectMembers").id());
     }
+
+    @Test public void ignoredSelectorsCannotChangeMutationAuthority() {
+        for (String selector : new String[] {"composeConfig", "execute", "logs", "secretValues"}) {
+            assertEquals("update", ApiKeyOperations.of("PUT", null, selector).id());
+            assertEquals("delete", ApiKeyOperations.of("DELETE", null, selector).id());
+            assertEquals("create", ApiKeyOperations.of("POST", null, selector).id());
+        }
+        for (String action : new String[] {"upgrade", "execute", "logs", "dbdump", "remove"}) {
+            assertEquals("update", ApiKeyOperations.of("PUT", action, null).id());
+            assertEquals("delete", ApiKeyOperations.of("DELETE", action, null).id());
+            assertEquals("read", ApiKeyOperations.of("GET", action, null).id());
+        }
+    }
+
+    @Test public void bothSelectorsFollowTheActualDispatcherPrecedence() {
+        assertEquals("export", ApiKeyOperations.of("GET", "upgrade", "composeConfig").id());
+        assertEquals("export", ApiKeyOperations.of("GET", "restart", "secretValues").id());
+        assertEquals("upgrade", ApiKeyOperations.of("POST", "upgrade", "composeConfig").id());
+        assertEquals("read", ApiKeyOperations.of("GET", "remove", "instances").id());
+        assertFalse(ApiKeyOperations.of("POST", "unknownAction", "composeConfig").registered());
+    }
+
+    @Test public void headAndCaseInsensitiveMethodsKeepTheirExistingSemantics() {
+        assertEquals("export", ApiKeyOperations.of("head", "restart", "DBDump").id());
+        assertEquals("upgrade", ApiKeyOperations.of("post", "UPGRADE", null).id());
+        assertEquals("update", ApiKeyOperations.of("put", "upgrade", "composeConfig").id());
+        assertEquals("read", ApiKeyOperations.of("OPTIONS", "upgrade", "composeConfig").id());
+        assertFalse(ApiKeyOperations.of(null, "upgrade", "composeConfig").registered());
+    }
 }

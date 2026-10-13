@@ -4,7 +4,29 @@ The migration preserves established `io.cattle.*` Java packages, Maven coordinat
 
 New operator-facing names use PastureStack and `PASTURESTACK_*`. Compatibility identifiers must be changed only with an explicit data migration, a dual-read or dual-write transition, a rollback plan, and cross-repository verification.
 
-## Current build: Engine 0.183.342
+## Current build: Engine 0.183.343
+
+Operation classification follows the resource handler's actual HTTP method and
+executed selector. PUT/DELETE retain update/delete even with decorated action
+or link URLs; GET/HEAD link dispatch preserves read/export, and an ignored
+action query cannot mask it. Only POST invokes a registered action, preserving
+upgrade and existing standard operations; unknown actions are not invented
+grants. Owner RBAC, deny precedence, expiry, audit and full/legacy behavior stay
+authoritative.
+Custom-Key queued execution independently recomputes the captured method/name
+operation and rejects a mismatch before work. This does not impose a custom
+scope on full/legacy Keys or bypass their original owner/lifecycle checks.
+
+21 focused source cases passed as two distinct scopes: 12 ingress and 9 queued
+regressions/related controls. Component source/build/publication and assembled
+Server native qualification remain separate. Typed all-actions C-03 and the
+complete role/resource matrix are not established by these source tests.
+Use the [current Server release](https://github.com/PastureStack/server#current-release)
+and component manifest for the actual image pairing; no native result or
+deployment is inferred from this version label.
+See the [343 note](docs/releases/orchestration-engine-0.183.343.md).
+
+## Published Engine 0.183.342
 
 Operation-specific Keys load only the exact update, delete or registered-action
 operand using that operation's policy. Ordinary GET, collection and referenced
