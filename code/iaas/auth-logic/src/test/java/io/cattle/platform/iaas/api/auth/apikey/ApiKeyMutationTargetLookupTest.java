@@ -100,6 +100,59 @@ public class ApiKeyMutationTargetLookupTest {
         assertEquals(0, f.manager.mutations);
     }
 
+    @Test public void exportLinkCannotMaskPutOrDeleteMutation() throws Exception {
+        for (String version : List.of("v1", "v2-beta")) {
+            for (String method : List.of("PUT", "DELETE")) {
+                Fixture f = new Fixture(version, "stack", method, null, custom("export"));
+                f.request.setLink("composeConfig");
+                assertEquals("KeyScopeDenied", assertThrows(ClientVisibleException.class, () -> {
+                    f.service.authorize(f.request, f.owner);
+                    if (method.equals("PUT")) f.manager.update("stack", "8", f.request);
+                    else f.manager.delete("stack", "8", f.request);
+                }).getCode());
+                assertEquals(0, f.sql.size());
+                assertEquals(0, f.manager.mutations);
+            }
+        }
+    }
+
+    @Test public void upgradeSelectorCannotMaskPutMutation() throws Exception {
+        for (String version : List.of("v1", "v2-beta")) {
+            Fixture f = new Fixture(version, "stack", "PUT", "upgrade", custom("upgrade"));
+            assertEquals("KeyScopeDenied", assertThrows(ClientVisibleException.class, () -> {
+                f.service.authorize(f.request, f.owner);
+                f.manager.update("stack", "8", f.request);
+            }).getCode());
+            assertEquals(0, f.sql.size());
+            assertEquals(0, f.manager.mutations);
+        }
+    }
+
+    @Test public void actualUpdateGrantStillAuthorizesPutWithIgnoredSelectors() throws Exception {
+        for (String version : List.of("v1", "v2-beta")) {
+            for (boolean useAction : List.of(false, true)) {
+                Fixture f = new Fixture(version, "stack", "PUT", useAction ? "upgrade" : null, custom("update"));
+                if (!useAction) f.request.setLink("composeConfig");
+                f.service.authorize(f.request, f.owner);
+                assertEquals("update", f.request.getAttribute("apiKey.audit.operation"));
+                assertNotNull(f.manager.update("stack", "8", f.request));
+                assertEquals("update", f.access.operation);
+                assertEquals(1, f.manager.mutations);
+            }
+        }
+    }
+
+    @Test public void fullAndLegacyRetainNativePutDespiteIgnoredSelectors() throws Exception {
+        for (ApiKeyPolicy policy : new ApiKeyPolicy[] {null,
+                new ApiKeyPolicy(ApiKeyPolicy.Mode.FULL, ApiKeyPolicy.Effect.ALLOW, null, List.of())}) {
+            Fixture f = new Fixture("v2-beta", "stack", "PUT", "upgrade", policy);
+            f.request.setLink("composeConfig");
+            f.service.authorize(f.request, f.owner);
+            assertNotNull(f.manager.update("stack", "8", f.request));
+            assertEquals(1, f.manager.mutations);
+        }
+    }
+
     @Test public void updateGrantCannotAuthorizePostUpgrade() throws Exception {
         Fixture f = new Fixture("v2-beta", "stack", "POST", "upgrade", custom("update"));
         assertEquals("KeyScopeDenied", assertThrows(ClientVisibleException.class,

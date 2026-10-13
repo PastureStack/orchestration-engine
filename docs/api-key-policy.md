@@ -1,11 +1,24 @@
 # API Key policy and audit contract
 
-This describes Engine `0.183.342`. Use the current Server release's component
-manifest for the immutable platform image pairing. Publication,
-focused validation and live acceptance remain separate; complete UI/API and
-role/resource acceptance is not claimed.
+This describes Engine `0.183.343`. Use the current Server release and its
+component manifest for the actual immutable platform pairing. Component source,
+publication and assembled-Server native qualification are separate gates;
+typed all-actions C-03 and complete UI/API or role/resource acceptance are not
+established by the focused source tests.
 
 ## Authorization and updates
+
+Operation classification uses the actual HTTP dispatch method and its executed
+selector, not an action/link label the handler ignores. PUT/DELETE require
+update/delete despite decorated URLs. GET/HEAD preserve the invoked link's
+read/export classification, including sensitive exports; an ignored action
+query cannot replace it. Registered POST actions keep their existing upgrade
+and other operation semantics. This does not convert a narrow grant into read.
+Custom-Key queued execution also recomputes the captured method/name operation;
+contradictory stored operation metadata fails closed before process work.
+Full and legacy Keys retain their normal owner/lifecycle checks, without
+acquiring a custom scope. Ingress source results and queued source controls are
+distinct evidence, neither establishing native typed all-actions C-03 PASS.
 
 Both API roots support full, closed or custom policies and optional expiry.
 Full and untouched legacy Keys retain the account's existing authorization;
@@ -142,7 +155,7 @@ For the original audit identity change, see the
 [0.183.335 integration contract](releases/orchestration-engine-0.183.335.md)
 records the Project membership, lifecycle and rollback boundaries introduced
 with that release. See the
-[current component boundary](releases/orchestration-engine-0.183.342.md)
+[current component boundary](releases/orchestration-engine-0.183.343.md)
 and [current Server release](https://github.com/PastureStack/server#current-release)
 for the published companion versions.
 Use the complete compatible Server image; the component alone does not prove

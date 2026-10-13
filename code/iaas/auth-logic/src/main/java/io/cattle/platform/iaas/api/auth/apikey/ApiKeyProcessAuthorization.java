@@ -126,6 +126,14 @@ public class ApiKeyProcessAuthorization implements ProcessAuthorizationHook {
                 if (policy != null && policy.getExpiresAt() != null && !clock.instant().isBefore(policy.getExpiresAt())) denied("ApiKeyExpired");
                 return;
             }
+            // Queued work may have been captured by an older server whose
+            // named selector masked the actual method. Never reuse that label
+            // as authority after upgrade; legitimate full/legacy work above
+            // keeps its original owner and lifecycle checks.
+            if (policy.getExpiresAt() != null && !clock.instant().isBefore(policy.getExpiresAt())) denied("ApiKeyExpired");
+            var dispatched = ApiKeyOperations.of(text(metadata, "requestMethod"),
+                    optionalText(metadata, "requestAction"), optionalText(metadata, "requestLink"));
+            if (!dispatched.registered() || !dispatched.id().equals(operation)) denied("KeyScopeDenied");
             var target = targets.resolveObject(type, root, current.policy());
             var decision = evaluator.evaluate(policy, new ApiKeyPolicyEvaluator.Request(true, operation,
                     ApiKeyOperations.OPERATIONS.contains(operation), List.of(target)), clock.instant());
@@ -238,6 +246,9 @@ public class ApiKeyProcessAuthorization implements ProcessAuthorizationHook {
         Object value = data.get(field);
         if (!(value instanceof String s) || s.isBlank()) throw new IllegalArgumentException("Invalid job authorization metadata");
         return s;
+    }
+    private static String optionalText(Map<String, Object> data, String field) {
+        return data.containsKey(field) ? text(data, field) : null;
     }
     private static long number(Map<String, Object> data, String field) { return ApiKeyPolicyCodec.number(data.get(field)); }
     private static void denied(String code) { throw new ProcessAuthorizationDeniedException(code); }
