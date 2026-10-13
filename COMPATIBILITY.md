@@ -4,7 +4,31 @@ The migration preserves established `io.cattle.*` Java packages, Maven coordinat
 
 New operator-facing names use PastureStack and `PASTURESTACK_*`. Compatibility identifiers must be changed only with an explicit data migration, a dual-read or dual-write transition, a rollback plan, and cross-repository verification.
 
-## Current build: Engine 0.183.345
+## Current source build: Engine 0.183.346
+
+Instance Link SQL checks the parent Stack through a scalar marker instead of
+a correlated EXISTS that MariaDB can rewrite to an unsupported row/IN form.
+Its unique primary-key match retains the same account and live-parent checks;
+a missing or inaccessible parent remains fail-closed. No global optimizer
+setting is changed.
+
+Shared Container and Instance Link ancestry SQL compares nullable Stack values
+using explicit total equality: both NULL, or both non-NULL and equal. Its
+negation treats one NULL and one value as different, not SQL UNKNOWN; invalid
+managed parents must not disappear from the ancestry check. The two Stack
+comparisons no longer request dialect-specific DISTINCT FROM emulation around
+a scalar subquery. Owner, live-parent, managed/upgrade and incoherence guards,
+scope, deny, expiry, audit and full/legacy behavior are unchanged.
+
+Complete MYSQL runtime-dialect Link and Container SELECTs executed read-only
+on MariaDB 11.8.6 with synthetic IDs and no database writes. This verifies query
+compatibility, not native business authorization. Final focused source checks,
+required PR checks, original packaging, immutable release and assembled-Server
+Container/Link native acceptance remain separate gates.
+No database migration, role grant or database configuration change is made.
+See the [346 source note](docs/releases/orchestration-engine-0.183.346.md).
+
+## Engine 0.183.345
 
 The existing native `instanceLink` type is scoped by its persisted source
 Instance's owned Project and Stack ancestry. Direct authorization and collection
