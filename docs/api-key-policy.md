@@ -1,6 +1,6 @@
 # API Key policy and audit contract
 
-This describes Engine `0.183.344`. Use the current Server release and its
+This describes Engine `0.183.345`. Use the current Server release and its
 component manifest for the actual immutable platform pairing. Component source,
 publication and assembled-Server native qualification are separate gates;
 typed all-actions C-03 and complete UI/API or role/resource acceptance are not
@@ -41,6 +41,15 @@ runs this check before evaluating custom Key scope, including accepted parent
 references and background lifecycle ancestry. Background checks do not create an
 HTTP context or object-access grant. Other Account kinds and child resources keep
 their own existing authorization; Project membership alone cannot authorize them.
+
+The existing native `instanceLink` type derives its Project and Stack scope from
+the persisted source Instance, with the same live owner, managed Service and exact
+upgrade ancestry checks used for containers. Direct reads and collection SQL agree;
+scope and explicit denials are applied before pagination. Neither a client pointer
+nor the destination Instance supplies a parent grant. Reading a Link grants no
+ordinary read access to either Instance, and a changed destination requires its own
+live reference authorization. Missing, removed, foreign or contradictory ancestry
+fails closed even with an open default or an exact Link ID.
 
 Policy-bearing writes are checked after authentication and before schema
 sanitization. Forbidden owner or credential fields are rejected before they
@@ -155,7 +164,7 @@ For the original audit identity change, see the
 [0.183.335 integration contract](releases/orchestration-engine-0.183.335.md)
 records the Project membership, lifecycle and rollback boundaries introduced
 with that release. See the
-[current component boundary](releases/orchestration-engine-0.183.344.md)
+[current component boundary](releases/orchestration-engine-0.183.345.md)
 and [current Server release](https://github.com/PastureStack/server#current-release)
 for the published companion versions.
 Use the complete compatible Server image; the component alone does not prove

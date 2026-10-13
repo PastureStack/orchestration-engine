@@ -1,5 +1,8 @@
 package io.cattle.platform.iaas.api.auth.apikey;
 
+import io.cattle.platform.core.model.tables.AccountTable;
+import io.cattle.platform.core.model.tables.InstanceTable;
+import io.cattle.platform.core.model.tables.StackTable;
 import io.cattle.platform.core.model.tables.ServiceTable;
 import io.cattle.platform.core.model.tables.ServiceExposeMapTable;
 import java.util.Locale;
@@ -18,12 +21,13 @@ public final class ApiKeyQueryScopes {
     public static Condition condition(ApiKeyPolicy policy, String type, Table<?> table,
             String operation, BiFunction<String, String, Long> idParser) {
         String resourceType = canonical(type);
-        boolean supported = STACK_TYPES.contains(resourceType) || ApiKeyTargetResolver.PROJECT_ONLY.contains(type)
+        boolean instanceLink = "instanceLink".equals(resourceType);
+        boolean supported = instanceLink || STACK_TYPES.contains(resourceType) || ApiKeyTargetResolver.PROJECT_ONLY.contains(type)
                 || ApiKeyTargetResolver.PLATFORM.contains(type) || resourceType.equals("project");
         Field<Long> id = table.field("id", Long.class);
         if (!supported || id == null) return DSL.falseCondition();
         Field<Long> account = resourceType.equals("project") ? id
-                : STACK_TYPES.contains(resourceType) || ApiKeyTargetResolver.PROJECT_ONLY.contains(type)
+                : instanceLink || STACK_TYPES.contains(resourceType) || ApiKeyTargetResolver.PROJECT_ONLY.contains(type)
                 ? table.field("account_id", Long.class) : null;
         // The API calls it stackId; the persisted column remains environment_id.
         // Use the real column so standalone containers and volumes are scoped too.
@@ -31,6 +35,11 @@ public final class ApiKeyQueryScopes {
         Condition ancestryValid = DSL.trueCondition();
         if (resourceType.equals("container") && policy.getMode() != ApiKeyPolicy.Mode.FULL) {
             Ancestry ancestry = containerAncestry(id, account, stack, table.field("service_id", Long.class));
+            stack = ancestry.stack();
+            ancestryValid = ancestry.valid();
+        }
+        if (instanceLink) {
+            Ancestry ancestry = instanceLinkAncestry(table, account);
             stack = ancestry.stack();
             ancestryValid = ancestry.valid();
         }
@@ -59,6 +68,35 @@ public final class ApiKeyQueryScopes {
     }
 
     private record Ancestry(Field<Long> stack, Condition valid) { }
+
+    /** Same persisted source/owner/Stack guard as the direct Link adapter. Reuse
+     * container ancestry, including managed and exact upgrade maps; the Link's
+     * target_instance_id is not its parent and remains an input-reference check.
+     */
+    private static Ancestry instanceLinkAncestry(Table<?> table, Field<Long> account) {
+        Field<Long> instanceId = table.field("instance_id", Long.class);
+        if (account == null || instanceId == null) return new Ancestry(DSL.inline((Long) null), DSL.falseCondition());
+        InstanceTable source = InstanceTable.INSTANCE.as("key_scope_link_instance");
+        Ancestry parents = containerAncestry(source.ID, source.ACCOUNT_ID, source.STACK_ID, source.SERVICE_ID);
+        AccountTable project = AccountTable.ACCOUNT.as("key_scope_link_project");
+        StackTable parentStack = StackTable.STACK.as("key_scope_link_stack");
+        Condition projectValid = DSL.exists(DSL.selectOne().from(project).where(project.ID.eq(account))
+                .and(project.KIND.eq("project")).and(live(project.REMOVED, project.STATE)));
+        Condition stackValid = parents.stack().isNull().or(DSL.exists(DSL.selectOne().from(parentStack)
+                .where(parentStack.ID.eq(parents.stack())).and(parentStack.ACCOUNT_ID.eq(account))
+                .and(live(parentStack.REMOVED, parentStack.STATE))));
+        Condition sourceValid = source.ID.eq(instanceId).and(source.ACCOUNT_ID.eq(account))
+                .and(live(source.REMOVED, source.STATE)).and(parents.valid()).and(stackValid);
+        Field<Long> stack = DSL.field(DSL.select(parents.stack()).from(source).where(sourceValid));
+        Condition valid = live(table.field("removed"), table.field("state", String.class)).and(projectValid)
+                .and(DSL.exists(DSL.selectOne().from(source).where(sourceValid)));
+        return new Ancestry(stack, valid);
+    }
+
+    private static Condition live(Field<?> removed, Field<String> state) {
+        if (removed == null || state == null) return DSL.falseCondition();
+        return removed.isNull().and(state.isNull().or(state.notIn("removed", "purging", "purged")));
+    }
 
     /** Match the direct resolver's persisted managed or upgrade Service ancestry. The
      * scalar MIN is not a grant: every parent must agree with that result before

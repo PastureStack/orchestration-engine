@@ -10,7 +10,7 @@ upstream history, authorship, licenses, and dependency notices.
 
 ## Current build
 
-Engine [0.183.344](https://github.com/PastureStack/orchestration-engine/releases/tag/v0.183.344)
+Engine [0.183.345](https://github.com/PastureStack/orchestration-engine/releases/tag/v0.183.345)
 supports full, closed and custom API Key policies, expiry and per-Key audit on
 both API roots. A Key is always bounded by its owner's live permissions;
 explicit denials take precedence. Expanding access requires an actor-bound,
@@ -23,6 +23,11 @@ classification follows the actual HTTP handler; ignored URL selectors cannot
 mask a mutation. Queued custom-Key work rechecks its original operation and
 current authorization before execution. Full and legacy behavior is preserved.
 
+Native Instance Link reads and collections use the persisted source Instance's
+owned Project and Stack ancestry. Reading a Link does not grant read access to
+either Instance; changing its destination still requires independent reference
+authorization. Unknown types and incoherent or foreign ancestry fail closed.
+
 The Engine also provides typed environment provisioning, dedicated agent
 registration-token authentication and private, configured-connection HA dumps.
 For the resource, expiry, audit and delegated-stream boundaries, see the
@@ -34,7 +39,7 @@ for the complete platform; `cattle.jar` alone is not a Server installation or a
 runtime replacement. The Server component manifest identifies its exact
 published pairing. Component checks and platform acceptance remain separate.
 Versioned evidence and upgrade boundaries are in the
-[344 release note](docs/releases/orchestration-engine-0.183.344.md);
+[345 release note](docs/releases/orchestration-engine-0.183.345.md);
 older changes remain in [release notes](docs/releases).
 
 ## Build and validation
@@ -49,7 +54,7 @@ Before publishing an Engine artifact, run the complete package gate:
 
 ```sh
 bash scripts/check-cattle-jdk25-full-package
-ENGINE_VERSION=0.183.344 bash scripts/build --release
+ENGINE_VERSION=0.183.345 bash scripts/build --release
 bash scripts/check-release-artifact dist/artifacts/cattle.jar
 ```
 

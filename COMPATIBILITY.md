@@ -4,7 +4,23 @@ The migration preserves established `io.cattle.*` Java packages, Maven coordinat
 
 New operator-facing names use PastureStack and `PASTURESTACK_*`. Compatibility identifiers must be changed only with an explicit data migration, a dual-read or dual-write transition, a rollback plan, and cross-repository verification.
 
-## Current build: Engine 0.183.344
+## Current build: Engine 0.183.345
+
+The existing native `instanceLink` type is scoped by its persisted source
+Instance's owned Project and Stack ancestry. Direct authorization and collection
+SQL use the same live parent graph before pagination, including managed Service
+and exact upgrade relationships. The destination Instance is not a scope parent.
+Reading the Link does not grant ordinary read access to either endpoint; updating
+the destination keeps its independent live reference check. Explicit denials,
+owner permissions, expiry, full/legacy behavior and frozen schemas are unchanged.
+No database migration, new resource type or public lifecycle grant is introduced.
+
+Focused source qualification, required PR checks, original artifact packaging,
+immutable publication and assembled-Server native acceptance remain separate.
+Use the Server's published component manifest for its actual pairing, not this
+source version label. See the [345 note](docs/releases/orchestration-engine-0.183.345.md).
+
+## Engine 0.183.344
 
 Exact operation-operand lookups cover matched sensitive named-link handlers
 and registered POST action availability checks, in addition to mutations.
