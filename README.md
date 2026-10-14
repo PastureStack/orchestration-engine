@@ -8,7 +8,7 @@ Rancher 1.6 ecosystem. It is not affiliated with Rancher Labs or SUSE.
 This fork of [`rancher/cattle`](https://github.com/rancher/cattle) preserves
 upstream history, authorship, licenses, and dependency notices.
 
-## Current build
+## Current release
 
 Engine [0.183.348](docs/releases/orchestration-engine-0.183.348.md)
 supports full, closed and custom API Key policies, expiry and per-Key audit on
@@ -35,10 +35,8 @@ owned Project and Stack ancestry. Reading a Link does not grant read access to
 either Instance; changing its destination still requires independent reference
 authorization. Unknown types and incoherent or foreign ancestry fail closed.
 
-Instance Link parent Stack SQL uses a unique-parent scalar marker. Shared
-Container/Link comparisons use total nullable equality, retaining owner and live
-parent checks. Full MYSQL-dialect SELECTs were verified read-only on MariaDB
-11.8.6. Component checks do not replace assembled-Server native API acceptance.
+Nullable Stack references retain the same owner and live-parent checks for
+Container and Instance Link reads.
 
 The Engine also provides typed environment provisioning, dedicated agent
 registration-token authentication and private, configured-connection HA dumps.
@@ -52,10 +50,10 @@ For the resource, expiry, audit and delegated-stream boundaries, see the
 
 Deploy the [current Server release](https://github.com/PastureStack/server#current-release)
 for the complete platform; `cattle.jar` alone is not a Server installation or a
-runtime replacement. The Server component manifest identifies its exact
-published pairing. Component checks and platform acceptance remain separate.
+runtime replacement. Published Server `v1.6.531` packages this Engine with
+Web Console `1.6.186`. Narrow affected-path acceptance completed.
 Versioned evidence and upgrade boundaries are in the
-[348 source note](docs/releases/orchestration-engine-0.183.348.md);
+[348 release note](docs/releases/orchestration-engine-0.183.348.md);
 older changes remain in [release notes](docs/releases).
 
 ## Build and validation

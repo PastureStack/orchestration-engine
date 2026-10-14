@@ -29,6 +29,31 @@ and the public/removal/version boundaries. The fixture is the exact native
 These focused tests preceded the mechanical Maven version update; the tested
 runtime source and class hashes are retained in the focused receipt.
 
-Source checks, complete artifact packaging, immutable publication and assembled
-Server acceptance remain separate gates. Use a complete Server image for
-upgrade or rollback; do not replace `cattle.jar` in a running production server.
+## Published artifact and Server pairing
+
+The immutable published source is `f19cd64183c0fa93464e9a9f9c2477c9e902b56d`.
+The published `cattle.jar` has SHA-256
+`72581f6eead8633b6bbafbe15512cd44561b9ff25df68d00dd7120ad507aa449`.
+Official component publication and immutable readback are complete. Published
+Server `v1.6.531` packages this artifact with Web Console `1.6.186`;
+documentation commits do not replace the published producer or artifact.
+
+## Native acceptance
+
+Upgrade from Server 530 repaired the existing unbound Default. One restart
+introduced no duplicate stacks, services or drivers. A fresh Server 531 with
+three persistent volumes registered one host through the normal public workflow.
+Default bound to template `1pt1`; four core stacks and six core services became
+active and healthy. Metadata, managed DNS, HTTPS egress HTTP 200 and published
+host-port access passed.
+
+Server restart, Docker restart, guest reboot with a changed boot ID, and probe
+workload recreation through the native API preserved readiness. Native Chrome
+154 acceptance confirmed eleven distinct driver IDs/names on both API roots,
+zh-tw/en-us at 1440px/390px, and the same identities after restart. The published
+Server deployment and subsequent restart also passed.
+
+Narrow affected-path acceptance completed with the existing host defaults and
+unchanged role logic; broader role/backend matrices are outside this verification.
+Use a complete Server image for upgrade or rollback; do not replace `cattle.jar`
+in a running production server.
