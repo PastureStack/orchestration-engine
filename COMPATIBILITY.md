@@ -4,7 +4,7 @@ The migration preserves established `io.cattle.*` Java packages, Maven coordinat
 
 New operator-facing names use PastureStack and `PASTURESTACK_*`. Compatibility identifiers must be changed only with an explicit data migration, a dual-read or dual-write transition, a rollback plan, and cross-repository verification.
 
-## Current source build: Engine 0.183.348
+## Current release: Engine v0.183.348
 
 The packaged `project.template.default.name` is `PastureStack Native`, matching
 the public Catalog project document rather than its card display name.
@@ -17,8 +17,27 @@ environment. Zero hosts permit definitions without running containers; service
 activation waits for an active host. No database migration, template-name alias,
 manual stack provisioning or provider/backend change is introduced.
 
-The 14 focused component cases do not establish packaged Server or first-host
-runtime acceptance. See the [348 source note](docs/releases/orchestration-engine-0.183.348.md).
+The immutable published producer is `f19cd64183c0fa93464e9a9f9c2477c9e902b56d`.
+The published `cattle.jar` has SHA-256
+`72581f6eead8633b6bbafbe15512cd44561b9ff25df68d00dd7120ad507aa449`.
+Official component publication and immutable readback are complete. Published
+Server `v1.6.531` packages this artifact with Web Console `1.6.186`;
+documentation commits do not replace the published producer or artifact.
+
+Fourteen focused component cases passed. The isolated upgrade from Server 530
+repaired an existing unbound Default and preserved stack, service and driver
+identities after restart. A fresh three-volume Server 531 installation registered
+one host through the public workflow: Default bound to template `1pt1`, with four
+core stacks and six active, healthy core services. Metadata, managed DNS, HTTPS
+egress and the published probe host port passed. Server restart, Docker restart,
+guest reboot with a changed boot ID, and native API workload recreation retained
+readiness. Eleven distinct driver IDs/names matched both API roots and survived
+restart; native browser acceptance, deployment and its restart also passed.
+
+Narrow affected-path acceptance completed with the existing host defaults and
+unchanged role logic; broader role/backend matrices are outside this verification.
+See the
+[348 release note](docs/releases/orchestration-engine-0.183.348.md).
 
 ## Engine 0.183.347
 
