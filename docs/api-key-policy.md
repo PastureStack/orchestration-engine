@@ -192,7 +192,7 @@ For the original audit identity change, see the
 [0.183.335 integration contract](releases/orchestration-engine-0.183.335.md)
 records the Project membership, lifecycle and rollback boundaries introduced
 with that release. See the
-[current component boundary](releases/orchestration-engine-0.183.347.md)
+[current component boundary](releases/orchestration-engine-0.183.348.md)
 and [current Server release](https://github.com/PastureStack/server#current-release)
 for the published companion versions.
 Use the complete compatible Server image; the component alone does not prove
