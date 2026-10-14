@@ -4,7 +4,23 @@ The migration preserves established `io.cattle.*` Java packages, Maven coordinat
 
 New operator-facing names use PastureStack and `PASTURESTACK_*`. Compatibility identifiers must be changed only with an explicit data migration, a dual-read or dual-write transition, a rollback plan, and cross-repository verification.
 
-## Current source build: Engine 0.183.347
+## Current source build: Engine 0.183.348
+
+The packaged `project.template.default.name` is `PastureStack Native`, matching
+the public Catalog project document rather than its card display name.
+Template creation and catalog reload share the existing template lock and bind
+only the current-version, unremoved `adminProject` project with no template ID.
+The binding is persisted before the existing system-stack trigger runs.
+Reload repairs the same empty binding when the template was installed before
+the correction; it does not overwrite a binding, a custom setting or another
+environment. Zero hosts permit definitions without running containers; service
+activation waits for an active host. No database migration, template-name alias,
+manual stack provisioning or provider/backend change is introduced.
+
+The 14 focused component cases do not establish packaged Server or first-host
+runtime acceptance. See the [348 source note](docs/releases/orchestration-engine-0.183.348.md).
+
+## Engine 0.183.347
 
 API Key subscription completion uses a token-free lifecycle observer, separate
 from optional live authorization. Full and legacy authorization behavior is

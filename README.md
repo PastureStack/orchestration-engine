@@ -10,11 +10,18 @@ upstream history, authorship, licenses, and dependency notices.
 
 ## Current build
 
-Engine [0.183.347](docs/releases/orchestration-engine-0.183.347.md)
+Engine [0.183.348](docs/releases/orchestration-engine-0.183.348.md)
 supports full, closed and custom API Key policies, expiry and per-Key audit on
 both API roots. A Key is always bounded by its owner's live permissions;
 explicit denials take precedence. Expanding access requires an actor-bound,
 single-use MFA confirmation. Secrets are delivered only when a Key is created.
+
+The shared Default environment automatically selects the configured public
+project template. The packaged default, `PastureStack Native`, matches the
+Catalog's `project.yml`. Catalog reload also repairs an unbound Default from an
+already installed template. Existing bindings, explicit custom settings and
+other environments are preserved. System-stack definitions precede host
+registration; their services activate when the first host becomes active.
 
 Operation-specific Keys can load the exact authorized mutation, registered
 action or sensitive named-link operand without an extra read grant. Ordinary
@@ -48,7 +55,7 @@ for the complete platform; `cattle.jar` alone is not a Server installation or a
 runtime replacement. The Server component manifest identifies its exact
 published pairing. Component checks and platform acceptance remain separate.
 Versioned evidence and upgrade boundaries are in the
-[347 source note](docs/releases/orchestration-engine-0.183.347.md);
+[348 source note](docs/releases/orchestration-engine-0.183.348.md);
 older changes remain in [release notes](docs/releases).
 
 ## Build and validation
@@ -63,7 +70,7 @@ Before publishing an Engine artifact, run the complete package gate:
 
 ```sh
 bash scripts/check-cattle-jdk25-full-package
-ENGINE_VERSION=0.183.347 bash scripts/build --release
+ENGINE_VERSION=0.183.348 bash scripts/build --release
 bash scripts/check-release-artifact dist/artifacts/cattle.jar
 ```
 

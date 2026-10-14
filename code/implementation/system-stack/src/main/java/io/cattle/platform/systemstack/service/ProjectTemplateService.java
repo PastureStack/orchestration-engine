@@ -13,6 +13,7 @@ import io.cattle.platform.object.ObjectManager;
 import io.cattle.platform.object.process.ObjectProcessManager;
 import io.cattle.platform.systemstack.catalog.CatalogService;
 import io.cattle.platform.systemstack.lock.ProjectTemplateLoadLock;
+import io.cattle.platform.systemstack.process.ProjecttemplateCreate;
 import io.cattle.platform.task.Task;
 import io.cattle.platform.util.exception.ExceptionUtils;
 import io.cattle.platform.util.type.InitializationTask;
@@ -51,6 +52,8 @@ public class ProjectTemplateService implements InitializationTask, Task {
     GenericResourceDao resourceDao;
     @Inject
     LockManager lockManager;
+    @Inject
+    ProjecttemplateCreate projectTemplateCreate;
 
     boolean initialRun = true;
 
@@ -124,6 +127,9 @@ public class ProjectTemplateService implements InitializationTask, Task {
         }
 
         for (ProjectTemplate installed : installedTemplates) {
+            // A catalog template can predate the corrected default-name setting.
+            // Reconcile the shared Default without recreating templates or stacks.
+            projectTemplateCreate.assignDefaultProjectWithLock(installed);
             templatesToInstall.remove(installed.getExternalId());
         }
 

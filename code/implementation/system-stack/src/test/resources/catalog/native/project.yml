@@ -1,0 +1,12 @@
+# SPDX-License-Identifier: MIT
+name: PastureStack Native
+description: Deploy the reviewed networking, encrypted overlay, scheduling, and health services required by a native PastureStack project.
+stacks:
+  - name: network-services
+    templateId: 'pasturestack:infra*network-services'
+  - name: ipsec
+    templateId: 'pasturestack:infra*ipsec-overlay'
+  - name: scheduler
+    templateId: 'pasturestack:infra*resource-scheduler'
+  - name: healthcheck
+    templateId: 'pasturestack:infra*healthcheck'
