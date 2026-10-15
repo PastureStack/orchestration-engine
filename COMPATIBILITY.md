@@ -4,7 +4,18 @@ The migration preserves established `io.cattle.*` Java packages, Maven coordinat
 
 New operator-facing names use PastureStack and `PASTURESTACK_*`. Compatibility identifiers must be changed only with an explicit data migration, a dual-read or dual-write transition, a rollback plan, and cross-repository verification.
 
-## Current release: Engine v0.183.349
+## Release candidate: Engine v0.183.350
+
+Engine `v0.183.350` adds opt-in Stack and Service archive metadata on both API
+roots. Archive writes require existing update authority and stopped-workload
+eligibility; readonly stays read-only. Restore keeps independently archived
+children archived. There is no database migration or automatic workload stop,
+deletion or recreation. The candidate is planned for Server `v1.6.537` with
+Web Console `1.6.190`; immutable artifact identity, packaged acceptance and
+deployment remain pending. See the
+[350 release note](docs/releases/orchestration-engine-0.183.350.md).
+
+## Engine v0.183.349 published
 
 The immutable producer is `0733430fac11892a17ba53749fe02d99d26b1f52`.
 The published `cattle.jar` SHA-256 is

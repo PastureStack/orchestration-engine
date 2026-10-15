@@ -8,10 +8,38 @@ Rancher 1.6 ecosystem. It is not affiliated with Rancher Labs or SUSE.
 This fork of [`rancher/cattle`](https://github.com/rancher/cattle) preserves
 upstream history, authorship, licenses, and dependency notices.
 
-## Current release
+## Release candidate: Engine 0.183.350
 
-Engine [0.183.349](docs/releases/orchestration-engine-0.183.349.md)
-supports full, closed and custom API Key policies, expiry and per-Key audit on
+Engine [0.183.350](docs/releases/orchestration-engine-0.183.350.md) is the workload
+archiving candidate planned for Server `v1.6.537` with Web Console `1.6.190`.
+Component publication, packaged Server acceptance and deployment are pending;
+this candidate does not replace an existing published artifact.
+
+Stack and Service resources expose an `archived` boolean on v1 and v2-beta.
+Missing values on older resources mean false. Send a separate PUT containing
+`{"archived":true}` to archive a completely stopped workload, or false to restore
+it. This stores display metadata only: it does not stop services, recreate
+containers, or delete mounts and volumes. Back up bind-mount directories and
+volume data; deleting their source or moving hosts can still lose that data.
+
+A Service must be inactive and every related instance, including sidekicks and
+upgrade instances, must be stopped. A Stack additionally requires all its
+services to meet that condition; an empty stable Stack can be archived. Active
+services with scale zero and transitioning or uncertain states are rejected.
+Selector references are checked for stopped eligibility, but do not transfer
+lifecycle ownership or prevent an independent container from starting later.
+System and infrastructure workloads cannot be archived. Restore an archived
+Service and its parent Stack before starting it or adding/moving children.
+Restoring a parent leaves independently archived children archived.
+
+Archive updates use existing resource-update permissions and API Key scopes;
+readonly remains read-only. Create-with-archive and mixed archive/configuration
+changes are rejected. Per-Stack locks serialize archive writes with lifecycle
+state transitions. Stop and delete keep their existing behavior.
+
+## Retained platform behavior
+
+The Engine supports full, closed and custom API Key policies, expiry and per-Key audit on
 both API roots. A Key is always bounded by its owner's live permissions;
 explicit denials take precedence. Expanding access requires an actor-bound,
 single-use MFA confirmation. Secrets are delivered only when a Key is created.
@@ -54,11 +82,11 @@ For the resource, expiry, audit and delegated-stream boundaries, see the
 
 Deploy the [current Server release](https://github.com/PastureStack/server#current-release)
 for the complete platform; `cattle.jar` alone is not a Server installation or a
-runtime replacement. Published Server `v1.6.535` packages this Engine with
-unchanged Web Console `1.6.189`. Acceptance is limited to the documented affected
-paths, not every resource and role combination.
+runtime replacement. Server `v1.6.537` is the planned assembly for this candidate;
+its publication and deployment must be verified separately. Acceptance is limited
+to the documented affected paths, not every resource and role combination.
 Versioned evidence and upgrade boundaries are in the
-[349 release note](docs/releases/orchestration-engine-0.183.349.md);
+[350 release note](docs/releases/orchestration-engine-0.183.350.md);
 older changes remain in [release notes](docs/releases).
 
 ## Build and validation
@@ -73,7 +101,7 @@ Before publishing an Engine artifact, run the complete package gate:
 
 ```sh
 bash scripts/check-cattle-jdk25-full-package
-ENGINE_VERSION=0.183.349 bash scripts/build --release
+ENGINE_VERSION=0.183.350 bash scripts/build --release
 bash scripts/check-release-artifact dist/artifacts/cattle.jar
 ```
 

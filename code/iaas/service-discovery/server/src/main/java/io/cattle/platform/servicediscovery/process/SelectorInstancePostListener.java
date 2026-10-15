@@ -16,6 +16,8 @@ import io.cattle.platform.lock.LockManager;
 import io.cattle.platform.object.process.StandardProcess;
 import io.cattle.platform.process.common.handler.AbstractObjectProcessLogic;
 import io.cattle.platform.servicediscovery.api.dao.ServiceExposeMapDao;
+import io.cattle.platform.servicediscovery.api.service.ServiceInstanceAssociationGuard;
+import io.cattle.platform.servicediscovery.api.service.ArchivedAssociationException;
 import io.cattle.platform.servicediscovery.deployment.impl.lock.ServiceInstanceLock;
 import io.cattle.platform.servicediscovery.service.ServiceDiscoveryService;
 import io.cattle.platform.util.type.Priority;
@@ -23,6 +25,7 @@ import io.github.ibuildthecloud.gdapi.condition.Condition;
 import io.github.ibuildthecloud.gdapi.condition.ConditionType;
 
 import java.util.List;
+import java.util.Collections;
 
 import jakarta.inject.Inject;
 import jakarta.inject.Named;
@@ -38,6 +41,7 @@ public class SelectorInstancePostListener extends AbstractObjectProcessLogic imp
 
     @Inject
     LockManager lockManager;
+    @Inject List<ServiceInstanceAssociationGuard> associationGuards = Collections.emptyList();
 
     @Override
     public String[] getProcessNames() {
@@ -51,11 +55,18 @@ public class SelectorInstancePostListener extends AbstractObjectProcessLogic imp
                 SERVICE.REMOVED, null, SERVICE.SELECTOR_CONTAINER, new Condition(ConditionType.NOTNULL));
 
         for (final Service service : services) {
+            if (associationGuards.stream().anyMatch(guard -> guard.blocksNewAssociations(service))) continue;
             if (sdService.isSelectorContainerMatch(service.getSelectorContainer(), instance)) {
                 lockManager.lock(new ServiceInstanceLock(service, instance), new LockCallbackNoReturn() {
                     @Override
                     public void doWithLockNoResult() {
-                        ServiceExposeMap exposeMap = exposeMapDao.createServiceInstanceMap(service, instance, false);
+                        ServiceExposeMap exposeMap;
+                        try {
+                            exposeMap = exposeMapDao.createServiceInstanceMap(service, instance, false);
+                        } catch (ArchivedAssociationException archived) {
+                            // This is an independent container start, not a request to activate the archived selector.
+                            return;
+                        }
                         if (exposeMap.getState().equalsIgnoreCase(CommonStatesConstants.REQUESTED)) {
                             objectProcessManager.scheduleStandardProcessAsync(StandardProcess.CREATE, exposeMap,
                                     null);

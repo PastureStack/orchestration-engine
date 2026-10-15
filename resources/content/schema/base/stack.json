@@ -1,5 +1,13 @@
 {
     "resourceFields": {
+        "archived": {
+            "type": "boolean",
+            "create": true,
+            "update": true,
+            "nullable": false,
+            "default": false,
+            "attributes": { "extendFrozenSchema": true }
+        },
         "name":{
             "required": true,
             "validChars": "a-zA-Z0-9-",

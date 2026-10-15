@@ -3,6 +3,7 @@ package io.cattle.platform.process.common.generic;
 import io.cattle.platform.engine.manager.impl.ProcessRecord;
 import io.cattle.platform.engine.process.ExitReason;
 import io.cattle.platform.engine.process.LaunchConfiguration;
+import io.cattle.platform.engine.process.ProcessStateTransitionGuard;
 import io.cattle.platform.engine.process.impl.AbstractStatesBasedProcessState;
 import io.cattle.platform.engine.process.impl.ProcessExecutionExitException;
 import io.cattle.platform.engine.process.impl.ResourceStatesDefinition;
@@ -16,6 +17,9 @@ import io.cattle.platform.process.common.lock.ResourceChangeLock;
 import java.lang.reflect.InvocationTargetException;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.List;
+import java.util.Collections;
+import java.util.function.Supplier;
 
 import org.apache.commons.beanutils2.BeanUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -33,9 +37,16 @@ public class GenericResourceProcessState extends AbstractStatesBasedProcessState
     LockDefinition processLock;
     Map<String, Object> data;
     String state;
+    final List<ProcessStateTransitionGuard> transitionGuards;
 
     public GenericResourceProcessState(JsonMapper jsonMapper, ResourceStatesDefinition stateDef, LaunchConfiguration config, ObjectManager objectManager) {
+        this(jsonMapper, stateDef, config, objectManager, Collections.emptyList());
+    }
+
+    public GenericResourceProcessState(JsonMapper jsonMapper, ResourceStatesDefinition stateDef, LaunchConfiguration config,
+            ObjectManager objectManager, List<ProcessStateTransitionGuard> guards) {
         super(jsonMapper, stateDef);
+        this.transitionGuards = guards;
         this.objectManager = objectManager;
         this.resource = objectManager.loadResource(config.getResourceType(), config.getResourceId());
         this.processLock = new ResourceChangeLock(config.getResourceType(), config.getResourceId());
@@ -87,6 +98,16 @@ public class GenericResourceProcessState extends AbstractStatesBasedProcessState
 
     @Override
     protected boolean setState(boolean transitioning, String oldState, String newState) {
+        Supplier<Boolean> write = () -> writeState(transitioning, oldState, newState);
+        for (int i = transitionGuards.size() - 1; i >= 0; i--) {
+            ProcessStateTransitionGuard guard = transitionGuards.get(i);
+            Supplier<Boolean> next = write;
+            write = () -> guard.transition(resource, getStatesDefinition().getStateField(), newState, next);
+        }
+        return write.get();
+    }
+
+    private boolean writeState(boolean transitioning, String oldState, String newState) {
         reload();
 
         if (resource != null && transitioning && ObjectMetaDataManager.STATE_FIELD.equals(getStatesDefinition().getStateField())) {
