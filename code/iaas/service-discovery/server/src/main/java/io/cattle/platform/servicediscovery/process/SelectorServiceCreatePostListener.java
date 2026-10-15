@@ -19,6 +19,8 @@ import io.cattle.platform.object.process.StandardProcess;
 import io.cattle.platform.process.common.handler.AbstractObjectProcessLogic;
 import io.cattle.platform.servicediscovery.api.dao.ServiceConsumeMapDao;
 import io.cattle.platform.servicediscovery.api.dao.ServiceExposeMapDao;
+import io.cattle.platform.servicediscovery.api.service.ServiceInstanceAssociationGuard;
+import io.cattle.platform.servicediscovery.api.service.ArchivedAssociationException;
 import io.cattle.platform.servicediscovery.deployment.impl.lock.ServiceInstanceLock;
 import io.cattle.platform.servicediscovery.service.ServiceDiscoveryService;
 import io.cattle.platform.util.type.Priority;
@@ -27,6 +29,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Collections;
 
 import jakarta.inject.Inject;
 import jakarta.inject.Named;
@@ -53,6 +56,7 @@ public class SelectorServiceCreatePostListener extends AbstractObjectProcessLogi
 
     @Inject
     InstanceDao instanceDao;
+    @Inject List<ServiceInstanceAssociationGuard> associationGuards = Collections.emptyList();
 
     @Override
     public String[] getProcessNames() {
@@ -109,6 +113,8 @@ public class SelectorServiceCreatePostListener extends AbstractObjectProcessLogi
     }
 
     protected void registerInstances(final Service service) {
+        // A queued update may outlive archiving. Finish it without attaching new instances or retrying forever.
+        if (associationGuards.stream().anyMatch(guard -> guard.blocksNewAssociations(service))) return;
         if (Strings.isNullOrEmpty(service.getSelectorContainer())) {
             return;
         }
@@ -133,7 +139,13 @@ public class SelectorServiceCreatePostListener extends AbstractObjectProcessLogi
                 lockManager.lock(new ServiceInstanceLock(service, instance), new LockCallbackNoReturn() {
                     @Override
                     public void doWithLockNoResult() {
-                        ServiceExposeMap exposeMap = exposeMapDao.createServiceInstanceMap(service, instance, false);
+                        ServiceExposeMap exposeMap;
+                        try {
+                            exposeMap = exposeMapDao.createServiceInstanceMap(service, instance, false);
+                        } catch (ArchivedAssociationException archived) {
+                            // Archiving may win after the initial selector check; leave this association absent.
+                            return;
+                        }
                         if (exposeMap.getState().equalsIgnoreCase(CommonStatesConstants.REQUESTED)) {
                             objectProcessManager.scheduleStandardProcessAsync(StandardProcess.CREATE, exposeMap,
                                     null);

@@ -23,6 +23,7 @@ import io.cattle.platform.object.jooq.utils.JooqUtils;
 import io.cattle.platform.object.process.ObjectProcessManager;
 import io.cattle.platform.object.util.DataAccessor;
 import io.cattle.platform.servicediscovery.api.dao.ServiceExposeMapDao;
+import io.cattle.platform.servicediscovery.api.service.ServiceInstanceAssociationGuard;
 import io.cattle.platform.servicediscovery.api.util.ServiceDiscoveryUtil;
 import io.cattle.platform.servicediscovery.service.ServiceDiscoveryService;
 
@@ -30,6 +31,8 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Collections;
+import java.util.function.Supplier;
 
 import jakarta.inject.Inject;
 
@@ -53,6 +56,7 @@ public class ServiceExposeMapDaoImpl extends AbstractJooqDao implements ServiceE
     GenericMapDao mapDao;
 
     Configuration lockingConfiguration;
+    @Inject List<ServiceInstanceAssociationGuard> associationGuards = Collections.emptyList();
 
 
     @Override
@@ -82,12 +86,22 @@ public class ServiceExposeMapDaoImpl extends AbstractJooqDao implements ServiceE
 
         ServiceExposeMap map = getServiceInstanceMap(service, instance);
         if (map == null) {
-            map = objectManager.create(ServiceExposeMap.class, SERVICE_EXPOSE_MAP.INSTANCE_ID, instance.getId(),
-                    SERVICE_EXPOSE_MAP.SERVICE_ID, service.getId(), SERVICE_EXPOSE_MAP.ACCOUNT_ID,
-                    service.getAccountId(), SERVICE_EXPOSE_MAP.DNS_PREFIX, dnsPrefix, SERVICE_EXPOSE_MAP.MANAGED,
-                    managed);
+            map = createGuardedMap(service, instance, dnsPrefix, managed);
         }
         return map;
+    }
+
+    private ServiceExposeMap createGuardedMap(Service service, Instance instance, String prefix, boolean managed) {
+        Supplier<ServiceExposeMap> createMap = () -> objectManager.create(ServiceExposeMap.class,
+                SERVICE_EXPOSE_MAP.INSTANCE_ID, instance.getId(), SERVICE_EXPOSE_MAP.SERVICE_ID, service.getId(),
+                SERVICE_EXPOSE_MAP.ACCOUNT_ID, service.getAccountId(), SERVICE_EXPOSE_MAP.DNS_PREFIX, prefix,
+                SERVICE_EXPOSE_MAP.MANAGED, managed);
+        for (int i=associationGuards.size()-1;i>=0;i--) {
+            ServiceInstanceAssociationGuard guard=associationGuards.get(i);
+            Supplier<ServiceExposeMap> next=createMap;
+            createMap=()->guard.associate(service,instance,next);
+        }
+        return createMap.get();
     }
 
     static Map<String, String> instanceLabels(Object value) {

@@ -4,13 +4,16 @@ import io.cattle.platform.engine.process.AbstractProcessDefinition;
 import io.cattle.platform.engine.process.LaunchConfiguration;
 import io.cattle.platform.engine.process.ProcessState;
 import io.cattle.platform.engine.process.StateTransition;
+import io.cattle.platform.engine.process.ProcessStateTransitionGuard;
 import io.cattle.platform.engine.process.impl.ResourceStatesDefinition;
 import io.cattle.platform.json.JsonMapper;
 import io.cattle.platform.object.ObjectManager;
 
 import java.util.List;
+import java.util.Collections;
 
 import jakarta.inject.Inject;
+import org.springframework.beans.factory.annotation.Autowired;
 
 public class GenericResourceProcessDefinition extends AbstractProcessDefinition {
 
@@ -18,10 +21,16 @@ public class GenericResourceProcessDefinition extends AbstractProcessDefinition 
     ResourceStatesDefinition statesDefinition;
     ObjectManager objectManager;
     JsonMapper jsonMapper;
+    List<ProcessStateTransitionGuard> transitionGuards = Collections.emptyList();
 
     @Override
     public ProcessState constructProcessState(LaunchConfiguration config) {
-        return new GenericResourceProcessState(jsonMapper, statesDefinition, config, objectManager);
+        return new GenericResourceProcessState(jsonMapper, statesDefinition, config, objectManager, transitionGuards);
+    }
+
+    @Autowired(required = false)
+    public void setTransitionGuards(List<ProcessStateTransitionGuard> guards) {
+        transitionGuards = guards;
     }
 
     public ObjectManager getObjectManager() {

@@ -106,6 +106,7 @@ public class FileSchemaFactory extends AbstractSchemaFactory implements Initiali
         schemaClasses.put(schema.getId().toLowerCase(), clz);
 
         Schema parentSchema = parentSchemaFactory.getSchema(clz);
+        mergeOptInFields(schema, parentSchema);
         for (Map.Entry<String, Field> entry : schema.getResourceFields().entrySet()) {
             ((FieldImpl) entry.getValue()).setName(entry.getKey());
             Field parentField = parentSchema.getResourceFields().get(entry.getKey());
@@ -113,6 +114,21 @@ public class FileSchemaFactory extends AbstractSchemaFactory implements Initiali
                 continue;
             }
             ((FieldImpl) entry.getValue()).setReadMethod(((FieldImpl) parentField).getReadMethod());
+        }
+    }
+
+    protected void mergeOptInFields(Schema schema, Schema coreSchema) {
+        if (coreSchema == null) return;
+        for (Map.Entry<String, Field> entry : coreSchema.getResourceFields().entrySet()) {
+            Field coreField = entry.getValue();
+            if (schema.getResourceFields().containsKey(entry.getKey()) || !(coreField instanceof FieldImpl)
+                    || !Boolean.TRUE.equals(coreField.getAttributes().get("extendFrozenSchema"))) continue;
+            // A declared addition may extend an existing frozen type, never its original methods.
+            FieldImpl field = new FieldImpl(coreField);
+            field.setName(entry.getKey());
+            field.setCreate(coreField.isCreate() && schema.getCollectionMethods().contains("POST"));
+            field.setUpdate(coreField.isUpdate() && schema.getResourceMethods().contains("PUT"));
+            schema.getResourceFields().put(entry.getKey(), field);
         }
     }
 

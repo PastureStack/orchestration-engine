@@ -764,6 +764,7 @@
         "composeConfigInput.serviceIds" : "cr",
 
         "stack" : "r",
+        "stack.archived": "cru",
         "stack.dockerCompose": "cr",
         "stack.rancherCompose": "cr",
         "stack.environment": "cr",
@@ -810,6 +811,7 @@
         "composeService.lbConfig" : "",
 
         "service" : "r",
+        "service.archived": "cru",
         "service.externalId" : "cr",
         "service.stackId" : "cr",
         "service.scale" : "cru",
