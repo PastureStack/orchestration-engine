@@ -83,9 +83,12 @@ For the resource, expiry, audit and delegated-stream boundaries, see the
 
 Deploy the [current Server release](https://github.com/PastureStack/server#current-release)
 for the complete platform; `cattle.jar` alone is not a Server installation or a
-runtime replacement. Server `v1.6.537` is the planned assembly for this release;
-its publication and deployment must be verified separately. Acceptance is limited
-to the documented affected paths, not every resource and role combination.
+runtime replacement. The Server `v1.6.537` assembly pairs Engine `v0.183.350`
+with Web Console `1.6.190`. Server publication and health evidence are maintained
+separately in
+[its release notes](https://github.com/PastureStack/server/blob/main/docs/releases/server-1.6.537.md).
+Acceptance is limited to the documented affected paths, not every resource and
+role combination.
 Versioned evidence and upgrade boundaries are in the
 [350 release note](docs/releases/orchestration-engine-0.183.350.md);
 older changes remain in [release notes](docs/releases).

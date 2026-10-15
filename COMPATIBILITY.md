@@ -10,8 +10,10 @@ Engine `v0.183.350` adds opt-in Stack and Service archive metadata on both API
 roots. Archive writes require existing update authority and stopped-workload
 eligibility; readonly stays read-only. Restore keeps independently archived
 children archived. There is no database migration or automatic workload stop,
-deletion or recreation. The release is planned for Server `v1.6.537` with
-Web Console `1.6.190`; packaged Server acceptance and deployment are separate.
+deletion or recreation. The Server `v1.6.537` assembly pairs Engine `v0.183.350`
+with Web Console `1.6.190`. Server publication and health evidence are maintained
+separately in
+[its release notes](https://github.com/PastureStack/server/blob/main/docs/releases/server-1.6.537.md).
 The immutable producer is `9c884710e5ea3d4136d80a870d9de9485674f3c3`;
 `cattle.jar` SHA-256 is `637ddaa42cd93c019b4d0813d7053b71dc42797a7f3ac2aa4b10fcc7e304cb31`.
 See the
