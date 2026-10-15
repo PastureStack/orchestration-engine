@@ -1,5 +1,13 @@
 {
     "resourceFields": {
+        "archived": {
+            "type": "boolean",
+            "create": true,
+            "update": true,
+            "nullable": false,
+            "default": false,
+            "attributes": { "extendFrozenSchema": true }
+        },
         "environmentId":{
             "type": "reference[environment]",
             "required": true,
