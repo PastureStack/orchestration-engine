@@ -27,7 +27,11 @@ Operation-specific Keys can load the exact authorized mutation, registered
 action or sensitive named-link operand without an extra read grant. Ordinary
 GETs, collections and input references still require read access. Operation
 classification follows the actual HTTP handler; ignored URL selectors cannot
-mask a mutation. Queued custom-Key work rechecks its original operation and
+mask a mutation. A bounded registry also binds additional lifecycle actions to
+their persisted resource type, including Stack outputs and Service continue-upgrade.
+Unsupported multi-target and security-management actions remain denied to scoped
+Keys; see [the action inventory](scripts/api-key-operation-inventory.json).
+Queued custom-Key work rechecks its original operation, resource type and
 current authorization before execution. Full and legacy behavior is preserved.
 
 Native Instance Link reads and collections use the persisted source Instance's
