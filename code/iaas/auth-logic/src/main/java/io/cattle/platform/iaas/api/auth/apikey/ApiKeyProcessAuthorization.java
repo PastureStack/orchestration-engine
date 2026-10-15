@@ -132,7 +132,7 @@ public class ApiKeyProcessAuthorization implements ProcessAuthorizationHook {
             // keeps its original owner and lifecycle checks.
             if (policy.getExpiresAt() != null && !clock.instant().isBefore(policy.getExpiresAt())) denied("ApiKeyExpired");
             var dispatched = ApiKeyOperations.of(text(metadata, "requestMethod"),
-                    optionalText(metadata, "requestAction"), optionalText(metadata, "requestLink"));
+                    optionalText(metadata, "requestAction"), optionalText(metadata, "requestLink"), type);
             if (!dispatched.registered() || !dispatched.id().equals(operation)) denied("KeyScopeDenied");
             var target = targets.resolveObject(type, root, current.policy());
             var decision = evaluator.evaluate(policy, new ApiKeyPolicyEvaluator.Request(true, operation,

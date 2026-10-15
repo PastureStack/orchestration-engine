@@ -126,6 +126,26 @@ public class ApiKeyProcessAuthorizationTest {
         hook.beforeExecution(job, metadata);
         verify(hook.targets, never()).resolveObject(anyString(), any(), any());
     }
+    @Test public void typedQueuedActionsRecomputeTheSamePersistedRootOperation() {
+        sameScopePolicy("update");
+        metadata.put("requestMethod", "POST");
+        for (String action : List.of("allocate", "deallocate", "updatehealthy")) {
+            metadata.put("requestAction", action);
+            when(schema.getResourceActions()).thenReturn(Map.of(action, mock(Action.class)));
+            hook.beforeExecution(job, metadata);
+        }
+        sameScopePolicy("upgrade"); metadata.put("operation", "upgrade");
+        deny("KeyScopeDenied");
+    }
+    @Test public void unknownTypedQueuedActionDoesNotRestrictFullOrLegacy() {
+        metadata.put("requestMethod", "POST"); metadata.put("requestAction", "futurePluginAction");
+        metadata.put("operation", "action:futurepluginaction");
+        when(schema.getResourceActions()).thenReturn(Map.of("futurePluginAction", mock(Action.class)));
+        hook.beforeExecution(job, metadata);
+        policy(new ApiKeyPolicy(ApiKeyPolicy.Mode.FULL, ApiKeyPolicy.Effect.ALLOW, null, List.of()));
+        hook.beforeExecution(job, metadata);
+        verify(hook.targets, never()).resolveObject(anyString(), any(), any());
+    }
     @Test public void malformedQueuedSelectorAndExpiredPolicyRemainFailClosed() {
         sameScopePolicy("update"); metadata.put("requestLink", 7);
         deny("KeyScopeDenied");

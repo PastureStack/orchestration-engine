@@ -120,6 +120,7 @@ public class ApiKeyAuthorizationServiceTest {
         denied("KeyScopeDenied");
     }
     @Test public void customUnknownActionFailsClosed() {
+        request.setMethod("POST");
         request.setAction("futurePluginAction");
         when(schema.getResourceActions()).thenReturn(java.util.Map.of("futurePluginAction", mock(io.github.ibuildthecloud.gdapi.model.Action.class)));
         use(custom("update")); denied("UnknownOperation");

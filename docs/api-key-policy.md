@@ -14,7 +14,8 @@ update/delete despite decorated URLs. GET/HEAD preserve the invoked link's
 read/export classification, including sensitive exports; an ignored action
 query cannot replace it. Registered POST actions keep their existing upgrade
 and other operation semantics. This does not convert a narrow grant into read.
-Custom-Key queued execution also recomputes the captured method/name operation;
+Custom-Key queued execution also recomputes the captured method/name operation
+with the persisted resource type;
 contradictory stored operation metadata fails closed before process work.
 Full and legacy Keys retain their normal owner/lifecycle checks, without
 acquiring a custom scope. Ingress source results and queued source controls are

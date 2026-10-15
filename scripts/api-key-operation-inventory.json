@@ -1,0 +1,82 @@
+{
+  "scope": "Bounded C-03 typed action admission; direct registry inputs and their immediate persisted-model sinks only",
+  "reviewedBaseCommit": "72261442afa2b5375d7a33d97513dc59389f7975",
+  "reviewedBaseVersion": "0.183.348",
+  "c03Complete": false,
+  "status": "Local admission and queued-dispatch regression passed. Not a full endpoint, six-role, asynchronous-completion or native API acceptance claim.",
+  "sources": {
+    "registry": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/apikey/ApiKeyOperations.java",
+    "aliases": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/apikey/ApiKeyQueryScopes.java",
+    "admission": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/apikey/ApiKeyAuthorizationService.java",
+    "queued": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/apikey/ApiKeyProcessAuthorization.java",
+    "targets": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/apikey/ApiKeyTargetResolver.java",
+    "dispatcher": "code/framework/java-server/src/main/java/io/github/ibuildthecloud/gdapi/request/handler/ResourceManagerRequestHandler.java",
+    "actionSink": "code/framework/api/src/main/java/io/cattle/platform/api/resource/AbstractObjectResourceManager.java",
+    "processes": "code/packaging/app-config/src/main/resources/META-INF/cattle/process/spring-process-context.xml",
+    "defaultProcesses": "code/iaas/logic-common/src/main/java/io/cattle/platform/process/common/spring/DefaultProcessesParser.java",
+    "addOutputs": "code/iaas/service-discovery/api/src/main/java/io/cattle/platform/servicediscovery/api/action/AddOutputsActionHandler.java"
+  },
+  "directRegistryMethods": [
+    {"symbol": "ApiKeyOperations.of(ApiRequest)", "lines": "39-41", "input": "method, action, link, resource type"},
+    {"symbol": "ApiKeyOperations.of(String,String,String)", "lines": "43-45", "input": "unchanged compatibility entry; no typed pair admitted without a type"},
+    {"symbol": "ApiKeyOperations.of(String,String,String,String)", "lines": "47-80", "input": "POST action only for typed admission; original HTTP/link/export dispatch unchanged"}
+  ],
+  "typedAliases": [
+    {"wireType": "instance", "canonicalType": "container", "source": "aliases:156-164", "existingSymbol": "ApiKeyQueryScopes.canonical", "newAdmissionCase": "instance.allocate"},
+    {"wireType": "environment", "canonicalType": "stack", "source": "aliases:156-164", "existingSymbol": "ApiKeyQueryScopes.canonical", "newAdmissionCase": "environment.addoutputs"}
+  ],
+  "typedActions": [
+    {"pair": "stack.addoutputs", "operation": "update", "source": "addOutputs:24-37", "symbol": "AddOutputsActionHandler.getName/perform", "sink": "setFields of persisted stack outputs"},
+    {"pair": "stack.create", "operation": "create", "source": "processes:428", "symbol": "stack.create", "sink": "persisted stack lifecycle"},
+    {"pair": "stack.error", "operation": "update", "source": "processes:431", "symbol": "stack.error", "sink": "persisted stack lifecycle"},
+    {"pair": "service.continueupgrade", "operation": "upgrade", "source": "processes:444", "symbol": "service.continueupgrade", "sink": "persisted service lifecycle"},
+    {"pair": "service.create", "operation": "create", "source": "processes:438", "symbol": "service.create", "sink": "persisted service lifecycle"},
+    {"pair": "container.create", "operation": "create", "source": "processes:351-363; defaultProcesses:17-24,27-71", "symbol": "instance defaultProcesses emits instance.create", "sink": "persisted instance lifecycle, not collection create inference"},
+    {"pair": "container.allocate", "operation": "update", "source": "processes:365", "symbol": "instance.allocate", "sink": "persisted instance allocationState"},
+    {"pair": "container.deallocate", "operation": "update", "source": "processes:366", "symbol": "instance.deallocate", "sink": "persisted instance allocationState"},
+    {"pair": "container.error", "operation": "update", "source": "processes:371", "symbol": "instance.error", "sink": "persisted instance lifecycle"},
+    {"pair": "container.updatehealthy", "operation": "update", "source": "processes:368", "symbol": "instance.updatehealthy", "sink": "persisted instance healthState"},
+    {"pair": "container.updatereinitializing", "operation": "update", "source": "processes:370", "symbol": "instance.updatereinitializing", "sink": "persisted instance healthState"},
+    {"pair": "container.updateunhealthy", "operation": "update", "source": "processes:369", "symbol": "instance.updateunhealthy", "sink": "persisted instance healthState"},
+    {"pair": "volume.create", "operation": "create", "source": "processes:376; defaultProcesses:17-24,27-71", "symbol": "volume defaultProcesses emits volume.create", "sink": "persisted volume lifecycle, not collection create inference"},
+    {"pair": "volume.allocate", "operation": "update", "source": "processes:378", "symbol": "volume.allocate", "sink": "persisted volume allocationState"},
+    {"pair": "volume.deallocate", "operation": "update", "source": "processes:379", "symbol": "volume.deallocate", "sink": "persisted volume allocationState"}
+  ],
+  "unchangedEnforcement": [
+    {"source": "admission:52-79", "property": "Legacy and Full skip the operation restriction; Custom still requires live owner schema, registered operation, persisted target grants and accepted input-reference read grants"},
+    {"source": "targets:69-90,139-170", "property": "URL ID loads the actual persisted Stack, Service, Instance or Volume; live owner and ancestry checks remain authoritative"},
+    {"source": "targets:906-969", "property": "Action input schema selects accepted references; schema-declared references remain separately checked, not assumed authorized by root mutation"},
+    {"source": "actionSink:395-416", "property": "Immediate ActionHandler or process scheduler uses schema base type plus action; no new business handler is installed"},
+    {"source": "queued:125-138", "property": "Legacy/Full retain existing boundary; Custom recomputes the same method/action/link/type classification before current target evaluation"}
+  ],
+  "notAdmittedByThisChange": {
+    "rule": "No guessed derived-schema aliases, plugin root reuse, new name-only mappings, security-management or unreviewed multi-root actions",
+    "examples": ["setmembers", "changesecret", "activateservices", "setservicelinks", "replay", "backup", "console", "proxy", "portpreflight", "volumepreflight"],
+    "existingBehavior": "Pre-existing generic read/create/update/upgrade/delete/exec/logs/export mappings are unchanged; this is not an inventory claiming all original mappings are typed or newly reviewed"
+  },
+  "localVerification": {
+    "commandScope": "Maven offline auth-logic reactor; ApiKeyOperationRegistryAdmissionTest, ApiKeyOperationsTest, ApiKeyAuthorizationServiceTest and six selected ApiKeyProcessAuthorizationTest methods",
+    "tests": 150,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0,
+    "exitCode": 0,
+    "newAdmissionCoverage": "17 parameter rows x 7 cases: 15 canonical pairs and 2 existing aliases; exact grant, explicit deny, wrong ID, read-only grant, live owner revocation, Full/legacy unknown action, unknown/sensitive/multi-target fail-closed. Denied paths never invoke the business ResourceManager; Custom decisions include a UUID requestId.",
+    "limitations": "Real ancestry resolver and dispatcher, mocked business ResourceManager and database rows. No claim of actual handler side effects, queued lifecycle completion, six-role owner ceilings, database audit persistence or native HTTP acceptance."
+  },
+  "remainingC03": [
+    "Native endpoint acceptance of the bounded typed actions, including live owner role ceilings, cross-ID/type/ancestry and accepted body-reference cases",
+    "Actual immediate-handler and asynchronous lifecycle completion plus unchanged state on denied native requests",
+    "Independent review and semantic target/output handling for unregistered sensitive or multi-target actions before any future admission",
+    "Broader endpoint/source inventory beyond these direct registry inputs remains outside this bounded change"
+  ],
+  "sourceSha256": {
+    "registry": "b52bedc0b3455e266f95739df4005e66251db0b55579aed3c6504d4aca734fd0",
+    "queued": "118541bc75892dd21b6f93c3dd0218af6e64bf899bf4c7821aaa5d5317806f81",
+    "aliases": "44746322973d98c5612b1b2afe7c829a461e78bd9eb8ecb5a8f2afb6fb0c5cc9",
+    "targets": "a4067038374e410800991d56ed66ffb56716e335f1ddf78fc37f1756c4ed80f1",
+    "processes": "36c2177fe571c2049df5b28f0dcd578b6ad498abebfe2bc14e6add4acaf9e5f4",
+    "addOutputs": "754d94edddb3a114bcd8bbd9d0c93fd64236cbdaba18720e83d491c0008c1356",
+    "defaultProcesses": "ebf41ab873c349656c307511712674e0db434a9c4986e08d03ec35d92bdcd6a7"
+  }
+}
