@@ -10,7 +10,7 @@ upstream history, authorship, licenses, and dependency notices.
 
 ## Current release
 
-Engine [0.183.348](docs/releases/orchestration-engine-0.183.348.md)
+Engine [0.183.349](docs/releases/orchestration-engine-0.183.349.md)
 supports full, closed and custom API Key policies, expiry and per-Key audit on
 both API roots. A Key is always bounded by its owner's live permissions;
 explicit denials take precedence. Expanding access requires an actor-bound,
@@ -54,10 +54,11 @@ For the resource, expiry, audit and delegated-stream boundaries, see the
 
 Deploy the [current Server release](https://github.com/PastureStack/server#current-release)
 for the complete platform; `cattle.jar` alone is not a Server installation or a
-runtime replacement. Published Server `v1.6.531` packages this Engine with
-Web Console `1.6.186`. Narrow affected-path acceptance completed.
+runtime replacement. Published Server `v1.6.535` packages this Engine with
+unchanged Web Console `1.6.189`. Acceptance is limited to the documented affected
+paths, not every resource and role combination.
 Versioned evidence and upgrade boundaries are in the
-[348 release note](docs/releases/orchestration-engine-0.183.348.md);
+[349 release note](docs/releases/orchestration-engine-0.183.349.md);
 older changes remain in [release notes](docs/releases).
 
 ## Build and validation
@@ -72,7 +73,7 @@ Before publishing an Engine artifact, run the complete package gate:
 
 ```sh
 bash scripts/check-cattle-jdk25-full-package
-ENGINE_VERSION=0.183.348 bash scripts/build --release
+ENGINE_VERSION=0.183.349 bash scripts/build --release
 bash scripts/check-release-artifact dist/artifacts/cattle.jar
 ```
 
