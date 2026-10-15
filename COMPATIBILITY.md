@@ -4,7 +4,24 @@ The migration preserves established `io.cattle.*` Java packages, Maven coordinat
 
 New operator-facing names use PastureStack and `PASTURESTACK_*`. Compatibility identifiers must be changed only with an explicit data migration, a dual-read or dual-write transition, a rollback plan, and cross-repository verification.
 
-## Current release: Engine v0.183.348
+## Current release: Engine v0.183.349
+
+The immutable producer is `0733430fac11892a17ba53749fe02d99d26b1f52`.
+The published `cattle.jar` SHA-256 is
+`6e61f05598c12941c3b07ebfcf81f40e7fb1bd5439ec4c7d9c34484306378f04`.
+Server `v1.6.535` packages this Engine with unchanged Web Console `1.6.189`.
+Documentation commits do not replace that producer or artifact.
+
+Fifteen exact persisted-resource/action pairs extend the central custom-Key
+registry. Native aliases and queued reclassification retain the resource type;
+unregistered multi-target, identity/security and delegation operations remain
+denied. Full and legacy Keys do not acquire a new registry restriction. Live
+owner authority, scope, explicit deny, revision and expiry checks remain intact.
+The focused suite passed 150 cases. See the
+[349 release note](docs/releases/orchestration-engine-0.183.349.md) for bounded
+native acceptance and code rollback without restoring old policy data.
+
+## Engine v0.183.348
 
 The packaged `project.template.default.name` is `PastureStack Native`, matching
 the public Catalog project document rather than its card display name.
