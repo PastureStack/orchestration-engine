@@ -8,12 +8,13 @@ Rancher 1.6 ecosystem. It is not affiliated with Rancher Labs or SUSE.
 This fork of [`rancher/cattle`](https://github.com/rancher/cattle) preserves
 upstream history, authorship, licenses, and dependency notices.
 
-## Release candidate: Engine 0.183.350
+## Current release: Engine 0.183.350
 
-Engine [0.183.350](docs/releases/orchestration-engine-0.183.350.md) is the workload
-archiving candidate planned for Server `v1.6.537` with Web Console `1.6.190`.
-Component publication, packaged Server acceptance and deployment are pending;
-this candidate does not replace an existing published artifact.
+Engine [0.183.350](docs/releases/orchestration-engine-0.183.350.md) adds stopped
+workload archiving. Its immutable producer is
+`9c884710e5ea3d4136d80a870d9de9485674f3c3`; `cattle.jar` SHA-256 is
+`637ddaa42cd93c019b4d0813d7053b71dc42797a7f3ac2aa4b10fcc7e304cb31`.
+Server assembly and deployment are verified separately from this component.
 
 Stack and Service resources expose an `archived` boolean on v1 and v2-beta.
 Missing values on older resources mean false. Send a separate PUT containing
@@ -82,7 +83,7 @@ For the resource, expiry, audit and delegated-stream boundaries, see the
 
 Deploy the [current Server release](https://github.com/PastureStack/server#current-release)
 for the complete platform; `cattle.jar` alone is not a Server installation or a
-runtime replacement. Server `v1.6.537` is the planned assembly for this candidate;
+runtime replacement. Server `v1.6.537` is the planned assembly for this release;
 its publication and deployment must be verified separately. Acceptance is limited
 to the documented affected paths, not every resource and role combination.
 Versioned evidence and upgrade boundaries are in the

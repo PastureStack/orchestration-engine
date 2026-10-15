@@ -1,15 +1,15 @@
 {
   "schemaVersion": 1,
   "producer": {
-    "version": "0.183.349",
-    "source": "0733430fac11892a17ba53749fe02d99d26b1f52",
-    "tree": "d931ab0f4eb15fdc67efbbe9e75288295269c4f0"
+    "version": "0.183.350",
+    "source": "9c884710e5ea3d4136d80a870d9de9485674f3c3",
+    "tree": "ca5f55302aaf7c33513134831b2790cee8e4678a"
   },
   "scope": "Declared v1/v2 and packaged handler/process union; not live role/state availability or asynchronous completion.",
   "sourceInputs": {
     "algorithm": "c03-source-inputs-v1",
-    "count": 366,
-    "sha256": "9f226b250f19c5acd273cc4f40cea704e9c1ad4bbaaa441a483ba5dfdaebb91f",
+    "count": 367,
+    "sha256": "0c85effb2b96d54a8e54d990b2846b1ef40f83f5bd8e0083dfaa8b8d6454d349",
     "anchors": [
       "AbstractSchemaFactory.java",
       "ApiAuthenticator.java",

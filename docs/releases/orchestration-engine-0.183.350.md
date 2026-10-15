@@ -1,4 +1,4 @@
-# Orchestration Engine 0.183.350 release candidate
+# Orchestration Engine 0.183.350
 
 Stack and Service resources gain an opt-in `archived` flag on v1 and v2-beta.
 Older resources without the field remain unarchived. A separate archive update
@@ -29,10 +29,14 @@ reused that instance with healthy networking and unchanged data. Packaged releas
 verification and Server deployment remain separate gates. This is a bounded
 archive acceptance result, not an assertion that every platform feature was retested.
 
-Server `v1.6.537` is planned to package this candidate with Web Console `1.6.190`.
-Producer commit, artifact SHA-256, publication and deployment are pending and must
-be recorded from the final immutable artifacts. The prior published Engine
-identity is retained in [the compatibility contract](../../COMPATIBILITY.md).
+Server `v1.6.537` is planned to package this release with Web Console `1.6.190`.
+The immutable producer is `9c884710e5ea3d4136d80a870d9de9485674f3c3`
+(tree `ca5f55302aaf7c33513134831b2790cee8e4678a`). The official release
+packager produced `cattle.jar` SHA-256
+`637ddaa42cd93c019b4d0813d7053b71dc42797a7f3ac2aa4b10fcc7e304cb31`.
+The refreshed source projection covers 367 inputs and retains the exact same
+1,371 operation tuples and admission semantics. Packaged Server acceptance and
+deployment are recorded separately, not inferred from component publication.
 
 There is no database migration. Code rollback must retain current workload data,
 including archive metadata and existing API Key policy state; do not restore an
