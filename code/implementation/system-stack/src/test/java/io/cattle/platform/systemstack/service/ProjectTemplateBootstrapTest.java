@@ -3,6 +3,7 @@ package io.cattle.platform.systemstack.service;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
 import io.cattle.platform.core.constants.ProjectConstants;
@@ -11,11 +12,13 @@ import io.cattle.platform.core.model.ProjectTemplate;
 import io.cattle.platform.core.model.tables.records.AccountRecord;
 import io.cattle.platform.core.model.tables.records.ProjectTemplateRecord;
 import io.cattle.platform.engine.process.ProcessState;
+import io.cattle.platform.lock.exception.FailedToAcquireLockException;
 import io.cattle.platform.lock.impl.LockManagerImpl;
 import io.cattle.platform.lock.provider.impl.InMemoryLockProvider;
 import io.cattle.platform.object.ObjectManager;
 import io.cattle.platform.sample.data.SampleDataStartupV3;
 import io.cattle.platform.systemstack.catalog.CatalogService;
+import io.cattle.platform.systemstack.lock.ProjectTemplateLoadLock;
 import io.cattle.platform.systemstack.process.ProjecttemplateCreate;
 import io.cattle.platform.systemstack.process.SystemStackTrigger;
 
@@ -34,6 +37,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
@@ -131,19 +135,63 @@ public class ProjectTemplateBootstrapTest {
 
     @Test
     public void creationAndReloadShareTheTemplateLock() throws Exception {
-        Fixture fixture = new Fixture();
-        CountDownLatch start = new CountDownLatch(1);
+        CountDownLatch bindingEntered = new CountDownLatch(1);
+        CountDownLatch releaseBinding = new CountDownLatch(1);
+        Fixture fixture = new Fixture(() -> { bindingEntered.countDown(); await(releaseBinding); });
         ExecutorService executor = Executors.newFixedThreadPool(2);
         try {
-            Future<?> creation = executor.submit(() -> { await(start); fixture.create(); });
-            Future<?> reload = executor.submit(() -> { await(start); fixture.loader.run(); });
-            start.countDown();
-            creation.get(10, TimeUnit.SECONDS);
+            Future<?> creation = executor.submit(fixture::create);
+            await(bindingEntered); // Creation owns the real lock, before persisting the binding.
+            Future<?> reload = executor.submit(fixture.loader::run);
             reload.get(10, TimeUnit.SECONDS);
+            fixture.assertUntouched();
+            assertNull(fixture.account.getProjectTemplateId());
+            assertEquals("Best-effort reload must not enter its callback", 0, fixture.catalogReads.get());
+            releaseBinding.countDown();
+            creation.get(10, TimeUnit.SECONDS);
+            fixture.loader.run();
+            fixture.create();
+            fixture.create();
+            assertEquals(fixture.template.getId(), fixture.account.getProjectTemplateId());
+            assertEquals(1, fixture.catalogReads.get());
             assertEquals(1, fixture.binds.get());
             assertEquals(1, fixture.triggers.get());
         } finally {
+            releaseBinding.countDown();
             executor.shutdownNow();
+            assertTrue(executor.awaitTermination(10, TimeUnit.SECONDS));
+        }
+    }
+
+    @Test
+    public void reloadOwnsLockCreationFailsThenRetryIsIdempotent() throws Exception {
+        CountDownLatch bindingEntered = new CountDownLatch(1);
+        CountDownLatch releaseBinding = new CountDownLatch(1);
+        Fixture fixture = new Fixture(() -> { bindingEntered.countDown(); await(releaseBinding); });
+        ExecutorService executor = Executors.newFixedThreadPool(2);
+        try {
+            Future<?> reload = executor.submit(fixture.loader::run);
+            await(bindingEntered); // Reload owns the same lock, before persisting the binding.
+            Future<?> creation = executor.submit(fixture::create);
+            ExecutionException failure = assertThrows(ExecutionException.class,
+                    () -> creation.get(10, TimeUnit.SECONDS));
+            assertSame(FailedToAcquireLockException.class, failure.getCause().getClass());
+            FailedToAcquireLockException lockFailure = FailedToAcquireLockException.class.cast(failure.getCause());
+            assertEquals(new ProjectTemplateLoadLock().getLockId(), lockFailure.getLockId());
+            fixture.assertUntouched();
+            assertNull(fixture.account.getProjectTemplateId());
+            assertEquals(1, fixture.catalogReads.get());
+            releaseBinding.countDown();
+            reload.get(10, TimeUnit.SECONDS);
+            fixture.create();
+            fixture.create();
+            assertEquals(fixture.template.getId(), fixture.account.getProjectTemplateId());
+            assertEquals(1, fixture.binds.get());
+            assertEquals(1, fixture.triggers.get());
+        } finally {
+            releaseBinding.countDown();
+            executor.shutdownNow();
+            assertTrue(executor.awaitTermination(10, TimeUnit.SECONDS));
         }
     }
 
@@ -229,6 +277,10 @@ public class ProjectTemplateBootstrapTest {
         final ProjectTemplateService loader = new ProjectTemplateService();
 
         Fixture() throws Exception {
+            this(() -> {});
+        }
+
+        Fixture(Runnable beforeBinding) throws Exception {
             account.setId(7L);
             account.setUuid(ProjectConstants.DEFAULT_PROJECT_UUID);
             account.setKind("project");
@@ -254,6 +306,7 @@ public class ProjectTemplateBootstrapTest {
                         case "setFields":
                             assertSame(account, args[0]);
                             assertNull("Existing bindings must never be overwritten", account.getProjectTemplateId());
+                            beforeBinding.run();
                             account.setProjectTemplateId(Long.class.cast(((Object[]) args[2])[0]));
                             binds.incrementAndGet();
                             return account;

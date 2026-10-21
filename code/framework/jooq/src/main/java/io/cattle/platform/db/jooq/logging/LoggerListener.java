@@ -1,65 +1,56 @@
 package io.cattle.platform.db.jooq.logging;
 
-import static org.jooq.conf.ParamType.*;
-
+import java.io.Serializable;
 import org.jooq.ExecuteContext;
-import org.jooq.ExecuteType;
+import org.jooq.ExecuteListener;
 import org.jooq.tools.JooqLogger;
-import org.jooq.tools.StringUtils;
 
-public class LoggerListener extends org.jooq.tools.LoggerListener {
+public class LoggerListener implements ExecuteListener, Serializable {
 
     private static final long serialVersionUID = 1991892878733157263L;
 
     private static final JooqLogger log = JooqLogger.getLogger(org.jooq.tools.LoggerListener.class);
+    private static final String START_NANOS = LoggerListener.class.getName() + ".startNanos";
 
     long maxLength = 1000;
 
     @Override
-    public void renderEnd(ExecuteContext ctx) {
-        if (log.isDebugEnabled()) {
-            String[] batchSQL = ctx.batchSQL();
-
-            if (ctx.query() != null) {
-
-                // Actual SQL passed to JDBC
-                log.debug("Executing query", ctx.sql());
-
-                // [#1278] DEBUG log also SQL with inlined bind values, if
-                // that is not the same as the actual SQL passed to JDBC
-                String inlined = ctx.query().getSQL(INLINED);
-                if (!ctx.sql().equals(inlined)) {
-                    if (inlined.length() > maxLength) {
-                        log.debug("-> with bind values : too long");
-                    } else {
-                        log.debug("-> with bind values", inlined);
-                    }
-                }
-            } else if (!StringUtils.isBlank(ctx.sql())) {
-
-                // [#1529] Batch queries should be logged specially
-                if (ctx.type() == ExecuteType.BATCH) {
-                    log.debug("Executing batch query", ctx.sql());
-                } else {
-                    log.debug("Executing query", ctx.sql());
-                }
-            }
-
-            // [#2532] Log a complete BatchMultiple query
-            else if (batchSQL.length > 0) {
-                if (batchSQL[batchSQL.length - 1] != null) {
-                    for (String sql : batchSQL) {
-                        log.debug("Executing batch query", sql);
-                    }
-                }
-            }
-        }
+    public void start(ExecuteContext ctx) {
+        ctx.data(START_NANOS, System.nanoTime());
     }
 
+    @Override
+    public void renderEnd(ExecuteContext ctx) {
+        if (!log.isDebugEnabled()) return;
+        int batchSize = ctx.batchSQL() == null ? 0 : ctx.batchSQL().length;
+        log.debug("Executing query", "type=" + ctx.type() + ", batchSize=" + batchSize);
+    }
+
+    @Override
+    public void executeEnd(ExecuteContext ctx) {
+        if (log.isDebugEnabled()) log.debug("Query completed", "type=" + ctx.type() + ", rows=" + ctx.rowsLarge());
+    }
+
+    @Override
+    public void exception(ExecuteContext ctx) {
+        // Exceptions can embed SQL, bind values or result data. Keep only the
+        // operation type; never pass the original throwable to a logger.
+        if (log.isDebugEnabled()) log.debug("Query failed", "type=" + ctx.type());
+    }
+
+    @Override
+    public void end(ExecuteContext ctx) {
+        Object start = ctx.data(START_NANOS);
+        if (log.isDebugEnabled() && start instanceof Long nanos)
+            log.debug("Query finished", "type=" + ctx.type() + ", elapsedMs=" + Math.max(0, System.nanoTime() - nanos) / 1_000_000);
+    }
+
+    /** Retained for bean compatibility; this property never enables SQL or value logging. */
     public long getMaxLength() {
         return maxLength;
     }
 
+    /** Retained for bean compatibility; this property never enables SQL or value logging. */
     public void setMaxLength(long maxLength) {
         this.maxLength = maxLength;
     }

@@ -116,9 +116,11 @@ public class ApiKeyProcessAuthorization implements ProcessAuthorizationHook {
                         EngineContext.getEngineContext().currentVerifiedExecution(), metadata);
                 else if (imageCleanup) cleanup = policy == null || policy.getMode() == ApiKeyPolicy.Mode.FULL
                         ? targets.resolveOwnedImageCleanupDependency(root, child, current.policy(), config,
-                                EngineContext.getEngineContext().currentVerifiedExecution(), EngineContext.getEngineContext().parentVerifiedExecution(), metadata)
+                                EngineContext.getEngineContext().currentVerifiedExecution(),
+                                EngineContext.getEngineContext().parentVerifiedExecution(), metadata)
                         : targets.resolveUpgradeCleanupDependency(root, child, current.policy(), config,
-                                EngineContext.getEngineContext().currentVerifiedExecution(), EngineContext.getEngineContext().parentVerifiedExecution(), metadata);
+                                EngineContext.getEngineContext().currentVerifiedExecution(),
+                                EngineContext.getEngineContext().parentVerifiedExecution(), metadata);
                 else denied("OwnerPermissionDenied");
                 if (imageCleanup && cleanup == null) denied("OwnerPermissionDenied");
             }

@@ -172,6 +172,42 @@ storage failure emits a fixed diagnostic; neither it nor abrupt server terminati
 is presented as durable completion. No request, token or writer is retained by
 the retry object.
 
+### Audit storage
+
+The default spool is `data/api-key-audit-outbox` relative to the Engine working
+directory. The official Server runs the Engine from `/var/lib/cattle`, so this
+default remains in its existing persistent data volume. No new volume or database
+migration is required.
+
+Administrators can retain `-Dpasturestack.audit.outbox.dir=<directory>` in their
+existing JVM configuration. Absolute paths, relative paths and an intentional
+administrator-configured symlink remain supported. The canonical destination is
+pinned when the outbox is initialized; retargeting it while the Engine is running
+is rejected rather than silently moving audit records.
+
+The directory, its ancestors and storage mounts must be managed by trusted
+administrators. The spool and its files must belong to the Engine service account
+and must not grant write access to other accounts. New POSIX directories and files
+use modes `0700` and `0600`; existing private permissions are not changed. A
+Linux service identity comes from the operating system, including an unmapped
+numeric container UID; a JVM user-name override does not choose the file owner. A
+previously group/world-writable custom spool must have its ownership and write
+permissions corrected by its administrator before upgrade. Windows fallback
+providers also require private ACLs and trusted ancestors; they do not provide
+Linux directory-handle race guarantees.
+
+Linux pins and verifies the opened secure directory handle. Generated direct-child
+filenames, no-follow opens, exclusive temporary-file creation and bounded reads
+protect lock, pending, event and terminal files. Symlink/hardlink events, unexpected
+JSON entries, directory replacement, oversized records and unsafe permissions
+fail closed. Existing epoch-UUID and terminal event names remain replayable;
+database outages retain durable events and the first terminal result.
+
+Unavailable or unsafe audit storage rejects admission through the existing
+`AuditUnavailable` error path; it is never bypassed or reported as successful
+logging. Keep the configured spool on persistent storage and include it in the
+existing data-volume backup and rollback procedure.
+
 ## Delegated streams and compatibility
 
 V1 responses only advertise environment aliases when its schema supports them;

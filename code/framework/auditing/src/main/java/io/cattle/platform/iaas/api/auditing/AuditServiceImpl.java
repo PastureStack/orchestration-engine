@@ -31,10 +31,12 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.EOFException;
 import java.util.Arrays;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Iterator;
+import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.nio.file.Paths;
@@ -55,6 +57,14 @@ public class AuditServiceImpl implements AuditService, ApiKeyAuditSink, ApiReque
     public static final Set<String> API_KEY_AUDIT_FIELDS = Collections.unmodifiableSet(new HashSet<>(Arrays.asList(
             "eventId", "keyId", "decision", "outcome", "httpStatus", "responseCode", "requestId", "actor",
             "targetType", "targetId", "operation", "policyRevision", "reason", "phase", "preview", "processId", "processName", "hostUuid", "failureCode")));
+    private static final Set<String> SENSITIVE_AUDIT_FIELDS = Set.of(
+            "secretvalue", "secretvalues", "password", "newsecret", "oldsecret", "adminaccountpassword", "serviceaccountpassword",
+            "identityproof", "providerswitchcode", "localpassword", "mfacode", "recoverycode", "verificationcode",
+            "webauthnresponse", "challengeid", "totpsecret", "totpprovisioninguri", "publickey", "recoverycodes",
+            "smtppassword", "emailcode", "email", "testrecipient", "securityconfirmation", "purposedigest",
+            "token", "backendtoken", "jwt", "otp", "code", "authorizationcode", "oidccode", "accesstoken", "refreshtoken",
+            "idtoken", "secret", "secretkey", "clientsecret", "privatekey", "accesskey", "authorization",
+            "proxyauthorization", "cookie", "setcookie", "xapiauth", "xapiclientaccesskey", "dockercompose", "ranchercompose");
     volatile ApiKeyAuditOutbox apiKeyOutbox;
 
     @Inject
@@ -329,7 +339,8 @@ public class AuditServiceImpl implements AuditService, ApiKeyAuditSink, ApiReque
                 || !Set.of("SUCCEEDED", "FAILED", "CANCELLED", "CANCELED").contains(terminal.outcome())) {
             throw new IllegalStateException("Invalid delegated outcome metadata");
         }
-        if (terminal.failureCode() != null && !Set.of("HandshakeDenied", "DockerFailure", "StreamFailed", "AuditUnavailable", "BackendAuditCapabilityUnavailable", "DelegationRouteDenied", "ApiKeyExpired",
+        if (terminal.failureCode() != null && !Set.of("HandshakeDenied", "DockerFailure", "StreamFailed", "AuditUnavailable",
+                "BackendAuditCapabilityUnavailable", "DelegationRouteDenied", "ApiKeyExpired",
                 "AuthorizationRevoked", "ClientDisconnected", "StreamCancelled").contains(terminal.failureCode())) {
             throw new IllegalStateException("Invalid delegated outcome code");
         }
@@ -706,45 +717,53 @@ public class AuditServiceImpl implements AuditService, ApiKeyAuditSink, ApiReque
     }
 
     protected Map<String, Object> sanitizedAuditObject(Object objectToPlace, String type) {
-        Map<String, Object> obj = auditObjectMap(objectToPlace);
+        // Normalize Resources/POJOs first, so the same boundary covers their
+        // fields and nested JSON without changing the original request/response.
+        return sanitizedAuditMap(auditObjectMap(objectToPlace), "secret".equalsIgnoreCase(type), "certificate".equalsIgnoreCase(type));
+    }
 
-        if ("secret".equals(type)) {
-            obj.remove("value");
-        }
-
-        obj.remove("secretValue");
-        obj.remove("password");
-        obj.remove("newSecret");
-        obj.remove("oldSecret");
-        obj.remove("adminAccountPassword");
-        obj.remove("serviceAccountPassword");
-        obj.remove("identityProof");
-        obj.remove("providerSwitchCode");
-        obj.remove("localPassword");
-        obj.remove("mfaCode");
-        obj.remove("recoveryCode");
-        obj.remove("verificationCode");
-        obj.remove("webAuthnResponse");
-        obj.remove("challengeId");
-        obj.remove("totpSecret");
-        obj.remove("totpProvisioningUri");
-        obj.remove("publicKey");
-        obj.remove("recoveryCodes");
-        obj.remove("smtpPassword");
-        obj.remove("emailCode");
-        obj.remove("email");
-        obj.remove("testRecipient");
-        obj.remove("securityConfirmation");
-        obj.remove("purposeDigest");
-        obj.remove("token");
-        obj.remove("backendToken");
-        Iterator<Map.Entry<String, Object>> iter = obj.entrySet().iterator();
-        while (iter.hasNext()) {
-            if (iter.next().getKey().endsWith("Config")) {
-                iter.remove();
+    private Map<String, Object> sanitizedAuditMap(Map<?, ?> input, boolean secretContext, boolean certificateContext) {
+        boolean secret = secretContext || isAuditResource(input, "secret");
+        boolean certificate = certificateContext || isAuditResource(input, "certificate");
+        Map<String, Object> result = new HashMap<>();
+        for (Map.Entry<?, ?> entry : input.entrySet()) {
+            String name = String.class.cast(entry.getKey());
+            String normalized = normalizedAuditField(name);
+            if (SENSITIVE_AUDIT_FIELDS.contains(normalized) || normalized.endsWith("config")
+                    || secret && "value".equals(normalized) || certificate && "key".equals(normalized)) continue;
+            if (Set.of("environment", "previousenvironment").contains(normalized) && entry.getValue() instanceof Map<?, ?> environment) {
+                // Environment variable names are useful for change auditing;
+                // their values are arbitrary and cannot be classified by name.
+                Map<String, Object> names = new HashMap<>();
+                for (Object variable : environment.keySet()) names.put(String.class.cast(variable), "[REDACTED]");
+                result.put(name, names);
+            } else {
+                result.put(name, sanitizedAuditValue(entry.getValue(), secret, certificate));
             }
         }
-        return obj;
+        return result;
+    }
+
+    private Object sanitizedAuditValue(Object value, boolean secretContext, boolean certificateContext) {
+        if (value instanceof Map<?, ?> map) return sanitizedAuditMap(map, secretContext, certificateContext);
+        if (value instanceof List<?> list) {
+            List<Object> result = new ArrayList<>(list.size());
+            for (Object item : list) result.add(sanitizedAuditValue(item, secretContext, certificateContext));
+            return result;
+        }
+        return value;
+    }
+
+    private static String normalizedAuditField(String name) {
+        return name.toLowerCase(Locale.ROOT).replace("_", "").replace("-", "");
+    }
+
+    private static boolean isAuditResource(Map<?, ?> input, String type) {
+        for (Map.Entry<?, ?> entry : input.entrySet()) {
+            String name = normalizedAuditField(String.class.cast(entry.getKey()));
+            if (("type".equals(name) || "kind".equals(name)) && type.equalsIgnoreCase(String.valueOf(entry.getValue()))) return true;
+        }
+        return false;
     }
 
     protected Map<String, Object> auditObjectMap(Object objectToPlace) {

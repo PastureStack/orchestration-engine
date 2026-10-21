@@ -7,19 +7,14 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.channels.FileLock;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
-import java.nio.file.StandardCopyOption;
-import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.HashMap;
 import java.util.UUID;
 import java.util.function.Consumer;
 import java.util.concurrent.TimeUnit;
-import java.util.stream.Stream;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -35,7 +30,7 @@ public final class ApiKeyAuditOutbox {
     static final int MAX_EVENT_BYTES = 8192;
     static final int REPLAY_BATCH = 16;
 
-    private final Path directory;
+    private final ApiKeyAuditDirectory directory;
     private final JsonMapper mapper;
     private final int maxEvents;
     private final long maxBytes;
@@ -51,19 +46,17 @@ public final class ApiKeyAuditOutbox {
     }
 
     ApiKeyAuditOutbox(Path directory, JsonMapper mapper, int maxEvents, long maxBytes) {
-        this.directory = directory.toAbsolutePath().normalize();
+        this.directory = new ApiKeyAuditDirectory(directory);
         this.mapper = mapper;
         this.maxEvents = maxEvents;
         this.maxBytes = maxBytes;
     }
 
     public synchronized void persist(Map<String, Object> event, Consumer<Map<String, Object>> deliver) {
-        try {
-            Files.createDirectories(directory);
-            try (FileChannel lockChannel = FileChannel.open(directory.resolve("outbox.lock"),
-                    StandardOpenOption.CREATE, StandardOpenOption.WRITE);
+        try (ApiKeyAuditDirectory.Access files = directory.open(true)) {
+            try (FileChannel lockChannel = files.openFile(files.leaf("outbox.lock"), StandardOpenOption.CREATE, StandardOpenOption.WRITE);
                  FileLock ignored = lockChannel.lock()) {
-                replay(deliver);
+                replay(files, deliver);
                 Path terminalPath = null;
                 Object terminal = event.get("terminalEventId");
                 Object delegated = event.get("delegatedEventId");
@@ -73,11 +66,11 @@ public final class ApiKeyAuditOutbox {
                 if (identity != null && !(identity instanceof String)) throw new IOException("Invalid terminal event identity");
                 if (identity instanceof String terminalId) {
                     if (!terminalId.matches("[a-f0-9]{64}")) throw new IOException("Invalid terminal event identity");
-                    terminalPath = directory.resolve("terminal-" + terminalId + ".json");
-                    if (Files.exists(terminalPath)) {
+                    terminalPath = files.leaf("terminal-" + terminalId + ".json");
+                    if (files.exists(terminalPath)) {
                         // The first queued terminal result is immutable even
                         // while the DB is offline and after a server restart.
-                        forceDirectory();
+                        files.force();
                         return;
                     }
                 }
@@ -87,10 +80,10 @@ public final class ApiKeyAuditOutbox {
                 if (bytes.length > MAX_EVENT_BYTES) {
                     throw new IOException("API-key audit event exceeds metadata bound");
                 }
-                List<Path> pending = pending();
+                List<Path> pending = files.pending(MAX_EVENTS);
                 long usedBytes = 0;
                 for (Path path : pending) {
-                    usedBytes += Files.size(path);
+                    usedBytes += files.size(path);
                 }
                 Map<?, ?> data = event.get("data") instanceof Map<?, ?> values ? values : Map.of();
                 String requestId = data.get("requestId") instanceof String id ? id : null;
@@ -106,26 +99,26 @@ public final class ApiKeyAuditOutbox {
                 // CREATE_NEW plus force means a successful admission has a durable
                 // record even if DB delivery or the process fails immediately.
                 String fileName = System.currentTimeMillis() + "-" + UUID.randomUUID();
-                Path path = terminalPath == null ? directory.resolve(fileName + ".json") : terminalPath;
+                Path path = terminalPath == null ? files.leaf(fileName + ".json") : terminalPath;
                 // One unacknowledged temporary file is replaceable after a crash;
                 // repeated interrupted admissions cannot grow abandoned files.
-                Path temporary = directory.resolve("outbox.pending");
-                try (FileChannel channel = FileChannel.open(temporary, StandardOpenOption.CREATE,
-                        StandardOpenOption.TRUNCATE_EXISTING, StandardOpenOption.WRITE)) {
+                Path temporary = files.leaf("outbox.pending");
+                if (files.exists(temporary)) files.delete(temporary);
+                try (FileChannel channel = files.openFile(temporary, StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE)) {
                     ByteBuffer buffer = ByteBuffer.wrap(bytes);
                     while (buffer.hasRemaining()) {
                         channel.write(buffer);
                     }
                     channel.force(true);
                 }
-                Files.move(temporary, path, StandardCopyOption.ATOMIC_MOVE);
-                forceDirectory();
+                files.move(temporary, path);
+                files.force();
                 if (decision) {
                     responseReservations.put(requestId, Boolean.TRUE);
                 } else if (hasReservation) {
                     responseReservations.remove(requestId);
                 }
-                replay(deliver);
+                replay(files, deliver);
             }
         } catch (IOException | RuntimeException error) {
             // Do not attach the original exception: JDBC errors can include values.
@@ -134,29 +127,34 @@ public final class ApiKeyAuditOutbox {
     }
 
     public synchronized void replayPending(Consumer<Map<String, Object>> deliver) {
-        if (!Files.isDirectory(directory)) {
-            return;
+        ApiKeyAuditDirectory.Access access;
+        try {
+            access = directory.open(false);
+        } catch (java.nio.file.NoSuchFileException absent) {
+            return; // An unused outbox need not exist yet.
+        } catch (IOException | RuntimeException unavailable) {
+            throw new IllegalStateException("API-key audit replay is unavailable");
         }
-        try (FileChannel lockChannel = FileChannel.open(directory.resolve("outbox.lock"),
-                StandardOpenOption.CREATE, StandardOpenOption.WRITE);
+        try (ApiKeyAuditDirectory.Access files = access;
+             FileChannel lockChannel = files.openFile(files.leaf("outbox.lock"), StandardOpenOption.CREATE, StandardOpenOption.WRITE);
              FileLock ignored = lockChannel.lock()) {
-            replay(deliver);
+            replay(files, deliver);
         } catch (IOException | RuntimeException unavailable) {
             throw new IllegalStateException("API-key audit replay is unavailable");
         }
     }
 
-    private void replay(Consumer<Map<String, Object>> deliver) throws IOException {
-        List<Path> paths = pending();
+    private void replay(ApiKeyAuditDirectory.Access files, Consumer<Map<String, Object>> deliver) throws IOException {
+        List<Path> paths = files.pending(MAX_EVENTS);
         int processed = 0;
         for (Path path : paths) {
             if (processed++ >= REPLAY_BATCH) {
                 break;
             }
-            if (Files.size(path) > MAX_EVENT_BYTES) {
+            if (files.size(path) > MAX_EVENT_BYTES) {
                 throw new IOException("Invalid API-key audit outbox event");
             }
-            Map<?, ?> raw = mapper.readValue(Files.readAllBytes(path), Map.class);
+            Map<?, ?> raw = mapper.readValue(files.read(path, MAX_EVENT_BYTES), Map.class);
             Map<String, Object> event = new java.util.HashMap<>();
             for (Map.Entry<?, ?> entry : raw.entrySet()) {
                 event.put(String.class.cast(entry.getKey()), entry.getValue());
@@ -172,28 +170,8 @@ public final class ApiKeyAuditOutbox {
                 }
                 return;
             }
-            Files.delete(path);
-            forceDirectory();
-        }
-    }
-
-    private List<Path> pending() throws IOException {
-        try (Stream<Path> paths = Files.list(directory)) {
-            List<Path> result = new ArrayList<>();
-            paths.filter(path -> path.getFileName().toString().endsWith(".json"))
-                    .forEach(result::add);
-            result.sort(Comparator.comparing(path -> path.getFileName().toString()));
-            return result;
-        }
-    }
-
-    private void forceDirectory() throws IOException {
-        // Directory handles cannot be opened on Windows. Linux deployments need
-        // directory fsync to retain newly created/deleted entries after a crash.
-        if (!System.getProperty("os.name", "").startsWith("Windows")) {
-            try (FileChannel channel = FileChannel.open(directory, StandardOpenOption.READ)) {
-                channel.force(true);
-            }
+            files.delete(path);
+            files.force();
         }
     }
 }

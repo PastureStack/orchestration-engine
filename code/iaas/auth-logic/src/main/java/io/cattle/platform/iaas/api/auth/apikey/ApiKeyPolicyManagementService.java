@@ -31,7 +31,6 @@ import java.security.NoSuchAlgorithmException;
 import java.time.Instant;
 import java.util.Collections;
 import java.util.LinkedHashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -93,6 +92,7 @@ public class ApiKeyPolicyManagementService extends AbstractJooqDao implements Ap
                     public Object doWithLock() {
                         Credential current = objectManager.reload(credential);
                         requireActive(current);
+                        ApiKeyWriteAuthorization.beforeSelfPolicyUpdate(request, current);
                         Account actor = actor();
                         ApiKeyPolicy previous = codec.read(current);
                         long revision = codec.revision(current);
@@ -113,6 +113,7 @@ public class ApiKeyPolicyManagementService extends AbstractJooqDao implements Ap
                         // never part of a stored credential or response body.
                         input.remove("securityConfirmation");
                         persist(current, data, targetKind, input);
+                        ApiKeyWriteAuthorization.selfPolicyUpdated(request, current);
                         return objectManager.reload(current);
                     }
                 });

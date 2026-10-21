@@ -345,7 +345,8 @@ public class ApiKeyDelegationService implements ApiKeyDelegationTokenProvider {
             for (Object entry : (List<?>) raw) {
                 Map<String, Object> item = map(entry);
                 LiveGrant child = introspectNested(text(item, "token"), depth + 1);
-                for (String field : List.of("keyId", "principalId", "accountId", "revision", "targetType", "targetId", "operation", "requestMethod", "requestAction", "requestLink"))
+                for (String field : List.of("keyId", "principalId", "accountId", "revision", "targetType", "targetId", "operation",
+                        "requestMethod", "requestAction", "requestLink"))
                     if (!Objects.equals(grant.get(field), child.envelope().get(field))) denied("ApiKeyDelegationInvalid");
             }
             return live;
@@ -440,7 +441,9 @@ public class ApiKeyDelegationService implements ApiKeyDelegationTokenProvider {
     }
     static long number(Map<String, Object> grant, String field) { return ApiKeyPolicyCodec.number(grant.get(field)); }
     static String text(Map<String, Object> grant, String field) {
-        if (!(grant.get(field) instanceof String value) || value.isBlank() || value.length() > MAX_TOKEN_BYTES) { denied("ApiKeyDelegationInvalid"); return null; }
+        if (!(grant.get(field) instanceof String value) || value.isBlank() || value.length() > MAX_TOKEN_BYTES) {
+            denied("ApiKeyDelegationInvalid"); return null;
+        }
         return value;
     }
     public static String digest(String value) {

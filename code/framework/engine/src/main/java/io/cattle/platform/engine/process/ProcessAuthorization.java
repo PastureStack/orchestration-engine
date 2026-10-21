@@ -17,7 +17,8 @@ public final class ProcessAuthorization {
     public static final String VERIFIED_CHILD_KEY = "_apiKeyVerifiedChild";
     public static final String CAPTURED_EXECUTION_KEY = "_apiKeyCapturedExecution";
     private static final Set<String> FIELDS = Set.of("keyId", "policyRevision", "principalAccountId", "accountId",
-            "requestId", "operation", "targetType", "targetId", "preview", "requestMethod", "requestAction", "requestLink", "requestCollection", "projectCreation");
+            "requestId", "operation", "targetType", "targetId", "preview", "requestMethod", "requestAction", "requestLink",
+            "requestCollection", "projectCreation");
 
     private ProcessAuthorization() { }
 

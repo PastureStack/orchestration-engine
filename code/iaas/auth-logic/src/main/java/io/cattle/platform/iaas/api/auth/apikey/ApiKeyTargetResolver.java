@@ -37,7 +37,6 @@ import io.cattle.platform.core.model.Stack;
 import io.cattle.platform.core.model.Volume;
 import io.cattle.platform.object.ObjectManager;
 import io.cattle.platform.object.util.ObjectUtils;
-import io.github.ibuildthecloud.gdapi.context.ApiContext;
 import io.github.ibuildthecloud.gdapi.exception.ClientVisibleException;
 import io.github.ibuildthecloud.gdapi.request.ApiRequest;
 import io.github.ibuildthecloud.gdapi.util.ResponseCodes;
@@ -60,7 +59,8 @@ import io.github.ibuildthecloud.gdapi.id.IdFormatter;
 public class ApiKeyTargetResolver {
     // These resources have no stack-owned lifecycle. Do not infer this from a
     // missing stackId getter on an arbitrary plugin resource.
-    static final Set<String> PROJECT_ONLY = Set.of("host", "network", "secret", "certificate", "registry", "storagePool", "storagePoolHostMap", "networkPolicy", "projectMember");
+    static final Set<String> PROJECT_ONLY = Set.of("host", "network", "secret", "certificate", "registry", "storagePool",
+            "storagePoolHostMap", "networkPolicy", "projectMember");
     static final Set<String> PLATFORM = Set.of("schema", "setting", "userPreference", "account", "apiKey", "apiKeyRestricted", "auditLog");
     @Inject ObjectManager objectManager;
     @Inject ProjectAccessService projectAccess;
@@ -213,7 +213,8 @@ public class ApiKeyTargetResolver {
         root = persisted(rootModel, root, owner, "accountId", "stackId", "serviceId");
         Object stored = persisted(model, resource, owner, model == ServiceExposeMap.class
                 ? new String[] { "accountId", "instanceId", "serviceId", "managed", "upgrade" }
-                : new String[] { "accountId", "instanceId", "hostId", "volumeId", "nicId", "ipAddressId", "storagePoolId", "stackId", "targetInstanceId", "networkId" });
+                : new String[] { "accountId", "instanceId", "hostId", "volumeId", "nicId", "ipAddressId", "storagePoolId", "stackId",
+                        "targetInstanceId", "networkId" });
         if (stored instanceof ServiceExposeMap map) {
             // A map belongs to its exact Service, not every Service sharing its
             // Instance. Only persisted managed/upgrade lifecycle maps qualify.
@@ -518,7 +519,8 @@ public class ApiKeyTargetResolver {
         boolean cache = resource instanceof ImageStoragePoolMap && "imageStoragePoolMap".equalsIgnoreCase(config.getResourceType())
                 && Set.of("imagestoragepoolmap.deactivate", "imagestoragepoolmap.remove").contains(process);
         if (!fullAuthority && !(root instanceof Service) || !(volumeMap || hostMap || image || cache)) return null;
-        if (fullAuthority && (!(image || cache) || !(root instanceof Instance || root instanceof Volume || root instanceof Service || root instanceof Stack))) return null;
+        if (fullAuthority && (!(image || cache)
+                || !(root instanceof Instance || root instanceof Volume || root instanceof Service || root instanceof Stack))) return null;
         if (!fullAuthority && (binding == null || !"finishupgrade".equals(binding.get("requestAction")))) return null;
         if (!Objects.equals(ObjectUtils.getPropertyIgnoreErrors(resource, "id"), executionResourceId(config.getResourceType(), config.getResourceId())))
             denied("KeyScopeDenied");
@@ -557,7 +559,8 @@ public class ApiKeyTargetResolver {
             String rootType = root instanceof Instance ? "container" : root instanceof Volume ? "volume" : root instanceof Service ? "service" : "stack";
             if (!Integer.valueOf(0).equals(volume.getDeviceNumber())
                     || !(binding.get("targetType") instanceof String type) || !rootType.equals(ApiKeyQueryScopes.canonical(type))
-                    || !(binding.get("targetId") instanceof String id) || !Objects.equals(ObjectUtils.getPropertyIgnoreErrors(root, "id"), executionResourceId(rootType, id))
+                    || !(binding.get("targetId") instanceof String id)
+                    || !Objects.equals(ObjectUtils.getPropertyIgnoreErrors(root, "id"), executionResourceId(rootType, id))
                     || !Objects.equals(ObjectUtils.getPropertyIgnoreErrors(root, "accountId"), volume.getAccountId())
                     || root instanceof Instance && !Objects.equals(ObjectUtils.getPropertyIgnoreErrors(root, "id"), instance.getId())
                     || root instanceof Volume && !Objects.equals(ObjectUtils.getPropertyIgnoreErrors(root, "id"), volume.getId())) denied("KeyScopeDenied");
@@ -617,7 +620,8 @@ public class ApiKeyTargetResolver {
         }
         if (image) {
             for (String field : List.of("id", "accountId", "uuid", "state", "removed", "registryCredentialId", "format", "instanceKind"))
-                if (!Objects.equals(ObjectUtils.getPropertyIgnoreErrors(resource, field), ObjectUtils.getPropertyIgnoreErrors(actualImage, field))) denied("KeyScopeDenied");
+                if (!Objects.equals(ObjectUtils.getPropertyIgnoreErrors(resource, field),
+                        ObjectUtils.getPropertyIgnoreErrors(actualImage, field))) denied("KeyScopeDenied");
         } else if (!verified(frame, "image", actualImage.getId(), binding)) denied("KeyScopeDenied");
         Set<ApiKeyPolicyEvaluator.Target> resources = new LinkedHashSet<>(owned.resources());
         resources.add(actualImage.getAccountId() == null ? ApiKeyPolicyEvaluator.Target.platformResource("image", format("image", actualImage.getId()))
@@ -634,8 +638,10 @@ public class ApiKeyTargetResolver {
             if (pool.getAccountId() != null && !Objects.equals(pool.getAccountId(), volume.getAccountId())) denied("KeyScopeDenied");
             pools.add(pool.getId()); resources.add(resolveObject("storagePool", pool, owner));
             resources.add(owned.scope().stackId() == null
-                    ? ApiKeyPolicyEvaluator.Target.projectResource("volumeStoragePoolMap", format("volumeStoragePoolMap", allocation.getId()), owned.scope().projectId())
-                    : ApiKeyPolicyEvaluator.Target.stackResource("volumeStoragePoolMap", format("volumeStoragePoolMap", allocation.getId()), owned.scope().projectId(), owned.scope().stackId()));
+                    ? ApiKeyPolicyEvaluator.Target.projectResource("volumeStoragePoolMap", format("volumeStoragePoolMap", allocation.getId()),
+                            owned.scope().projectId())
+                    : ApiKeyPolicyEvaluator.Target.stackResource("volumeStoragePoolMap", format("volumeStoragePoolMap", allocation.getId()),
+                            owned.scope().projectId(), owned.scope().stackId()));
         }
         boolean found = image;
         for (ImageStoragePoolMap row : caches) {
@@ -677,8 +683,10 @@ public class ApiKeyTargetResolver {
     private <T> T cleanupProjection(Class<T> model, Object supplied, Policy owner, String... fields) {
         Long id = (Long) ObjectUtils.getPropertyIgnoreErrors(supplied, "id");
         T stored = cleanupResource(model, id, owner);
-        if (!Objects.equals(ObjectUtils.getPropertyIgnoreErrors(supplied, "removed"), ObjectUtils.getPropertyIgnoreErrors(stored, "removed"))) denied("KeyScopeDenied");
-        for (String field : fields) if (!Objects.equals(ObjectUtils.getPropertyIgnoreErrors(supplied, field), ObjectUtils.getPropertyIgnoreErrors(stored, field))) denied("KeyScopeDenied");
+        if (!Objects.equals(ObjectUtils.getPropertyIgnoreErrors(supplied, "removed"),
+                ObjectUtils.getPropertyIgnoreErrors(stored, "removed"))) denied("KeyScopeDenied");
+        for (String field : fields) if (!Objects.equals(ObjectUtils.getPropertyIgnoreErrors(supplied, field),
+                ObjectUtils.getPropertyIgnoreErrors(stored, field))) denied("KeyScopeDenied");
         return stored;
     }
 
@@ -688,7 +696,8 @@ public class ApiKeyTargetResolver {
                 || Set.of("purging", "purged").contains(String.valueOf(stored.getState()))
                 || (stored.getRemoved() != null) != "removed".equals(stored.getState())) denied("KeyScopeDenied");
         for (String field : List.of("imageId", "storagePoolId", "state", "removed", "uuid"))
-            if (!Objects.equals(ObjectUtils.getPropertyIgnoreErrors(supplied, field), ObjectUtils.getPropertyIgnoreErrors(stored, field))) denied("KeyScopeDenied");
+            if (!Objects.equals(ObjectUtils.getPropertyIgnoreErrors(supplied, field),
+                    ObjectUtils.getPropertyIgnoreErrors(stored, field))) denied("KeyScopeDenied");
         return stored;
     }
 
