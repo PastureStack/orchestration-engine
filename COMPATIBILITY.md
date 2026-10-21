@@ -4,6 +4,33 @@ The migration preserves established `io.cattle.*` Java packages, Maven coordinat
 
 New operator-facing names use PastureStack and `PASTURESTACK_*`. Compatibility identifiers must be changed only with an explicit data migration, a dual-read or dual-write transition, a rollback plan, and cross-repository verification.
 
+## Engine v0.183.351
+
+Key-authenticated synchronous writes recheck the credential's current state,
+policy revision and expiry inside the existing write transaction before commit.
+A changed grant rejects and rolls back the write. Full and legacy Keys retain
+their existing operation capabilities; owner RBAC and membership admission are
+not replaced by a new role model or a transaction-wide owner lock.
+
+Ordinary audit payloads and jOOQ DEBUG/TRACE diagnostics no longer record the
+structured secret carriers described in the [351 release note](docs/releases/orchestration-engine-0.183.351.md).
+Historical logs are not rewritten. The audit outbox keeps its data-volume
+default and valid administrator-selected directories, including intentional
+symlinks, while checking ownership, directory identity and bounded file access.
+Unsafe existing permissions fail with an error; they are not silently changed.
+
+Build recipes keep Docker CLI 29.7.2 and JDK 25 while pinning their security
+inputs to Go 1.27.3 and Temurin 25.0.4.1+1. Ubuntu curl 8.18.0-1ubuntu2.8
+and OpenSSL 3.5.5-1ubuntu3.7 are complete-package security overlays with
+exact final-version readback; the fixed base snapshot and all other direct
+package pins are retained. Source preparation is not a passing builder scan
+or an Engine publication. No scanner exception or release threshold is added.
+
+There is no database migration. Retain policy records and persistent volumes
+when rolling back code. Source validation, component publication and assembled
+Server acceptance are separate; use the Server's actual component manifest for
+its version pairing rather than inferring deployment from this document.
+
 ## Engine v0.183.350
 
 Engine `v0.183.350` adds opt-in Stack and Service archive metadata on both API

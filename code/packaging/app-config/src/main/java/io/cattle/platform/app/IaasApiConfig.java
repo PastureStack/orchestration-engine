@@ -40,6 +40,7 @@ import io.cattle.platform.iaas.api.auth.identity.TokenResourceManager;
 import io.cattle.platform.iaas.api.auth.impl.AgentQualifierAuthorizationProvider;
 import io.cattle.platform.iaas.api.auth.impl.ApiAuthenticator;
 import io.cattle.platform.iaas.api.auth.apikey.ApiKeyAuthorizationService;
+import io.cattle.platform.iaas.api.auth.apikey.ApiKeyWriteAuthorization;
 import io.cattle.platform.iaas.api.auth.apikey.ApiKeyTargetResolver;
 import io.cattle.platform.iaas.api.auth.apikey.ApiKeyPolicyManagementService;
 import io.cattle.platform.iaas.api.auth.apikey.ApiKeyPolicyInputHandler;
@@ -175,6 +176,7 @@ import io.github.ibuildthecloud.gdapi.request.handler.VersionHandler;
 import io.github.ibuildthecloud.gdapi.request.handler.VersionsHandler;
 import io.github.ibuildthecloud.gdapi.request.handler.write.DefaultReadWriteApiDelegate;
 import io.github.ibuildthecloud.gdapi.request.handler.write.ReadWriteApiDelegate;
+import io.github.ibuildthecloud.gdapi.request.handler.write.WriteAuthorization;
 import io.github.ibuildthecloud.gdapi.request.handler.write.ReadWriteApiHandler;
 import io.github.ibuildthecloud.gdapi.request.resource.ResourceManagerLocator;
 import io.github.ibuildthecloud.gdapi.response.HtmlResponseWriter;
@@ -605,8 +607,10 @@ public class IaasApiConfig {
     }
 
     @Bean
-    ReadWriteApiDelegate DefaultReadWriteApiDelegate() {
-        return new DefaultReadWriteApiDelegate();
+    ReadWriteApiDelegate DefaultReadWriteApiDelegate(List<WriteAuthorization> authorizations) {
+        DefaultReadWriteApiDelegate delegate = new DefaultReadWriteApiDelegate();
+        delegate.setWriteAuthorizations(authorizations);
+        return delegate;
     }
 
     @Bean
@@ -836,6 +840,9 @@ public class IaasApiConfig {
 
     @Bean
     ApiKeyAuthorizationService ApiKeyAuthorizationService() { return new ApiKeyAuthorizationService(); }
+
+    @Bean
+    ApiKeyWriteAuthorization ApiKeyWriteAuthorization() { return new ApiKeyWriteAuthorization(); }
 
     @Bean
     ApiKeyTargetResolver ApiKeyTargetResolver() { return new ApiKeyTargetResolver(); }

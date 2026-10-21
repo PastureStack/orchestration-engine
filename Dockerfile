@@ -1,4 +1,4 @@
-FROM golang:1.27.0-bookworm@sha256:484ef6066fa69acb059fdfeda7ba2b8f7391f2ef6abc6f9b8411e669ebd56466 AS docker-cli-build
+FROM golang:1.27.3-bookworm@sha256:972b4110ba0f47539a975c31e52c64765e1ff19f2d74469ae4a595c6676e80a5 AS docker-cli-build
 
 ARG DOCKER_VERSION=29.7.2
 ARG DOCKER_CLI_COMMIT=a7dcaa6fdb6ed04aacbfdc76357fdae01605609e
@@ -8,6 +8,7 @@ RUN set -eux; \
     tar -xzf /tmp/docker-cli.tar.gz -C /go/src/github.com/docker/cli --strip-components=1; \
     cd /go/src/github.com/docker/cli; \
     test "$(cat VERSION)" = "${DOCKER_VERSION}"; \
+    test "$(go env GOVERSION)" = go1.27.3; \
     CGO_ENABLED=0 GO_STRIP=1 VERSION="${DOCKER_VERSION}" GITCOMMIT="${DOCKER_CLI_COMMIT}" SOURCE_DATE_EPOCH=1785922455 ./scripts/build/binary; \
     test -x build/docker-linux-amd64; \
     build/docker-linux-amd64 --version | grep -F "Docker version ${DOCKER_VERSION}"
@@ -16,10 +17,13 @@ FROM ubuntu:26.04@sha256:2260313b31c8c011cd2eebe728008efac1b3982be73eb71348ea264
 
 COPY ubuntu-apt.lock /licenses/ubuntu-apt.lock
 ADD --checksum=sha256:6077d27c6b6f8b23590cb01ff877ed8c804a67a5442cc32b5a33da10d2bd0e90 https://archive.ubuntu.com/ubuntu/pool/main/c/ca-certificates/ca-certificates_20260601~26.04.1_all.deb /tmp/ca-certificates.deb
+ADD --checksum=sha256:2c418a61d7165d0cde01d9cb05ae025cc41fc75ef6d3f095996bd045ba0945dc https://security.ubuntu.com/ubuntu/pool/main/c/curl/curl_8.18.0-1ubuntu2.8_amd64.deb /tmp/curl.deb
+ADD --checksum=sha256:8db913e1fa5a694ca6ba7b828bd18c5204e6853ac07fe7ed9c6e1f94e3444d8e https://security.ubuntu.com/ubuntu/pool/main/c/curl/libcurl3t64-gnutls_8.18.0-1ubuntu2.8_amd64.deb /tmp/libcurl3t64-gnutls.deb
+ADD --checksum=sha256:7c0b37592f83a629cc22f0c98effa176da9edbd6d77b3f38184a9d0ddc5e0266 https://security.ubuntu.com/ubuntu/pool/main/c/curl/libcurl4t64_8.18.0-1ubuntu2.8_amd64.deb /tmp/libcurl4t64.deb
 
 ENV DEBIAN_FRONTEND=noninteractive
-ARG TEMURIN_JDK25_URL="https://github.com/adoptium/temurin25-binaries/releases/download/jdk-25.0.4%2B7/OpenJDK25U-jdk_x64_linux_hotspot_25.0.4_7.tar.gz"
-ARG TEMURIN_JDK25_SHA256=e58fcdcd637b25c03ca84cbbcefc70d11efb8f4b4cbd05decc9f661769d77f94
+ARG TEMURIN_JDK25_URL="https://github.com/adoptium/temurin25-binaries/releases/download/jdk-25.0.4.1%2B1/OpenJDK25U-jdk_x64_linux_hotspot_25.0.4.1_1.tar.gz"
+ARG TEMURIN_JDK25_SHA256=dbb698396d478e7fa2b1e50f4103324b2a99b90569ee27c33f2261f9215cf41e
 ARG MAVEN_VERSION=3.9.16
 ARG MAVEN_SHA512=831a8591fe20c8243b1dbe7d71e3244f31d1665b0804b2e825e38cbbe5ce0cafb8338851f90780735568773e0a6cd07bbec107cda0b896b008b861075358b6f6
 ARG DOCKER_VERSION=29.7.2
@@ -50,7 +54,7 @@ RUN set -eux; \
     apt-get install -y --no-install-recommends \
         bash="${UBUNTU_APT_BASH_VERSION}" \
         ca-certificates="${UBUNTU_APT_CA_CERTIFICATES_VERSION}" \
-        curl="${UBUNTU_APT_CURL_VERSION}" \
+        curl="${UBUNTU_APT_CURL_BOOTSTRAP_VERSION}" \
         git="${UBUNTU_APT_GIT_VERSION}" \
         gzip="${UBUNTU_APT_GZIP_VERSION}" \
         iproute2="${UBUNTU_APT_IPROUTE2_VERSION}" \
@@ -67,8 +71,28 @@ RUN set -eux; \
         tox="${UBUNTU_APT_TOX_VERSION}" \
         unzip="${UBUNTU_APT_UNZIP_VERSION}" \
         xz-utils="${UBUNTU_APT_XZ_UTILS_VERSION}"; \
+    printf 'Types: deb\nURIs: https://snapshot.ubuntu.com/ubuntu/%s\nSuites: resolute-security\nComponents: main\nSigned-By: /usr/share/keyrings/ubuntu-archive-keyring.gpg\nSnapshot: no\n' \
+        "${UBUNTU_APT_SECURITY_SNAPSHOT}" > /etc/apt/sources.list.d/pasturestack-security.sources; \
+    apt-get update; \
+    apt-get install -y --no-install-recommends \
+        libssl3t64="${UBUNTU_APT_OPENSSL_VERSION}" \
+        openssl="${UBUNTU_APT_OPENSSL_VERSION}" \
+        openssl-provider-legacy="${UBUNTU_APT_OPENSSL_VERSION}"; \
+    for package in libssl3t64 openssl openssl-provider-legacy; do \
+        test "$(dpkg-query -W -f='${Version}' "${package}")" = "${UBUNTU_APT_OPENSSL_VERSION}"; \
+    done; \
+    for package in curl libcurl3t64-gnutls libcurl4t64; do \
+        test "$(dpkg-deb -f "/tmp/${package}.deb" Package)" = "${package}"; \
+        test "$(dpkg-deb -f "/tmp/${package}.deb" Version)" = "${UBUNTU_APT_CURL_VERSION}"; \
+        test "$(dpkg-deb -f "/tmp/${package}.deb" Architecture)" = amd64; \
+    done; \
+    dpkg -i /tmp/curl.deb /tmp/libcurl3t64-gnutls.deb /tmp/libcurl4t64.deb; \
+    for package in curl libcurl3t64-gnutls libcurl4t64; do \
+        test "$(dpkg-query -W -f='${Version}' "${package}")" = "${UBUNTU_APT_CURL_VERSION}"; \
+    done; \
     { \
         printf 'snapshot\t%s\n' "${UBUNTU_APT_SNAPSHOT}"; \
+        printf 'security-snapshot\t%s\n' "${UBUNTU_APT_SECURITY_SNAPSHOT}"; \
         dpkg-query -W -f='${binary:Package}\t${Version}\n' | LC_ALL=C sort; \
     } > /licenses/ORCHESTRATION-ENGINE-UBUNTU-APT-PACKAGES.tsv; \
     apt-get clean; \
@@ -89,7 +113,8 @@ RUN mkdir -p ${JAVA_HOME} /usr/lib/jvm && \
     rm -f /tmp/apache-maven.tar.gz && \
     test "$(find ${MAVEN_HOME}/lib -maxdepth 1 -name 'plexus-utils-*.jar' -printf '%f\n')" = 'plexus-utils-3.6.1.jar' && \
     chmod +x /usr/bin/docker && \
-    java -version 2>&1 | grep -F '25.0.4' && \
+    java -version 2>&1 | grep -F '25.0.4.1' && \
+    test "$(javac -version 2>&1)" = 'javac 25.0.4.1' && \
     mvn -version | grep -F 'Apache Maven 3.9.16' && \
     test "$(python3 --version)" = 'Python 3.14.4' && \
     tox --version | grep -F '4.33.0' && \

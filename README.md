@@ -8,13 +8,23 @@ Rancher 1.6 ecosystem. It is not affiliated with Rancher Labs or SUSE.
 This fork of [`rancher/cattle`](https://github.com/rancher/cattle) preserves
 upstream history, authorship, licenses, and dependency notices.
 
-## Current release: Engine 0.183.350
+## Engine 0.183.351
 
-Engine [0.183.350](docs/releases/orchestration-engine-0.183.350.md) adds stopped
-workload archiving. Its immutable producer is
-`9c884710e5ea3d4136d80a870d9de9485674f3c3`; `cattle.jar` SHA-256 is
-`637ddaa42cd93c019b4d0813d7053b71dc42797a7f3ac2aa4b10fcc7e304cb31`.
-Server assembly and deployment are verified separately from this component.
+Engine [0.183.351](docs/releases/orchestration-engine-0.183.351.md) closes the
+API Key revocation race at the database write boundary and prevents structured
+authentication, environment and driver secrets from entering ordinary audit
+payloads or jOOQ DEBUG/TRACE logs. Release assets, packaged Server acceptance
+and deployment each require their own evidence; source tests alone do not
+establish runtime acceptance.
+
+Before committing a Key-authenticated synchronous write, the existing write
+transaction locks and rereads that Key's current state, owner, kind, policy
+revision and expiry. A stale grant rejects the request and rolls back the
+write. Full and legacy Keys retain their existing operation capabilities;
+self-policy updates use the existing manager's lock and compare-and-swap.
+This is not a new transaction-wide lock on all owner role/membership changes.
+
+### Stopped workload archiving
 
 Stack and Service resources expose an `archived` boolean on v1 and v2-beta.
 Missing values on older resources mean false. Send a separate PUT containing
@@ -77,20 +87,22 @@ API Key subscriptions retain secret-free terminal metadata
 for client/server close, I/O failure and live authorization failure. Terminal
 outbox retries keep the first result; WebSocket client close text is not logged.
 Full and legacy subscription authorization remains unchanged.
+The durable audit spool defaults to the Server data volume. Administrator-selected
+custom directories remain supported with private ownership and link-safe file I/O;
+see [audit storage requirements](docs/api-key-policy.md#audit-storage).
 For the resource, expiry, audit and delegated-stream boundaries, see the
 [API Key contract](docs/api-key-policy.md) and
 [compatibility contract](COMPATIBILITY.md).
 
 Deploy the [current Server release](https://github.com/PastureStack/server#current-release)
 for the complete platform; `cattle.jar` alone is not a Server installation or a
-runtime replacement. The Server `v1.6.537` assembly pairs Engine `v0.183.350`
-with Web Console `1.6.190`. Server publication and health evidence are maintained
-separately in
-[its release notes](https://github.com/PastureStack/server/blob/main/docs/releases/server-1.6.537.md).
+runtime replacement. Server component coordinates, publication and deployment
+evidence are maintained in the
+[Server release notes](https://github.com/PastureStack/server/tree/main/docs/releases).
 Acceptance is limited to the documented affected paths, not every resource and
 role combination.
 Versioned evidence and upgrade boundaries are in the
-[350 release note](docs/releases/orchestration-engine-0.183.350.md);
+[351 release note](docs/releases/orchestration-engine-0.183.351.md);
 older changes remain in [release notes](docs/releases).
 
 ## Build and validation
@@ -105,7 +117,7 @@ Before publishing an Engine artifact, run the complete package gate:
 
 ```sh
 bash scripts/check-cattle-jdk25-full-package
-ENGINE_VERSION=0.183.350 bash scripts/build --release
+ENGINE_VERSION=0.183.351 bash scripts/build --release
 bash scripts/check-release-artifact dist/artifacts/cattle.jar
 ```
 

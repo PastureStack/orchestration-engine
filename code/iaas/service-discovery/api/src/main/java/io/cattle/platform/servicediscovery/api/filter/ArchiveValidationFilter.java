@@ -61,7 +61,8 @@ public class ArchiveValidationFilter extends AbstractDefaultResourceManagerFilte
     @Override
     public Object create(String type, ApiRequest request, ResourceManager next) {
         Map<String, Object> body = CollectionUtils.toMap(request.getRequestObject());
-        if (Boolean.TRUE.equals(body.get("archived"))) throw error(422, "ArchiveCreateUnsupported", "Create the resource normally, then stop it before archiving.");
+        if (Boolean.TRUE.equals(body.get("archived")))
+            throw error(422, "ArchiveCreateUnsupported", "Create the resource normally, then stop it before archiving.");
         Long stackId = parentId(body);
         if (stackId == null) return super.create(type, request, next);
         return withLocks(Set.of(stackId), () -> {
@@ -92,10 +93,12 @@ public class ArchiveValidationFilter extends AbstractDefaultResourceManagerFilte
           boolean[] ordinaryUpdate = { false };
           Object result = withLocks(locks, () -> {
             Object current = objectManager.reload(target);
-            if (!locks.containsAll(stackIds(current))) throw error(409, "ArchiveConcurrentChange", "The resource moved while it was being updated. Reload and try again.");
+            if (!locks.containsAll(stackIds(current)))
+                throw error(409, "ArchiveConcurrentChange", "The resource moved while it was being updated. Reload and try again.");
             boolean changed = archiveField && archived(current) != Boolean.TRUE.equals(body.get("archived"));
             boolean moved = parentField && !Objects.equals(destination, stackId(current));
-            boolean selectorChanged = selectorFields && (body.containsKey("selectorContainer") && !Objects.equals(body.get("selectorContainer"), ((Service) current).getSelectorContainer())
+            boolean selectorChanged = selectorFields && (body.containsKey("selectorContainer")
+                    && !Objects.equals(body.get("selectorContainer"), ((Service) current).getSelectorContainer())
                     || body.containsKey("selectorLink") && !Objects.equals(body.get("selectorLink"), ((Service) current).getSelectorLink()));
             if (selectorChanged) assertNotArchived(current);
             if (!changed && !moved && !selectorChanged) {
@@ -129,7 +132,7 @@ public class ArchiveValidationFilter extends AbstractDefaultResourceManagerFilte
 
     @Override public Object resourceAction(String type, ApiRequest request, ResourceManager next) {
         if ("activateservices".equals(request.getAction())) {
-            Object target = next.getById(type, request.getId(), ListOptions.forResourceActionTarget(request,type,request.getId()));
+            Object target = next.getById(type, request.getId(), ListOptions.forResourceActionTarget(request, type, request.getId()));
             if (target instanceof Stack stack) withLocks(stackIds(stack), () -> {
                 assertNotArchived(objectManager.reload(stack));
                 for (Service child : services(stack)) assertNotArchived(child);
@@ -144,7 +147,7 @@ public class ArchiveValidationFilter extends AbstractDefaultResourceManagerFilte
             Set<Long> ids=stackIds(service);
             return withLocks(ids, () -> {
                 Service current=objectManager.reload(service);
-                if (!ids.containsAll(stackIds(current))) throw error(409,"ArchiveConcurrentChange","The service moved. Reload and try again.");
+                if (!ids.containsAll(stackIds(current))) throw error(409, "ArchiveConcurrentChange", "The service moved. Reload and try again.");
                 if (blocksNewAssociations(current)) throw new ArchivedAssociationException();
                 return next.get();
             });
@@ -153,7 +156,7 @@ public class ArchiveValidationFilter extends AbstractDefaultResourceManagerFilte
 
     @Override public boolean blocksNewAssociations(Service service) {
         if (archived(service)) return true;
-        Stack parent=objectManager.loadResource(Stack.class,service.getStackId());
+        Stack parent=objectManager.loadResource(Stack.class, service.getStackId());
         return archived(parent);
     }
 
@@ -239,7 +242,8 @@ public class ArchiveValidationFilter extends AbstractDefaultResourceManagerFilte
 
     private static boolean flag(Object resource, String name) { return Boolean.TRUE.equals(DataAccessor.field(resource, name, Object.class)); }
     static boolean archived(Object resource) { return resource != null && flag(resource, "archived"); }
-    private static boolean terminal(Instance instance) { return instance.getRemoved() != null || instance.getState() != null && Set.of("removed", "purged").contains(instance.getState()); }
+    private static boolean terminal(Instance instance) { return instance.getRemoved() != null
+            || instance.getState() != null && Set.of("removed", "purged").contains(instance.getState()); }
     private static boolean transitioning(Object resource) {
         Object value = DataAccessor.field(resource, "transitioning", Object.class);
         return value != null && !Set.of("no", "false", "").contains(value.toString());
@@ -253,7 +257,8 @@ public class ArchiveValidationFilter extends AbstractDefaultResourceManagerFilte
             if (entry.getKey().equals(field)) continue;
             Object old = "archived".equals(entry.getKey()) ? archived(resource) : ObjectUtils.getPropertyIgnoreErrors(resource, entry.getKey());
             if (old == null) old = DataAccessor.field(resource, entry.getKey(), Object.class);
-            if (!Objects.equals(old, entry.getValue())) throw error(422, "ArchiveMixedUpdate", "Change archive status separately from other resource settings.");
+            if (!Objects.equals(old, entry.getValue()))
+                throw error(422, "ArchiveMixedUpdate", "Change archive status separately from other resource settings.");
         }
     }
 
@@ -298,7 +303,9 @@ public class ArchiveValidationFilter extends AbstractDefaultResourceManagerFilte
         });
     }
 
-    private static ClientVisibleException archivedError() { return error(409, "ResourceArchived", "Restore the service and its parent stack before starting or moving it."); }
+    private static ClientVisibleException archivedError() {
+        return error(409, "ResourceArchived", "Restore the service and its parent stack before starting or moving it.");
+    }
     private static ClientVisibleException error(int status, String code, String message) { return new ClientVisibleException(status, code, message, null); }
 
     private static class ArchiveLock extends AbstractLockDefinition implements BlockingLockDefinition {

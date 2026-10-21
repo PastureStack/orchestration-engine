@@ -96,7 +96,7 @@ public class ApiKeyQueryScopesTest {
             assertTrue(sql, sql.contains("`key_scope_managed_service`.`removed` is null"));
             assertTrue(sql, sql.contains("not(`key_scope_checked_map`.`account_id` <=>"));
             assertTrue(sql, sql.contains("`key_scope_checked_service`.`id` is null"));
-            assertTrue(sql, sql.contains("not(`key_scope_checked_service`.`environment_id` <=> coalesce(`instance`.`environment_id`"));
+            assertNullSafeStack(sql, "key_scope_checked_service", true);
             assertTrue(sql, sql.indexOf("not exists") < sql.indexOf("`instance`.`id` = 3"));
             assertTrue(sql, sql.contains("and not (false or coalesce"));
             assertTrue(sql, sql.indexOf("`instance`.`id` = 3") < sql.indexOf("limit"));
@@ -123,16 +123,26 @@ public class ApiKeyQueryScopesTest {
         assertTrue(sql, sql.contains("`instance`.`service_id` is null or exists"));
         assertTrue(sql, sql.contains("`key_scope_parent_service`.`removed` is null"));
         assertTrue(sql, sql.contains("`key_scope_parent_service`.`account_id` = `instance`.`account_id`"));
-        assertTrue(sql, sql.contains("`key_scope_parent_service`.`environment_id` <=> coalesce(`instance`.`environment_id`"));
+        assertNullSafeStack(sql, "key_scope_parent_service", false);
     }
     @Test public void everyManagedParentMustAgreeIncludingNullVersusNonNullStacks() {
         String sql = sql("container", InstanceTable.INSTANCE, ApiKeyPolicy.Effect.DENY,
                 rule("allow", ApiKeyPolicy.Effect.ALLOW, ApiKeyPolicy.Scope.stack("1st8")));
         // MIN chooses a scalar only after the NOT EXISTS coherence guard has
         // checked every map; neither another Stack nor a NULL Stack can hide.
-        assertTrue(sql, sql.contains("not(`key_scope_checked_service`.`environment_id` <=> coalesce(`instance`.`environment_id`"));
+        assertNullSafeStack(sql, "key_scope_checked_service", true);
         assertFalse(sql, sql.contains("`key_scope_checked_service`.`environment_id` <>"));
         assertTrue(sql, sql.indexOf("not exists") < sql.lastIndexOf("= 8"));
+    }
+    private static void assertNullSafeStack(String sql, String alias, boolean negated) {
+        String left = "`" + alias + "`.`environment_id`";
+        // Match both total-equality branches, including their outer negation
+        // for an incoherent managed parent. Account comparisons keep their
+        // distinct operator; only scalar Stack comparisons changed.
+        assertTrue(sql, sql.contains((negated ? "not ((" : "((") + left + " is null and coalesce("));
+        assertTrue(sql, sql.contains(") is null) or (" + left + " is not null and coalesce("));
+        assertTrue(sql, sql.contains(") is not null and " + left + " = coalesce("));
+        assertFalse(sql, sql.contains(left + " <=> coalesce("));
     }
     @Test public void standaloneDefaultAllowStillTreatsNullableStackDenyAsUnmatched() {
         String sql = sql("container", InstanceTable.INSTANCE, ApiKeyPolicy.Effect.ALLOW,

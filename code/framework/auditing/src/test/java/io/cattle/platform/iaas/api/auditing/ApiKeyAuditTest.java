@@ -494,6 +494,10 @@ public class ApiKeyAuditTest {
         ApiRequest request = new ApiRequest(null, null); request.setMethod("GET");
         request.setRequestObject(Map.of("accessKey", "private-public-key", "secretKey", "private-secret", "token", "private-jwt"));
         request.setAttribute("apiKey.audit.verifiedPrincipalAccountId", 999L);
+        // Correlation IDs may legitimately contain an unverified account's
+        // digits. Check identity fields, not a substring of random metadata.
+        String correlationId = "00000999-0000-4000-8000-000000000001";
+        request.setAttribute("apiKey.audit.requestId", correlationId);
         first.recordAuthenticationDenied(request, "InvalidApiCredential");
         first.recordAuthenticationDenied(request, "InvalidApiCredential");
         assertEquals(Boolean.TRUE, request.getAttribute("apiKey.audit.admitted")); assertEquals(1, pending(directory));
@@ -512,9 +516,12 @@ public class ApiKeyAuditTest {
         for (Map<String, Object> data : delivered) {
             assertEquals("anonymous", data.get("actor")); assertEquals("AUTHENTICATION_DENIED", data.get("outcome"));
             assertFalse(data.containsKey("keyId")); assertFalse(data.containsKey("policyRevision"));
+            assertEquals(java.util.Set.of("eventId", "requestId", "actor", "decision", "outcome", "phase", "reason",
+                    "operation", "targetType", "targetId", "httpStatus", "responseCode", "preview"), data.keySet());
+            assertEquals(correlationId, data.get("requestId"));
         }
         assertEquals(delivered.get(0).get("requestId"), delivered.get(1).get("requestId"));
-        assertFalse(delivered.toString().contains("private")); assertFalse(delivered.toString().contains("999"));
+        assertFalse(delivered.toString().contains("private"));
     }
 
     @Test

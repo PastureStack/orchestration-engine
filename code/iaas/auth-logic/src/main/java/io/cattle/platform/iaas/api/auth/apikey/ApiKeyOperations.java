@@ -11,7 +11,8 @@ public final class ApiKeyOperations {
     private static final Set<String> UPGRADES = Set.of("upgrade", "finishupgrade", "cancelupgrade", "rollback");
     private static final Set<String> UPDATES = Set.of("activate", "deactivate", "start", "stop", "restart", "rollingrestart", "restore", "update");
     private static final Set<String> DELETES = Set.of("remove", "purge", "delete");
-    private static final Set<String> EXPORTS = Set.of("exportconfig", "dockercomposeconfig", "ranchercomposeconfig", "composeconfig", "config", "pem", "certificate", "download", "downloadconfig", "secretvalues", "dbdump");
+    private static final Set<String> EXPORTS = Set.of("exportconfig", "dockercomposeconfig", "ranchercomposeconfig", "composeconfig", "config",
+            "pem", "certificate", "download", "downloadconfig", "secretvalues", "dbdump");
     // Bounded persisted-model pairs. Unknown, security-management and multi-root
     // actions remain unsupported; a plugin cannot borrow a familiar action name.
     // Source/acceptance boundaries: scripts/api-key-operation-inventory.json.
