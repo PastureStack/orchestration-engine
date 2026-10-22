@@ -40,6 +40,8 @@ public class ProjectResourceManagerAccessTest {
             for (String lookup : List.of("id", "uuid", "collection")) {
                 var request = new ApiRequest(null, null); request.setRequestParams(Map.of());
                 context.setApiRequest(request); context.setPolicy(policy);
+                assertSame(role, role.equals("noAccess") ? null : project, manager.projectAccess.checkAccess(project, policy));
+                assertNull("Pure check must not replace the manager's request grant", policy.authorizeObject(project));
                 Map<Object, Object> criteria = lookup.equals("id") ? Map.of("id", "5")
                         : lookup.equals("uuid") ? Map.of("uuid", "project-five") : Map.of();
                 Object result = manager.listInternal(null, "project", criteria, null);
