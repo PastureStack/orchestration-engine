@@ -72,7 +72,8 @@ public class ApiKeyTargetResolverTest {
             var target = resolver.resolveObject("project", project, personal);
             assertEquals("1a5", target.projectId());
             assertEquals(ApiKeyPolicyEvaluator.TargetLevel.PROJECT, target.level());
-            assertSame(project, personal.authorizeObject(project));
+            assertNull("Resolution must leave the normal manager's grant to the manager", personal.authorizeObject(project));
+            assertNull(context.getCapabilities(project));
         } finally { io.github.ibuildthecloud.gdapi.context.ApiContext.remove(); }
     }
     @Test public void persistedUpgradeLifecycleGraphResolvesOnlyForItsLiveRoots() {
@@ -1139,7 +1140,7 @@ public class ApiKeyTargetResolverTest {
         resolver = new ApiKeyTargetResolver();
         resolver.objectManager = mock(ObjectManager.class);
         resolver.projectAccess = mock(io.cattle.platform.iaas.api.auth.projects.ProjectAccessService.class);
-        when(resolver.projectAccess.authorize(any(), any())).thenAnswer(i -> i.getArgument(0));
+        when(resolver.projectAccess.checkAccess(any(), any())).thenAnswer(i -> i.getArgument(0));
         resolver.idFormatter = mock(IdFormatter.class);
         when(resolver.idFormatter.parseId(anyString())).thenAnswer(i -> i.<String>getArgument(0).replaceFirst("^1[a-z]+", ""));
         when(resolver.idFormatter.formatId(anyString(), any())).thenAnswer(i -> {

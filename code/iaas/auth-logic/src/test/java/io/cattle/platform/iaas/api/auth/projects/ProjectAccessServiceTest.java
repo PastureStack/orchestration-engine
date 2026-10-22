@@ -3,6 +3,7 @@ package io.cattle.platform.iaas.api.auth.projects;
 import static org.junit.Assert.*;
 import static org.mockito.Mockito.*;
 import io.cattle.platform.api.auth.Policy;
+import io.cattle.platform.api.auth.Identity;
 import io.cattle.platform.api.auth.impl.NoPolicyOptions;
 import io.cattle.platform.core.constants.ProjectConstants;
 import io.cattle.platform.core.dao.AccountDao;
@@ -42,11 +43,15 @@ public class ProjectAccessServiceTest {
         assertSame(project, policy.authorizeObject(project));
         assertEquals(List.of(), ApiContext.getContext().getCapabilities(project));
     }
-    @Test public void ownerCapabilitiesAreIdempotentAcrossGuardAndManager() {
+    @Test public void ownerCapabilitiesAreIdempotentAcrossManagerLookups() {
         when(dao.isProjectOwner(5L, 1L, false, policy.getIdentities())).thenReturn(true);
         assertSame(project, access.authorize(project, policy));
         assertSame(project, access.authorize(project, policy));
         assertEquals(List.of(ProjectConstants.OWNER, ProjectConstants.SET_MEMBERS), ApiContext.getContext().getCapabilities(project));
+        verify(dao, times(2)).hasAccessToProject(5L, 1L, false, policy.getIdentities());
+        verify(dao, times(2)).isProjectOwner(5L, 1L, false, policy.getIdentities());
+        verify(dao, times(2)).canSetProjectMembers(5L, 1L, false, policy.getIdentities());
+        verify(accounts, times(2)).isActiveAccount(project);
     }
     @Test public void setMembersDoesNotGrantOwner() {
         when(dao.canSetProjectMembers(5L, 1L, false, policy.getIdentities())).thenReturn(true);
@@ -74,8 +79,8 @@ public class ProjectAccessServiceTest {
         assertSame(project, access.authorize(project, policy));
     }
     @Test public void nonProjectAndMissingProjectDoNotConsultMembership() {
-        assertNull(access.authorize(null, policy)); project.setKind("user");
-        assertNull(access.authorize(project, policy)); verifyNoInteractions(dao, accounts);
+        assertNull(access.authorize(null, policy)); assertNull(access.checkAccess(null, policy)); project.setKind("user");
+        assertNull(access.authorize(project, policy)); assertNull(access.checkAccess(project, policy)); verifyNoInteractions(dao, accounts);
     }
     @Test public void backgroundChecksMembershipWithoutCreatingRequestGrant() {
         ApiContext.remove();
@@ -91,5 +96,70 @@ public class ProjectAccessServiceTest {
         assertSame(project, access.authorize(project, policy));
         assertNull(ApiContext.getContext().getApiRequest());
         assertNull(ApiContext.getContext().getCapabilities(project));
+    }
+    @Test public void pureCheckPreservesExistingCapabilitiesAndRequestGrants() {
+        var previous = new AccountRecord(); previous.setId(6L); previous.setKind("project");
+        policy.grantObjectAccess(previous);
+        var context = ApiContext.getContext();
+        var capabilities = new java.util.ArrayList<>(List.of("existing-formatter-capability"));
+        context.setCapabilities(project, capabilities);
+        Object whitelist = context.getApiRequest().getAttribute("whitelist");
+        for (String role : List.of("member", "setMembers", "owner")) {
+            when(dao.isProjectOwner(5L, 1L, false, policy.getIdentities())).thenReturn(role.equals("owner"));
+            when(dao.canSetProjectMembers(5L, 1L, false, policy.getIdentities())).thenReturn(role.equals("setMembers"));
+            assertSame(project, access.checkAccess(project, policy));
+            assertSame(capabilities, context.getCapabilities(project));
+            assertEquals(List.of("existing-formatter-capability"), capabilities);
+            assertSame(whitelist, context.getApiRequest().getAttribute("whitelist"));
+            assertSame(previous, policy.authorizeObject(previous));
+            assertNull(policy.authorizeObject(project));
+        }
+    }
+    @Test public void pureCheckRejectsRevokedMembershipDespiteEarlierManagerGrant() {
+        assertSame(project, access.authorize(project, policy));
+        var context = ApiContext.getContext();
+        var capabilities = context.getCapabilities(project);
+        Object whitelist = context.getApiRequest().getAttribute("whitelist");
+        when(dao.hasAccessToProject(5L, 1L, false, policy.getIdentities())).thenReturn(false);
+        assertNull(access.checkAccess(project, policy));
+        assertSame(capabilities, context.getCapabilities(project));
+        assertSame(whitelist, context.getApiRequest().getAttribute("whitelist"));
+        verify(dao, times(2)).hasAccessToProject(5L, 1L, false, policy.getIdentities());
+        verify(dao, times(1)).isProjectOwner(5L, 1L, false, policy.getIdentities());
+    }
+    @Test public void pureCheckPreservesInactiveOwnerBoundaryWithoutGranting() {
+        when(accounts.isActiveAccount(project)).thenReturn(false);
+        assertNull(access.checkAccess(project, policy));
+        when(dao.isProjectOwner(5L, 1L, false, policy.getIdentities())).thenReturn(true);
+        assertSame(project, access.checkAccess(project, policy));
+        assertNull(policy.authorizeObject(project));
+        assertNull(ApiContext.getContext().getCapabilities(project));
+    }
+    @Test public void pureCheckPreservesAllAccountIdentityInputsAndEvaluationOrder() {
+        Policy all = mock(Policy.class);
+        Set<Identity> identities = Set.of(mock(Identity.class));
+        when(all.getAccountId()).thenReturn(9L);
+        when(all.getIdentities()).thenReturn(identities);
+        when(all.isOption(Policy.AUTHORIZED_FOR_ALL_ACCOUNTS)).thenReturn(true);
+        when(dao.hasAccessToProject(5L, 9L, true, identities)).thenReturn(true);
+        when(dao.isProjectOwner(5L, 9L, true, identities)).thenReturn(true);
+        assertSame(project, access.checkAccess(project, all));
+        var order = inOrder(dao, accounts);
+        order.verify(dao).hasAccessToProject(5L, 9L, true, identities);
+        order.verify(dao).isProjectOwner(5L, 9L, true, identities);
+        order.verify(dao).canSetProjectMembers(5L, 9L, true, identities);
+        order.verify(accounts).isActiveAccount(project);
+        verifyNoMoreInteractions(dao, accounts);
+        verify(all, never()).grantObjectAccess(any());
+    }
+    @Test public void pureCheckDoesNotCreateBackgroundContextOrHttpRequest() {
+        ApiContext.remove();
+        assertSame(project, access.checkAccess(project, policy));
+        assertNull(ApiContext.getContext());
+        var context = ApiContext.newContext();
+        assertSame(project, access.checkAccess(project, policy));
+        assertNull(context.getApiRequest());
+        assertNull(context.getCapabilities(project));
+        assertNull(policy.authorizeObject(project));
     }
 }

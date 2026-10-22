@@ -4,6 +4,21 @@ The migration preserves established `io.cattle.*` Java packages, Maven coordinat
 
 New operator-facing names use PastureStack and `PASTURESTACK_*`. Compatibility identifiers must be changed only with an explicit data migration, a dual-read or dual-write transition, a rollback plan, and cross-repository verification.
 
+## Engine v0.183.352
+
+Custom API Key project-scope and ancestry checks use the same live membership
+and inactive-project authority decision without granting request-local object
+access or owner/set-members capabilities. The normal Project resource manager
+retains those grants and capabilities for direct project reads and mutations.
+Account collection filtering must not create additional project action metadata.
+
+Full and legacy Key operation capabilities, mutation-target loading, queued
+authorization and write-completion checks are unchanged. No API schema, policy
+record, operation registry or database migration is introduced. This correction
+does not establish that an unauthorized write succeeded. Publication and
+packaged Server acceptance remain separate from source validation; see the
+[352 release note](docs/releases/orchestration-engine-0.183.352.md).
+
 ## Engine v0.183.351
 
 Key-authenticated synchronous writes recheck the credential's current state,

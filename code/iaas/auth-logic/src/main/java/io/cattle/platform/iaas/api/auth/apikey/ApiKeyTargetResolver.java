@@ -182,9 +182,10 @@ public class ApiKeyTargetResolver {
 
     private boolean ownerAuthorizes(Object value, Policy owner) {
         // Project membership is not a generic Account object grant. Use the
-        // normal manager's live authority; every other object keeps its policy.
+        // normal manager's live checks without its formatter capabilities or
+        // request-local grant; every other object keeps its policy.
         if (value instanceof Account project && AccountConstants.PROJECT_KIND.equals(project.getKind())) {
-            return projectAccess.authorize(project, owner) != null;
+            return projectAccess.checkAccess(project, owner) != null;
         }
         return owner.authorizeObject(value) != null;
     }

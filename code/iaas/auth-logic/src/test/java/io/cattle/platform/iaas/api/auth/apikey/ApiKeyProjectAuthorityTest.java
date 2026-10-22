@@ -74,7 +74,8 @@ public class ApiKeyProjectAuthorityTest {
         guard(key(true)).authorize(request, policy);
         assertEquals("KeyRuleAllowed", request.getAttribute("apiKey.audit.reason"));
         assertEquals("ALLOW", request.getAttribute("apiKey.audit.decision"));
-        assertSame(project, policy.authorizeObject(project));
+        assertNull(policy.authorizeObject(project));
+        assertNull(ApiContext.getContext().getCapabilities(project));
     }
     @Test public void membershipCannotReplaceMissingKeyGrant() {
         var error = assertThrows(ClientVisibleException.class, () -> guard(key(false)).authorize(request, policy));
@@ -92,17 +93,61 @@ public class ApiKeyProjectAuthorityTest {
         assertEquals("OwnerPermissionDenied", assertThrows(ClientVisibleException.class,
                 () -> resolver.resolveObject("project", project, policy)).getCode());
     }
-    @Test public void requestLocalGrantDoesNotSurviveNextRequest() {
+    @Test public void targetResolutionDoesNotCreateARequestLocalGrant() {
         resolver.resolveObject("project", project, policy);
-        assertSame(project, policy.authorizeObject(project));
+        assertNull(policy.authorizeObject(project));
         ApiContext.getContext().setApiRequest(new ApiRequest(null, factory));
         assertNull(policy.authorizeObject(project));
+    }
+    @Test public void projectResolutionPreservesFormatterCapabilitiesForEveryRole() {
+        for (String role : List.of("member", "setMembers", "owner")) {
+            when(dao.isProjectOwner(5L, 1L, false, policy.getIdentities())).thenReturn(role.equals("owner"));
+            when(dao.canSetProjectMembers(5L, 1L, false, policy.getIdentities())).thenReturn(role.equals("setMembers"));
+            for (List<String> before : java.util.Arrays.asList(null, List.of("existing-formatter-capability"))) {
+                ApiContext.getContext().setCapabilities(project, before);
+                assertEquals("1a5", resolver.resolveObject("project", project, policy).projectId());
+                assertEquals(role, before, ApiContext.getContext().getCapabilities(project));
+                assertNull(role, policy.authorizeObject(project));
+            }
+        }
+    }
+    @Test public void collectionFilteringDoesNotBorrowAnotherProjectsOwnerCapabilities() {
+        var other = new AccountRecord(); other.setId(6L); other.setKind("project");
+        when(dao.hasAccessToProject(6L, 1L, false, policy.getIdentities())).thenReturn(true);
+        when(dao.isProjectOwner(6L, 1L, false, policy.getIdentities())).thenReturn(true);
+        when(accounts.isActiveAccount(other)).thenReturn(true);
+        when(resolver.objectManager.getType(project)).thenReturn("account");
+        when(resolver.objectManager.getType(other)).thenReturn("account");
+        var context = ApiContext.getContext();
+        context.setCapabilities(project, new java.util.ArrayList<>(List.of("existing-project-capability")));
+        context.setCapabilities(other, new java.util.ArrayList<>(List.of("existing-other-capability")));
+        var collectionGuard = guard(key(true)); collectionGuard.objectManager = resolver.objectManager;
+        assertEquals(List.of(project), collectionGuard.filterCollection(request, List.of(project, other)));
+        assertEquals(List.of("existing-project-capability"), context.getCapabilities(project));
+        assertEquals(List.of("existing-other-capability"), context.getCapabilities(other));
+        assertNull(policy.authorizeObject(project));
+        assertNull(policy.authorizeObject(other));
     }
     @Test public void fullStillUsesOriginalAuthorizationPipeline() {
         guard(new ApiKeyPolicy(ApiKeyPolicy.Mode.FULL, ApiKeyPolicy.Effect.ALLOW, null, List.of())).authorize(request, policy);
         assertEquals("KeyFullAccess", request.getAttribute("apiKey.audit.reason"));
         verifyNoInteractions(dao, accounts, resolver.objectManager);
         assertNull(policy.authorizeObject(project));
+    }
+    @Test public void fullAndLegacyCollectionKeepTheOriginalObjectsAndCapabilities() {
+        ApiKeyPolicy full = new ApiKeyPolicy(ApiKeyPolicy.Mode.FULL, ApiKeyPolicy.Effect.ALLOW, null, List.of());
+        var context = ApiContext.getContext();
+        var capabilities = new java.util.ArrayList<>(List.of("original-capability"));
+        context.setCapabilities(project, capabilities);
+        List<?> values = List.of(project);
+        for (ApiKeyPolicy value : java.util.Arrays.asList(null, full)) {
+            var service = guard(value); service.objectManager = resolver.objectManager;
+            assertSame(values, service.filterCollection(request, values));
+            assertSame(capabilities, context.getCapabilities(project));
+            assertEquals(List.of("original-capability"), capabilities);
+            assertNull(policy.authorizeObject(project));
+        }
+        verifyNoInteractions(dao, accounts, resolver.objectManager);
     }
     private void acceptedProjectReference(String type, String method) {
         var field = mock(Field.class); when(field.isCreate()).thenReturn(true); when(field.isUpdate()).thenReturn(true);
