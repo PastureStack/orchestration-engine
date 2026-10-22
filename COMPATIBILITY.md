@@ -4,6 +4,15 @@ The migration preserves established `io.cattle.*` Java packages, Maven coordinat
 
 New operator-facing names use PastureStack and `PASTURESTACK_*`. Compatibility identifiers must be changed only with an explicit data migration, a dual-read or dual-write transition, a rollback plan, and cross-repository verification.
 
+## Engine v0.183.353
+
+Public endpoint reconciliation compares the complete address, port, service,
+host and instance identity without depending on list order. Replacing an
+instance at the same address updates persisted endpoint references. The shared
+endpoint DTO equality, API reference authorization and removed-instance query
+filters are unchanged. No database migration or direct data rewrite is required;
+see the [353 release note](docs/releases/orchestration-engine-0.183.353.md).
+
 ## Engine v0.183.352
 
 Custom API Key project-scope and ancestry checks use the same live membership

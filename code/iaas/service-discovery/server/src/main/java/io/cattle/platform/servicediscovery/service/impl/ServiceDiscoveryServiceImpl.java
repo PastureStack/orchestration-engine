@@ -503,28 +503,30 @@ public class ServiceDiscoveryServiceImpl implements ServiceDiscoveryService {
         List<PublicEndpoint> oldData = new ArrayList<>();
         oldData.addAll(DataAccessor.fields(reloaded)
                 .withKey(ServiceConstants.FIELD_PUBLIC_ENDPOINTS)
-                .withDefault(Collections.EMPTY_LIST)
+                .withDefault(Collections.emptyList())
                 .asList(jsonMapper, PublicEndpoint.class));
 
-        Set<String> newPortToIp = new HashSet<>();
-        Set<String> oldPortToIp = new HashSet<>();
-        for (PublicEndpoint newD : newData) {
-            newPortToIp.add(new StringBuilder().append(newD.getPort()).append("_").append(newD.getIpAddress())
-                    .toString());
-        }
-
-        for (PublicEndpoint oldD : oldData) {
-            oldPortToIp.add(new StringBuilder().append(oldD.getPort()).append("_").append(oldD.getIpAddress())
-                    .toString());
-        }
-
-        if (oldPortToIp.containsAll(newPortToIp) && newPortToIp.containsAll(oldPortToIp)) {
+        List<PublicEndpoint> endpoints = newData == null ? Collections.emptyList() : newData;
+        if (endpointIdentities(oldData).equals(endpointIdentities(endpoints))) {
             return;
         }
 
         objectManager.reload(object);
-        objectManager.setFields(object, ServiceConstants.FIELD_PUBLIC_ENDPOINTS, newData);
+        objectManager.setFields(object, ServiceConstants.FIELD_PUBLIC_ENDPOINTS, endpoints);
         publishEvent(object);
+    }
+
+    private static Set<EndpointIdentity> endpointIdentities(List<PublicEndpoint> endpoints) {
+        Set<EndpointIdentity> identities = new HashSet<>();
+        for (PublicEndpoint endpoint : endpoints) {
+            identities.add(new EndpointIdentity(endpoint.getIpAddress(), endpoint.getPort(),
+                    endpoint.getServiceId(), endpoint.getHostId(), endpoint.getInstanceId()));
+        }
+        return identities;
+    }
+
+    // PublicEndpoint equality only covers the socket; reconciliation also owns the references.
+    private record EndpointIdentity(String ipAddress, Integer port, String serviceId, String hostId, String instanceId) {
     }
 
     protected void reconcileHostEndpointsImpl(final Host host) {
