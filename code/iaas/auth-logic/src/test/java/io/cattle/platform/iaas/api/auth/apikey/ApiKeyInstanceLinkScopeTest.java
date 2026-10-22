@@ -300,7 +300,7 @@ public class ApiKeyInstanceLinkScopeTest {
             link.setId(9L); link.setAccountId(5L); link.setInstanceId(3L); link.setTargetInstanceId(4L); link.setState("active"); add(InstanceLink.class, link);
             resolver.objectManager = mock(ObjectManager.class);
             resolver.projectAccess = mock(ProjectAccessService.class);
-            when(resolver.projectAccess.authorize(same(project), any(Policy.class))).thenAnswer(i ->
+            when(resolver.projectAccess.checkAccess(same(project), any(Policy.class))).thenAnswer(i ->
                     ((Policy) i.getArgument(1)).getAccountId() == project.getId() ? project : null);
             when(resolver.objectManager.loadResource(any(Class.class), any(Long.class))).thenAnswer(i -> lookup(i.getArgument(0), i.getArgument(1)));
             when(resolver.objectManager.loadResource(anyString(), any(Long.class))).thenAnswer(i -> {

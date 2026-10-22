@@ -8,14 +8,21 @@ Rancher 1.6 ecosystem. It is not affiliated with Rancher Labs or SUSE.
 This fork of [`rancher/cattle`](https://github.com/rancher/cattle) preserves
 upstream history, authorship, licenses, and dependency notices.
 
-## Engine 0.183.351
+## Engine 0.183.352
 
-Engine [0.183.351](docs/releases/orchestration-engine-0.183.351.md) closes the
-API Key revocation race at the database write boundary and prevents structured
-authentication, environment and driver secrets from entering ordinary audit
-payloads or jOOQ DEBUG/TRACE logs. Release assets, packaged Server acceptance
-and deployment each require their own evidence; source tests alone do not
-establish runtime acceptance.
+Engine [0.183.352](docs/releases/orchestration-engine-0.183.352.md) separates live
+project permission checks from request-local capability grants. Custom API Key
+scope checks no longer add project action metadata while filtering account
+responses. Normal project access still supplies its existing owner and
+set-members capabilities; live membership and inactive-project checks remain.
+This corrects an authorization-check side effect, not a demonstrated
+unauthorized write. Full and legacy Keys gain no new restriction.
+
+The Engine also closes the API Key revocation race at the database write
+boundary and prevents structured authentication, environment and driver secrets
+from entering ordinary audit payloads or jOOQ DEBUG/TRACE logs. Release assets,
+packaged Server acceptance and deployment each require their own evidence;
+source tests alone do not establish runtime acceptance.
 
 Before committing a Key-authenticated synchronous write, the existing write
 transaction locks and rereads that Key's current state, owner, kind, policy
@@ -102,7 +109,7 @@ evidence are maintained in the
 Acceptance is limited to the documented affected paths, not every resource and
 role combination.
 Versioned evidence and upgrade boundaries are in the
-[351 release note](docs/releases/orchestration-engine-0.183.351.md);
+[352 release note](docs/releases/orchestration-engine-0.183.352.md);
 older changes remain in [release notes](docs/releases).
 
 ## Build and validation
@@ -117,7 +124,7 @@ Before publishing an Engine artifact, run the complete package gate:
 
 ```sh
 bash scripts/check-cattle-jdk25-full-package
-ENGINE_VERSION=0.183.351 bash scripts/build --release
+ENGINE_VERSION=0.183.352 bash scripts/build --release
 bash scripts/check-release-artifact dist/artifacts/cattle.jar
 ```
 
