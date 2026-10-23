@@ -133,7 +133,7 @@ evidence are maintained in the
 Acceptance is limited to the documented affected paths, not every resource and
 role combination.
 Versioned evidence and upgrade boundaries are in the
-[353 release note](docs/releases/orchestration-engine-0.183.353.md);
+[354 release note](docs/releases/orchestration-engine-0.183.354.md);
 older changes remain in [release notes](docs/releases).
 
 ## Build and validation
@@ -148,7 +148,7 @@ Before publishing an Engine artifact, run the complete package gate:
 
 ```sh
 bash scripts/check-cattle-jdk25-full-package
-ENGINE_VERSION=0.183.353 bash scripts/build --release
+ENGINE_VERSION=0.183.354 bash scripts/build --release
 bash scripts/check-release-artifact dist/artifacts/cattle.jar
 ```
 
