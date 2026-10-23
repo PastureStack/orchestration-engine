@@ -6,7 +6,7 @@ cd "$repo_root"
 
 java_cmd=${JAVA_CMD:-java}
 runner_image=${RC16_CATTLE_STANDALONE_JDK_IMAGE:-maven:3.9.16-eclipse-temurin-25@sha256:1b1fc6d0168ea616afd1c861d6f32ec37c9ec2ffe88a0351b3771dd4ad86b0d8}
-expected_version=${EXPECTED_ENGINE_VERSION:-${ENGINE_VERSION:-0.183.353}}
+expected_version=${EXPECTED_ENGINE_VERSION:-${ENGINE_VERSION:-0.183.354}}
 artifact=${RC16_CATTLE_STANDALONE_JAR:-dist/artifacts/cattle.jar}
 
 # Full-package invokes Maven directly, without scripts/build's final copy.

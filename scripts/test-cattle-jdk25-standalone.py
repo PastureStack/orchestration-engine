@@ -67,7 +67,7 @@ class StandaloneGateTest(unittest.TestCase):
             if calls is not None:
                 calls.append((command, cwd, environment.copy(), timeout))
             if command[-1] == "-version":
-                log_path.write_text('openjdk version "25.0.4.1"')
+                log_path.write_text('openjdk version "25.0.5"')
                 return 0
             log_path.write_text(start_output)
             return start_status

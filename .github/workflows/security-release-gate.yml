@@ -36,7 +36,8 @@ jobs:
           mkdir -p evidence
           git rev-parse HEAD > evidence/source-revision.txt
           : > evidence/source-status.txt
-          sha256sum ubuntu-apt.lock .mvn/wrapper/maven-wrapper.properties > evidence/source-locks.sha256
+          sha256sum ubuntu-apt.lock ubuntu-security-packages.lock scripts/install-ubuntu-security-updates.sh .mvn/wrapper/maven-wrapper.properties > evidence/source-locks.sha256
+          python3 tools/pip-security-overlay/test-pip-vex.py
 
       - name: Build and test all Maven modules
         shell: bash
@@ -189,6 +190,9 @@ jobs:
         run: |
           set -euo pipefail
           docker inspect "$DAPPER_IMAGE" > evidence/dapper-image-inspect.json
+          docker run --rm --entrypoint python3 "$DAPPER_IMAGE" \
+            /usr/local/lib/pip-security-overlay/check-pip-vendor-slice.py \
+            > evidence/dapper-pip-vendor-proof.json
           docker run --rm --entrypoint sh "$DAPPER_IMAGE" -lc \
             "printf 'package\\tversion\\n'; dpkg-query -W -f='\${binary:Package}\\t\${Version}\\n' | LC_ALL=C sort" \
             > evidence/dapper-dpkg.tsv
@@ -270,8 +274,14 @@ jobs:
             -v "$HOME/.m2:/root/.m2:ro" \
             -v "$trivy_cache:/root/.cache/trivy" \
             "$TRIVY_IMAGE" image \
-            --offline-scan --scanners vuln --format json --output /work/evidence/dapper-image-vulnerabilities.json \
+            --offline-scan --scanners vuln --list-all-pkgs --format json --output /work/evidence/dapper-image-vulnerabilities.raw.json \
             "$DAPPER_IMAGE"
+          python3 tools/pip-security-overlay/filter-pip-vendor-findings.py \
+            --raw evidence/dapper-image-vulnerabilities.raw.json \
+            --proof evidence/dapper-pip-vendor-proof.json \
+            --output evidence/dapper-image-vulnerabilities.json \
+            --vex evidence/dapper-pip-vendor.vex.json \
+            --subject "$(docker image inspect --format '{{.Id}}' "$DAPPER_IMAGE")"
           rm -rf "$artifact_tree"
           trap - EXIT
 

@@ -4,6 +4,21 @@ The migration preserves established `io.cattle.*` Java packages, Maven coordinat
 
 New operator-facing names use PastureStack and `PASTURESTACK_*`. Compatibility identifiers must be changed only with an explicit data migration, a dual-read or dual-write transition, a rollback plan, and cross-repository verification.
 
+## Engine v0.183.354
+
+The Java major version remains 25; its security update is Temurin 25.0.5+8.
+The official CA package is installed after the locked Ubuntu bootstrap so the
+older snapshot cannot silently replace it. Build tooling uses the reproducible
+downstream pip 26.2.2+pasturestack.1 rebuild with released urllib3 2.8.0 and
+certifi 2026.10.19, including virtual-environment seeds and pip-vendored bundles.
+The upstream pip vendoring tool and its original patches are preserved; other
+vendored library sources remain unchanged. This is not an official PyPA release.
+The signed 2026-10-23 Ubuntu security snapshot supplies only the listed
+existing-package micro-updates. Package additions/removals and downgrades are
+rejected, and the resolved package manifest remains part of build evidence.
+No API, permission, schema, persistence or network-backend contract changes.
+See the [354 release note](docs/releases/orchestration-engine-0.183.354.md).
+
 ## Engine v0.183.353
 
 Public endpoint reconciliation compares the complete address, port, service,

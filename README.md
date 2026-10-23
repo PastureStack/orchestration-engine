@@ -8,7 +8,21 @@ Rancher 1.6 ecosystem. It is not affiliated with Rancher Labs or SUSE.
 This fork of [`rancher/cattle`](https://github.com/rancher/cattle) preserves
 upstream history, authorship, licenses, and dependency notices.
 
-## Engine 0.183.353
+## Engine 0.183.354
+
+Engine [0.183.354](docs/releases/orchestration-engine-0.183.354.md) refreshes
+the existing Java 25 baseline to Temurin 25.0.5+8 and the reviewed Ubuntu CA
+package. Python packaging tools and certificate bundles are pinned and checked
+in the builder, including newly created virtual environments. Pip is a
+reproducible downstream 26.2.2+pasturestack.1 rebuild using released urllib3
+2.8.0 and pip's original vendoring patches, not an official PyPA release.
+Existing affected
+Ubuntu packages receive the official same-series micro-updates recorded in
+`ubuntu-security-packages.lock`; unrelated locked packages and application
+contracts are retained. This is not a database,
+authorization or networking migration.
+
+## Retained changes from Engine 0.183.353
 
 Engine [0.183.353](docs/releases/orchestration-engine-0.183.353.md) refreshes
 public endpoint references when a service upgrade replaces a container while
