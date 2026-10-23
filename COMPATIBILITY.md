@@ -58,7 +58,7 @@ default and valid administrator-selected directories, including intentional
 symlinks, while checking ownership, directory identity and bounded file access.
 Unsafe existing permissions fail with an error; they are not silently changed.
 
-Build recipes keep Docker CLI 29.7.2 and JDK 25 while pinning their security
+Build recipes keep Docker CLI 29.x (currently 29.9.2) and JDK 25 while pinning their security
 inputs to Go 1.27.3 and Temurin 25.0.4.1+1. Ubuntu curl 8.18.0-1ubuntu2.8
 and OpenSSL 3.5.5-1ubuntu3.7 are complete-package security overlays with
 exact final-version readback; the fixed base snapshot and all other direct

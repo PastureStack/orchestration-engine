@@ -22,6 +22,13 @@ Ubuntu packages receive the official same-series micro-updates recorded in
 contracts are retained. This is not a database,
 authorization or networking migration.
 
+Current build recipes use Docker CLI 29.9.2 and include the official SQLite
+security update. These build-only changes do not change the published
+0.183.354 JAR or broaden the supported Docker host range. Release checks inspect
+all severities: every available fix, High/Critical finding and unreviewed finding
+blocks publication. Only exact, documented Low/Medium findings without an
+official fix may remain; raw findings and dependency evidence are retained.
+
 ## Retained changes from Engine 0.183.353
 
 Engine [0.183.353](docs/releases/orchestration-engine-0.183.353.md) refreshes

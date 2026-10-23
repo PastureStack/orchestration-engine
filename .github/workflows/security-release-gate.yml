@@ -19,7 +19,7 @@ jobs:
     timeout-minutes: 120
     env:
       DAPPER_IMAGE: pasturestack/orchestration-engine-dapper:${{ github.sha }}
-      TRIVY_IMAGE: aquasec/trivy:0.73.0@sha256:7cced7cae583819fc7806d4cbc0dbbc7cad18b99f7d3e235192e6da8c091045c
+      TRIVY_IMAGE: aquasec/trivy:0.74.0@sha256:62b1e65e8869bc4b4c6aa4fa2b21595256c7c2f6018a9d9ad61caf87187c1969
       CYCLONEDX_MAVEN_PLUGIN_VERSION: 2.9.3
     steps:
       - name: Check out candidate
@@ -38,6 +38,7 @@ jobs:
           : > evidence/source-status.txt
           sha256sum ubuntu-apt.lock ubuntu-security-packages.lock scripts/install-ubuntu-security-updates.sh .mvn/wrapper/maven-wrapper.properties > evidence/source-locks.sha256
           python3 tools/pip-security-overlay/test-pip-vex.py
+          python3 .github/scripts/test_runtime_vulnerability_policy.py
 
       - name: Build and test all Maven modules
         shell: bash
@@ -282,6 +283,14 @@ jobs:
             --output evidence/dapper-image-vulnerabilities.json \
             --vex evidence/dapper-pip-vendor.vex.json \
             --subject "$(docker image inspect --format '{{.Id}}' "$DAPPER_IMAGE")"
+          # A scanner which misses an ELF is not a clean Go dependency scan.
+          jq -e 'any(.Results[]?; .Type == "gobinary" and
+            (.Target | endswith("/docker")) and (.Packages | length > 0))' \
+            evidence/dapper-image-vulnerabilities.raw.json >/dev/null
+          python3 .github/scripts/enforce-runtime-vulnerabilities.py \
+            --phase artifact --repository PastureStack/orchestration-engine
+          python3 .github/scripts/enforce-runtime-vulnerabilities.py \
+            --phase builder --repository PastureStack/orchestration-engine
           rm -rf "$artifact_tree"
           trap - EXIT
 
@@ -309,6 +318,8 @@ jobs:
             printf 'artifact_jars=%s\n' "$artifact_jars"
             printf 'dapper_critical=%s\n' "$dapper_critical"
             printf 'dapper_high=%s\n' "$dapper_high"
+            printf 'artifact_fixed_all=%s\n' "$(jq '[.Results[]?.Vulnerabilities[]? | select((.FixedVersion // "") != "")] | length' evidence/cattle-artifact-vulnerabilities.json)"
+            printf 'dapper_fixed_all=%s\n' "$(jq '[.Results[]?.Vulnerabilities[]? | select((.FixedVersion // "") != "")] | length' evidence/dapper-image-vulnerabilities.json)"
           } | tee evidence/security-summary.txt
 
       - name: Upload review evidence

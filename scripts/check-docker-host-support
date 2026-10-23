@@ -21,15 +21,15 @@ supported='supported.docker.range=~v1.12.3 || ~v1.13.0 || ~v17.03.0 || ~v17.06.0
 
 require_line "$defaults" "$supported"
 require_line "$defaults" 'newest.docker.version=v29.8.0'
-require_line Makefile 'DOCKER_VERSION ?= 29.7.2'
-require_line Dockerfile 'ARG DOCKER_VERSION=29.7.2'
-require_line Dockerfile.dapper 'ARG DOCKER_VERSION=29.7.2'
+require_line Makefile 'DOCKER_VERSION ?= 29.9.2'
+require_line Dockerfile 'ARG DOCKER_VERSION=29.9.2'
+require_line Dockerfile.dapper 'ARG DOCKER_VERSION=29.9.2'
 require_line Dockerfile 'FROM golang:1.27.3-bookworm@sha256:972b4110ba0f47539a975c31e52c64765e1ff19f2d74469ae4a595c6676e80a5 AS docker-cli-build'
 require_line Dockerfile.dapper 'FROM golang:1.27.3-bookworm@sha256:972b4110ba0f47539a975c31e52c64765e1ff19f2d74469ae4a595c6676e80a5 AS docker-cli-build'
-require_line Dockerfile 'ARG DOCKER_CLI_COMMIT=a7dcaa6fdb6ed04aacbfdc76357fdae01605609e'
-require_line Dockerfile.dapper 'ARG DOCKER_CLI_COMMIT=a7dcaa6fdb6ed04aacbfdc76357fdae01605609e'
-require_line Dockerfile 'ADD --checksum=sha256:6e5c91d3a5a79db78cf989d07727d00e757aa0da4d135a3ce4b86061b83fb511 https://codeload.github.com/docker/cli/tar.gz/a7dcaa6fdb6ed04aacbfdc76357fdae01605609e /tmp/docker-cli.tar.gz'
-require_line Dockerfile.dapper 'ADD --checksum=sha256:6e5c91d3a5a79db78cf989d07727d00e757aa0da4d135a3ce4b86061b83fb511 https://codeload.github.com/docker/cli/tar.gz/a7dcaa6fdb6ed04aacbfdc76357fdae01605609e /tmp/docker-cli.tar.gz'
+require_line Dockerfile 'ARG DOCKER_CLI_COMMIT=a82e528901260c8df6073311379eac65f92db204'
+require_line Dockerfile.dapper 'ARG DOCKER_CLI_COMMIT=a82e528901260c8df6073311379eac65f92db204'
+require_line Dockerfile 'ADD --checksum=sha256:cdc8005e1958e90c035971b838cf333dc7602868c4e3ee2ccec859cf0ddc3c78 https://github.com/docker/cli/archive/a82e528901260c8df6073311379eac65f92db204.tar.gz /tmp/docker-cli.tar.gz'
+require_line Dockerfile.dapper 'ADD --checksum=sha256:cdc8005e1958e90c035971b838cf333dc7602868c4e3ee2ccec859cf0ddc3c78 https://github.com/docker/cli/archive/a82e528901260c8df6073311379eac65f92db204.tar.gz /tmp/docker-cli.tar.gz'
 
 if grep -Fq 'download.docker.com/linux/static/stable' Dockerfile Dockerfile.dapper; then
     fail vulnerable_prebuilt_docker_cli
