@@ -192,4 +192,6 @@ drop = ["*.dist-info/", "bin/"]
 
 
 if __name__ == "__main__":
+    if sys.flags.optimize:
+        raise RuntimeError("Security build verification must not run with Python optimization")
     main()
