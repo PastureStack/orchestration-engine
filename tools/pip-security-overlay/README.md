@@ -61,8 +61,15 @@ bash verify-pip-runtime.sh --virtualenv /usr/share/python-wheels
   `2c56ddb5d0025ed481d962c0f5d62d19dec7476d` 只修 Cython/C 實作；本 wheel
   無 `.so/.pyd`，實際 `Unpacker` 為 `pip._vendor.msgpack.fallback`。
   不為消除套件名稱掃描結果而更動未受影響的 msgpack。
-- setuptools 70.3.0 僅保留 `pkg_resources`；上游 vendoring 本來就移除
-  `setuptools/package_index.py`。相關 package_index finding 需按缺少元件
-  的證據處理，不能把此理由套用到可達的 urllib3。
+- setuptools 70.3.0 僅保留 `pkg_resources`；CVE-2025-47273 所需的
+  `setuptools/package_index.py` 與 CVE-2026-59890 所需的
+  `setuptools/command/egg_info.py` 均不存在。
+
+`check-pip-vendor-slice.py` 會比對實際載入的全部 299 個 vendor 檔案與
+固定 wheel，拒絕額外檔案、其他同版本完整 distribution。只有取得此證據後，
+`filter-pip-vendor-findings.py` 才可對上述三個 CVE（含 msgpack GHSA 別名）
+產生綁定該映像的 OpenVEX 與有效掃描檔。原始掃描必須另行保存；未知 CVE、
+其他版本、非 SBOM 套件來源與 urllib3 finding 全部保留，不做泛用版本排除。
+執行 `python3 test-pip-vex.py` 可驗證以上六組正反控制。
 
 官方政策：https://pip.pypa.io/en/stable/development/vendoring-policy/

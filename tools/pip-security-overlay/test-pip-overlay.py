@@ -62,6 +62,7 @@ def boundary_tests(expect_fixed):
                 assert isinstance(error, ProtocolError), repr(error)
                 assert "exceeded maximum allowed length" in str(error), str(error)
         if expect_fixed:
+            assert error_description != "no exception", "malicious chunk line was accepted"
             assert wire.largest_readline <= 65537, wire.largest_readline
         else:
             assert wire.largest_readline == 131072, (wire.largest_readline, error_description)
@@ -137,4 +138,6 @@ def main():
 
 
 if __name__ == "__main__":
+    if sys.flags.optimize:
+        raise RuntimeError("Security regression tests must not run with Python optimization")
     main()
