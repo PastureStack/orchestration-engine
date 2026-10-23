@@ -19,12 +19,12 @@ COPY ubuntu-apt.lock /licenses/ubuntu-apt.lock
 COPY ubuntu-security-packages.lock /licenses/ubuntu-security-packages.lock
 COPY scripts/install-ubuntu-security-updates.sh /usr/local/bin/install-ubuntu-security-updates
 COPY scripts/install-python-security-tools.sh /usr/local/bin/install-python-security-tools
+COPY tools/pip-security-overlay /usr/local/lib/pip-security-overlay
 ADD --checksum=sha256:fac6f0728cf9490a7a698e6b343e4140283e92355b060193c04f5770a666df8a https://security.ubuntu.com/ubuntu/pool/main/p/python3.14/libpython3.14-minimal_3.14.4-1ubuntu0.2_amd64.deb /tmp/libpython3.14-minimal.deb
 ADD --checksum=sha256:3c267ef0f902f763c3615cbf28dd6fe91d2e4f603075d7f03db99f8d4eb66f46 https://security.ubuntu.com/ubuntu/pool/main/p/python3.14/libpython3.14-stdlib_3.14.4-1ubuntu0.2_amd64.deb /tmp/libpython3.14-stdlib.deb
 ADD --checksum=sha256:0a7ea8a52834f9b3de0f11758924f80f7a6ebcbb4b02a55ba4f457503569f55f https://security.ubuntu.com/ubuntu/pool/main/p/python3.14/python3.14-minimal_3.14.4-1ubuntu0.2_amd64.deb /tmp/python3.14-minimal.deb
 ADD --checksum=sha256:780c308c47d8afcbb7d339f0023350e7cf60c1a37e9572a1f88774cc18f60526 https://security.ubuntu.com/ubuntu/pool/main/p/python3.14/python3.14_3.14.4-1ubuntu0.2_amd64.deb /tmp/python3.14.deb
 ADD --checksum=sha256:cad2456bf3cb57cb18d2c82b48b549e5b4ac6eee9b3e14e65334209387e3d0ae https://security.ubuntu.com/ubuntu/pool/universe/p/python3.14/python3.14-venv_3.14.4-1ubuntu0.2_amd64.deb /tmp/python3.14-venv.deb
-ADD --checksum=sha256:fd7f4dfa8190e014013b9f08f3e973f4e4c26ffd179a204895533a7254813a70 https://files.pythonhosted.org/packages/3f/06/3e4420302363fbb71be3c7f35ce042f54bfca330e3e66b3a2e3c4cca579f/pip-26.2.2-py3-none-any.whl /tmp/pip-26.2.2-py3-none-any.whl
 ADD --checksum=sha256:42d35340cc5b9ba78e818ddbff0c5b1c2b779de448a340fd1b989f5fa8670e1b https://files.pythonhosted.org/packages/c4/51/29046e48f693c54e5b7412216d447a1d8362c9653148d98c02cdf65fa733/certifi-2026.10.19-py3-none-any.whl /tmp/certifi-2026.10.19-py3-none-any.whl
 COPY --chmod=0755 scripts/install-snapshot-packages /usr/local/bin/install-snapshot-packages
 ADD --checksum=sha256:5b6326f1932cfd7be57130561dc78192f09ed9f58bfbe6606ed0c50510c3b6cd https://archive.ubuntu.com/ubuntu/pool/main/c/ca-certificates/ca-certificates_20260816ubuntu0.26.04.1_all.deb /tmp/ca-certificates.deb
@@ -42,7 +42,7 @@ ARG DOCKER_VERSION=29.7.2
 ENV JAVA_HOME=/opt/java/openjdk
 ENV MAVEN_HOME=/opt/apache-maven
 ENV PATH=${JAVA_HOME}/bin:${MAVEN_HOME}/bin:${PATH}
-ENV VIRTUALENV_PIP=26.2.2 \
+ENV VIRTUALENV_PIP=26.2.2+pasturestack.1 \
     VIRTUALENV_EXTRA_SEARCH_DIR=/usr/share/python-wheels \
     VIRTUALENV_NO_PERIODIC_UPDATE=1
 

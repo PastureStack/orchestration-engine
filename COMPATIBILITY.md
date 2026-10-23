@@ -8,8 +8,11 @@ New operator-facing names use PastureStack and `PASTURESTACK_*`. Compatibility i
 
 The Java major version remains 25; its security update is Temurin 25.0.5+8.
 The official CA package is installed after the locked Ubuntu bootstrap so the
-older snapshot cannot silently replace it. Build tooling uses pip 26.2.2 and
-certifi 2026.10.19, including virtual-environment seed and pip-vendored bundles.
+older snapshot cannot silently replace it. Build tooling uses the reproducible
+downstream pip 26.2.2+pasturestack.1 rebuild with released urllib3 2.8.0 and
+certifi 2026.10.19, including virtual-environment seeds and pip-vendored bundles.
+The upstream pip vendoring tool and its original patches are preserved; other
+vendored library sources remain unchanged. This is not an official PyPA release.
 The signed 2026-10-23 Ubuntu security snapshot supplies only the listed
 existing-package micro-updates. Package additions/removals and downgrades are
 rejected, and the resolved package manifest remains part of build evidence.
