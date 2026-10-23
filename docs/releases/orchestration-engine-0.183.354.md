@@ -2,7 +2,9 @@
 
 This release refreshes the existing Java 25 build/runtime baseline to
 Temurin 25.0.5+8 and installs Ubuntu's reviewed CA package
-20260816ubuntu0.26.04.1 without changing the other snapshot package pins.
+20260816ubuntu0.26.04.1. The additional security lock applies available official
+Ubuntu 26.04 micro-updates to existing affected packages, without adding,
+removing or downgrading packages or replacing the base release.
 Official artifacts remain SHA256-pinned.
 
 The Ubuntu Python interpreter ABI is retained while its installed 3.14 package

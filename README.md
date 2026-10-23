@@ -13,8 +13,10 @@ upstream history, authorship, licenses, and dependency notices.
 Engine [0.183.354](docs/releases/orchestration-engine-0.183.354.md) refreshes
 the existing Java 25 baseline to Temurin 25.0.5+8 and the reviewed Ubuntu CA
 package. Python packaging tools and certificate bundles are pinned and checked
-in the builder, including newly created virtual environments. Other locked
-Ubuntu packages and application contracts are retained; this is not a database,
+in the builder, including newly created virtual environments. Existing affected
+Ubuntu packages receive the official same-series micro-updates recorded in
+`ubuntu-security-packages.lock`; unrelated locked packages and application
+contracts are retained. This is not a database,
 authorization or networking migration.
 
 ## Retained changes from Engine 0.183.353

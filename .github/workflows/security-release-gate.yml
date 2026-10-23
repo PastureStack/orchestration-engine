@@ -36,7 +36,7 @@ jobs:
           mkdir -p evidence
           git rev-parse HEAD > evidence/source-revision.txt
           : > evidence/source-status.txt
-          sha256sum ubuntu-apt.lock .mvn/wrapper/maven-wrapper.properties > evidence/source-locks.sha256
+          sha256sum ubuntu-apt.lock ubuntu-security-packages.lock scripts/install-ubuntu-security-updates.sh .mvn/wrapper/maven-wrapper.properties > evidence/source-locks.sha256
 
       - name: Build and test all Maven modules
         shell: bash
