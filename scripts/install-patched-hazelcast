@@ -5,12 +5,12 @@ repo_root=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 cd "$repo_root"
 
 maven_cmd=${1:-mvn}
-runtime_version=5.7.5
-release_tag=v5.7.5
-# Official 5.7.5 release identities verified by published-asset readback.
-release_commit=a9aea563870201462dc24f778a06279a08ed5841
-release_sha256=0f536a9c7bcd00f2369586fb6ca1606f7e45f3225e24795d10d38397051c8715
-release_asset_id=602470126
+runtime_version=5.7.6
+release_tag=v5.7.6
+# Official 5.7.6 release identities verified by published-asset readback.
+release_commit=bd071c12bc11808a5f91e8b5d0308decd79e5af9
+release_sha256=825b5fc9526a10549bcb580f2d6c03bf1f5667625661722c0406ea6f796e83f2
+release_asset_id=669032858
 jackson3_version=3.2.3
 jackson2_version=2.22.3
 if ! [[ "$release_commit" =~ ^[0-9a-f]{40}$ && "$release_sha256" =~ ^[0-9a-f]{64}$ && "$release_asset_id" =~ ^[1-9][0-9]*$ ]]; then
