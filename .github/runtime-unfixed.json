@@ -2,6 +2,17 @@
   "repository": "PastureStack/orchestration-engine",
   "unfixed": [
     {
+      "id": "CVE-2026-85747",
+      "package": "github.com/docker/distribution",
+      "version": "v2.8.3+incompatible",
+      "purl": "pkg:golang/github.com/docker/distribution@v2.8.3%2Bincompatible",
+      "severity": "MEDIUM",
+      "status": "no_official_fix",
+      "officialEvidence": "https://github.com/distribution/distribution/security/advisories/GHSA-685w-q87j-wqw3",
+      "reason": "The current Docker CLI 29.9.2 source still pins distribution v2.8.3. The upstream fix is v3.1.2, a different module/import major version; no compatible v2 release is available. Retain this dependency finding without claiming the underlying library is fixed.",
+      "checkedAt": "2026-10-23"
+    },
+    {
       "severity": "LOW",
       "package": "login.defs",
       "id": "CVE-2024-56433",
