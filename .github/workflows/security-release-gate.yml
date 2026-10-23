@@ -192,7 +192,6 @@ jobs:
           docker inspect "$DAPPER_IMAGE" > evidence/dapper-image-inspect.json
           docker run --rm --entrypoint python3 "$DAPPER_IMAGE" \
             /usr/local/lib/pip-security-overlay/check-pip-vendor-slice.py \
-            --wheel /usr/share/python-wheels/pip-26.2.2+pasturestack.1-py3-none-any.whl \
             > evidence/dapper-pip-vendor-proof.json
           docker run --rm --entrypoint sh "$DAPPER_IMAGE" -lc \
             "printf 'package\\tversion\\n'; dpkg-query -W -f='\${binary:Package}\\t\${Version}\\n' | LC_ALL=C sort" \

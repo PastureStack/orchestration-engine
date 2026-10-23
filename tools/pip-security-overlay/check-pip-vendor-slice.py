@@ -68,14 +68,17 @@ if __name__ == "__main__":
     if sys.flags.optimize:
         raise RuntimeError("Security verification must not run with Python optimization")
     parser = argparse.ArgumentParser()
-    parser.add_argument("--wheel", type=Path)
     parser.add_argument("--output", type=Path)
     args = parser.parse_args()
-    if args.wheel:
-        result = verify(args.wheel)
-    else:
-        # CPython/Ubuntu 3.14 exposes its actual selected bundled wheel here.
+    # The security proof is about the interpreter's actual selected seed, not
+    # an arbitrary file supplied through a CLI path.
+    try:
         import ensurepip
+    except ImportError:
+        # compose's distro runtime intentionally has no ensurepip package.
+        # Its build retains the verified input at this fixed, non-user path.
+        result = verify(Path("/opt/python-security/pip-26.2.2+pasturestack.1-py3-none-any.whl"))
+    else:
         with ensurepip._get_pip_whl_path_ctx() as wheel:
             result = verify(Path(wheel))
     data = json.dumps(result, indent=2) + "\n"
