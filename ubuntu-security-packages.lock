@@ -20,6 +20,7 @@ libmount1=2.41.3-3ubuntu2.2
 libperl5.40=5.40.1-7ubuntu0.3
 libsmartcols1=2.41.3-3ubuntu2.2
 libssh2-1t64=1.11.1-1ubuntu0.26.04.4
+libsqlite3-0=3.46.1-9ubuntu0.3
 libssl3t64=3.5.5-1ubuntu3.7
 libuuid1=2.41.3-3ubuntu2.2
 linux-libc-dev=7.0.0-38.38
