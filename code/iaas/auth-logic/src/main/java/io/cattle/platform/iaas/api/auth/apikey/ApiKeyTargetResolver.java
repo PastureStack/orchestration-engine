@@ -63,11 +63,40 @@ public class ApiKeyTargetResolver {
             "storagePoolHostMap", "networkPolicy", "projectMember");
     static final Set<String> PLATFORM = Set.of("schema", "setting", "userPreference", "account", "apiKey", "apiKeyRestricted", "auditLog");
     @Inject ObjectManager objectManager;
+    @Inject io.cattle.platform.iaas.api.auth.upgrade.AiServiceUpgradePlanStore aiPlans;
     @Inject ProjectAccessService projectAccess;
     @Inject @Named("DefaultIdFormatter") IdFormatter idFormatter;
 
     public List<ApiKeyPolicyEvaluator.Target> resolve(ApiRequest request, Policy owner) {
         String type = request.getType();
+        if ("aiServiceUpgradePlan".equals(type) || "aiServiceDescriptionUpdate".equals(type)) {
+            Long serviceId;
+            if (request.getId() == null) {
+                if (!(request.getRequestObject() instanceof Map<?, ?> body)) { denied("KeyScopeDenied"); return List.of(); }
+                serviceId = parentId("service", body.get("serviceId"));
+            } else {
+                if (!"aiServiceUpgradePlan".equals(type) || !request.getId().matches("aiplan-[0-9a-f-]{36}")) {
+                    denied("KeyScopeDenied"); return List.of();
+                }
+                Map<String, Object> plan = aiPlans.load(request.getId());
+                ApiKeyCredentialContext key = ApiKeyCredentialContext.get(request);
+                if (plan == null || !(plan.get("actorId") instanceof Number actor) || actor.longValue() != owner.getAuthenticatedAsAccountId()
+                        || !(plan.get("accountId") instanceof Number account) || account.longValue() != owner.getAccountId()
+                        || key == null || !(plan.get("credentialId") instanceof Number credential) || credential.longValue() != key.credentialId()
+                        || !(plan.get("credentialRevision") instanceof Number revision) || revision.longValue() != key.revision()) {
+                    denied("KeyScopeDenied"); return List.of();
+                }
+                // This value was persisted by the plan service after resolving
+                // the public Service ID. It is a database identity, not another
+                // wire ID for TypeIdFormatter (which rejects bare digits).
+                try { serviceId = ApiKeyPolicyCodec.number(plan.get("internalServiceId")); }
+                catch (IllegalArgumentException invalid) { denied("KeyScopeDenied"); return List.of(); }
+                if (serviceId < 1) { denied("KeyScopeDenied"); return List.of(); }
+            }
+            Service service = objectManager.loadResource(Service.class, serviceId);
+            if (service == null) { denied("KeyScopeDenied"); return List.of(); }
+            return List.of(resolveObject("service", service, owner));
+        }
         if (request.getId() != null) {
             if ("setting".equals(type) || "activeSetting".equals(type)) {
                 return List.of(ApiKeyPolicyEvaluator.Target.platformResource("setting", settingName(request)));
@@ -144,6 +173,13 @@ public class ApiKeyTargetResolver {
             if (!Set.of("setting", "schema").contains(namedType)) denied("KeyScopeDenied");
             return ApiKeyPolicyEvaluator.Target.platformResource(namedType, named.getApiResourceId());
         }
+        if (value instanceof Account account && AccountConstants.PROJECT_KIND.equals(account.getKind())) {
+            // ProjectResourceManager returns Account records; ObjectManager calls
+            // their backing type "account". Preserve the persisted project identity
+            // so exact resource grants and denials match direct and list reads alike.
+            String projectId = format("project", account.getId());
+            return ApiKeyPolicyEvaluator.Target.projectResource("project", projectId, projectId);
+        }
         Object rawId = ObjectUtils.getPropertyIgnoreErrors(value, "id");
         String id = format(type, rawId);
         if (value instanceof Stack stack) return stack("stack", id, stack, owner);
@@ -168,9 +204,6 @@ public class ApiKeyTargetResolver {
         }
         if (value instanceof Volume volume) {
             return child("volume", id, volume.getAccountId(), volume.getStackId(), owner);
-        }
-        if (value instanceof Account account && AccountConstants.PROJECT_KIND.equals(account.getKind())) {
-            return ApiKeyPolicyEvaluator.Target.projectResource(type, id, format("project", account.getId()));
         }
         if (PROJECT_ONLY.contains(type)) {
             Object accountId = ObjectUtils.getPropertyIgnoreErrors(value, "accountId");
@@ -389,29 +422,53 @@ public class ApiKeyTargetResolver {
      * relationship as ancestry; it is not a public grant on a removed map. */
     public LifecycleDependency resolveUpgradeRemovalDependency(Object root, Object resource, Policy owner,
             String processName, String resourceType, EngineContext.VerifiedExecutionFrame frame, Map<String, Object> binding) {
-        return upgradeRemoval(root, resource, owner, processName, resourceType, frame, binding, null);
+        return resolveUpgradeRemovalDependency(root, resource, owner, processName, resourceType, frame, binding, null);
+    }
+
+    public LifecycleDependency resolveUpgradeRemovalDependency(Object root, Object resource, Policy owner,
+            String processName, String resourceType, EngineContext.VerifiedExecutionFrame frame, Map<String, Object> binding,
+            LaunchConfiguration execution) {
+        LifecycleDependency dependency = upgradeRemoval(root, resource, owner, processName, resourceType, frame, binding, null);
+        if (dependency != null && binding != null && "upgrade".equals(binding.get("requestAction")) && frame == null) {
+            // A chained finishupgrade keeps the original upgrade authorization.
+            // Only an actual persisted engine execution may recover that ancestry
+            // without a live parent frame; request payloads cannot supply it.
+            if (!(execution instanceof io.cattle.platform.engine.manager.impl.ProcessRecord record)
+                    || record.getId() == null || record.getId() < 1
+                    || !ProcessAuthorization.metadata(execution).equals(binding)) denied("KeyScopeDenied");
+        }
+        return dependency;
     }
 
     private LifecycleDependency upgradeRemoval(Object root, Object resource, Policy owner,
             String processName, String resourceType, EngineContext.VerifiedExecutionFrame frame, Map<String, Object> binding,
             ProcessAuthorization.VerifiedChild scheduled) {
+        return upgradeRemoval(root, resource, owner, processName, resourceType, frame, binding, scheduled, false);
+    }
+
+    private LifecycleDependency upgradeRemoval(Object root, Object resource, Policy owner,
+            String processName, String resourceType, EngineContext.VerifiedExecutionFrame frame, Map<String, Object> binding,
+            ProcessAuthorization.VerifiedChild scheduled, boolean retiredParent) {
         boolean instanceStep = resource instanceof Instance && "instance".equals(resourceType)
                 && Set.of("instance.remove", "instance.deallocate").contains(processName);
         boolean volumeStep = resource instanceof Volume && "volume".equals(resourceType)
                 && Set.of("volume.remove", "volume.deallocate").contains(processName);
         if (!(root instanceof Service) || !(instanceStep || volumeStep)) return null;
-        if (instanceStep && !"removing".equals(((Instance) resource).getState())) return null;
+        if (instanceStep && !"removing".equals(((Instance) resource).getState())
+                && !((scheduled != null || retiredParent) && "removed".equals(((Instance) resource).getState())
+                    && ((Instance) resource).getRemoved() != null)) return null;
         Service service = persisted(Service.class, root, owner, "accountId", "stackId", "state");
         Volume volume = volumeStep ? scheduled == null ? persisted(Volume.class, resource, owner,
                 "accountId", "instanceId", "stackId", "imageId", "deviceNumber", "state")
                 : cleanupProjection(Volume.class, resource, owner, "accountId", "instanceId", "stackId", "imageId", "deviceNumber", "state") : null;
-        Instance instance = instanceStep ? persisted(Instance.class, resource, owner,
+        Instance instance = instanceStep ? scheduled == null && !retiredParent ? persisted(Instance.class, resource, owner,
+                "accountId", "stackId", "serviceId", "state") : cleanupProjection(Instance.class, resource, owner,
                 "accountId", "stackId", "serviceId", "state") : scheduled == null
                 ? liveInstance(volume.getInstanceId(), volume.getAccountId(), owner)
                 : cleanupResource(Instance.class, volume.getInstanceId(), owner);
         // First execution with a still-live map keeps the ordinary resolver.
         // This recovery path exists only once actual teardown is in progress.
-        if (!"removing".equals(instance.getState()) && !(scheduled != null && "removed".equals(instance.getState())
+        if (!"removing".equals(instance.getState()) && !((scheduled != null || retiredParent) && "removed".equals(instance.getState())
                 && instance.getRemoved() != null)) return null;
         List<ServiceExposeMap> maps = objectManager.find(ServiceExposeMap.class,
                 SERVICE_EXPOSE_MAP.INSTANCE_ID, instance.getId(), SERVICE_EXPOSE_MAP.SERVICE_ID, service.getId(),
@@ -421,7 +478,8 @@ public class ApiKeyTargetResolver {
         if (binding == null || !"service".equals(binding.get("targetType"))
                 || !(binding.get("targetId") instanceof String id)
                 || !Objects.equals(service.getId(), executionResourceId("service", id))
-                || !"upgrade".equals(binding.get("operation")) || !"finishupgrade".equals(binding.get("requestAction"))
+                || !"upgrade".equals(binding.get("operation"))
+                || !("upgrade".equals(binding.get("requestAction")) || "finishupgrade".equals(binding.get("requestAction")))
                 || !"POST".equals(binding.get("requestMethod")) || !Boolean.FALSE.equals(binding.get("requestCollection"))
                 || !Boolean.FALSE.equals(binding.get("preview"))) denied("KeyScopeDenied");
         if (!Objects.equals(instance.getAccountId(), service.getAccountId())
@@ -496,7 +554,182 @@ public class ApiKeyTargetResolver {
     public LifecycleDependency resolveUpgradeCleanupDependency(Object root, Object resource, Policy owner,
             LaunchConfiguration config, EngineContext.VerifiedExecutionFrame frame,
             EngineContext.VerifiedExecutionFrame parent, Map<String, Object> binding) {
-        return upgradeCleanup(root, resource, owner, config, frame, parent, binding, false);
+        // Stop deactivates an Instance's OS volume directly, without a Mount.
+        // Prefer its complete live graph before attempting retired ancestry.
+        // This exception is deliberately not applied to REMOVE: named/file
+        // storage maps must never inherit a destructive cleanup grant here.
+        boolean liveDeactivation = resource instanceof Volume && "volume".equals(config.getResourceType())
+                && "volume.deactivate".equals(config.getProcessName())
+                || resource instanceof VolumeStoragePoolMap && "volumeStoragePoolMap".equalsIgnoreCase(config.getResourceType())
+                && "volumestoragepoolmap.deactivate".equals(config.getProcessName());
+        if (root instanceof Service && upgradeBinding(binding) && liveDeactivation) {
+            try {
+                LifecycleDependency live = resolveLifecycleDependency(root, resource, owner);
+                if (live != null) return live;
+            } catch (ClientVisibleException rejected) {
+                if (!"KeyScopeDenied".equals(rejected.getCode())) throw rejected;
+                // Missing live ancestry may use only the exact recovery proof
+                // below; owner denials and other failures are not recovered.
+            }
+        }
+        LifecycleDependency direct = upgradeInstanceCleanup(root, resource, owner, config, frame, parent, binding);
+        return direct != null ? direct : upgradeCleanup(root, resource, owner, config, frame, parent, binding, false);
+    }
+
+    private boolean upgradeBinding(Map<String, Object> binding) {
+        return binding != null && "upgrade".equals(binding.get("operation"))
+                && ("upgrade".equals(binding.get("requestAction")) || "finishupgrade".equals(binding.get("requestAction")));
+    }
+
+    /** The retired service map remains ancestry only for the exact teardown
+     * edges exercised by InstanceRemove. A child never gains public DELETE. */
+    private LifecycleDependency upgradeInstanceCleanup(Object root, Object resource, Policy owner,
+            LaunchConfiguration config, EngineContext.VerifiedExecutionFrame frame,
+            EngineContext.VerifiedExecutionFrame parent, Map<String, Object> binding) {
+        if (!(root instanceof Service) || !upgradeBinding(binding)) return null;
+        String process = config.getProcessName();
+        Class<?> model = lifecycleModel(resource);
+        boolean direct = resource instanceof Nic && Set.of("nic.remove", "nic.deactivate").contains(process)
+                || resource instanceof Port && Set.of("port.deactivate", "port.remove").contains(process)
+                || resource instanceof InstanceLink && Set.of("instancelink.deactivate", "instancelink.remove").contains(process)
+                || resource instanceof Mount && Set.of("mount.deactivate", "mount.remove").contains(process)
+                || resource instanceof InstanceHostMap && Set.of("instancehostmap.deactivate", "instancehostmap.remove").contains(process)
+                || resource instanceof Volume && "volume.detach".equals(process);
+        boolean address = resource instanceof IpAddress && "ipaddress.deactivate".equals(process);
+        boolean unmount = resource instanceof Volume && "volume.deactivate".equals(process);
+        boolean unmountMap = resource instanceof VolumeStoragePoolMap && "volumestoragepoolmap.deactivate".equals(process);
+        if (unmountMap) {
+            Volume volume = liveResource(Volume.class, ((VolumeStoragePoolMap) resource).getVolumeId(), owner);
+            // OS-image teardown keeps the established removing-volume path.
+            if (!Set.of("deactivating", "inactive").contains(String.valueOf(volume.getState()))) return null;
+        }
+        if (!(direct || address || unmount || unmountMap)) return null;
+        String type = lifecycleType(model);
+        if (!type.equalsIgnoreCase(config.getResourceType())
+                || !Objects.equals(ObjectUtils.getPropertyIgnoreErrors(resource, "id"),
+                    executionResourceId(type, config.getResourceId()))) denied("KeyScopeDenied");
+        Object stored = cleanupProjection(model, resource, owner, "accountId", "instanceId", "volumeId", "hostId", "targetInstanceId", "networkId", "state");
+        ProcessAuthorization.VerifiedChild scheduled = frame == null ? ProcessAuthorization.verifiedChild(config) : null;
+        List<Object> related = new ArrayList<>();
+        if (stored instanceof Mount mount) {
+            boolean volumeParent = verified(frame, "volume", mount.getVolumeId(), binding)
+                    || scheduled != null && "volume".equals(scheduled.parentType())
+                    && Objects.equals(mount.getVolumeId(), executionResourceId("volume", scheduled.parentId()))
+                    && scheduled.rootAuthorization().equals(binding);
+            if (volumeParent) {
+                Volume volume = scheduled == null ? liveResource(Volume.class, mount.getVolumeId(), owner)
+                        : cleanupResource(Volume.class, mount.getVolumeId(), owner);
+                if (!Objects.equals(mount.getInstanceId(), volume.getInstanceId())
+                        || !Objects.equals(mount.getAccountId(), volume.getAccountId())) denied("KeyScopeDenied");
+                LifecycleDependency owned = upgradeRemoval(root, volume, owner, "volume.remove", "volume", frame, binding, scheduled);
+                if (owned == null) return null;
+                return cleanupChild(owned, "mount", mount.getId(), mount.getAccountId(), owner, owned.scope());
+            }
+            if ("mount.remove".equals(process)) return null;
+        }
+        // Preserve ordinary live ancestry, including pre-existing scheduled
+        // jobs that never needed a retired-map recovery proof.
+        if (direct) {
+            Long sourceId = (Long) ObjectUtils.getPropertyIgnoreErrors(stored, "instanceId");
+            Instance source = scheduled == null ? liveInstance(sourceId, null, owner) : cleanupResource(Instance.class, sourceId, owner);
+            if (upgradeRemoval(root, source, owner, "instance.remove", "instance", frame, binding, scheduled) == null) return null;
+        }
+        Long instanceId;
+        if (address) {
+            if (frame == null || !"nic".equals(frame.resourceType()) || !frame.rootAuthorization().equals(binding)) denied("KeyScopeDenied");
+            Nic nic = cleanupResource(Nic.class, executionResourceId("nic", frame.resourceId()), owner);
+            List<IpAddressNicMap> maps = objectManager.find(IpAddressNicMap.class,
+                    IP_ADDRESS_NIC_MAP.IP_ADDRESS_ID, ((IpAddress) stored).getId(), IP_ADDRESS_NIC_MAP.REMOVED, null);
+            if (maps == null || maps.isEmpty()) denied("KeyScopeDenied");
+            for (IpAddressNicMap row : maps) {
+                IpAddressNicMap map = persisted(IpAddressNicMap.class, row, owner, "ipAddressId", "nicId");
+                if (!Objects.equals(map.getIpAddressId(), ((IpAddress) stored).getId())
+                        || !Objects.equals(map.getNicId(), nic.getId())) denied("KeyScopeDenied");
+                related.add(map);
+            }
+            if (!Objects.equals(nic.getAccountId(), ((IpAddress) stored).getAccountId())) denied("KeyScopeDenied");
+            instanceId = nic.getInstanceId(); related.add(nic);
+            // A persisted NIC retry already passed its own verified-child
+            // check; its live execution frame is sufficient without requiring
+            // the original synchronous InstanceRemove frame to still exist.
+            if (parent != null && !verified(parent, "instance", instanceId, binding)) denied("KeyScopeDenied");
+        } else if (unmount || unmountMap) {
+            Volume volume = unmount ? (Volume) stored : liveResource(Volume.class, ((VolumeStoragePoolMap) stored).getVolumeId(), owner);
+            Mount mount;
+            if (unmountMap) {
+                if (!verified(frame, "volume", volume.getId(), binding)
+                        && !(scheduled != null && "volume".equals(scheduled.parentType())
+                            && Objects.equals(volume.getId(), executionResourceId("volume", scheduled.parentId()))
+                            && scheduled.rootAuthorization().equals(binding))) denied("KeyScopeDenied");
+                List<Mount> sources = objectManager.find(Mount.class, MOUNT.VOLUME_ID, volume.getId(), MOUNT.REMOVED, null);
+                if (sources == null || sources.isEmpty()) denied("KeyScopeDenied");
+                mount = persisted(Mount.class, sources.get(0), owner, "accountId", "instanceId", "volumeId", "state");
+                related.add(volume);
+            } else {
+            Long mountId = frame != null && "mount".equals(frame.resourceType()) ? executionResourceId("mount", frame.resourceId())
+                    : scheduled != null && "mount".equals(scheduled.parentType()) ? executionResourceId("mount", scheduled.parentId()) : null;
+            mount = cleanupResource(Mount.class, mountId, owner);
+            if (frame != null && !verified(frame, "mount", mountId, binding)
+                    || scheduled != null && !scheduled.rootAuthorization().equals(binding)) denied("KeyScopeDenied");
+            if (frame == null && scheduled == null) denied("KeyScopeDenied");
+            }
+            if (!Objects.equals(mount.getVolumeId(), volume.getId()) || !Objects.equals(mount.getAccountId(), volume.getAccountId())
+                    || volume.getInstanceId() != null && !Objects.equals(volume.getInstanceId(), mount.getInstanceId())
+                    || volume.getStackId() != null && !Objects.equals(volume.getStackId(), ((Service) root).getStackId())) denied("KeyScopeDenied");
+            // MountDeactivate may detach an unused volume, never one still in
+            // use by another active mount. This does not authorize REMOVE.
+            List<Mount> mounts = objectManager.find(Mount.class, MOUNT.VOLUME_ID, volume.getId(), MOUNT.REMOVED, null);
+            if (mounts == null) denied("KeyScopeDenied");
+            for (Mount row : mounts) {
+                Mount other = persisted(Mount.class, row, owner, "accountId", "instanceId", "volumeId", "state");
+                if (!Objects.equals(other.getVolumeId(), volume.getId()) || !Objects.equals(other.getAccountId(), volume.getAccountId())
+                        || !Objects.equals(other.getInstanceId(), mount.getInstanceId())
+                        || !Set.of("inactive", "deactivating", "removing", "removed").contains(String.valueOf(other.getState()))) denied("KeyScopeDenied");
+                related.add(other);
+            }
+            instanceId = mount.getInstanceId(); related.add(mount);
+        } else {
+            instanceId = (Long) ObjectUtils.getPropertyIgnoreErrors(stored, "instanceId");
+            if (!verified(frame, "instance", instanceId, binding)
+                    && !(scheduled != null && "instance".equals(scheduled.parentType())
+                        && Objects.equals(instanceId, executionResourceId("instance", scheduled.parentId()))
+                        && scheduled.rootAuthorization().equals(binding))) denied("KeyScopeDenied");
+        }
+        Instance instance = scheduled == null && !address && !unmount && !unmountMap
+                ? liveInstance(instanceId, null, owner) : cleanupResource(Instance.class, instanceId, owner);
+        Object accountId = ObjectUtils.getPropertyIgnoreErrors(stored, "accountId");
+        if (accountId != null && !Objects.equals(accountId, instance.getAccountId())) denied("KeyScopeDenied");
+        LifecycleDependency owned = upgradeRemoval(root, instance, owner, "instance.remove", "instance", frame, binding,
+                scheduled, address || unmount || unmountMap);
+        if (owned == null) return null;
+        if (stored instanceof VolumeStoragePoolMap map) {
+            StoragePool pool = liveResource(StoragePool.class, map.getStoragePoolId(), owner);
+            if (pool.getAccountId() != null && !Objects.equals(pool.getAccountId(), instance.getAccountId())) denied("KeyScopeDenied");
+            owned = cleanupChild(owned, type, map.getId(), instance.getAccountId(), owner, resolveObject("storagePool", pool, owner));
+        }
+        if (stored instanceof Mount mount) {
+            Volume volume = liveResource(Volume.class, mount.getVolumeId(), owner);
+            if (!Objects.equals(volume.getAccountId(), mount.getAccountId())
+                    || volume.getStackId() != null && !Objects.equals(volume.getStackId(), ((Service) root).getStackId())) denied("KeyScopeDenied");
+            related.add(volume);
+        }
+        if (stored instanceof Volume volume) {
+            if (volume.getStackId() != null && !Objects.equals(volume.getStackId(), ((Service) root).getStackId())) denied("KeyScopeDenied");
+            if ("volume.detach".equals(process) && (Integer.valueOf(0).equals(volume.getDeviceNumber())
+                    || !Objects.equals(volume.getInstanceId(), instanceId))) denied("KeyScopeDenied");
+        }
+        if (stored instanceof InstanceHostMap map) {
+            Host host = liveResource(Host.class, map.getHostId(), owner);
+            if (!Objects.equals(host.getAccountId(), instance.getAccountId())) denied("KeyScopeDenied");
+            owned = cleanupChild(owned, type, map.getId(), instance.getAccountId(), owner, resolveObject("host", host, owner));
+        }
+        for (Object row : related) {
+            String relatedType = lifecycleType(lifecycleModel(row));
+            owned = cleanupChild(owned, relatedType, (Long) ObjectUtils.getPropertyIgnoreErrors(row, "id"),
+                    instance.getAccountId(), owner, owned.scope());
+        }
+        return cleanupChild(owned, type, (Long) ObjectUtils.getPropertyIgnoreErrors(stored, "id"),
+                instance.getAccountId(), owner, owned.scope());
     }
 
     /** FULL/legacy already authorize the owned root. This only substitutes the
@@ -522,7 +755,7 @@ public class ApiKeyTargetResolver {
         if (!fullAuthority && !(root instanceof Service) || !(volumeMap || hostMap || image || cache)) return null;
         if (fullAuthority && (!(image || cache)
                 || !(root instanceof Instance || root instanceof Volume || root instanceof Service || root instanceof Stack))) return null;
-        if (!fullAuthority && (binding == null || !"finishupgrade".equals(binding.get("requestAction")))) return null;
+        if (!fullAuthority && !upgradeBinding(binding)) return null;
         if (!Objects.equals(ObjectUtils.getPropertyIgnoreErrors(resource, "id"), executionResourceId(config.getResourceType(), config.getResourceId())))
             denied("KeyScopeDenied");
         var scheduled = frame == null && volumeMap && "volumestoragepoolmap.remove".equals(process)

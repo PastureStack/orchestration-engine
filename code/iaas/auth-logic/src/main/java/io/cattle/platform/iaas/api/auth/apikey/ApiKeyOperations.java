@@ -47,6 +47,13 @@ public final class ApiKeyOperations {
 
     public static Operation of(String method, String action, String link, String resourceType) {
         String verb = method == null ? "" : method.toUpperCase(Locale.ROOT);
+        if ("aiServiceDescriptionUpdate".equals(resourceType) && "POST".equals(verb) && action == null && link == null)
+            return known("update");
+        if ("aiServiceUpgradePlan".equals(resourceType)) {
+            if ("GET".equals(verb) && action == null && link == null) return known("read");
+            if ("POST".equals(verb) && link == null && (action == null || "apply".equals(action))) return known("upgrade");
+            return new Operation("ai-plan:" + String.valueOf(action), false);
+        }
         // Match ResourceManagerRequestHandler's dispatch, not a selector that
         // its actual sink ignores. PUT/DELETE are mutations even with a link
         // or action in the URL; a GET link wins over an ignored action query.

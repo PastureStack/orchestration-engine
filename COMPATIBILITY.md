@@ -4,6 +4,28 @@ The migration preserves established `io.cattle.*` Java packages, Maven coordinat
 
 New operator-facing names use PastureStack and `PASTURESTACK_*`. Compatibility identifiers must be changed only with an explicit data migration, a dual-read or dual-write transition, a rollback plan, and cross-repository verification.
 
+## Engine v0.183.355
+
+The optional WebMCP v1.3 backend adds actor-bound upgrade plans, a conditional
+Service-description command and bounded tool-event metadata. Existing Service
+update/upgrade managers remain authoritative. Description writes require an
+exact expected value and return 409 on conflict; an empty string clears the
+description. Upgrade approval is a human cookie-session action, separate from
+the Key that previews or applies the plan. Full and legacy Key operation
+capabilities are retained; `purpose=ai-bridge` adds a narrower route boundary
+and a revision-pinned protocol, disabled by default.
+
+The new `ai_service_upgrade_plan` table is created by the existing Liquibase
+changelog. Preserve this table, policy records and persistent volumes on code
+rollback; do not remove the migration or rewrite live records. Queued work
+rechecks the bound Key and owner authority and derives cleanup scope from
+persisted ownership plus verified process relationships. Named/shared volumes
+do not gain a removal grant from an old Instance's upgrade.
+
+A compatible Web Console or bridge is required. Source tests and candidate
+package checks do not establish final r10 native acceptance, publication or
+Server deployment. See the [355 release note](docs/releases/orchestration-engine-0.183.355.md).
+
 ## Engine v0.183.354
 
 The Java major version remains 25; its security update is Temurin 25.0.5+8.

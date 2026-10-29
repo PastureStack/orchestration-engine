@@ -51,6 +51,17 @@ import io.cattle.platform.iaas.api.auth.apikey.ApiKeyDelegationService;
 import io.cattle.platform.iaas.api.auth.apikey.ApiKeySubscriptionAuthorization;
 import io.cattle.platform.iaas.api.auth.apikey.ApiKeyDelegationCompletion;
 import io.cattle.platform.iaas.api.auth.apikey.ApiKeyDelegationCompletionResourceManager;
+import io.cattle.platform.iaas.api.auth.upgrade.AiServiceUpgradePlan;
+import io.cattle.platform.iaas.api.auth.upgrade.AiServiceUpgradePlanStore;
+import io.cattle.platform.iaas.api.auth.upgrade.AiServiceUpgradePlanService;
+import io.cattle.platform.iaas.api.auth.upgrade.AiServiceUpgradePlanResourceManager;
+import io.cattle.platform.iaas.api.auth.description.AiServiceDescriptionUpdate;
+import io.cattle.platform.iaas.api.auth.description.AiServiceDescriptionUpdateService;
+import io.cattle.platform.iaas.api.auth.description.AiServiceDescriptionUpdateResourceManager;
+import io.cattle.platform.iaas.api.auth.ai.AiKeyAuthorization;
+import io.cattle.platform.iaas.api.auth.ai.AiToolCallEvent;
+import io.cattle.platform.iaas.api.auth.ai.AiToolCallEventService;
+import io.cattle.platform.iaas.api.auth.ai.AiToolCallEventResourceManager;
 import io.cattle.platform.iaas.api.auth.impl.DefaultAuthorizationProvider;
 import io.cattle.platform.iaas.api.auth.integration.azure.AzureConfigManager;
 import io.cattle.platform.iaas.api.auth.integration.azure.AzureIdentityProvider;
@@ -868,9 +879,34 @@ public class IaasApiConfig {
     ApiKeyPolicyPreviewResourceManager ApiKeyPolicyPreviewResourceManager() { return new ApiKeyPolicyPreviewResourceManager(); }
 
     @Bean
+    AiServiceUpgradePlanStore AiServiceUpgradePlanStore() { return new AiServiceUpgradePlanStore(); }
+
+    @Bean
+    AiServiceUpgradePlanService AiServiceUpgradePlanService() { return new AiServiceUpgradePlanService(); }
+
+    @Bean
+    AiServiceUpgradePlanResourceManager AiServiceUpgradePlanResourceManager() { return new AiServiceUpgradePlanResourceManager(); }
+
+    @Bean
+    AiServiceDescriptionUpdateService AiServiceDescriptionUpdateService() { return new AiServiceDescriptionUpdateService(); }
+
+    @Bean
+    AiServiceDescriptionUpdateResourceManager AiServiceDescriptionUpdateResourceManager() { return new AiServiceDescriptionUpdateResourceManager(); }
+
+    @Bean
+    AiKeyAuthorization AiKeyAuthorization() { return new AiKeyAuthorization(); }
+
+    @Bean
+    AiToolCallEventService AiToolCallEventService() { return new AiToolCallEventService(); }
+
+    @Bean
+    AiToolCallEventResourceManager AiToolCallEventResourceManager() { return new AiToolCallEventResourceManager(); }
+
+    @Bean
     TypeSet ApiKeyPolicyTypes() {
         TypeSet types = new TypeSet("ApiKeyPolicyTypes");
-        types.setTypeClasses(Arrays.<Class<?>>asList(ApiKeyPolicyPreview.class, ApiKeyDelegationCompletion.class));
+        types.setTypeClasses(Arrays.<Class<?>>asList(ApiKeyPolicyPreview.class, ApiKeyDelegationCompletion.class,
+                AiServiceUpgradePlan.class, AiServiceDescriptionUpdate.class, AiToolCallEvent.class));
         return types;
     }
 

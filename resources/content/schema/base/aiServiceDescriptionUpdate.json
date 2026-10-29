@@ -1,0 +1,12 @@
+{
+    "pluralName": "aiServiceDescriptionUpdates",
+    "collectionMethods": [ "POST" ],
+    "resourceMethods": [],
+    "resourceFields": {
+        "serviceId": { "type": "reference[service]", "create": true, "required": true },
+        "description": { "type": "string", "create": true, "required": true, "nullable": false, "maxLength": 1024 },
+        "expectedDescription": { "type": "string", "create": true, "required": true, "nullable": true, "maxLength": 1024 },
+        "status": { "type": "string", "create": false, "update": false },
+        "verifiedResult": { "type": "boolean", "create": false, "update": false }
+    }
+}

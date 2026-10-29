@@ -8,6 +8,7 @@ import io.cattle.platform.api.auth.impl.NoPolicyOptions;
 import io.cattle.platform.core.dao.AccountDao;
 import io.cattle.platform.core.model.Account;
 import io.cattle.platform.core.model.tables.records.AccountRecord;
+import io.cattle.platform.core.model.tables.records.ServiceRecord;
 import io.cattle.platform.iaas.api.auth.dao.AuthDao;
 import io.cattle.platform.iaas.api.auth.impl.AccountPolicy;
 import io.cattle.platform.iaas.api.auth.projects.ProjectAccessService;
@@ -127,6 +128,57 @@ public class ApiKeyProjectAuthorityTest {
         assertEquals(List.of("existing-other-capability"), context.getCapabilities(other));
         assertNull(policy.authorizeObject(project));
         assertNull(policy.authorizeObject(other));
+    }
+    @Test public void exactProjectReadIsIdenticalForDirectAndAccountBackedCollection() {
+        AccountRecord other = otherProject();
+        var exact = new ApiKeyPolicy(ApiKeyPolicy.Mode.CUSTOM, ApiKeyPolicy.Effect.DENY, null,
+                List.of(new ApiKeyPolicy.Rule("only-project", ApiKeyPolicy.Effect.ALLOW,
+                        ApiKeyPolicy.Scope.resource("project", "1a5"), Set.of("read"))));
+        var service = collectionGuard(exact, other);
+        service.authorize(request, policy);
+        assertEquals("ALLOW", request.getAttribute("apiKey.audit.decision"));
+        request.setId(null);
+        service.authorize(request, policy);
+        assertEquals(List.of(project), service.filterCollection(request, List.of(project, other)));
+        assertEquals(resolver.resolveObject("project", project, policy), resolver.resolveObject("account", project, policy));
+        assertNull(policy.authorizeObject(project));
+    }
+    @Test public void exactProjectDenyAlsoAppliesToAccountBackedCollection() {
+        AccountRecord other = otherProject();
+        var exact = new ApiKeyPolicy(ApiKeyPolicy.Mode.CUSTOM, ApiKeyPolicy.Effect.ALLOW, null,
+                List.of(new ApiKeyPolicy.Rule("deny-project", ApiKeyPolicy.Effect.DENY,
+                        ApiKeyPolicy.Scope.resource("project", "1a5"), Set.of("read"))));
+        var service = collectionGuard(exact, other);
+        assertEquals("KeyPolicyDenied", assertThrows(ClientVisibleException.class,
+                () -> service.authorize(request, policy)).getCode());
+        request.setId(null);
+        assertEquals(List.of(other), service.filterCollection(request, List.of(project, other)));
+    }
+    @Test public void exactProjectReadDoesNotBecomeAnEnvironmentWideGrant() {
+        policy = new AccountPolicy(project, principal, Set.of(), new NoPolicyOptions());
+        ApiContext.getContext().setPolicy(policy);
+        when(dao.hasAccessToProject(5L, 5L, false, policy.getIdentities())).thenReturn(true);
+        ServiceRecord child = new ServiceRecord(); child.setId(7L); child.setKind("service"); child.setAccountId(5L);
+        var exact = new ApiKeyPolicy(ApiKeyPolicy.Mode.CUSTOM, ApiKeyPolicy.Effect.DENY, null,
+                List.of(new ApiKeyPolicy.Rule("project-metadata", ApiKeyPolicy.Effect.ALLOW,
+                        ApiKeyPolicy.Scope.resource("project", "1a5"), Set.of("read"))));
+        var service = collectionGuard(exact, project);
+        when(resolver.objectManager.getType(child)).thenReturn("service");
+        assertEquals(List.of(project), service.filterCollection(request, List.of(project, child)));
+        assertEquals("service", resolver.resolveObject("service", child, policy).resourceType());
+    }
+    private AccountRecord otherProject() {
+        AccountRecord other = new AccountRecord(); other.setId(6L); other.setKind("project");
+        when(dao.hasAccessToProject(6L, 1L, false, policy.getIdentities())).thenReturn(true);
+        when(accounts.isActiveAccount(other)).thenReturn(true);
+        return other;
+    }
+    private ApiKeyAuthorizationService collectionGuard(ApiKeyPolicy key, Account other) {
+        var service = guard(key); service.objectManager = resolver.objectManager;
+        service.resourceManagers = mock(io.github.ibuildthecloud.gdapi.request.resource.ResourceManagerLocator.class);
+        when(resolver.objectManager.getType(project)).thenReturn("account");
+        when(resolver.objectManager.getType(other)).thenReturn("account");
+        return service;
     }
     @Test public void fullStillUsesOriginalAuthorizationPipeline() {
         guard(new ApiKeyPolicy(ApiKeyPolicy.Mode.FULL, ApiKeyPolicy.Effect.ALLOW, null, List.of())).authorize(request, policy);

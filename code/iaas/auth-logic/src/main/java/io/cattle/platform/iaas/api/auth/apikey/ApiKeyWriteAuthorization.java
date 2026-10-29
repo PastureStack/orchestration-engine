@@ -93,6 +93,8 @@ public class ApiKeyWriteAuthorization extends AbstractJooqDao implements WriteAu
         if (policy != null && policy.getExpiresAt() != null && !clock.instant().isBefore(policy.getExpiresAt())) {
             deny(request, "ApiKeyExpired");
         }
+        try { ApiKeyAiBridgeGuard.check(request, policy); }
+        catch (ClientVisibleException denied) { deny(request, denied.getCode()); }
         // Owner RBAC and custom resource scope remain with their existing admission
         // and process boundaries. Full/legacy gain no registry or ancestry limit.
     }

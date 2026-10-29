@@ -1,0 +1,26 @@
+{
+    "pluralName": "aiServiceUpgradePlans",
+    "collectionMethods": [ "GET", "POST" ],
+    "resourceMethods": [ "GET" ],
+    "resourceActions": {
+        "confirm": {},
+        "apply": {},
+        "cancel": {}
+    },
+    "resourceFields": {
+        "serviceId": { "type": "reference[service]", "create": true, "required": true },
+        "image": { "type": "string", "create": true, "required": true, "minLength": 1, "maxLength": 512 },
+        "planRef": { "type": "string", "create": false, "update": false },
+        "accountId": { "type": "reference[account]", "create": false, "update": false },
+        "serviceName": { "type": "string", "create": false, "update": false },
+        "displayPath": { "type": "string", "create": false, "update": false },
+        "currentImage": { "type": "string", "create": false, "update": false },
+        "requestedImage": { "type": "string", "create": false, "update": false },
+        "expiresAt": { "type": "date", "create": false, "update": false },
+        "confirmationState": { "type": "string", "create": false, "update": false },
+        "status": { "type": "string", "create": false, "update": false },
+        "operationId": { "type": "string", "create": false, "update": false },
+        "verifiedResult": { "type": "boolean", "create": false, "update": false },
+        "messageCode": { "type": "string", "create": false, "update": false }
+    }
+}

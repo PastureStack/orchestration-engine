@@ -30,6 +30,7 @@ ADD --checksum=sha256:5b6326f1932cfd7be57130561dc78192f09ed9f58bfbe6606ed0c50510
 ADD --checksum=sha256:2c418a61d7165d0cde01d9cb05ae025cc41fc75ef6d3f095996bd045ba0945dc https://security.ubuntu.com/ubuntu/pool/main/c/curl/curl_8.18.0-1ubuntu2.8_amd64.deb /tmp/curl.deb
 ADD --checksum=sha256:8db913e1fa5a694ca6ba7b828bd18c5204e6853ac07fe7ed9c6e1f94e3444d8e https://security.ubuntu.com/ubuntu/pool/main/c/curl/libcurl3t64-gnutls_8.18.0-1ubuntu2.8_amd64.deb /tmp/libcurl3t64-gnutls.deb
 ADD --checksum=sha256:7c0b37592f83a629cc22f0c98effa176da9edbd6d77b3f38184a9d0ddc5e0266 https://security.ubuntu.com/ubuntu/pool/main/c/curl/libcurl4t64_8.18.0-1ubuntu2.8_amd64.deb /tmp/libcurl4t64.deb
+ADD --checksum=sha256:bedeef1cf3268f90338c411cdb0a45b224d0660fd2240f310f380316c8244606 https://security.ubuntu.com/ubuntu/pool/main/b/brotli/libbrotli1_1.2.0-3ubuntu0.1_amd64.deb /tmp/libbrotli1.deb
 
 ENV DEBIAN_FRONTEND=noninteractive
 ARG TEMURIN_JDK25_URL="https://github.com/adoptium/temurin25-binaries/releases/download/jdk-25.0.5%2B8/OpenJDK25U-jdk_x64_linux_hotspot_25.0.5_8.tar.gz"
@@ -103,6 +104,11 @@ RUN set -eux; \
     dpkg -i /tmp/ca-certificates.deb; \
     test "$(dpkg-query -W -f='${Version}' ca-certificates)" = 20260816ubuntu0.26.04.1; \
     bash /usr/local/bin/install-python-security-tools; \
+    test "$(dpkg-query -W -f='${db:Status-Status}' libbrotli1)" = installed; \
+    test "$(dpkg-deb -f /tmp/libbrotli1.deb Package)" = libbrotli1; \
+    test "$(dpkg-deb -f /tmp/libbrotli1.deb Version)" = 1.2.0-3ubuntu0.1; \
+    test "$(dpkg-deb -f /tmp/libbrotli1.deb Architecture)" = amd64; \
+    dpkg -i /tmp/libbrotli1.deb; \
     sh /usr/local/bin/install-ubuntu-security-updates /licenses/ubuntu-security-packages.lock /etc/ssl/certs/ca-certificates.crt; \
     for package in curl libcurl3t64-gnutls libcurl4t64; do \
         test "$(dpkg-query -W -f='${Version}' "${package}")" = "${UBUNTU_APT_CURL_VERSION}"; \
@@ -116,6 +122,7 @@ RUN set -eux; \
     rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* /usr/bin/pebble
 
 COPY --from=docker-cli-build /go/src/github.com/docker/cli/build/docker-linux-amd64 /usr/bin/docker
+ADD --checksum=sha256:b530942257fb935f8b2cfaa5f8eb5bd59c555fd8e8d01b8ce98912e077ea606c https://repo.maven.apache.org/maven2/com/google/guava/guava/33.7.2-jre/guava-33.7.2-jre.jar /tmp/guava-33.7.2-jre.jar
 
 RUN mkdir -p ${JAVA_HOME} /usr/lib/jvm && \
     curl -fsSL --retry 5 --retry-all-errors --retry-delay 2 --connect-timeout 10 --max-time 600 -o /tmp/temurin-jdk25.tar.gz "${TEMURIN_JDK25_URL}" && \
@@ -127,6 +134,11 @@ RUN mkdir -p ${JAVA_HOME} /usr/lib/jvm && \
     echo "${MAVEN_SHA512}  /tmp/apache-maven.tar.gz" | sha512sum -c - && \
     mkdir -p ${MAVEN_HOME} && \
     tar -xzf /tmp/apache-maven.tar.gz -C ${MAVEN_HOME} --strip-components=1 && \
+    test "$(find ${MAVEN_HOME}/lib -maxdepth 1 -name 'guava-*.jar' -printf '%f\n')" = 'guava-33.6.0-jre.jar' && \
+    install -m 0644 /tmp/guava-33.7.2-jre.jar ${MAVEN_HOME}/lib/guava-33.7.2-jre.jar && \
+    rm ${MAVEN_HOME}/lib/guava-33.6.0-jre.jar /tmp/guava-33.7.2-jre.jar && \
+    echo 'b530942257fb935f8b2cfaa5f8eb5bd59c555fd8e8d01b8ce98912e077ea606c  /opt/apache-maven/lib/guava-33.7.2-jre.jar' | sha256sum -c - && \
+    printf 'Apache Maven 3.9.16; Guava 33.6.0-jre replaced with official 33.7.2-jre for CVE-2026-102554.\n' > /licenses/MAVEN-GUAVA-SECURITY.txt && \
     rm -f /tmp/apache-maven.tar.gz && \
     test "$(find ${MAVEN_HOME}/lib -maxdepth 1 -name 'plexus-utils-*.jar' -printf '%f\n')" = 'plexus-utils-3.6.1.jar' && \
     chmod +x /usr/bin/docker && \

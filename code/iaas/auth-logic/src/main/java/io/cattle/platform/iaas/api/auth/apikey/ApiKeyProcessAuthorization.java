@@ -149,7 +149,7 @@ public class ApiKeyProcessAuthorization implements ProcessAuthorizationHook {
                     EngineContext.getEngineContext().currentVerifiedExecution(), EngineContext.getEngineContext().parentVerifiedExecution(), metadata);
             var lifecycle = cleanup != null ? cleanup : ensure != null ? ensure : dependency == null
                     ? targets.resolveUpgradeRemovalDependency(root, child, current.policy(), config.getProcessName(), config.getResourceType(),
-                            EngineContext.getEngineContext().currentVerifiedExecution(), metadata) : null;
+                            EngineContext.getEngineContext().currentVerifiedExecution(), metadata, config) : null;
             if (lifecycle == null && dependency == null) lifecycle = targets.resolveLifecycleDependency(root, child, current.policy());
             var descendant = lifecycle != null ? lifecycle.scope() : dependency == null
                     ? targets.resolveObject(ApiKeyQueryScopes.canonical(config.getResourceType()), child, current.policy()) : dependency.scope();

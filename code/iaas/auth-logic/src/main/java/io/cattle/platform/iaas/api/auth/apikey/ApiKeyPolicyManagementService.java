@@ -190,6 +190,9 @@ public class ApiKeyPolicyManagementService extends AbstractJooqDao implements Ap
     /** Conservative implication check: uncertain custom changes require confirmation. */
     public boolean requiresConfirmation(ApiKeyPolicy previous, ApiKeyPolicy candidate) {
         if (previous == null) previous = full();
+        if (previous.getPurpose() == ApiKeyPolicy.Purpose.AI_BRIDGE
+                && candidate.getPurpose() != ApiKeyPolicy.Purpose.AI_BRIDGE
+                && candidate.getMode() != ApiKeyPolicy.Mode.CLOSED) return true;
         Instant before = previous.getExpiresAt();
         Instant after = candidate.getExpiresAt();
         if (before != null && (after == null || after.isAfter(before))) return true;

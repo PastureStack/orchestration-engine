@@ -314,6 +314,147 @@ public class ApiKeyTargetResolverTest {
             assertThrows(ClientVisibleException.class, () -> resolver.resolveLifecycleDependency(f.service, child, owner));
         }
     }
+    @Test public void actualUpgradeTeardownChildrenRetainExactOldInstanceScope() {
+        Lifecycle f = removalLifecycle(); var binding = finishUpgradeBinding(); binding.put("requestAction", "upgrade");
+        assertTrue(resolver.idFormatter instanceof DefaultIdFormatter);
+        assertNull(resolver.idFormatter.parseId("3")); // Persisted IDs are never decoded as wire IDs.
+        HostRecord host = new HostRecord(); host.setId(9L); host.setAccountId(5L); f.add(io.cattle.platform.core.model.Host.class, host);
+        var engine = EngineContext.getEngineContext(); var frame = engine.pushVerifiedExecution("instance", "3", binding);
+        try {
+            for (Object child : List.of(f.nic, f.port, f.link, f.mount, f.hostMap)) {
+                String type = child instanceof Nic ? "nic" : child instanceof Port ? "port" : child instanceof InstanceLink ? "instanceLink"
+                        : child instanceof Mount ? "mount" : "instanceHostMap";
+                String action = child instanceof Nic ? "remove" : "deactivate";
+                var dependency = resolver.resolveUpgradeCleanupDependency(f.service, child, owner,
+                        cleanupJob(type, action, (Long) io.cattle.platform.object.util.ObjectUtils.getPropertyIgnoreErrors(child, "id")), frame, null, binding);
+                assertNotNull(type, dependency); assertEquals("1st8", dependency.scope().stackId());
+                assertTrue(dependency.resources().stream().anyMatch(t -> "container".equals(t.resourceType()) && "1i3".equals(t.resourceId())));
+                var deny = new ApiKeyPolicy(ApiKeyPolicy.Mode.CUSTOM, ApiKeyPolicy.Effect.DENY, null, List.of(
+                        new ApiKeyPolicy.Rule("allow", ApiKeyPolicy.Effect.ALLOW, ApiKeyPolicy.Scope.stack("1st8"), java.util.Set.of("upgrade")),
+                        new ApiKeyPolicy.Rule("deny", ApiKeyPolicy.Effect.DENY, ApiKeyPolicy.Scope.resource(type, dependency.scope().resourceId()), java.util.Set.of("upgrade"))));
+                assertFalse(new ApiKeyPolicyEvaluator().evaluateAuthorizedDependency(deny,
+                        new ApiKeyPolicyEvaluator.Request(true, "upgrade", true, dependency.resources()), java.time.Instant.EPOCH).allowed());
+            }
+            var nic = engine.pushVerifiedExecution("nic", "5", binding);
+            try { assertNotNull(resolver.resolveUpgradeCleanupDependency(f.service, f.address, owner,
+                    cleanupJob("ipAddress", "deactivate", 10), nic, frame, binding)); }
+            finally { engine.popVerifiedExecution(nic); }
+        } finally { engine.popVerifiedExecution(frame); }
+    }
+
+    @Test public void verifiedNicRetryCanReleaseOnlyItsOwnAddressAfterInstanceRemoval() {
+        Lifecycle f = removalLifecycle(); var binding = finishUpgradeBinding(); binding.put("requestAction", "upgrade");
+        f.instance.setState("removed"); f.instance.setRemoved(new java.util.Date(1));
+        var engine = EngineContext.getEngineContext(); var nic = engine.pushVerifiedExecution("nic", "5", binding);
+        try {
+            assertNotNull(resolver.resolveUpgradeCleanupDependency(f.service, f.address, owner,
+                    cleanupJob("ipAddress", "deactivate", 10), nic, null, binding));
+            f.addressMap.setNicId(99L);
+            assertThrows(ClientVisibleException.class, () -> resolver.resolveUpgradeCleanupDependency(f.service, f.address, owner,
+                    cleanupJob("ipAddress", "deactivate", 10), nic, null, binding));
+        } finally { engine.popVerifiedExecution(nic); }
+    }
+
+    @Test public void upgradeTeardownRejectsMissingForeignOrForgedParentAndOwnerDenial() {
+        for (String bad : List.of("missing", "foreign", "binding", "projection", "owner", "direct-delete", "shared-ip")) {
+            Lifecycle f = removalLifecycle(); var binding = finishUpgradeBinding(); binding.put("requestAction", "upgrade");
+            var engine = EngineContext.getEngineContext();
+            var frame = bad.equals("missing") ? null : engine.pushVerifiedExecution("instance", bad.equals("foreign") ? "99" : "3",
+                    bad.equals("binding") ? Map.of("keyId", "other") : binding);
+            try {
+                if (bad.equals("owner")) f.nic.setAccountId(99L);
+                if (bad.equals("projection")) {
+                    NicRecord forged = new NicRecord(); forged.from(f.nic); forged.setInstanceId(99L);
+                    assertThrows(ClientVisibleException.class, () -> resolver.resolveUpgradeCleanupDependency(f.service, forged, owner,
+                            cleanupJob("nic", "remove", 5), frame, null, binding)); continue;
+                }
+                if (bad.equals("direct-delete")) {
+                    binding.put("operation", "remove"); binding.remove("requestAction");
+                    assertNull(resolver.resolveUpgradeCleanupDependency(f.service, f.nic, owner, cleanupJob("nic", "remove", 5), frame, null, binding)); continue;
+                }
+                if (bad.equals("shared-ip")) {
+                    f.addressMap.setNicId(99L); var nic = engine.pushVerifiedExecution("nic", "5", binding);
+                    try { assertThrows(ClientVisibleException.class, () -> resolver.resolveUpgradeCleanupDependency(f.service, f.address, owner,
+                            cleanupJob("ipAddress", "deactivate", 10), nic, frame, binding)); }
+                    finally { engine.popVerifiedExecution(nic); } continue;
+                }
+                assertThrows(ClientVisibleException.class, () -> resolver.resolveUpgradeCleanupDependency(f.service, f.nic, owner,
+                        cleanupJob("nic", "remove", 5), frame, null, binding));
+            } finally { if (frame != null) engine.popVerifiedExecution(frame); }
+        }
+    }
+
+    @Test public void onlyOsVolumeParentMayRemoveItsExactMount() {
+        Lifecycle f = removalLifecycle(); var binding = finishUpgradeBinding(); binding.put("requestAction", "upgrade");
+        f.volume.setState("removing"); var engine = EngineContext.getEngineContext(); var frame = engine.pushVerifiedExecution("volume", "6", binding);
+        try {
+            for (String action : List.of("deactivate", "remove")) assertNotNull(resolver.resolveUpgradeCleanupDependency(f.service, f.mount, owner,
+                    cleanupJob("mount", action, 7), frame, null, binding));
+            f.volume.setDeviceNumber(null); f.volume.setName("persistent-data");
+            assertThrows(ClientVisibleException.class, () -> resolver.resolveUpgradeCleanupDependency(f.service, f.mount, owner,
+                    cleanupJob("mount", "remove", 7), frame, null, binding));
+            f.volume.setDeviceNumber(0); f.mount.setInstanceId(99L);
+            assertThrows(ClientVisibleException.class, () -> resolver.resolveUpgradeCleanupDependency(f.service, f.mount, owner,
+                    cleanupJob("mount", "remove", 7), frame, null, binding));
+        } finally { engine.popVerifiedExecution(frame); }
+    }
+
+    @Test public void mountUnmountDetachesNamedVolumeWithoutAuthorizingItsRemoval() {
+        Lifecycle f = removalLifecycle(); var binding = finishUpgradeBinding(); binding.put("requestAction", "upgrade");
+        f.volume.setDeviceNumber(null); f.volume.setInstanceId(null); f.volume.setName("persistent-data"); f.volume.setState("active");
+        f.mount.setState("deactivating"); var engine = EngineContext.getEngineContext(); engine.pushAuthorization(binding);
+        var instance = engine.pushVerifiedExecution("instance", "3", binding); ProcessRecord mountJob;
+        try {
+            var launch = cleanupJob("mount", "deactivate", 7); ProcessAuthorization.prepare(launch, List.of());
+            mountJob = new ProcessRecord(launch, 999L, "test");
+            assertNotNull(resolver.resolveUpgradeCleanupDependency(f.service, f.mount, owner, mountJob, instance, null, binding));
+        } finally { engine.popVerifiedExecution(instance); }
+        f.instance.setState("removed"); f.instance.setRemoved(new java.util.Date(1));
+        assertNotNull(resolver.resolveUpgradeCleanupDependency(f.service, f.mount, owner, mountJob, null, null, binding));
+        var mount = engine.pushVerifiedExecution("mount", "7", binding); ProcessRecord volumeJob;
+        try {
+            var launch = cleanupJob("volume", "deactivate", 6); ProcessAuthorization.prepare(launch, List.of());
+            volumeJob = new ProcessRecord(launch, 1000L, "test");
+        } finally { engine.popVerifiedExecution(mount); engine.popAuthorization(); }
+        assertNotNull(resolver.resolveUpgradeCleanupDependency(f.service, f.volume, owner, volumeJob, null, null, binding));
+        StoragePoolRecord pool = new StoragePoolRecord(); pool.setId(9L); pool.setAccountId(5L); f.add(StoragePool.class, pool);
+        f.volume.setState("deactivating");
+        var volumeFrame = engine.pushVerifiedExecution("volume", "6", binding);
+        try {
+            var dependency = resolver.resolveUpgradeCleanupDependency(f.service, f.poolMap, owner,
+                    cleanupJob("volumeStoragePoolMap", "deactivate", 12), volumeFrame, null, binding);
+            assertNotNull(dependency);
+            for (String type : List.of("volume", "mount", "storagePool", "volumeStoragePoolMap")) {
+                var scope = dependency.resources().stream().filter(t -> type.equals(t.resourceType())).findFirst().orElseThrow();
+                var policy = new ApiKeyPolicy(ApiKeyPolicy.Mode.CUSTOM, ApiKeyPolicy.Effect.DENY, null, List.of(
+                        new ApiKeyPolicy.Rule("allow", ApiKeyPolicy.Effect.ALLOW, ApiKeyPolicy.Scope.stack("1st8"), java.util.Set.of("upgrade")),
+                        new ApiKeyPolicy.Rule("deny", ApiKeyPolicy.Effect.DENY, ApiKeyPolicy.Scope.resource(type, scope.resourceId()), java.util.Set.of("upgrade"))));
+                assertFalse(type, new ApiKeyPolicyEvaluator().evaluateAuthorizedDependency(policy,
+                        new ApiKeyPolicyEvaluator.Request(true, "upgrade", true, dependency.resources()), java.time.Instant.EPOCH).allowed());
+            }
+            assertThrows(ClientVisibleException.class, () -> resolver.resolveUpgradeCleanupDependency(f.service, f.poolMap, owner,
+                    cleanupJob("volumeStoragePoolMap", "remove", 12), volumeFrame, null, binding));
+            f.poolMap.setVolumeId(99L);
+            assertThrows(ClientVisibleException.class, () -> resolver.resolveUpgradeCleanupDependency(f.service, f.poolMap, owner,
+                    cleanupJob("volumeStoragePoolMap", "deactivate", 12), volumeFrame, null, binding));
+            f.poolMap.setVolumeId(6L);
+        } finally { engine.popVerifiedExecution(volumeFrame); }
+        assertNull(resolver.resolveUpgradeCleanupDependency(f.service, f.volume, owner, cleanupJob("volume", "remove", 6), null, null, binding));
+        for (String bad : List.of("mount-volume", "mount-instance", "volume-instance", "shared-active", "cross-mount", "wrong-root")) {
+            f.rows.get(Mount.class).remove(99L);
+            if (bad.equals("cross-mount")) {
+                MountRecord other = new MountRecord(); other.setId(99L); other.setAccountId(5L); other.setVolumeId(6L);
+                other.setInstanceId(99L); other.setState("inactive"); f.add(Mount.class, other);
+            }
+            f.volume.setInstanceId(bad.equals("volume-instance") ? 99L : null);
+            f.mount.setVolumeId(bad.equals("mount-volume") ? 99L : 6L);
+            f.mount.setInstanceId(bad.equals("mount-instance") ? 99L : 3L);
+            f.mount.setState(bad.equals("shared-active") ? "active" : "deactivating");
+            if (bad.equals("wrong-root")) { binding.put("requestAction", "remove"); assertNull(resolver.resolveUpgradeCleanupDependency(f.service, f.volume, owner, volumeJob, null, null, binding)); }
+            else assertThrows(ClientVisibleException.class, () -> resolver.resolveUpgradeCleanupDependency(f.service, f.volume, owner, volumeJob, null, null, binding));
+        }
+    }
+
     private Map<String, Object> finishUpgradeBinding() {
         return new HashMap<>(Map.of("targetType", "service", "targetId", "2", "operation", "upgrade",
                 "requestAction", "finishupgrade", "requestMethod", "POST", "requestCollection", false, "preview", false));

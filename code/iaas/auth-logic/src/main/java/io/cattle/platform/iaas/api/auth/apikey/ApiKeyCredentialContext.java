@@ -27,6 +27,13 @@ public record ApiKeyCredentialContext(long credentialId, long principalAccountId
         request.setAttribute("apiKey.audit.operation", ApiKeyOperations.of(request).id());
         request.setAttribute("apiKey.audit.decision", "DENY");
         request.setAttribute("apiKey.audit.reason", "AuthenticationPending");
+        if (request.getServletContext() != null && request.getServletContext().getResponse() != null) {
+            // Attest the verified credential's purpose and revision, never request input.
+            var response = request.getServletContext().getResponse();
+            response.setHeader("X-PastureStack-Key-Purpose", context.policy() != null
+                    && context.policy().getPurpose() == ApiKeyPolicy.Purpose.AI_BRIDGE ? "ai-bridge" : "general");
+            response.setHeader("X-PastureStack-Key-Revision", Long.toString(context.revision()));
+        }
     }
 
     public boolean restricted() {

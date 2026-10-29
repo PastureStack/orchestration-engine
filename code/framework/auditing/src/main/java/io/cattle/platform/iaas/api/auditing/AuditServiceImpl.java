@@ -4,6 +4,7 @@ import io.cattle.platform.api.auth.Identity;
 import io.cattle.platform.api.auth.ApiKeyAuditSink;
 import io.cattle.platform.api.auth.ApiKeyDelegatedAuditEvent;
 import io.cattle.platform.api.auth.ApiKeySubscriptionAuditEvent;
+import io.cattle.platform.api.auth.ClientToolAuditEvent;
 import io.cattle.platform.api.auth.Policy;
 import io.cattle.platform.core.constants.AccountConstants;
 import io.cattle.platform.core.constants.CredentialConstants;
@@ -56,7 +57,9 @@ public class AuditServiceImpl implements AuditService, ApiKeyAuditSink, ApiReque
     public static final String API_KEY_AUDIT_PREFIX = "apiKey.audit.";
     public static final Set<String> API_KEY_AUDIT_FIELDS = Collections.unmodifiableSet(new HashSet<>(Arrays.asList(
             "eventId", "keyId", "decision", "outcome", "httpStatus", "responseCode", "requestId", "actor",
-            "targetType", "targetId", "operation", "policyRevision", "reason", "phase", "preview", "processId", "processName", "hostUuid", "failureCode")));
+            "targetType", "targetId", "operation", "policyRevision", "reason", "phase", "preview", "processId", "processName", "hostUuid", "failureCode",
+            "clientReportedCommand", "clientReportedPhase", "clientReportedStatus", "clientReportedReason",
+            "clientCorrelationId", "evidenceSource", "channel")));
     private static final Set<String> SENSITIVE_AUDIT_FIELDS = Set.of(
             "secretvalue", "secretvalues", "password", "newsecret", "oldsecret", "adminaccountpassword", "serviceaccountpassword",
             "identityproof", "providerswitchcode", "localpassword", "mfacode", "recoverycode", "verificationcode",
@@ -94,6 +97,8 @@ public class AuditServiceImpl implements AuditService, ApiKeyAuditSink, ApiReque
                     "serviceEvent".toLowerCase(),
                     "userPreference".toLowerCase(),
                     "dynamicSchema".toLowerCase(),
+                    "aiToolCallEvent".toLowerCase(),
+                    "aiServiceDescriptionUpdate".toLowerCase(),
                     ContainerEventConstants.CONTAINER_EVENT_KIND.toLowerCase(),
                     ExternalEventConstants.KIND_EXTERNAL_EVENT.toLowerCase(),
                     ExternalEventConstants.KIND_SERVICE_EVENT.toLowerCase(),
@@ -316,6 +321,87 @@ public class AuditServiceImpl implements AuditService, ApiKeyAuditSink, ApiReque
         }
         logApiKeyEvent(request, policy, "decision");
         request.setAttribute(API_KEY_AUDIT_PREFIX + "admitted", Boolean.TRUE);
+    }
+
+    @Override
+    public void recordServiceUpgradeDecision(ApiRequest request, Policy policy, String action,
+            String planId, Long serviceId, boolean allowed, String reason) {
+        if (!Set.of("preview", "read", "confirm", "apply", "cancel").contains(action)) action = "unknown";
+        recordServiceDecision(request, policy, action, planId, "aiplan", serviceId, allowed, reason,
+                "api.aiServiceUpgradePlan." + action, "UpgradeDenied");
+    }
+
+    @Override
+    public void recordServiceDescriptionDecision(ApiRequest request, Policy policy, String receiptId,
+            Long serviceId, boolean allowed, String reason) {
+        recordServiceDecision(request, policy, "update", receiptId, "aidescription", serviceId, allowed, reason,
+                "api.aiServiceDescriptionUpdate.update", "DescriptionDenied");
+    }
+
+    private void recordServiceDecision(ApiRequest request, Policy policy, String action, String receiptId,
+            String receiptPrefix, Long serviceId, boolean allowed, String reason, String eventType, String fallbackReason) {
+        Map<String, Object> data = new HashMap<>();
+        data.put("eventId", UUID.randomUUID().toString());
+        data.put("operation", action);
+        data.put("targetType", "service");
+        if (serviceId != null) data.put("targetId", String.valueOf(idFormatter.formatId("service", serviceId)));
+        if (receiptId != null && receiptId.matches(receiptPrefix + "-[0-9a-f-]{36}")) data.put("requestId", receiptId);
+        data.put("decision", allowed ? "ALLOW" : "DENY");
+        if (policy != null) data.put("actor", formattedAccountId(policy.getAuthenticatedAsAccountId()));
+        data.put("phase", "admission");
+        data.put("reason", metadataValue(reason, fallbackReason));
+        data.put("preview", "preview".equals(action));
+        if (request.getServletContext() != null) {
+            String correlation = request.getServletContext().getRequest().getHeader("X-AI-Tool-Request-Id");
+            if (ClientToolAuditEvent.validId(correlation)) data.put("clientCorrelationId", correlation);
+        }
+        Map<String, Object> event = new HashMap<>();
+        event.put("resourceType", "service"); event.put("resourceId", serviceId);
+        event.put("accountId", policy == null ? null : policy.getAccountId());
+        event.put("authenticatedAsAccountId", policy == null ? null : policy.getAuthenticatedAsAccountId());
+        event.put("eventType", eventType);
+        event.put("authType", addVerifiedKeyIdentity(request, data)); event.put("runtime", 0);
+        event.put("clientIp", ""); event.put("data", data);
+        outbox().persist(event, this::deliverApiKeyEvent);
+    }
+
+    @Override
+    public void recordClientToolEvent(Policy policy, ClientToolAuditEvent report) {
+        recordClientToolEvent(null, policy, report);
+    }
+
+    @Override
+    public void recordClientToolEvent(ApiRequest request, Policy policy, ClientToolAuditEvent report) {
+        if (policy == null || policy.getAuthenticatedAsAccountId() <= 0 || policy.getAccountId() <= 0
+                || report == null || !report.valid()) throw new IllegalArgumentException("Invalid client tool event");
+        Map<String, Object> data = new HashMap<>();
+        data.put("eventId", UUID.randomUUID().toString()); data.put("requestId", report.requestId());
+        data.put("actor", formattedAccountId(policy.getAuthenticatedAsAccountId()));
+        data.put("operation", "toolReport"); data.put("phase", "client-report");
+        data.put("decision", "NOT_EVALUATED"); data.put("outcome", "REPORTED");
+        data.put("evidenceSource", "client_reported"); data.put("channel", "webmcp-client-report");
+        data.put("clientReportedCommand", report.command()); data.put("clientReportedPhase", report.phase());
+        data.put("clientReportedStatus", report.status()); data.put("clientReportedReason", report.reason());
+        if (report.correlationId() != null) data.put("clientCorrelationId", report.correlationId());
+        Map<String, Object> event = new HashMap<>();
+        event.put("resourceType", "aiToolCallEvent"); event.put("resourceId", null);
+        event.put("accountId", policy.getAccountId()); event.put("authenticatedAsAccountId", policy.getAuthenticatedAsAccountId());
+        event.put("eventType", "api.aiToolCallEvent.report"); event.put("authType", addVerifiedKeyIdentity(request, data));
+        event.put("runtime", 0); event.put("clientIp", ""); event.put("data", data);
+        outbox().persist(event, this::deliverApiKeyEvent);
+    }
+
+    private String addVerifiedKeyIdentity(ApiRequest request, Map<String, Object> data) {
+        // ApiKeyCredentialContext.attach sets these internal attributes only after
+        // verifying the secret. Never derive identity from headers or request data.
+        if (request != null && isApiKeyRequest(request)
+                && verifiedAccount(request, "verifiedPrincipalAccountId") != null
+                && request.getAttribute(API_KEY_AUDIT_PREFIX + "policyRevision") instanceof Number revision) {
+            data.put("keyId", metadataValue(request.getAttribute(API_KEY_AUDIT_PREFIX + "keyId"), ""));
+            data.put("policyRevision", revision.longValue());
+            return "BasicAuth";
+        }
+        return "Cookie";
     }
 
     @Override

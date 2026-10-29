@@ -1212,8 +1212,8 @@ import xml.etree.ElementTree as ET
 from pathlib import Path
 
 NS = {"m": "http://maven.apache.org/POM/4.0.0"}
-FLOOR = (33, 7, 1)
-FLOOR_TEXT = "33.7.1-jre"
+FLOOR = (33, 7, 2)
+FLOOR_TEXT = "33.7.2-jre"
 LINE = (33,)
 UNREVIEWED_QUALIFIER = re.compile(r"(?:^|[.-])(alpha|beta|snapshot|rc|b\d+|m\d+|mr|milestone)(?:[.-]|\d|$)", re.IGNORECASE)
 
@@ -1289,7 +1289,7 @@ sys.exit(0)
 PY
 )
 if [ -n "$guava_stable_line_dependencies" ]; then
-    echo "Blocked Guava dependency outside the reviewed stable JRE line found in Maven POMs; keep Guava on stable 33.x at 33.7.1-jre+ without unreviewed qualifiers" >&2
+    echo "Blocked Guava dependency outside the reviewed stable JRE line found in Maven POMs; keep Guava on stable 33.x at 33.7.2-jre+ without unreviewed qualifiers" >&2
     echo "$guava_stable_line_dependencies" >&2
     fail=1
 fi
@@ -4605,8 +4605,8 @@ import re
 import sys
 from pathlib import Path
 
-FLOOR = (33, 7, 1)
-FLOOR_TEXT = "33.7.1-jre"
+FLOOR = (33, 7, 2)
+FLOOR_TEXT = "33.7.2-jre"
 LINE = (33,)
 UNREVIEWED_QUALIFIER = re.compile(r"(?:^|[.-])(alpha|beta|snapshot|rc|b\d+|m\d+|mr|milestone)(?:[.-]|\d|$)", re.IGNORECASE)
 root = Path("code/packaging/app/target")
@@ -4635,7 +4635,7 @@ sys.exit(0)
 PY
 )
 if [ -n "$guava_stable_line_jars" ]; then
-    echo "Blocked Guava jar outside the reviewed stable JRE line packaged in app; keep Guava on stable 33.x at 33.7.1-jre+ without unreviewed qualifiers" >&2
+    echo "Blocked Guava jar outside the reviewed stable JRE line packaged in app; keep Guava on stable 33.x at 33.7.2-jre+ without unreviewed qualifiers" >&2
     echo "$guava_stable_line_jars" >&2
     fail=1
 fi
@@ -6883,7 +6883,7 @@ echo "- Legacy MySQL Connector/J and pre-jdk18on BouncyCastle dependencies, impo
 echo "- PostgreSQL JDBC stays on reviewed stable pgJDBC 42.7.x at 42.7.11+; current driver CVE fixes own optional PostgreSQL connectivity."
 echo "- MariaDB Connector/J, PostgreSQL JDBC, H2, and HSQLDB drivers stay runtime/test scoped so driver APIs do not become compile-surface dependencies."
 echo "Resolved in the Guava compatibility slice:"
-echo "- Legacy Google Collections, guava-jdk5, and Guava 31-and-older dependencies and packaged jars are blocked; Guava stays on the reviewed stable 33.x JRE line at 33.7.1-jre+."
+echo "- Legacy Google Collections, guava-jdk5, and Guava 31-and-older dependencies and packaged jars are blocked; Guava stays on the reviewed stable 33.x JRE line at 33.7.2-jre+."
 echo "Resolved in the runtime framework compatibility slice:"
 echo "- Spring 6 and older are blocked; the maintained JDK25/Jakarta runtime requires stable Spring 7.0.9+ without an opt-in compatibility path."
 echo "- Jetty stays on the reviewed stable 12.1.x EE10 runtime line at 12.1.12+; unreviewed qualifiers and line jumps require explicit compatibility review."
