@@ -1,5 +1,26 @@
 # Orchestration Engine 0.183.355
 
+## Published artifact
+
+[Release v0.183.355](https://github.com/PastureStack/orchestration-engine/releases/tag/v0.183.355)
+contains the original tested CI artifact, with no publication rebuild.
+
+- Original producer: `9ea138d1db1718cf65157c9564c379e62bafe9a0`.
+- Signed merged release source: `a8f23bf234199ac39c7b14713dab9a7735f29cbe`.
+- Identical source tree: `a4e726b6bfc05f73b0fa997d6143212c66e8036f`.
+- `cattle.jar`: 87,981,315 bytes; SHA-256
+  `a7f651f84a9fe6deef2c9f66f50c13c70e450e25f9dfa6fb59129b2681f9f54f`.
+- [Full build/security CI](https://github.com/PastureStack/orchestration-engine/actions/runs/40855249595)
+  passed 363 suites and 3,469 cases, with zero failures/errors. The existing
+  non-POSIX storage case is skipped on Linux; its POSIX control passes.
+- [CodeQL verification](https://github.com/PastureStack/orchestration-engine/actions/runs/40855249449)
+  and required PR checks passed; the separate alerts check reported no new alerts.
+
+Source secrets, product and effective builder High/Critical findings, and
+findings with an available fix are zero. Raw scans, effective scans, SBOM,
+exact vendor-source proof and OpenVEX are retained separately as release assets.
+Anonymous metadata, checksum, producer and full-JAR download readback matched.
+
 ## Guava security patch
 
 The existing Guava dependency advances from `33.7.1-jre` to official
@@ -22,7 +43,7 @@ full installations, unknown paths or changed vendor bytes do not inherit it.
 
 ## WebMCP v1.3 backend contracts
 
-This candidate supplies the Engine side of seven service tools. A compatible
+This release supplies the Engine side of seven service tools. A compatible
 Web Console or stdio bridge exposes the tool protocol; this repository does
 not install those companion components.
 
@@ -83,15 +104,13 @@ Service-update API semantics or owner-role model is replaced. Retain policy
 records, the plan table and persistent volumes when rolling back application
 code. Do not delete the changelog entry or rewrite active receipts.
 
-Focused source tests cover purpose/revision gates, human confirmation,
+Source tests cover purpose/revision gates, human confirmation,
 conditional description updates, exact project scope, metadata-only audit,
-and live/retired lifecycle authorization. The final r10 cleanup candidate has
-150 passing focused cases and packaged class/source checks. Its final native
-upgrade acceptance is still pending: earlier QA findings and partial passes
-are not a complete r10 runtime pass.
+and live/retired lifecycle authorization. Component CI and artifact checks do
+not substitute for assembled Server acceptance or a deployment readback.
 
-CodeQL verification and the security release gate must pass for this exact
-candidate. The latter builds/tests the full Maven reactor, verifies packaged
+CodeQL verification and the security release gate passed for the original
+producer above. The latter builds/tests the full Maven reactor, verifies packaged
 runtime boundaries, records dependency/SBOM evidence and scans source, the
 Engine artifact and its builder. Findings with an available fix, High/Critical
 findings and unreviewed findings block publication; only the existing exact documented
