@@ -1,10 +1,13 @@
 # Compatibility Contract
 
-## Engine 0.183.359 source candidate
+## Engine 0.183.359 release
 
-Catalog private ingress requires an Engine-verified context before any proxy
-request or redirect can reach the private Catalog API; loopback alone is not
-authority. The matching Catalog/Compose versions are required together.
+Public Engine proxy routes reject the private `/v1-catalog/ai/` namespace,
+including redirect targets. The typed gateway authorizes the real caller and
+uses its fixed loopback transport and validated project; loopback alone is not
+an external caller's authority. Use the matching Catalog 0.20.17, Compose 0.14.40
+and Web Console 1.6.200/bridge 0.2.2 contracts together. An older Engine without
+this private proxy boundary is not a compatible launch gateway.
 Typed launch retains live read/create/update destination checks and delegates
 business mutations to native owners. Archive/restore reuses the existing stopped
 eligibility and Stack lock; it never changes running state or mounted data.
@@ -18,8 +21,15 @@ projected. Database additions preserve existing rows and plan receipts.
 The existing removed-resource receipt is a bound safe plan result, not a removed
 object GET. It checks current actor/project/role/object policy and the original
 live Key identity/revision; it does not rerun every target selector after removal.
-Required CI/CodeQL and combined runtime/browser acceptance remain pending.
-See the [candidate release note](docs/releases/orchestration-engine-0.183.359.md).
+Required component CI/CodeQL passed. The original CI artifact and twelve public
+assets were verified without rebuilding; the signed tag and producer remain
+immutable. Combined Server559, browser, role/cross-ID and weak-model acceptance
+remain pending, and coverage of all 243 frontend business groups is incomplete.
+The four AI opt-ins each default to false: `api.ai.bridge.enabled`,
+`api.ai.service.upgrade.enabled`, `api.ai.resource.change.enabled` and
+`api.ai.catalog.launch.enabled`. Receipt reads retain their current caller and
+Key checks, including the separate bridge route guard.
+See the [published release note](docs/releases/orchestration-engine-0.183.359.md).
 
 ## Engine 0.183.358 release
 

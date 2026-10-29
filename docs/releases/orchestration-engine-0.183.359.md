@@ -1,4 +1,7 @@
-# Orchestration Engine 0.183.359 source candidate
+# Orchestration Engine 0.183.359
+
+[Published release](https://github.com/PastureStack/orchestration-engine/releases/tag/v0.183.359)
+contains the original qualified CI bytes, without a publication rebuild.
 
 ## Behavior
 
@@ -6,8 +9,10 @@ Named Catalog discovery and supported typed Compose Stack launch retain exact
 source revision, target and human input bindings. The Engine checks current
 destination read/create/update operations and uses the ordinary Catalog/Compose
 owners. No arbitrary YAML/URL, Project PUT grant or model approval is introduced.
-Private Catalog endpoints require an Engine-verified ingress context, including
-redirects. Launch remains opt-in with api.ai.catalog.launch.enabled=false.
+Public Engine proxies reject the private Catalog AI namespace, including
+redirect targets. The typed gateway checks the caller before using its fixed
+loopback transport; loopback alone is not external caller authority.
+Launch remains opt-in with `api.ai.catalog.launch.enabled=false`.
 Unsupported graph types and external existing volumes remain pending.
 
 Authorized public reference IDs use a typed envelope separate from the native
@@ -47,12 +52,27 @@ evaluation. Create preview is not described as already having read a future targ
 
 ## Validation and rollout boundary
 
-Focused Catalog/Archive/lifecycle and failure-receipt source checks qualify only
-their designated cases. Previous unaffected evidence and original failures are
-retained. Required full component CI/CodeQL, original CI artifact verification,
-Server assembly, real browser/role/cross-ID workflows and weak-model acceptance
-are separate pending gates. This candidate does not complete all 243 frontend
-business groups. No runtime dependency is changed.
+The required [component gate](https://github.com/PastureStack/orchestration-engine/actions/runs/40966528986)
+and [CodeQL verification](https://github.com/PastureStack/orchestration-engine/actions/runs/40966528987)
+passed. CI executed 3,748 tests in 396 suites with zero failures/errors and one
+existing skip. Original artifact 12939175361 and all twelve published assets
+were independently verified by anonymous readback.
+
+| Immutable coordinate | Value |
+|---|---|
+| Producer | `eac3fde5fc7779b6107e2702785120a9c591927b` |
+| Merged/tag source | `c11979a7426d942df3035583e4d0dea8f1a2553f` |
+| Shared tested tree | `76540a38dce4a5ff7d90a1f1881bc1e07f1bb92d` |
+| Signed tag | `v0.183.359` |
+| Original cattle.jar SHA-256 | `07e7de2548bd98d5209bf3594d69fe5b9a5d7ddba36eed4b6b6e4406022c3f90` |
+
+The release retains its raw/effective scan and exact vendor-proof assets;
+passing the applicable severity gate is not a claim of zero reported CVEs.
+Server559 assembly and designated real browser/role/cross-ID workflows and
+new weak-model acceptance remain pending. Previous unaffected evidence and
+original failures are retained; the release does not complete all 243 frontend
+business groups. Documentation commits do not replace the artifact's producer
+or move the published tag. No runtime dependency is changed.
 
 Use the matching Web Console 1.6.200/bridge 0.2.2, Catalog 0.20.17 and Compose
 0.14.40 contracts. Roll back through the assembled Server procedure while
