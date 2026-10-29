@@ -47,6 +47,10 @@ public class AiResourceViewService {
     private static final Set<String> GLOBAL_TYPES = Set.of("project", "projectTemplate", "account", "apiKey", "apiKeyRestricted",
             "setting", "machineDriver", "processExecution", "processPool", "auditLog");
     private static final Set<String> MEMORY_COLLECTIONS = Set.of("project", "setting", "processPool");
+    private static final Set<String> DATABASE_NAME_COLLECTIONS = Set.of("projectTemplate", "account", "stack", "service",
+            "loadBalancerService", "dnsService", "externalService", "container", "host", "volume", "snapshot", "backup",
+            "backupTarget", "storagePool", "storageDriver", "network", "networkDriver", "certificate", "registry",
+            "registryCredential", "apiKey", "apiKeyRestricted", "machineDriver", "secret");
     private static final List<String> COMMON_FIELDS = List.of("name", "description", "state", "kind", "created", "healthState");
     private static final Map<String, List<String>> FIELDS = Map.ofEntries(
             Map.entry("project", List.of("orchestration")),
@@ -114,6 +118,12 @@ public class AiResourceViewService {
         String type = domain.getType();
         ResourceManager manager = managers.getResourceManagerByType(type);
         if (manager == null) throw error(404, "NotFound");
+        String query = ((String) input.getOrDefault("query", "")).toLowerCase(Locale.ROOT);
+        if (domain.getId() == null && !query.isEmpty() && DATABASE_NAME_COLLECTIONS.contains(type)) {
+            // Retain native tenant/Key restrictions and bounded pagination. A
+            // name search must not page through unrelated rows before filtering.
+            domain.getConditions().put("name", List.of(new Condition(ConditionType.LIKE, namePattern(query))));
+        }
         String parent = (String) input.get("parentId");
         if (parent != null) {
             if (!Set.of("service", "loadBalancerService", "dnsService", "externalService").contains(type))
@@ -150,17 +160,24 @@ public class AiResourceViewService {
             if (visible.size() != 1) throw error(404, "NotFound");
         }
         if (MEMORY_COLLECTIONS.contains(type)) visible.sort((a, b) -> compareIds((String) a.get("id"), (String) b.get("id")));
+        if (MEMORY_COLLECTIONS.contains(type) && !query.isEmpty())
+            visible.removeIf(row -> !((String) row.getOrDefault("name", "")).toLowerCase(Locale.ROOT).contains(query));
         boolean hasMore = visible.size() > 50;
         List<Map<String, Object>> page = visible.subList(0, Math.min(50, visible.size()));
         String next = hasMore ? (String) page.getLast().get("id") : null;
         if (Set.of("service", "loadBalancerService", "dnsService", "externalService").contains(type)) enrichParents(domain, page);
-        String query = ((String) input.getOrDefault("query", "")).toLowerCase(Locale.ROOT);
         List<Map<String, Object>> matching = page.stream().filter(row -> query.isEmpty()
                 || ((String) row.getOrDefault("name", "")).toLowerCase(Locale.ROOT).contains(query)).toList();
         Map<String, Object> output = new LinkedHashMap<>();
         output.put("id", "aiview-" + UUID.randomUUID()); output.put("resourceType", type);
         output.put("data", matching); output.put("nextMarker", next);
         return output;
+    }
+
+    static String namePattern(String value) {
+        // The native LIKE owner binds this as data. Escape pattern characters
+        // so the public substring search keeps its literal-name semantics.
+        return "%" + value.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%";
     }
 
     /** One authorized parent query per page, rather than one request per candidate. */

@@ -8,17 +8,19 @@ Rancher 1.6 ecosystem. It is not affiliated with Rancher Labs or SUSE.
 This fork of [`rancher/cattle`](https://github.com/rancher/cattle) preserves
 upstream history, authorship, licenses, and dependency notices.
 
-## Current source: Engine 0.183.357
+## Current source: Engine 0.183.358
 
 Use the [current Server release](https://github.com/PastureStack/server#current-release)
 for an assembled platform. `cattle.jar` alone is not a Server installation.
 Versioned artifacts and validation evidence belong in the
-[release notes](docs/releases), including the [357 release](docs/releases/orchestration-engine-0.183.357.md).
+[release notes](docs/releases), including the [358 source candidate](docs/releases/orchestration-engine-0.183.358.md).
 
-This source corrects decoded-ID authorization during typed-operation reads and
-uses stable owner-supplied process-pool identities. Unsupported active-setting
-collection reads are excluded from the AI adapter; ordinary APIs retain their
-existing contracts. See the release note for qualification and runtime limits.
+This source candidate preserves scoped service retirement ancestry only through
+verified scheduling edges, with live Key/role/explicit-DENY checks. Named/file
+volumes retain their normal deactivation path and never inherit destructive
+removal authority. Typed name queries filter through the native owner before
+pagination. Previous read fixes remain. Qualification and designated runtime
+acceptance are pending; this does not complete all frontend WebMCP workflows.
 
 ## Optional AI resource workflows
 

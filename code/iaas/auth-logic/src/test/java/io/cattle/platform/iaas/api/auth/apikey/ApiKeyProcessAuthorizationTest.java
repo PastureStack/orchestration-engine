@@ -878,6 +878,317 @@ public class ApiKeyProcessAuthorizationTest {
         } finally { engine.popVerifiedExecution(instanceFrame); }
     }
 
+    @Test public void managedScaleDownRetainsOnlyItsVerifiedQueuedStopAndRemoveAfterMapRetires() {
+        ServiceExposeMap map = managedLifecycle();
+        ProcessRecord stop = managedJob("instance.stop", "service", "2");
+        hook.beforeExecution(stop, metadata);
+        retireManagedMap(map);
+        hook.beforeExecution(stop, metadata);
+        Instance instance = hook.objectManager.loadResource(Instance.class, 3L);
+        when(instance.getState()).thenReturn("removing");
+        hook.beforeExecution(managedJob("instance.remove", "instance", "3"), metadata);
+        // Ordinary ancestry must still exclude the retired map.
+        Account project = hook.objectManager.loadResource(Account.class, 5L), principal = mock(Account.class);
+        when(principal.getId()).thenReturn(10L);
+        assertNull(hook.targets.resolveObject("container", instance,
+                new AccountPolicy(project, principal, Set.of(), new NoPolicyOptions())).stackId());
+    }
+
+    @Test public void retiredManagedMapCannotAuthorizeMissingForgedOrWrongParentProof() {
+        ServiceExposeMap map = managedLifecycle(); retireManagedMap(map);
+        for (String parent : List.of("none", "other-service", "wrong-binding")) {
+            LaunchConfiguration launch = new LaunchConfiguration("instance.stop", "instance", "3", 5L, 0,
+                    Map.of(ProcessAuthorization.VERIFIED_CHILD_KEY, Map.of("parentId", "2")));
+            EngineContext engine = EngineContext.getEngineContext(); engine.pushAuthorization(metadata);
+            var frame = "none".equals(parent) ? null : engine.pushVerifiedExecution("service",
+                    "other-service".equals(parent) ? "9" : "2",
+                    "wrong-binding".equals(parent) ? Map.of("keyId", "different") : metadata);
+            try { ProcessAuthorization.prepare(launch, List.of()); }
+            finally { if (frame != null) engine.popVerifiedExecution(frame); engine.popAuthorization(); }
+            assertEquals(parent, "KeyScopeDenied", assertThrows(ProcessAuthorizationDeniedException.class,
+                    () -> hook.beforeExecution(new ProcessRecord(launch, 99L, "server"), metadata)).getCode());
+        }
+    }
+
+    @Test public void managedRetirementRejectsForeignReassignedAndNonManagedRelationships() {
+        ServiceExposeMap map = managedLifecycle(); ProcessRecord stop = managedJob("instance.stop", "service", "2");
+        retireManagedMap(map);
+        for (String invalid : List.of("project", "instance", "service", "unmanaged", "upgrade")) {
+            when(map.getAccountId()).thenReturn(invalid.equals("project") ? 6L : 5L);
+            when(map.getInstanceId()).thenReturn(invalid.equals("instance") ? 4L : 3L);
+            when(map.getServiceId()).thenReturn(invalid.equals("service") ? 9L : 2L);
+            when(map.getManaged()).thenReturn(!invalid.equals("unmanaged"));
+            when(map.getUpgrade()).thenReturn(invalid.equals("upgrade"));
+            assertEquals(invalid, invalid.equals("project") ? "OwnerPermissionDenied" : "KeyScopeDenied",
+                    assertThrows(ProcessAuthorizationDeniedException.class,
+                    () -> hook.beforeExecution(stop, metadata)).getCode());
+        }
+        when(map.getUpgrade()).thenReturn(false);
+        ServiceExposeMap reassigned = mock(ServiceExposeMap.class);
+        when(reassigned.getId()).thenReturn(7L); when(reassigned.getInstanceId()).thenReturn(3L);
+        when(reassigned.getServiceId()).thenReturn(9L); when(reassigned.getAccountId()).thenReturn(5L);
+        when(reassigned.getManaged()).thenReturn(true); when(reassigned.getUpgrade()).thenReturn(false);
+        when(hook.objectManager.loadResource(ServiceExposeMap.class, 7L)).thenReturn(reassigned);
+        when(hook.objectManager.find(ServiceExposeMap.class, SERVICE_EXPOSE_MAP.INSTANCE_ID, 3L,
+                SERVICE_EXPOSE_MAP.REMOVED, null)).thenReturn(List.of(reassigned));
+        assertEquals("KeyScopeDenied", assertThrows(ProcessAuthorizationDeniedException.class,
+                () -> hook.beforeExecution(stop, metadata)).getCode());
+    }
+
+    @Test public void managedRetirementStillRevalidatesChildDenyKeyRevisionExpiryAndOwner() {
+        ServiceExposeMap map = managedLifecycle(); ProcessRecord stop = managedJob("instance.stop", "service", "2");
+        retireManagedMap(map);
+        for (String type : List.of("container", "serviceExposeMap")) {
+            policy(new ApiKeyPolicy(ApiKeyPolicy.Mode.CUSTOM, ApiKeyPolicy.Effect.DENY, null, List.of(
+                    new ApiKeyPolicy.Rule("allow", ApiKeyPolicy.Effect.ALLOW, ApiKeyPolicy.Scope.stack("1st8"), Set.of("update")),
+                    new ApiKeyPolicy.Rule("deny", ApiKeyPolicy.Effect.DENY,
+                            ApiKeyPolicy.Scope.resource(type, String.valueOf(hook.targets.idFormatter.formatId(type,
+                                    type.equals("container") ? 3L : 1L))), Set.of("update")))));
+            assertEquals("KeyPolicyDenied", assertThrows(ProcessAuthorizationDeniedException.class,
+                    () -> hook.beforeExecution(stop, metadata)).getCode());
+        }
+        policy(new ApiKeyPolicy(ApiKeyPolicy.Mode.CUSTOM, ApiKeyPolicy.Effect.DENY, null,
+                List.of(new ApiKeyPolicy.Rule("allow", ApiKeyPolicy.Effect.ALLOW, ApiKeyPolicy.Scope.stack("1st8"), Set.of("update")))));
+        when(key.getState()).thenReturn("inactive");
+        assertEquals("ApiKeyRevoked", assertThrows(ProcessAuthorizationDeniedException.class,
+                () -> hook.beforeExecution(stop, metadata)).getCode());
+        when(key.getState()).thenReturn("active"); metadata.put("policyRevision", 0L);
+        assertEquals("ApiKeyPolicyChanged", assertThrows(ProcessAuthorizationDeniedException.class,
+                () -> hook.beforeExecution(stop, metadata)).getCode());
+        policy(new ApiKeyPolicy(ApiKeyPolicy.Mode.CUSTOM, ApiKeyPolicy.Effect.DENY, now,
+                List.of(new ApiKeyPolicy.Rule("allow", ApiKeyPolicy.Effect.ALLOW, ApiKeyPolicy.Scope.stack("1st8"), Set.of("update")))));
+        assertEquals("ApiKeyExpired", assertThrows(ProcessAuthorizationDeniedException.class,
+                () -> hook.beforeExecution(stop, metadata)).getCode());
+        policy(new ApiKeyPolicy(ApiKeyPolicy.Mode.CUSTOM, ApiKeyPolicy.Effect.DENY, null,
+                List.of(new ApiKeyPolicy.Rule("allow", ApiKeyPolicy.Effect.ALLOW, ApiKeyPolicy.Scope.stack("1st8"), Set.of("update")))));
+        when(projectAuthorityDao.hasAccessToProject(eq(5L), eq(5L), eq(false), any())).thenReturn(false);
+        assertEquals("OwnerPermissionDenied", assertThrows(ProcessAuthorizationDeniedException.class,
+                () -> hook.beforeExecution(stop, metadata)).getCode());
+    }
+
+    @Test public void managedStopPreservesExactOsVolumeAndNetworkTeardownWithoutNamedOrSharedVolumeRemoval() {
+        ServiceExposeMap map = managedLifecycle(); retireManagedMap(map);
+        VolumeRecord volume = new VolumeRecord(); volume.setId(6L); volume.setAccountId(5L); volume.setInstanceId(3L);
+        volume.setDeviceNumber(0); volume.setState("active");
+        when(hook.objectManager.loadResource(Volume.class, 6L)).thenReturn(volume);
+        when(hook.objectManager.loadResource("volume", "6")).thenReturn(volume);
+        when(hook.objectManager.find(Mount.class, MOUNT.VOLUME_ID, 6L, MOUNT.REMOVED, null)).thenReturn(List.of());
+        var port = new io.cattle.platform.core.model.tables.records.PortRecord();
+        port.setId(15L); port.setInstanceId(3L); port.setAccountId(5L); port.setState("active");
+        when(hook.objectManager.loadResource(io.cattle.platform.core.model.Port.class, 15L)).thenReturn(port);
+        when(hook.objectManager.loadResource("port", "15")).thenReturn(port);
+        EngineContext engine = EngineContext.getEngineContext(); var frame = engine.pushVerifiedExecution("instance", "3", metadata);
+        try {
+            hook.beforeExecution(new LaunchConfiguration("volume.deactivate", "volume", "6", 5L, 0, Map.of()), metadata);
+            hook.beforeExecution(new LaunchConfiguration("port.deactivate", "port", "15", 5L, 0, Map.of()), metadata);
+            volume.setDeviceNumber(1);
+            assertEquals("KeyScopeDenied", assertThrows(ProcessAuthorizationDeniedException.class,
+                    () -> hook.beforeExecution(new LaunchConfiguration("volume.remove", "volume", "6", 5L, 0, Map.of()), metadata)).getCode());
+            volume.setDeviceNumber(0);
+            var shared = new io.cattle.platform.core.model.tables.records.MountRecord();
+            shared.setId(16L); shared.setInstanceId(4L); shared.setVolumeId(6L); shared.setAccountId(5L); shared.setState("active");
+            when(hook.objectManager.loadResource(Mount.class, 16L)).thenReturn(shared);
+            when(hook.objectManager.find(Mount.class, MOUNT.VOLUME_ID, 6L, MOUNT.REMOVED, null)).thenReturn(List.of(shared));
+            assertEquals("KeyScopeDenied", assertThrows(ProcessAuthorizationDeniedException.class,
+                    () -> hook.beforeExecution(new LaunchConfiguration("volume.remove", "volume", "6", 5L, 0, Map.of()), metadata)).getCode());
+        } finally { engine.popVerifiedExecution(frame); }
+    }
+
+    @Test public void serviceAndStackDeleteRetainTheirOriginalDeleteGrantThroughRetiredChildCleanup() {
+        for (String rootType : List.of("service", "stack")) {
+            setup(); ServiceExposeMap map = managedLifecycle();
+            metadata.put("operation", "delete"); metadata.put("requestMethod", "DELETE");
+            when(schema.getResourceMethods()).thenReturn(List.of("DELETE"));
+            if (rootType.equals("stack")) managedStackRoot(map);
+            policy(new ApiKeyPolicy(ApiKeyPolicy.Mode.CUSTOM, ApiKeyPolicy.Effect.DENY, null,
+                    List.of(new ApiKeyPolicy.Rule("allow", ApiKeyPolicy.Effect.ALLOW, ApiKeyPolicy.Scope.stack("1st8"), Set.of("delete")))));
+            ProcessRecord stop = managedJob("instance.stop", "service", "2");
+            hook.beforeExecution(stop, metadata);
+            retireManagedMap(map);
+            Service service = hook.objectManager.loadResource(Service.class, 2L);
+            when(service.getState()).thenReturn("removed"); when(service.getRemoved()).thenReturn(new java.util.Date(2));
+            hook.beforeExecution(stop, metadata);
+            when(hook.objectManager.loadResource(Instance.class, 3L).getState()).thenReturn("removing");
+            hook.beforeExecution(managedJob("instance.remove", "instance", "3"), metadata);
+            policy(new ApiKeyPolicy(ApiKeyPolicy.Mode.CUSTOM, ApiKeyPolicy.Effect.DENY, null, List.of(
+                    new ApiKeyPolicy.Rule("allow", ApiKeyPolicy.Effect.ALLOW, ApiKeyPolicy.Scope.stack("1st8"), Set.of("delete")),
+                    new ApiKeyPolicy.Rule("deny", ApiKeyPolicy.Effect.DENY, ApiKeyPolicy.Scope.resource("service", "1s2"), Set.of("delete")))));
+            assertEquals("KeyPolicyDenied", assertThrows(ProcessAuthorizationDeniedException.class,
+                    () -> hook.beforeExecution(stop, metadata)).getCode());
+        }
+    }
+
+    @Test public void managedOsVolumePoolStopWithoutMountSurvivesQueuedRetryAndRejectsRebindingOrExplicitDeny() {
+        ServiceExposeMap map = managedLifecycle(); retireManagedMap(map);
+        VolumeRecord volume = new VolumeRecord(); volume.setId(6L); volume.setAccountId(5L); volume.setInstanceId(3L);
+        volume.setDeviceNumber(0); volume.setState("deactivating"); volume.setUuid("private-os-volume");
+        when(hook.objectManager.loadResource(Volume.class, 6L)).thenReturn(volume);
+        when(hook.objectManager.find(Mount.class, MOUNT.VOLUME_ID, 6L, MOUNT.REMOVED, null)).thenReturn(List.of());
+        VolumeStoragePoolMapRecord allocation = new VolumeStoragePoolMapRecord();
+        allocation.setId(12L); allocation.setVolumeId(6L); allocation.setStoragePoolId(9L); allocation.setState("active"); allocation.setUuid("private-map");
+        when(hook.objectManager.loadResource(VolumeStoragePoolMap.class, 12L)).thenReturn(allocation);
+        when(hook.objectManager.loadResource("volumeStoragePoolMap", "12")).thenReturn(allocation);
+        StoragePoolRecord pool = new StoragePoolRecord(); pool.setId(9L); pool.setAccountId(5L); pool.setUuid("pool-nine");
+        when(hook.objectManager.loadResource(StoragePool.class, 9L)).thenReturn(pool);
+        EngineContext engine = EngineContext.getEngineContext(); engine.pushAuthorization(metadata);
+        var frame = engine.pushVerifiedExecution("volume", "6", metadata);
+        ProcessRecord queued;
+        try {
+            LaunchConfiguration launch = new LaunchConfiguration("volumestoragepoolmap.deactivate", "volumeStoragePoolMap", "12", 5L, 0, Map.of());
+            ProcessAuthorization.prepare(launch, List.of()); queued = new ProcessRecord(launch, 99L, "server");
+            hook.beforeExecution(queued, metadata);
+        } finally { engine.popVerifiedExecution(frame); engine.popAuthorization(); }
+        hook.beforeExecution(queued, metadata);
+        pool.setUuid("different-pool");
+        assertEquals("KeyScopeDenied", assertThrows(ProcessAuthorizationDeniedException.class,
+                () -> hook.beforeExecution(queued, metadata)).getCode());
+        pool.setUuid("pool-nine");
+        policy(new ApiKeyPolicy(ApiKeyPolicy.Mode.CUSTOM, ApiKeyPolicy.Effect.DENY, null, List.of(
+                new ApiKeyPolicy.Rule("allow", ApiKeyPolicy.Effect.ALLOW, ApiKeyPolicy.Scope.stack("1st8"), Set.of("update")),
+                new ApiKeyPolicy.Rule("deny", ApiKeyPolicy.Effect.DENY,
+                        ApiKeyPolicy.Scope.resource("volumeStoragePoolMap", "1internal12"), Set.of("update")))));
+        assertEquals("KeyPolicyDenied", assertThrows(ProcessAuthorizationDeniedException.class,
+                () -> hook.beforeExecution(queued, metadata)).getCode());
+    }
+
+    @Test public void managedNamedAndFileVolumesKeepLiveMountDeactivationWithoutPrivateInstance() {
+        for (String name : List.of("named-data", "/file-data")) {
+            setup(); managedLifecycle(); VolumeRecord volume = managedMountedVolume(); volume.setName(name);
+            assertNull(volume.getInstanceId()); assertNull(volume.getDeviceNumber());
+            EngineContext engine = EngineContext.getEngineContext(); var frame = engine.pushVerifiedExecution("mount", "7", metadata);
+            try {
+                hook.beforeExecution(new LaunchConfiguration("volume.deactivate", "volume", "6", 5L, 0, Map.of()), metadata);
+                assertEquals("KeyScopeDenied", assertThrows(ProcessAuthorizationDeniedException.class,
+                        () -> hook.beforeExecution(new LaunchConfiguration("volume.remove", "volume", "6", 5L, 0, Map.of()), metadata)).getCode());
+            } finally { engine.popVerifiedExecution(frame); }
+        }
+    }
+
+    @Test public void managedNamedVolumeRetiredMountRetryPreservesSharedCrossAndExplicitDenyBoundaries() {
+        ServiceExposeMap map = managedLifecycle(); managedMountedVolume(); retireManagedMap(map);
+        EngineContext engine = EngineContext.getEngineContext(); engine.pushAuthorization(metadata);
+        var frame = engine.pushVerifiedExecution("mount", "7", metadata); ProcessRecord queued;
+        try {
+            LaunchConfiguration launch = new LaunchConfiguration("volume.deactivate", "volume", "6", 5L, 0, Map.of());
+            ProcessAuthorization.prepare(launch, List.of()); queued = new ProcessRecord(launch, 99L, "server");
+            hook.beforeExecution(queued, metadata);
+        } finally { engine.popVerifiedExecution(frame); engine.popAuthorization(); }
+        hook.beforeExecution(queued, metadata);
+        Mount mount = hook.objectManager.loadResource(Mount.class, 7L);
+        var other = new io.cattle.platform.core.model.tables.records.MountRecord();
+        other.setId(8L); other.setVolumeId(6L); other.setAccountId(5L); other.setInstanceId(3L); other.setState("active");
+        when(hook.objectManager.loadResource(Mount.class, 8L)).thenReturn(other);
+        when(hook.objectManager.find(Mount.class, MOUNT.VOLUME_ID, 6L, MOUNT.REMOVED, null)).thenReturn(List.of(mount, other));
+        assertEquals("KeyScopeDenied", assertThrows(ProcessAuthorizationDeniedException.class,
+                () -> hook.beforeExecution(queued, metadata)).getCode());
+        other.setState("inactive"); other.setInstanceId(4L);
+        var foreign = new io.cattle.platform.core.model.tables.records.InstanceRecord();
+        foreign.setId(4L); foreign.setAccountId(5L); foreign.setStackId(8L); foreign.setState("stopping");
+        when(hook.objectManager.loadResource(Instance.class, 4L)).thenReturn(foreign);
+        assertEquals("KeyScopeDenied", assertThrows(ProcessAuthorizationDeniedException.class,
+                () -> hook.beforeExecution(queued, metadata)).getCode());
+        when(hook.objectManager.find(Mount.class, MOUNT.VOLUME_ID, 6L, MOUNT.REMOVED, null)).thenReturn(List.of(mount));
+        for (String type : List.of("volume", "mount")) {
+            policy(new ApiKeyPolicy(ApiKeyPolicy.Mode.CUSTOM, ApiKeyPolicy.Effect.DENY, null, List.of(
+                    new ApiKeyPolicy.Rule("allow", ApiKeyPolicy.Effect.ALLOW, ApiKeyPolicy.Scope.stack("1st8"), Set.of("update")),
+                    new ApiKeyPolicy.Rule("deny", ApiKeyPolicy.Effect.DENY,
+                            ApiKeyPolicy.Scope.resource(type, String.valueOf(hook.targets.idFormatter.formatId(type,
+                                    type.equals("volume") ? 6L : 7L))), Set.of("update")))));
+            assertEquals("KeyPolicyDenied", assertThrows(ProcessAuthorizationDeniedException.class,
+                    () -> hook.beforeExecution(queued, metadata)).getCode());
+        }
+    }
+
+    private VolumeRecord managedMountedVolume() {
+        VolumeRecord volume = new VolumeRecord(); volume.setId(6L); volume.setAccountId(5L); volume.setStackId(8L); volume.setState("active");
+        when(hook.objectManager.loadResource(Volume.class, 6L)).thenReturn(volume);
+        when(hook.objectManager.loadResource("volume", "6")).thenReturn(volume);
+        var mount = new io.cattle.platform.core.model.tables.records.MountRecord();
+        mount.setId(7L); mount.setVolumeId(6L); mount.setAccountId(5L); mount.setInstanceId(3L); mount.setState("inactive");
+        when(hook.objectManager.loadResource(Mount.class, 7L)).thenReturn(mount);
+        when(hook.objectManager.find(Mount.class, MOUNT.VOLUME_ID, 6L, MOUNT.REMOVED, null)).thenReturn(List.of(mount));
+        return volume;
+    }
+
+    @Test public void healthyServiceStopRestartAndStackStopKeepTheirExistingLiveManagedAncestry() {
+        for (String action : List.of("deactivate", "restart", "deactivateservices")) {
+            setup(); ServiceExposeMap map = managedLifecycle();
+            metadata.put("requestMethod", "POST"); metadata.put("requestAction", action);
+            when(schema.getResourceActions()).thenReturn(Map.of(action, mock(Action.class)));
+            if (action.equals("deactivateservices")) managedStackRoot(map);
+            hook.beforeExecution(new LaunchConfiguration("instance.stop", "instance", "3", 5L, 0, Map.of()), metadata);
+            hook.beforeExecution(new LaunchConfiguration("instance.start", "instance", "3", 5L, 0, Map.of()), metadata);
+            if (action.equals("restart")) {
+                ProcessRecord stop = managedJob("instance.stop", "service", "2");
+                retireManagedMap(map); hook.beforeExecution(stop, metadata);
+            }
+        }
+    }
+
+    @Test public void stackRetirementCannotBorrowAnotherStacksServiceOrDifferentOperation() {
+        ServiceExposeMap map = managedLifecycle(); managedStackRoot(map);
+        metadata.put("operation", "delete"); metadata.put("requestMethod", "DELETE");
+        when(schema.getResourceMethods()).thenReturn(List.of("DELETE"));
+        policy(new ApiKeyPolicy(ApiKeyPolicy.Mode.CUSTOM, ApiKeyPolicy.Effect.DENY, null,
+                List.of(new ApiKeyPolicy.Rule("allow", ApiKeyPolicy.Effect.ALLOW, ApiKeyPolicy.Scope.stack("1st8"), Set.of("delete")))));
+        ProcessRecord stop = managedJob("instance.stop", "service", "2"); retireManagedMap(map);
+        when(hook.objectManager.loadResource(Service.class, 2L).getStackId()).thenReturn(9L);
+        assertEquals("KeyScopeDenied", assertThrows(ProcessAuthorizationDeniedException.class,
+                () -> hook.beforeExecution(stop, metadata)).getCode());
+    }
+
+    private void managedStackRoot(ServiceExposeMap map) {
+        metadata.put("targetType", "stack"); metadata.put("targetId", "8");
+        Stack stack = hook.objectManager.loadResource(Stack.class, 8L);
+        when(hook.objectManager.loadResource("stack", 8L)).thenReturn(stack);
+        when(hook.objectManager.find(ServiceExposeMap.class, SERVICE_EXPOSE_MAP.INSTANCE_ID, 3L,
+                SERVICE_EXPOSE_MAP.MANAGED, true)).thenReturn(List.of(map));
+        Account principal = mock(Account.class); when(principal.getId()).thenReturn(10L);
+        Policy current = new AccountPolicy(hook.objectManager.loadResource(Account.class, 5L), principal, Set.of(), new NoPolicyOptions());
+        SchemaFactory factory = mock(SchemaFactory.class); when(factory.getSchema("stack")).thenReturn(schema);
+        when(hook.authenticator.currentAuthorization(eq(10L), eq(5L), any()))
+                .thenReturn(new ApiAuthenticator.CurrentAuthorization(current, factory));
+    }
+
+    private ProcessRecord managedJob(String process, String parentType, String parentId) {
+        EngineContext engine = EngineContext.getEngineContext(); engine.pushAuthorization(metadata);
+        var parent = engine.pushVerifiedExecution(parentType, parentId, metadata);
+        LaunchConfiguration launch = new LaunchConfiguration(process, "instance", "3", 5L, 0, Map.of());
+        try { ProcessAuthorization.prepare(launch, List.of()); }
+        finally { engine.popVerifiedExecution(parent); engine.popAuthorization(); }
+        return new ProcessRecord(launch, 99L, "server");
+    }
+
+    private ServiceExposeMap managedLifecycle() {
+        ServiceExposeMap map = upgradeLifecycle();
+        when(map.getId()).thenReturn(1L); when(map.getState()).thenReturn("active"); when(map.getRemoved()).thenReturn(null);
+        when(map.getManaged()).thenReturn(true); when(map.getUpgrade()).thenReturn(false);
+        Instance instance = hook.objectManager.loadResource("instance", "3"); when(instance.getState()).thenReturn("stopping");
+        when(instance.getRemoved()).thenReturn(null); when(hook.objectManager.loadResource(Instance.class, 3L)).thenReturn(instance);
+        when(hook.objectManager.loadResource(ServiceExposeMap.class, 1L)).thenReturn(map);
+        when(hook.objectManager.find(ServiceExposeMap.class, SERVICE_EXPOSE_MAP.INSTANCE_ID, 3L,
+                SERVICE_EXPOSE_MAP.SERVICE_ID, 2L, SERVICE_EXPOSE_MAP.MANAGED, true)).thenReturn(List.of(map));
+        when(hook.objectManager.find(ServiceExposeMap.class, SERVICE_EXPOSE_MAP.INSTANCE_ID, 3L,
+                SERVICE_EXPOSE_MAP.REMOVED, null, SERVICE_EXPOSE_MAP.MANAGED, true)).thenReturn(List.of(map));
+        when(hook.objectManager.find(ServiceExposeMap.class, SERVICE_EXPOSE_MAP.INSTANCE_ID, 3L,
+                SERVICE_EXPOSE_MAP.REMOVED, null, SERVICE_EXPOSE_MAP.MANAGED, false, SERVICE_EXPOSE_MAP.UPGRADE, true)).thenReturn(List.of());
+        when(hook.objectManager.find(ServiceExposeMap.class, SERVICE_EXPOSE_MAP.INSTANCE_ID, 3L,
+                SERVICE_EXPOSE_MAP.REMOVED, null)).thenReturn(List.of(map));
+        metadata.put("operation", "update"); metadata.put("requestMethod", "PUT"); metadata.put("preview", false);
+        metadata.remove("requestAction");
+        policy(new ApiKeyPolicy(ApiKeyPolicy.Mode.CUSTOM, ApiKeyPolicy.Effect.DENY, null,
+                List.of(new ApiKeyPolicy.Rule("allow", ApiKeyPolicy.Effect.ALLOW, ApiKeyPolicy.Scope.stack("1st8"), Set.of("update")))));
+        return map;
+    }
+
+    private void retireManagedMap(ServiceExposeMap map) {
+        when(map.getState()).thenReturn("removed"); when(map.getRemoved()).thenReturn(new java.util.Date(1));
+        when(hook.objectManager.find(ServiceExposeMap.class, SERVICE_EXPOSE_MAP.INSTANCE_ID, 3L,
+                SERVICE_EXPOSE_MAP.REMOVED, null, SERVICE_EXPOSE_MAP.MANAGED, true)).thenReturn(List.of());
+        when(hook.objectManager.find(ServiceExposeMap.class, SERVICE_EXPOSE_MAP.INSTANCE_ID, 3L,
+                SERVICE_EXPOSE_MAP.REMOVED, null)).thenReturn(List.of());
+    }
+
     private ServiceExposeMap upgradeLifecycle() {
         Account project = mock(Account.class), principal = mock(Account.class);
         when(project.getId()).thenReturn(5L); when(project.getKind()).thenReturn("project"); when(principal.getId()).thenReturn(10L);

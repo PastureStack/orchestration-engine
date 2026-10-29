@@ -90,6 +90,43 @@ public class ProcessAuthorizationTest {
         }
     }
 
+    @Test public void serviceRetirementProofRequiresTheExactVerifiedRootAndClosedStopRemoveEdge() {
+        Map<String, Object> binding = Map.of("keyId", "1c1", "policyRevision", 1L, "targetType", "service", "targetId", "2",
+                "operation", "update", "requestMethod", "PUT", "requestCollection", false, "preview", false);
+        EngineContext engine = EngineContext.getEngineContext(); engine.pushAuthorization(binding);
+        try {
+            for (String process : List.of("instance.stop", "instance.remove", "instance.start", "instance.purge")) {
+                var parent = engine.pushVerifiedExecution("service", "2", binding);
+                ProcessRecord queued;
+                try {
+                    LaunchConfiguration child = new LaunchConfiguration(process, "instance", "3", 5L, 0, Map.of());
+                    ProcessAuthorization.prepare(child, List.of());
+                    ProcessRecord initial = new ProcessRecord(child, null, "server");
+                    boolean retirement = process.equals("instance.stop") || process.equals("instance.remove");
+                    assertEquals(retirement, ProcessAuthorization.verifiedChild(initial) != null);
+                    queued = new ProcessRecord(child, 99L, "server");
+                } finally { engine.popVerifiedExecution(parent); }
+                boolean retirement = process.equals("instance.stop") || process.equals("instance.remove");
+                assertEquals(retirement, ProcessAuthorization.verifiedChild(queued) != null);
+                if (retirement) {
+                    ProcessRecord unsaved = new ProcessRecord(queued, null, "server");
+                    assertNull(ProcessAuthorization.verifiedChild(unsaved));
+                }
+            }
+            var wrong = engine.pushVerifiedExecution("service", "9", binding);
+            try {
+                LaunchConfiguration child = new LaunchConfiguration("instance.stop", "instance", "3", 5L, 0, Map.of());
+                ProcessAuthorization.prepare(child, List.of());
+                assertNull(ProcessAuthorization.verifiedChild(new ProcessRecord(child, 99L, "server")));
+            } finally { engine.popVerifiedExecution(wrong); }
+            var mount = engine.pushVerifiedExecution("mount", "7", binding);
+            LaunchConfiguration volume = new LaunchConfiguration("volume.deactivate", "volume", "6", 5L, 0, Map.of());
+            try { ProcessAuthorization.prepare(volume, List.of()); }
+            finally { engine.popVerifiedExecution(mount); }
+            assertEquals("mount", ProcessAuthorization.verifiedChild(new ProcessRecord(volume, 100L, "server")).parentType());
+        } finally { engine.popAuthorization(); }
+    }
+
     @Test public void unverifiedPayloadAndWrongParentBindingCannotMintQueuedAuthority() {
         Map<String, Object> forged = Map.of("parentType", "volume", "parentId", "6", "childType", "stack", "childId", "12",
                 "processName", "stack.update", "rootAuthorization", Map.of("keyId", "1c1"));

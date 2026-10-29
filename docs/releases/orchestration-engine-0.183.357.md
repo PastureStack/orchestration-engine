@@ -33,7 +33,7 @@ Required full component CI/CodeQL, immutable artifact verification and remaining
 8080 workflow/read checks must pass before claiming runtime completion.
 Previously passed and unaffected role, layout and metadata checks are retained.
 
-Web Console 1.6.199 and bridge 0.2.1 remain compatible. No dependency update,
+Web Console 1.6.199 and bridge 0.2.1 remain compatible. No runtime dependency update,
 database migration, authentication change, firewall change or runtime patch is
 required. Roll back through the assembled Server procedure with retained data
 and a matching backup; keep plan receipts and do not replay uncertain writes.
