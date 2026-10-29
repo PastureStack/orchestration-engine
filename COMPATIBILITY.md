@@ -1,5 +1,12 @@
 # Compatibility Contract
 
+## Engine 0.183.358 source candidate
+
+Verified managed retirement and native name-query fixes await required CI and
+8080 acceptance. Ordinary Full/legacy API paths remain unchanged; historical
+rows or request bodies do not supply cleanup authority. Named/file storage
+keeps its normal deactivation path without REMOVE. See [candidate boundaries](docs/releases/orchestration-engine-0.183.358.md).
+
 The migration preserves established `io.cattle.*` Java packages, Maven coordinates, database schemas and migration IDs, setting keys, API resource and field names, event names, Docker labels, generated client types, and internal service identifiers. These values are persisted or consumed across repositories and are not product branding.
 
 New operator-facing names use PastureStack and `PASTURESTACK_*`. Compatibility identifiers must be changed only with an explicit data migration, a dual-read or dual-write transition, a rollback plan, and cross-repository verification.

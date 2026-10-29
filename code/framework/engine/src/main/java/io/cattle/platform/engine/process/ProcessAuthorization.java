@@ -88,7 +88,8 @@ public final class ProcessAuthorization {
             var parent = EngineContext.getEngineContext().currentVerifiedExecution();
             if (parent != null && (Set.of("volume", "instance").contains(parent.resourceType())
                     || projectNetworkCreationEdge(parent.resourceType(), parent.resourceId(), config, metadata)
-                    || upgradeUnmountEdge(parent.resourceType(), config, metadata))
+                    || upgradeUnmountEdge(parent.resourceType(), config, metadata)
+                    || serviceRetirementEdge(parent.resourceType(), parent.resourceId(), config, metadata))
                     && parent.resourceId() != null && parent.resourceId().matches("[0-9]+")
                     && parent.rootAuthorization().equals(metadata)
                     && config.getResourceType() != null && config.getResourceId() != null && config.getProcessName() != null) {
@@ -160,12 +161,13 @@ public final class ProcessAuthorization {
         Map<String, Object> binding = sanitize(rawBinding);
         if (binding.isEmpty() || !binding.equals(rawBinding) || !binding.equals(metadata(config))) return null;
         boolean creationEdge = projectNetworkCreationEdge(parentType, parentId, config, binding);
+        boolean retirementEdge = serviceRetirementEdge(parentType, parentId, config, binding);
         if (!Set.of("volume", "instance").contains(parentType) && !creationEdge
-                && !upgradeUnmountEdge(parentType, config, binding)) return null;
+                && !retirementEdge && !upgradeUnmountEdge(parentType, config, binding)) return null;
         if (creationEdge && !executionBound(config)) return null;
         if (record.getId() == null) {
             var parent = EngineContext.getEngineContext().currentVerifiedExecution();
-            if (!creationEdge || parent == null || !parentType.equals(parent.resourceType())
+            if (!(creationEdge || retirementEdge) || parent == null || !parentType.equals(parent.resourceType())
                     || !parentId.equals(parent.resourceId()) || !parent.rootAuthorization().equals(binding)) return null;
         }
         Map<String, String> references = new HashMap<>();
@@ -181,11 +183,37 @@ public final class ProcessAuthorization {
         return new VerifiedChild(parentType, parentId, binding, references);
     }
 
+    private static boolean serviceRetirementEdge(String parentType, String parentId,
+            LaunchConfiguration config, Map<String, Object> binding) {
+        return "service".equals(parentType) && serviceRetirementRequest(binding)
+                && ("stack".equals(binding.get("targetType")) || Objects.equals(parentId, binding.get("targetId")))
+                && "instance".equals(config.getResourceType())
+                && Set.of("instance.stop", "instance.remove").contains(config.getProcessName());
+    }
+
+    /** Closed normal service owners. Keep each request's original operation;
+     * this scheduling predicate never supplies an authorization grant. */
+    public static boolean serviceRetirementRequest(Map<String, Object> binding) {
+        if (binding == null || !Boolean.FALSE.equals(binding.get("requestCollection"))
+                || !Boolean.FALSE.equals(binding.get("preview")) || binding.containsKey("requestLink")) return false;
+        String type = Objects.toString(binding.get("targetType"), "");
+        if (!Set.of("service", "stack").contains(type)) return false;
+        if ("DELETE".equals(binding.get("requestMethod")))
+            return "delete".equals(binding.get("operation")) && !binding.containsKey("requestAction");
+        if (!"update".equals(binding.get("operation"))) return false;
+        if ("PUT".equals(binding.get("requestMethod")))
+            return "service".equals(type) && !binding.containsKey("requestAction");
+        if (!"POST".equals(binding.get("requestMethod"))) return false;
+        String action = Objects.toString(binding.get("requestAction"), "");
+        return "service".equals(type) ? Set.of("activate", "deactivate", "restart").contains(action)
+                : Set.of("activateservices", "deactivateservices").contains(action);
+    }
+
     private static boolean upgradeUnmountEdge(String parentType, LaunchConfiguration config, Map<String, Object> binding) {
         return "mount".equals(parentType) && "volume".equals(config.getResourceType())
-                && "volume.deactivate".equals(config.getProcessName()) && "service".equals(binding.get("targetType"))
-                && "upgrade".equals(binding.get("operation"))
-                && ("upgrade".equals(binding.get("requestAction")) || "finishupgrade".equals(binding.get("requestAction")));
+                && "volume.deactivate".equals(config.getProcessName()) && (serviceRetirementRequest(binding)
+                    || "service".equals(binding.get("targetType")) && "upgrade".equals(binding.get("operation"))
+                        && ("upgrade".equals(binding.get("requestAction")) || "finishupgrade".equals(binding.get("requestAction"))));
     }
 
     private static boolean projectNetworkCreationEdge(String parentType, String parentId,
