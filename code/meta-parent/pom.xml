@@ -9,7 +9,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>io.cattle</groupId>
     <artifactId>cattle-meta-parent</artifactId>
-    <version>0.183.354</version>
+    <version>0.183.355</version>
     <packaging>pom</packaging>
     <name>PastureStack Orchestration Engine</name>
     <description>Compatibility orchestration engine for the PastureStack server.</description>
@@ -233,7 +233,7 @@
             <dependency>
                 <groupId>com.google.guava</groupId>
                 <artifactId>guava</artifactId>
-                <version>33.7.1-jre</version>
+                <version>33.7.2-jre</version>
             </dependency>
             <dependency>
                 <groupId>net.logstash.logback</groupId>

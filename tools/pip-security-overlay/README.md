@@ -64,12 +64,25 @@ bash verify-pip-runtime.sh --virtualenv /usr/share/python-wheels
 - setuptools 70.3.0 僅保留 `pkg_resources`；CVE-2025-47273 所需的
   `setuptools/package_index.py` 與 CVE-2026-59890 所需的
   `setuptools/command/egg_info.py` 均不存在。
+- CVE-2026-114613／GHSA-j586-36cw-2gc2：官方修補
+  `620b0eb4c89cd72d4098564537624d9dbb2ce141` 修改 `_unpacker.pyx`、
+  `unpack.h` 與 `unpack_template.h`，不修改 `fallback.py`；本 wheel 無該原生模組。
+- GHSA-xmj3-9gf7-h52w：官方修補
+  `6d07b8d17890dda58d944ac51e58f54af92d52af` 位於 `setuptools/wheel.py` 的
+  legacy wheel namespace 安裝路徑；本 vendor slice 不含此模組。
 
 `check-pip-vendor-slice.py` 會比對實際載入的全部 299 個 vendor 檔案與
 固定 wheel，拒絕額外檔案、其他同版本完整 distribution。只有取得此證據後，
-`filter-pip-vendor-findings.py` 才可對上述三個 CVE（含 msgpack GHSA 別名）
+`filter-pip-vendor-findings.py` 才可對上述精確 CVE／GHSA
 產生綁定該映像的 OpenVEX 與有效掃描檔。原始掃描必須另行保存；未知 CVE、
 其他版本、非 SBOM 套件來源與 urllib3 finding 全部保留，不做泛用版本排除。
-執行 `python3 test-pip-vex.py` 可驗證以上六組正反控制。
+證據另鎖定既有 pip／ensurepip seed 路徑；`_cmsgpack` 或 `setuptools/wheel.py`
+出現、wheel 雜湊／版本／路徑不符、或 finding 具有其他完整套件路徑都不套用。
+`vendor_source_inventory.py` 另枚舉映像內 CycloneDX／SPDX、wheel 內 SBOM 與
+METADATA／PKG-INFO，對每份來源比對固定 wheel 或內嵌 SBOM 的 SHA-256。
+未知位置同版 SBOM、sys.path 外完整 distribution 與不同 bytes 都會拒絕證明；
+沒有逐來源 inventory 的舊 proof 也不可套用。virtualenv 功能探測使用自己的
+app-data 暫存，與原有測試環境一併清理，避免把探測 cache 留在成品映像。
+執行 `python3 test-pip-vex.py` 可驗證十二組正反控制。
 
 官方政策：https://pip.pypa.io/en/stable/development/vendoring-policy/

@@ -46,6 +46,46 @@ public class ApiKeyWriteAuthorizationTest {
 
     @After public void cleanup() { ApiContext.remove(); }
 
+    @Test public void bridgeDisableDuringManagerWaitRejectsBeforeCommitAndGeneralRemainsUsable() throws Exception {
+        Object previous = io.cattle.platform.archaius.util.ArchaiusUtil.getConfiguration().getProperty("api.ai.bridge.enabled");
+        try {
+            io.cattle.platform.archaius.util.ArchaiusUtil.getConfiguration().setProperty("api.ai.bridge.enabled", true);
+            ApiKeyPolicy bridge = new ApiKeyPolicy(ApiKeyPolicy.Mode.FULL, ApiKeyPolicy.Effect.ALLOW, null, List.of(), ApiKeyPolicy.Purpose.AI_BRIDGE);
+            Fixture f = new Fixture(bridge);
+            f.request.setType("aiServiceUpgradePlan"); f.request.setMethod("POST"); f.request.setAction("apply");
+            assertCode("AiBridgeDisabled", () -> f.run(() -> io.cattle.platform.archaius.util.ArchaiusUtil.getConfiguration().setProperty("api.ai.bridge.enabled", false)));
+            assertEquals("DENY", f.request.getAttribute("apiKey.audit.decision"));
+            assertEquals("AiBridgeDisabled", f.request.getAttribute("apiKey.audit.reason"));
+            Fixture general = new Fixture(FULL); general.run(() -> { });
+            assertEquals("ALLOW", general.request.getAttribute("apiKey.audit.decision"));
+        } finally {
+            if (previous == null) io.cattle.platform.archaius.util.ArchaiusUtil.getConfiguration().clearProperty("api.ai.bridge.enabled");
+            else io.cattle.platform.archaius.util.ArchaiusUtil.getConfiguration().setProperty("api.ai.bridge.enabled", previous);
+        }
+    }
+
+    @Test public void bridgeWriteRequiresItsPinnedRevisionAtCommit() throws Exception {
+        Object previous=io.cattle.platform.archaius.util.ArchaiusUtil.getConfiguration().getProperty("api.ai.bridge.enabled");
+        try {
+            io.cattle.platform.archaius.util.ArchaiusUtil.getConfiguration().setProperty("api.ai.bridge.enabled",true);
+            ApiKeyPolicy bridge=new ApiKeyPolicy(ApiKeyPolicy.Mode.FULL,ApiKeyPolicy.Effect.ALLOW,null,List.of(),ApiKeyPolicy.Purpose.AI_BRIDGE);
+            for(String expected: new String[] {null,"2","1"}) {
+                Fixture f=new Fixture(bridge); f.request.setType("aiServiceDescriptionUpdate"); f.request.setId(null); f.request.setMethod("POST");
+                jakarta.servlet.http.HttpServletRequest http=mock(jakarta.servlet.http.HttpServletRequest.class);
+                when(http.getHeader(ApiKeyAiBridgeGuard.EXPECTED_REVISION_HEADER)).thenReturn(expected);
+                f.request.setRequestServletContext(new io.github.ibuildthecloud.gdapi.server.model.ApiServletContext(http,null,null));
+                if("1".equals(expected)) f.run(()->{});
+                else {
+                    assertCode("ApiKeyPolicyChanged",()->f.run(()->{}));
+                    assertEquals("DENY",f.request.getAttribute("apiKey.audit.decision"));
+                }
+            }
+        } finally {
+            if(previous==null) io.cattle.platform.archaius.util.ArchaiusUtil.getConfiguration().clearProperty("api.ai.bridge.enabled");
+            else io.cattle.platform.archaius.util.ArchaiusUtil.getConfiguration().setProperty("api.ai.bridge.enabled",previous);
+        }
+    }
+
     @Test public void fullLegacyAndUpdateOnlyKeepNativeWritesWithoutNewScopeOrReadChecks() throws Exception {
         for (ApiKeyPolicy policy : new ApiKeyPolicy[] { null, FULL, CUSTOM }) {
             Fixture f = new Fixture(policy);

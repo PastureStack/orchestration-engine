@@ -1,10 +1,37 @@
 # API Key policy and audit contract
 
-This describes Engine `0.183.346` source. Use the current Server release and its
+This describes Engine `0.183.355` source. Use the current Server release and its
 component manifest for the actual immutable platform pairing. Component source,
 publication and assembled-Server native qualification are separate gates;
 typed all-actions C-03 and complete UI/API or role/resource acceptance are not
 established by the focused source tests.
+
+## Optional AI bridge purpose
+
+`purpose=ai-bridge` restricts an existing policy to supported discovery and AI
+service endpoints. It retains the policy's Full/Closed/Custom scope and expiry
+and never grants more authority than the current owner. It is disabled unless
+`api.ai.bridge.enabled=true`; upgrade plans separately require
+`api.ai.service.upgrade.enabled=true`. Ordinary General and legacy Keys keep
+their existing operation capabilities.
+
+The server reports verified purpose and policy revision in
+`X-PastureStack-Key-Purpose` and `X-PastureStack-Key-Revision`. After initial
+project discovery, bridge requests must supply
+`X-PastureStack-Key-Expected-Revision`. Missing or changed revision fails closed
+instead of silently adopting new authority. Changing an AI bridge policy into
+a General policy uses the existing stronger-authority MFA confirmation path.
+
+Service description updates require the expected current value and write only
+that field under the existing transaction. Upgrade previews produce private,
+expiring plans; a human cookie session must confirm the same actor's plan.
+Keys cannot confirm or cancel plans or enumerate the human approval inbox.
+Applying a Key-bound plan requires the same Key and revision. Queued lifecycle
+work rechecks current authority and preserves explicit child DENY rules.
+
+Tool-event reports retain client-report labels and cannot prove that a business
+operation succeeded. The [355 release note](releases/orchestration-engine-0.183.355.md)
+describes the new plan table and the pending native-acceptance boundary.
 
 ## Authorization and updates
 

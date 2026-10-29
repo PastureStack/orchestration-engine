@@ -87,7 +87,8 @@ public final class ProcessAuthorization {
             }
             var parent = EngineContext.getEngineContext().currentVerifiedExecution();
             if (parent != null && (Set.of("volume", "instance").contains(parent.resourceType())
-                    || projectNetworkCreationEdge(parent.resourceType(), parent.resourceId(), config, metadata))
+                    || projectNetworkCreationEdge(parent.resourceType(), parent.resourceId(), config, metadata)
+                    || upgradeUnmountEdge(parent.resourceType(), config, metadata))
                     && parent.resourceId() != null && parent.resourceId().matches("[0-9]+")
                     && parent.rootAuthorization().equals(metadata)
                     && config.getResourceType() != null && config.getResourceId() != null && config.getProcessName() != null) {
@@ -159,7 +160,8 @@ public final class ProcessAuthorization {
         Map<String, Object> binding = sanitize(rawBinding);
         if (binding.isEmpty() || !binding.equals(rawBinding) || !binding.equals(metadata(config))) return null;
         boolean creationEdge = projectNetworkCreationEdge(parentType, parentId, config, binding);
-        if (!Set.of("volume", "instance").contains(parentType) && !creationEdge) return null;
+        if (!Set.of("volume", "instance").contains(parentType) && !creationEdge
+                && !upgradeUnmountEdge(parentType, config, binding)) return null;
         if (creationEdge && !executionBound(config)) return null;
         if (record.getId() == null) {
             var parent = EngineContext.getEngineContext().currentVerifiedExecution();
@@ -177,6 +179,13 @@ public final class ProcessAuthorization {
             }
         }
         return new VerifiedChild(parentType, parentId, binding, references);
+    }
+
+    private static boolean upgradeUnmountEdge(String parentType, LaunchConfiguration config, Map<String, Object> binding) {
+        return "mount".equals(parentType) && "volume".equals(config.getResourceType())
+                && "volume.deactivate".equals(config.getProcessName()) && "service".equals(binding.get("targetType"))
+                && "upgrade".equals(binding.get("operation"))
+                && ("upgrade".equals(binding.get("requestAction")) || "finishupgrade".equals(binding.get("requestAction")));
     }
 
     private static boolean projectNetworkCreationEdge(String parentType, String parentId,

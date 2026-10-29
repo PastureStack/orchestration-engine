@@ -8,7 +8,46 @@ Rancher 1.6 ecosystem. It is not affiliated with Rancher Labs or SUSE.
 This fork of [`rancher/cattle`](https://github.com/rancher/cattle) preserves
 upstream history, authorship, licenses, and dependency notices.
 
-## Engine 0.183.354
+## Engine 0.183.355
+
+This release also updates the existing Guava JRE dependency to official
+`33.7.2-jre` for [CVE-2026-102554](https://github.com/google/guava/security/advisories/GHSA-xxph-c9ww-hj94).
+Source and packaged-JAR gates reject earlier versions; Java 25 and the
+existing stable Guava JRE compatibility line are retained.
+The Maven build runtime receives that same Guava patch, and the installed
+Ubuntu Brotli library receives its official same-series security update.
+
+Engine [0.183.355](docs/releases/orchestration-engine-0.183.355.md) provides the
+backend contracts for the seven WebMCP v1.3 service tools: Stack and Service
+discovery, Service details, conditional description updates, upgrade preview,
+approved upgrade application, and operation status. A compatible Web Console
+or bridge supplies the tool protocol; the Engine uses its existing resource
+managers, live role checks, API Key policy and durable audit sink.
+
+The dedicated `ai-bridge` Key purpose is disabled by default through
+`api.ai.bridge.enabled=false`; image-upgrade plans separately require
+`api.ai.service.upgrade.enabled=true`. The bridge verifies the server-issued
+purpose and policy revision. Revisions, expiry, revocation and current owner
+access are rechecked at writes and queued execution. Ordinary Full and legacy
+Key capabilities remain unchanged.
+
+Description updates compare the expected description under the existing
+database write transaction, preserve empty strings and Unicode, and change
+only that field. Upgrade application requires a short-lived, actor-bound plan
+approved by the human's cookie session; a Key cannot approve its own plan.
+Accepted work keeps its original authorization through stop/start/removal and
+the verified cleanup chain. An operation is successful only after the new
+instances and relevant old-instance cleanup have been verified. Client-reported
+audit events remain distinct from server-verified results and do not record
+description contents.
+
+The candidate includes focused source and packaging evidence. The r10 native
+upgrade acceptance remains pending; this document does not claim that the final
+QA image, published Engine artifact or assembled Server has passed that run.
+The [release note](docs/releases/orchestration-engine-0.183.355.md) records the
+new private plan table, rollback boundary and remaining release gates.
+
+## Retained changes from Engine 0.183.354
 
 Engine [0.183.354](docs/releases/orchestration-engine-0.183.354.md) refreshes
 the existing Java 25 baseline to Temurin 25.0.5+8 and the reviewed Ubuntu CA
@@ -140,7 +179,7 @@ evidence are maintained in the
 Acceptance is limited to the documented affected paths, not every resource and
 role combination.
 Versioned evidence and upgrade boundaries are in the
-[354 release note](docs/releases/orchestration-engine-0.183.354.md);
+[355 release note](docs/releases/orchestration-engine-0.183.355.md);
 older changes remain in [release notes](docs/releases).
 
 ## Build and validation
@@ -155,7 +194,7 @@ Before publishing an Engine artifact, run the complete package gate:
 
 ```sh
 bash scripts/check-cattle-jdk25-full-package
-ENGINE_VERSION=0.183.354 bash scripts/build --release
+ENGINE_VERSION=0.183.355 bash scripts/build --release
 bash scripts/check-release-artifact dist/artifacts/cattle.jar
 ```
 
@@ -180,3 +219,48 @@ are not translated.
 
 The inherited project uses [Apache License 2.0](LICENSE). Bundled dependencies
 retain their own licenses and attribution.
+
+# Optional AI service image upgrade flow
+
+`api.ai.service.upgrade.enabled=false` is the default. Enabling it opts in to
+the `aiServiceUpgradePlans` API in the existing project-scoped API context.
+This is ordinary authenticated cookie collaboration using current project RBAC;
+it is not restricted API-key delegation. Existing UI/API authorization is unchanged.
+
+* `POST /v2-beta/projects/{projectId}/aiServiceUpgradePlans` with `serviceId` and
+  `image` creates a five-minute, actor-bound preview. It does not upgrade a service.
+* The confirmation UI separately calls `POST .../{planId}?action=confirm` with an
+  empty body. Confirmation is not a model tool and no `confirmed` input is accepted.
+* `POST .../{planId}?action=apply` with an empty body requires that approval,
+  current write permission and the unchanged server snapshot. It invokes the
+  existing service upgrade action and chains its normal finish-upgrade process.
+* `GET .../{planId}` reads the same durable operation. `accepted` and `running`
+  are not success. Success requires the finish process, active service, requested
+  image, retained primary/secondary settings and healthy matching instances.
+* `cancel` cancels an unaccepted preview only. It does not undo an upgrade.
+
+Plans and receipts live in the dedicated `ai_service_upgrade_plan` table
+(migration 127). The full private snapshot is never returned. An atomic claim
+prevents a repeated apply from scheduling again. If the server stops between
+claim and scheduling or cannot prove the dispatch result, the receipt is
+`unknown`; clients must read it instead of starting another upgrade. This is an
+at-most-once dispatch boundary, not a distributed exactly-once guarantee. Disabling
+the flag prevents new previews, approvals and admissions while retained receipts
+remain readable under current actor/project permissions. Durable admission audit
+uses the existing outbox and includes only fixed metadata, never environment or
+launch configuration payloads.
+Each actor can retain at most 20 pending previews. Creating a preview deletes
+expired, unaccepted previews; cancellation and a verified terminal result remove
+the private snapshot while retaining the receipt metadata.
+
+`POST /v2-beta/projects/{projectId}/aiToolCallEvents` accepts only the six tool
+names (or `unknown`), `start`/`result`, enumerated status/reason, and an optional
+opaque correlation ID. It executes no command. An active cookie actor, including
+a readonly project member, can record their own bounded metadata. The returned
+`requestId` and `accepted:true` acknowledge durable outbox storage only; the
+reported channel, phase and result remain explicitly `client_reported`, never
+proof of authorization or business success. A start requires `pending`; a result
+requires the start ACK ID as a client-reported correlation. Optional
+`X-AI-Tool-Request-Id` on a plan API call links this client report to the separate
+authoritative plan audit without granting any permission. No tool arguments,
+resource references, launch configuration or credentials are accepted here.

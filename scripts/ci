@@ -44,6 +44,7 @@ ensure_docker()
 ensure_docker
 
 python3 ./test-jackson-security-floors.py -v
+python3 ./test-guava-security-floor.py -v
 python3 ./test-cattle-jdk25-standalone.py -v
 ./check-cattle-dependency-hygiene
 ./check-cattle-archaius-boundary

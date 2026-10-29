@@ -13,6 +13,7 @@ import java.util.Set;
 public final class ApiKeyPolicy {
 
     public enum Mode { FULL, CLOSED, CUSTOM }
+    public enum Purpose { GENERAL, AI_BRIDGE }
     public enum Effect { ALLOW, DENY }
     public enum ScopeKind { GLOBAL, PROJECT, STACK, RESOURCE }
 
@@ -73,12 +74,18 @@ public final class ApiKeyPolicy {
     private final Effect defaultEffect;
     private final Instant expiresAt;
     private final List<Rule> rules;
+    private final Purpose purpose;
 
     public ApiKeyPolicy(Mode mode, Effect defaultEffect, Instant expiresAt, List<Rule> rules) {
+        this(mode, defaultEffect, expiresAt, rules, Purpose.GENERAL);
+    }
+
+    public ApiKeyPolicy(Mode mode, Effect defaultEffect, Instant expiresAt, List<Rule> rules, Purpose purpose) {
         this.mode = Objects.requireNonNull(mode, "policy mode");
         this.defaultEffect = Objects.requireNonNull(defaultEffect, "default effect");
         this.expiresAt = expiresAt;
         this.rules = List.copyOf(Objects.requireNonNull(rules, "policy rules"));
+        this.purpose = Objects.requireNonNull(purpose, "key purpose");
         Set<String> ids = new HashSet<>();
         for (Rule rule : this.rules) {
             if (!ids.add(rule.id())) {
@@ -101,6 +108,10 @@ public final class ApiKeyPolicy {
 
     public List<Rule> getRules() {
         return rules;
+    }
+
+    public Purpose getPurpose() {
+        return purpose;
     }
 
     static void requireIdentifier(String value, String label) {

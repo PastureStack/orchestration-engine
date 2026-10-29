@@ -139,6 +139,24 @@ public class ProcessAuthorizationTest {
         }
     }
 
+    @Test public void onlyExactUpgradeMountUnmountCanCaptureNewSchedulingEdge() {
+        EngineContext engine = EngineContext.getEngineContext();
+        for (String scenario : List.of("valid", "remove", "other-parent", "other-operation", "other-action")) {
+            var binding = new HashMap<String, Object>(Map.of("keyId", "1c1", "targetType", "service", "targetId", "2",
+                    "operation", "upgrade", "requestAction", "upgrade"));
+            if (scenario.equals("other-operation")) binding.put("operation", "remove");
+            if (scenario.equals("other-action")) binding.put("requestAction", "rollback");
+            engine.pushAuthorization(binding);
+            var frame = engine.pushVerifiedExecution(scenario.equals("other-parent") ? "nic" : "mount", "7", binding);
+            try {
+                var launch = new LaunchConfiguration(scenario.equals("remove") ? "volume.remove" : "volume.deactivate", "volume", "6", 5L, 0, Map.of());
+                ProcessAuthorization.prepare(launch, List.of());
+                var proof = ProcessAuthorization.verifiedChild(new ProcessRecord(launch, 999L, "server"));
+                assertEquals(scenario, scenario.equals("valid"), proof != null);
+            } finally { engine.popVerifiedExecution(frame); engine.popAuthorization(); }
+        }
+    }
+
     private static LaunchConfiguration config(Map<String, Object> data) {
         return new LaunchConfiguration("stack.update", "stack", "12", 1L, 0, new HashMap<>(data));
     }

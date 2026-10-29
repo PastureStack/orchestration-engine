@@ -71,7 +71,7 @@ public class ApiKeyOperationInventoryProjectionTest {
         String expected = row.get(5);
         var actual = ApiKeyOperations.of(method, action, link, type);
         assertEquals(row.toString(), expected, actual.id());
-        boolean registered = !expected.startsWith("action:") && !expected.startsWith("method:");
+        boolean registered = !expected.startsWith("action:") && !expected.startsWith("method:") && !expected.startsWith("ai-plan:");
         assertEquals(row.toString(), registered, actual.registered());
         if (!registered) {
             assertTrue("unreviewed effect " + action,
@@ -101,7 +101,8 @@ public class ApiKeyOperationInventoryProjectionTest {
                         ApiKeyPolicy.Scope.global(), Set.copyOf(ApiKeyOperations.OPERATIONS))));
         ApiKeyCredentialContext.attach(request, new ApiKeyCredentialContext(1, 1, "apiKey", 1, custom));
         String canonical = ApiKeyQueryScopes.canonical(type);
-        String code = ("apiKey".equals(canonical) || "token".equals(canonical))
+        boolean humanApproval = "aiServiceUpgradePlan".equals(type) && Set.of("confirm", "cancel").contains(action);
+        String code = humanApproval ? "AiKeyConfirmationForbidden" : ("apiKey".equals(canonical) || "token".equals(canonical))
                 ? "ApiKeyRestrictedDelegationUnsupported" : "UnknownOperation";
         assertEquals(code, assertThrows(ClientVisibleException.class, () -> guard.authorize(request, owner)).getCode());
         assertEquals("DENY", request.getAttribute("apiKey.audit.decision"));
@@ -110,8 +111,13 @@ public class ApiKeyOperationInventoryProjectionTest {
         for (ApiKeyPolicy policy : new ApiKeyPolicy[] {null,
                 new ApiKeyPolicy(ApiKeyPolicy.Mode.FULL, ApiKeyPolicy.Effect.ALLOW, null, List.of())}) {
             ApiKeyCredentialContext.attach(request, new ApiKeyCredentialContext(1, 1, "apiKey", 1, policy));
-            guard.authorize(request, owner);
-            assertEquals("ALLOW", request.getAttribute("apiKey.audit.decision"));
+            if (humanApproval) {
+                assertEquals(code, assertThrows(ClientVisibleException.class, () -> guard.authorize(request, owner)).getCode());
+                assertEquals("DENY", request.getAttribute("apiKey.audit.decision"));
+            } else {
+                guard.authorize(request, owner);
+                assertEquals("ALLOW", request.getAttribute("apiKey.audit.decision"));
+            }
             UUID.fromString((String) request.getAttribute("apiKey.audit.requestId"));
         }
         verifyNoInteractions(guard.targets);

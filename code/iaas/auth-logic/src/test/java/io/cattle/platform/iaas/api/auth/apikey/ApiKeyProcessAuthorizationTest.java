@@ -537,6 +537,45 @@ public class ApiKeyProcessAuthorizationTest {
         finally { engine.popVerifiedExecution(volumeFrame); }
         assertNull(ApiContext.getContext());
     }
+    @Test public void persistedChainedUpgradeRetainsExactRemovalGrantAndRejectsForgedOrForeignBinding() {
+        removalLifecycle(); metadata.put("requestAction", "upgrade"); ApiContext.remove();
+        ProcessRecord record = new ProcessRecord(new LaunchConfiguration("instance.remove", "instance", "3", 5L, 0,
+                Map.of(ProcessAuthorization.DATA_KEY, metadata)), 901L, "test");
+        hook.beforeExecution(record, metadata);
+        EngineContext engine = EngineContext.getEngineContext();
+        var frame = engine.pushVerifiedExecution("instance", "3", metadata);
+        try {
+            hook.beforeExecution(new LaunchConfiguration("volume.remove", "volume", "6", 5L, 0, Map.of()), metadata);
+        } finally { engine.popVerifiedExecution(frame); }
+        ProcessRecord forged = new ProcessRecord(new LaunchConfiguration("instance.remove", "instance", "3", 5L, 0,
+                Map.of(ProcessAuthorization.DATA_KEY, Map.of("targetId", "99"))), 902L, "test");
+        assertEquals("KeyScopeDenied", assertThrows(ProcessAuthorizationDeniedException.class,
+                () -> hook.beforeExecution(forged, metadata)).getCode());
+        policy(new ApiKeyPolicy(ApiKeyPolicy.Mode.CUSTOM, ApiKeyPolicy.Effect.DENY, null, List.of(
+                new ApiKeyPolicy.Rule("root", ApiKeyPolicy.Effect.ALLOW, ApiKeyPolicy.Scope.stack("1st8"), Set.of("upgrade")),
+                new ApiKeyPolicy.Rule("deny-old", ApiKeyPolicy.Effect.DENY, ApiKeyPolicy.Scope.resource("container", "1i3"), Set.of("upgrade")))));
+        assertEquals("KeyPolicyDenied", assertThrows(ProcessAuthorizationDeniedException.class,
+                () -> hook.beforeExecution(record, metadata)).getCode());
+    }
+    @Test public void trueUpgradeNicCleanupUsesOriginOperationAndRejectsForgedCrossChildOrDeny() {
+        removalLifecycle(); metadata.put("requestAction", "upgrade");
+        var nic = new io.cattle.platform.core.model.tables.records.NicRecord();
+        nic.setId(15L); nic.setAccountId(5L); nic.setInstanceId(3L); nic.setState("removing");
+        when(hook.objectManager.loadResource("nic", "15")).thenReturn(nic);
+        when(hook.objectManager.loadResource(io.cattle.platform.core.model.Nic.class, 15L)).thenReturn(nic);
+        var engine = EngineContext.getEngineContext(); var frame = engine.pushVerifiedExecution("instance", "3", metadata);
+        LaunchConfiguration child = new LaunchConfiguration("nic.remove", "nic", "15", 5L, 0, Map.of());
+        try {
+            hook.beforeExecution(child, metadata);
+            policy(new ApiKeyPolicy(ApiKeyPolicy.Mode.CUSTOM, ApiKeyPolicy.Effect.DENY, null, List.of(
+                    new ApiKeyPolicy.Rule("allow", ApiKeyPolicy.Effect.ALLOW, ApiKeyPolicy.Scope.stack("1st8"), Set.of("upgrade")),
+                    new ApiKeyPolicy.Rule("deny-nic", ApiKeyPolicy.Effect.DENY, ApiKeyPolicy.Scope.resource("nic", "1internal15"), Set.of("upgrade")))));
+            assertEquals("KeyPolicyDenied", assertThrows(ProcessAuthorizationDeniedException.class, () -> hook.beforeExecution(child, metadata)).getCode());
+            nic.setInstanceId(99L);
+            assertEquals("KeyScopeDenied", assertThrows(ProcessAuthorizationDeniedException.class, () -> hook.beforeExecution(child, metadata)).getCode());
+        } finally { engine.popVerifiedExecution(frame); }
+    }
+
     @Test public void finishUpgradeRemovalCannotHideContainerVolumeOrTombstoneExplicitDeny() {
         removalLifecycle();
         for (var scope : List.of(ApiKeyPolicy.Scope.resource("container", "1i3"), ApiKeyPolicy.Scope.resource("volume", "1v6"),
@@ -588,6 +627,7 @@ public class ApiKeyProcessAuthorizationTest {
             hook.beforeExecution(new LaunchConfiguration("volume.remove", "volume", "6", 5L, 0, Map.of()), metadata);
         }
         verify(hook.targets, never()).resolveUpgradeRemovalDependency(any(), any(), any(), anyString(), anyString(), any(), any());
+        verify(hook.targets, never()).resolveUpgradeRemovalDependency(any(), any(), any(), anyString(), anyString(), any(), any(), any());
     }
 
     private Volume cleanupLifecycle() {
@@ -698,6 +738,121 @@ public class ApiKeyProcessAuthorizationTest {
         when(key.getState()).thenReturn("inactive");
         assertEquals("ApiKeyRevoked", assertThrows(ProcessAuthorizationDeniedException.class, () -> hook.beforeExecution(queued, metadata)).getCode());
     }
+    private VolumeRecord liveOsVolume() {
+        ServiceExposeMap exposure = upgradeLifecycle();
+        when(exposure.getState()).thenReturn("active");
+        metadata.put("preview", false);
+        DefaultIdFormatter formatter = new DefaultIdFormatter(); formatter.setSchemaFactory(mock(SchemaFactory.class));
+        formatter.setTypeMappings(Map.of("credential", "c", "project", "a", "stack", "st", "service", "s", "container", "i", "volume", "v"));
+        hook.targets.idFormatter = formatter;
+        Instance instance = hook.objectManager.loadResource("instance", "3");
+        when(instance.getState()).thenReturn("stopping");
+        when(hook.objectManager.loadResource(Instance.class, 3L)).thenReturn(instance);
+        VolumeRecord volume = new VolumeRecord(); volume.setId(6L); volume.setAccountId(5L); volume.setInstanceId(3L);
+        volume.setDeviceNumber(0); volume.setState("active");
+        when(hook.objectManager.loadResource("volume", "6")).thenReturn(volume);
+        when(hook.objectManager.loadResource(Volume.class, 6L)).thenReturn(volume);
+        when(hook.objectManager.find(Mount.class, MOUNT.VOLUME_ID, 6L, MOUNT.REMOVED, null)).thenReturn(List.of());
+        VolumeStoragePoolMapRecord map = new VolumeStoragePoolMapRecord(); map.setId(12L); map.setVolumeId(6L); map.setStoragePoolId(9L); map.setState("active");
+        when(hook.objectManager.loadResource("volumeStoragePoolMap", "12")).thenReturn(map);
+        when(hook.objectManager.loadResource(VolumeStoragePoolMap.class, 12L)).thenReturn(map);
+        return volume;
+    }
+    @Test public void liveUpgradeStopAndRestartKeepExistingOsVolumeLifecycle() {
+        VolumeRecord volume = liveOsVolume(); var engine = EngineContext.getEngineContext();
+        assertNull(hook.objectManager.find(Mount.class, MOUNT.VOLUME_ID, 6L, MOUNT.REMOVED, null).stream().findFirst().orElse(null));
+        // This is the actual InstanceStop chain: instance -> OS volume -> map.
+        // It has no Mount parent and retains the live managed=false/upgrade map.
+        for (String action : List.of("stop", "start")) {
+            hook.beforeExecution(new ProcessRecord(new LaunchConfiguration("instance." + action, "instance", "3", 5L, 0,
+                    Map.of(ProcessAuthorization.DATA_KEY, metadata)), 900L, "test"), metadata);
+            var instanceFrame = engine.pushVerifiedExecution("instance", "3", metadata);
+            try {
+                String storageAction = action.equals("stop") ? "deactivate" : "activate";
+                hook.beforeExecution(new LaunchConfiguration("volume." + storageAction, "volume", "6", 5L, 0, Map.of()), metadata);
+                volume.setState(action.equals("stop") ? "deactivating" : "activating");
+                var volumeFrame = engine.pushVerifiedExecution("volume", "6", metadata);
+                try { hook.beforeExecution(new LaunchConfiguration("volumestoragepoolmap." + storageAction,
+                        "volumeStoragePoolMap", "12", 5L, 0, Map.of()), metadata); }
+                finally { engine.popVerifiedExecution(volumeFrame); }
+            } finally { engine.popVerifiedExecution(instanceFrame); }
+            volume.setState(action.equals("stop") ? "inactive" : "active");
+        }
+        // Finishupgrade later retires that same map before the remove chain.
+        ServiceExposeMap map = hook.objectManager.find(ServiceExposeMap.class, SERVICE_EXPOSE_MAP.INSTANCE_ID, 3L,
+                SERVICE_EXPOSE_MAP.REMOVED, null, SERVICE_EXPOSE_MAP.MANAGED, false, SERVICE_EXPOSE_MAP.UPGRADE, true).getFirst();
+        when(map.getId()).thenReturn(1L); when(map.getState()).thenReturn("removed"); when(map.getRemoved()).thenReturn(new java.util.Date(1));
+        when(hook.objectManager.loadResource(ServiceExposeMap.class, 1L)).thenReturn(map);
+        when(hook.objectManager.find(ServiceExposeMap.class, SERVICE_EXPOSE_MAP.INSTANCE_ID, 3L,
+                SERVICE_EXPOSE_MAP.REMOVED, null, SERVICE_EXPOSE_MAP.MANAGED, false, SERVICE_EXPOSE_MAP.UPGRADE, true)).thenReturn(List.of());
+        when(hook.objectManager.find(ServiceExposeMap.class, SERVICE_EXPOSE_MAP.INSTANCE_ID, 3L,
+                SERVICE_EXPOSE_MAP.SERVICE_ID, 2L, SERVICE_EXPOSE_MAP.MANAGED, false, SERVICE_EXPOSE_MAP.UPGRADE, true,
+                SERVICE_EXPOSE_MAP.STATE, "removed")).thenReturn(List.of(map));
+        when(hook.objectManager.find(ServiceExposeMap.class, SERVICE_EXPOSE_MAP.INSTANCE_ID, 3L, SERVICE_EXPOSE_MAP.REMOVED, null)).thenReturn(List.of());
+        when(hook.objectManager.loadResource(Instance.class, 3L).getState()).thenReturn("removing");
+        volume.setState("detached"); volume.setUuid("os-volume");
+        hook.beforeExecution(new ProcessRecord(new LaunchConfiguration("instance.remove", "instance", "3", 5L, 0,
+                Map.of(ProcessAuthorization.DATA_KEY, metadata)), 901L, "test"), metadata);
+        var instanceFrame = engine.pushVerifiedExecution("instance", "3", metadata);
+        try { hook.beforeExecution(new LaunchConfiguration("volume.remove", "volume", "6", 5L, 0, Map.of()), metadata); }
+        finally { engine.popVerifiedExecution(instanceFrame); }
+        volume.setState("removing");
+        var pool = new StoragePoolRecord(); pool.setId(9L); pool.setAccountId(5L); pool.setUuid("pool-nine");
+        when(hook.objectManager.loadResource(StoragePool.class, 9L)).thenReturn(pool);
+        var allocation = (VolumeStoragePoolMapRecord) hook.objectManager.loadResource(VolumeStoragePoolMap.class, 12L);
+        allocation.setUuid("os-map");
+        var volumeFrame = engine.pushVerifiedExecution("volume", "6", metadata);
+        try {
+            hook.beforeExecution(new LaunchConfiguration("volume.deallocate", "volume", "6", 5L, 0, Map.of()), metadata);
+            for (String action : List.of("deactivate", "remove")) hook.beforeExecution(new LaunchConfiguration(
+                    "volumestoragepoolmap." + action, "volumeStoragePoolMap", "12", 5L, 0, Map.of()), metadata);
+        } finally { engine.popVerifiedExecution(volumeFrame); }
+    }
+    @Test public void liveDeactivationStillRejectsCrossStackMountsWrongIdsAndExplicitDenies() {
+        VolumeRecord volume = liveOsVolume(); var engine = EngineContext.getEngineContext();
+        var instanceFrame = engine.pushVerifiedExecution("instance", "3", metadata);
+        try {
+            // Named volume detachment is authorized from its live Mount graph.
+            volume.setName("persistent-data"); volume.setDeviceNumber(null); volume.setInstanceId(null);
+            var mount = new io.cattle.platform.core.model.tables.records.MountRecord();
+            mount.setId(7L); mount.setAccountId(5L); mount.setVolumeId(6L); mount.setInstanceId(3L); mount.setState("active");
+            when(hook.objectManager.loadResource(Mount.class, 7L)).thenReturn(mount);
+            when(hook.objectManager.find(Mount.class, MOUNT.VOLUME_ID, 6L, MOUNT.REMOVED, null)).thenReturn(List.of(mount));
+            var deactivate = new LaunchConfiguration("volume.deactivate", "volume", "6", 5L, 0, Map.of());
+            hook.beforeExecution(deactivate, metadata);
+            for (var scope : List.of(ApiKeyPolicy.Scope.resource("volume", "1v6"), ApiKeyPolicy.Scope.resource("container", "1i3"))) {
+                policy(new ApiKeyPolicy(ApiKeyPolicy.Mode.CUSTOM, ApiKeyPolicy.Effect.DENY, null, List.of(
+                        new ApiKeyPolicy.Rule("allow", ApiKeyPolicy.Effect.ALLOW, ApiKeyPolicy.Scope.stack("1st8"), Set.of("upgrade")),
+                        new ApiKeyPolicy.Rule("deny", ApiKeyPolicy.Effect.DENY, scope, Set.of("upgrade")))));
+                assertEquals("KeyPolicyDenied", assertThrows(ProcessAuthorizationDeniedException.class, () -> hook.beforeExecution(deactivate, metadata)).getCode());
+            }
+            policy(new ApiKeyPolicy(ApiKeyPolicy.Mode.CUSTOM, ApiKeyPolicy.Effect.DENY, null,
+                    List.of(new ApiKeyPolicy.Rule("allow", ApiKeyPolicy.Effect.ALLOW, ApiKeyPolicy.Scope.stack("1st8"), Set.of("upgrade")))));
+            var foreign = new io.cattle.platform.core.model.tables.records.InstanceRecord();
+            foreign.setId(99L); foreign.setAccountId(5L); foreign.setStackId(88L);
+            var stack = new io.cattle.platform.core.model.tables.records.StackRecord(); stack.setId(88L); stack.setAccountId(5L);
+            when(hook.objectManager.loadResource(Instance.class, 99L)).thenReturn(foreign);
+            when(hook.objectManager.loadResource(Stack.class, 88L)).thenReturn(stack);
+            mount.setInstanceId(99L);
+            assertEquals("KeyScopeDenied", assertThrows(ProcessAuthorizationDeniedException.class, () -> hook.beforeExecution(deactivate, metadata)).getCode());
+            mount.setInstanceId(3L);
+            var map = (VolumeStoragePoolMapRecord) hook.objectManager.loadResource(VolumeStoragePoolMap.class, 12L); map.setVolumeId(99L);
+            var volumeFrame = engine.pushVerifiedExecution("volume", "6", metadata);
+            try {
+                var mapJob = new LaunchConfiguration("volumestoragepoolmap.deactivate", "volumeStoragePoolMap", "12", 5L, 0, Map.of());
+                assertEquals("KeyScopeDenied", assertThrows(ProcessAuthorizationDeniedException.class, () -> hook.beforeExecution(mapJob, metadata)).getCode());
+                map.setVolumeId(6L); hook.beforeExecution(mapJob, metadata);
+                policy(new ApiKeyPolicy(ApiKeyPolicy.Mode.CUSTOM, ApiKeyPolicy.Effect.DENY, null, List.of(
+                        new ApiKeyPolicy.Rule("allow", ApiKeyPolicy.Effect.ALLOW, ApiKeyPolicy.Scope.stack("1st8"), Set.of("upgrade")),
+                        new ApiKeyPolicy.Rule("deny-map", ApiKeyPolicy.Effect.DENY, ApiKeyPolicy.Scope.resource("volumeStoragePoolMap",
+                                String.valueOf(hook.targets.idFormatter.formatId("volumeStoragePoolMap", 12L))), Set.of("upgrade")))));
+                assertEquals("KeyPolicyDenied", assertThrows(ProcessAuthorizationDeniedException.class, () -> hook.beforeExecution(mapJob, metadata)).getCode());
+                volume.setAccountId(99L);
+                assertEquals("OwnerPermissionDenied", assertThrows(ProcessAuthorizationDeniedException.class, () -> hook.beforeExecution(deactivate, metadata)).getCode());
+            } finally { engine.popVerifiedExecution(volumeFrame); }
+        } finally { engine.popVerifiedExecution(instanceFrame); }
+    }
+
     private ServiceExposeMap upgradeLifecycle() {
         Account project = mock(Account.class), principal = mock(Account.class);
         when(project.getId()).thenReturn(5L); when(project.getKind()).thenReturn("project"); when(principal.getId()).thenReturn(10L);

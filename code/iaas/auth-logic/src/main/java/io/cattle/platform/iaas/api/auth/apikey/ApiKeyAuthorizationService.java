@@ -49,12 +49,25 @@ public class ApiKeyAuthorizationService implements ApiResourceAccess {
         boolean allowed = true;
         try {
             ApiKeyPolicy policy = key.policy();
+            ApiKeyAiBridgeGuard.check(request, policy);
+            if ("aiServiceUpgradePlan".equals(request.getType())
+                    && !("GET".equals(request.getMethod()) && request.getId() != null && request.getAction() == null && request.getLink() == null
+                    || "POST".equals(request.getMethod()) && request.getLink() == null
+                    && (request.getId() == null && request.getAction() == null || request.getId() != null && "apply".equals(request.getAction()))))
+                throw forbidden("AiKeyConfirmationForbidden");
             // Legacy and full preserve the original RBAC pipeline. No operation
             // registry, ancestry inference or new schema whitelist limits them.
             if (policy != null && policy.getExpiresAt() != null && !clock.instant().isBefore(policy.getExpiresAt())) {
                 throw forbidden("ApiKeyExpired");
             }
             if (key.restricted() && delegatesUnboundAuthority(request)) throw forbidden("ApiKeyRestrictedDelegationUnsupported");
+            if ("aiToolCallEvent".equals(request.getType()) && "POST".equals(request.getMethod())
+                    && request.getId() == null && request.getAction() == null && request.getLink() == null) {
+                if (!ownerAllows(request)) throw forbidden("OwnerPermissionDenied");
+                if (policy != null && policy.getMode() == ApiKeyPolicy.Mode.CLOSED) throw forbidden("KeyPolicyDenied");
+                record(request, owner, true, "AiToolMetadataAllowed");
+                return;
+            }
             if (policy != null && policy.getMode() != ApiKeyPolicy.Mode.FULL) {
                 if (!ownerAllows(request)) throw forbidden("OwnerPermissionDenied");
                 if (policy.getMode() == ApiKeyPolicy.Mode.CLOSED) throw forbidden("KeyPolicyDenied");

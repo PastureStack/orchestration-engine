@@ -17,6 +17,7 @@ import io.cattle.platform.iaas.api.filter.common.AbstractDefaultResourceManagerF
 import io.cattle.platform.json.JsonMapper;
 import io.cattle.platform.object.ObjectManager;
 import io.cattle.platform.object.util.DataAccessor;
+import io.cattle.platform.process.common.util.ProcessUtils;
 import io.cattle.platform.servicediscovery.api.util.ServiceDiscoveryUtil;
 import io.cattle.platform.storage.api.filter.ExternalTemplateInstanceFilter;
 import io.cattle.platform.storage.service.StorageService;
@@ -55,6 +56,9 @@ public class ServiceUpgradeValidationFilter extends AbstractDefaultResourceManag
 
     @Inject
     VolumePreflightService volumePreflightService;
+
+    @Inject
+    AiServiceUpgradePersistence aiUpgradePersistence;
 
     @Override
     public Class<?>[] getTypeClasses() {
@@ -121,10 +125,23 @@ public class ServiceUpgradeValidationFilter extends AbstractDefaultResourceManag
             inServiceStrategy.setPreviousLaunchConfig(launchConfig);
             inServiceStrategy.setPreviousSecondaryLaunchConfigs(secondaryLaunchConfigs);
             upgrade.setInServiceStrategy(inServiceStrategy);
-            request.setRequestObject(jsonMapper.writeValueAsMap(upgrade));
+            Map<String, Object> upgradeData = jsonMapper.writeValueAsMap(upgrade);
+            Object plan = request.getAttribute("ai.service.upgrade.plan");
+            if (plan instanceof String && request.getAttribute("ai.service.upgrade.snapshot") instanceof Map) {
+                // Only the server-owned plan manager can set request attributes.
+                // Finish is part of this explicitly approved image-upgrade operation.
+                upgradeData.put("aiServiceUpgradePlanId", plan);
+                ProcessUtils.chainInData(upgradeData, ServiceConstants.PROCESS_SERVICE_UPGRADE,
+                        ServiceConstants.PROCESS_SERVICE_FINISH_UPGRADE);
+            }
+            request.setRequestObject(upgradeData);
             ServiceDiscoveryUtil.upgradeServiceConfigs(service, inServiceStrategy, false);
         }
-        objectManager.persist(service);
+        if (request.getAttribute("ai.service.upgrade.snapshot") instanceof Map<?, ?> snapshot) {
+            aiUpgradePersistence.persist(service, snapshot);
+        } else {
+            objectManager.persist(service);
+        }
     }
 
     protected void assertUpgradePortsAvailable(Service service, InServiceUpgradeStrategy strategy) {

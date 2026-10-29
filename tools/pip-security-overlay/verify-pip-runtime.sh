@@ -13,6 +13,7 @@ if [[ "${1:-}" = --virtualenv ]]; then
     seed=${2:?explicit patched wheel directory required}
     test -s "$seed/pip-$expected-py3-none-any.whl"
     python3 -m virtualenv --no-download --no-periodic-update \
+        --app-data="$scratch/virtualenv-app-data" \
         --pip="$expected" --extra-search-dir="$seed" "$scratch/virtualenv"
     "$scratch/virtualenv/bin/python" "$root/test-pip-overlay.py"
 fi

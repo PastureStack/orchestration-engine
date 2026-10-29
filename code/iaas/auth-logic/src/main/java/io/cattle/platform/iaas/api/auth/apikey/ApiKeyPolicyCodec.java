@@ -24,7 +24,12 @@ public final class ApiKeyPolicyCodec {
 
     public ApiKeyPolicy decode(Object value) {
         Map<?, ?> input = map(value);
-        only(input, Set.of("mode", "defaultEffect", "expiresAt", "rules"));
+        only(input, Set.of("mode", "defaultEffect", "expiresAt", "rules", "purpose"));
+        ApiKeyPolicy.Purpose purpose = !input.containsKey("purpose") ? ApiKeyPolicy.Purpose.GENERAL : switch (text(input.get("purpose"))) {
+            case "general" -> ApiKeyPolicy.Purpose.GENERAL;
+            case "ai-bridge" -> ApiKeyPolicy.Purpose.AI_BRIDGE;
+            default -> throw new IllegalArgumentException("Unknown key purpose");
+        };
         ApiKeyPolicy.Mode mode = ApiKeyPolicy.Mode.valueOf(text(input.get("mode")).toUpperCase(Locale.ROOT));
         ApiKeyPolicy.Effect effect = ApiKeyPolicy.Effect.valueOf(text(input.get("defaultEffect")).toUpperCase(Locale.ROOT));
         Object expiry = input.get("expiresAt");
@@ -59,7 +64,7 @@ public final class ApiKeyPolicyCodec {
             throw new IllegalArgumentException("Full and closed modes use their fixed default and no rules");
         }
         rules.sort(Comparator.comparing(ApiKeyPolicy.Rule::id));
-        return new ApiKeyPolicy(mode, effect, expiresAt, rules);
+        return new ApiKeyPolicy(mode, effect, expiresAt, rules, purpose);
     }
 
     public Map<String, Object> encode(ApiKeyPolicy policy) {
@@ -67,6 +72,7 @@ public final class ApiKeyPolicyCodec {
         output.put("mode", lower(policy.getMode()));
         output.put("defaultEffect", lower(policy.getDefaultEffect()));
         output.put("expiresAt", policy.getExpiresAt() == null ? null : policy.getExpiresAt().toString());
+        if (policy.getPurpose() == ApiKeyPolicy.Purpose.AI_BRIDGE) output.put("purpose", "ai-bridge");
         List<Map<String, Object>> rules = new ArrayList<>();
         policy.getRules().stream().sorted(Comparator.comparing(ApiKeyPolicy.Rule::id)).forEach(rule -> {
             Map<String, Object> item = new LinkedHashMap<>();

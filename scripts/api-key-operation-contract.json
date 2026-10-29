@@ -1,15 +1,16 @@
 {
   "schemaVersion": 1,
   "producer": {
-    "version": "0.183.354",
+    "version": "0.183.355",
     "source": "0906d9c214861677b49f8f162ff91f23ead53df9",
-    "tree": "82c2056ca94bd0f086bf36a315eb8a84ff2049b0"
+    "tree": "82c2056ca94bd0f086bf36a315eb8a84ff2049b0",
+    "scope": "Original extraction identity retained; current reviewed source bytes are bound by sourceInputs and extensionReview."
   },
   "scope": "Declared v1/v2 and source handler/process union; source-only review, not current artifact packaging, live role/state availability or asynchronous completion.",
   "sourceInputs": {
     "algorithm": "c03-source-inputs-v1",
-    "count": 367,
-    "sha256": "6097e4ed9e2ab41af98b5aba1412376b49424a8d67f2ce71cc48d7784422d414",
+    "count": 371,
+    "sha256": "519af891f9de0e0d77f964fccb9b6727121605141e36a8997b77159070ea2027",
     "anchors": [
       "AbstractSchemaFactory.java",
       "ApiAuthenticator.java",
@@ -147,7 +148,9 @@
       "updatehealthy": "persisted health-state update; unreviewed root unsupported",
       "updatereinitializing": "persisted health-state update; unreviewed root unsupported",
       "updateunhealthy": "persisted health-state update; unreviewed root unsupported",
-      "volumepreflight": "reference-sensitive storage inspection with filtered output"
+      "volumepreflight": "reference-sensitive storage inspection with filtered output",
+      "confirm": "Human cookie-session approval only; API Keys cannot confirm an AI service upgrade plan.",
+      "cancel": "Human cookie-session cancellation only; API Keys cannot cancel an AI service upgrade plan."
     }
   },
   "tupleColumns": [
@@ -158,8 +161,83 @@
     "link",
     "expectedOperation"
   ],
-  "tupleCount": 1371,
-  "tupleSha256": "efcd9ee6660280e3a9eb12bc5517a9ac08880261575f908d94b676552acb8106",
+  "tupleCount": 1379,
+  "tupleSha256": "4af243643758f0b8e033f0ca20689726925c12d946ce9d181eb08a4b6b5df9fe",
+  "extensionReview": {
+    "version": "0.183.355",
+    "scope": "The original 1371 operation tuples are unchanged. Eight declarations were re-extracted from the three explicit AI resource schemas and reviewed against ApiKeyOperations. Classification does not imply Key admission: plan collection GET is human-only, and confirm/cancel reject every API Key.",
+    "schemas": [
+      "resources/content/schema/base/aiServiceDescriptionUpdate.json",
+      "resources/content/schema/base/aiServiceUpgradePlan.json",
+      "resources/content/schema/base/aiToolCallEvent.json"
+    ],
+    "addedTuples": [
+      [
+        "aiServiceDescriptionUpdate",
+        "collection",
+        "POST",
+        "",
+        "",
+        "update"
+      ],
+      [
+        "aiServiceUpgradePlan",
+        "collection",
+        "GET",
+        "",
+        "",
+        "read"
+      ],
+      [
+        "aiServiceUpgradePlan",
+        "collection",
+        "POST",
+        "",
+        "",
+        "upgrade"
+      ],
+      [
+        "aiServiceUpgradePlan",
+        "resource",
+        "GET",
+        "",
+        "",
+        "read"
+      ],
+      [
+        "aiServiceUpgradePlan",
+        "resource",
+        "POST",
+        "confirm",
+        "",
+        "ai-plan:confirm"
+      ],
+      [
+        "aiServiceUpgradePlan",
+        "resource",
+        "POST",
+        "apply",
+        "",
+        "upgrade"
+      ],
+      [
+        "aiServiceUpgradePlan",
+        "resource",
+        "POST",
+        "cancel",
+        "",
+        "ai-plan:cancel"
+      ],
+      [
+        "aiToolCallEvent",
+        "collection",
+        "POST",
+        "",
+        "",
+        "create"
+      ]
+    ]
+  },
   "tuples": [
     ["account","collection","GET","","","read"],
     ["account","collection","POST","","","create"],
@@ -214,6 +292,14 @@
     ["agentgroup","resource","POST","purge","","delete"],
     ["agentgroup","resource","POST","remove","","delete"],
     ["agentgroup","resource","POST","update","","update"],
+    ["aiServiceDescriptionUpdate","collection","POST","","","update"],
+    ["aiServiceUpgradePlan","collection","GET","","","read"],
+    ["aiServiceUpgradePlan","collection","POST","","","upgrade"],
+    ["aiServiceUpgradePlan","resource","GET","","","read"],
+    ["aiServiceUpgradePlan","resource","POST","apply","","upgrade"],
+    ["aiServiceUpgradePlan","resource","POST","cancel","","ai-plan:cancel"],
+    ["aiServiceUpgradePlan","resource","POST","confirm","","ai-plan:confirm"],
+    ["aiToolCallEvent","collection","POST","","","create"],
     ["apiKey","collection","GET","","","read"],
     ["apiKey","collection","POST","","","create"],
     ["apiKey","resource","DELETE","","","delete"],
