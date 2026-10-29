@@ -22,6 +22,7 @@ import io.cattle.platform.object.util.ObjectUtils;
 import io.cattle.platform.process.common.lock.ResourceChangeLock;
 import io.cattle.platform.servicediscovery.api.service.ServiceInstanceAssociationGuard;
 import io.cattle.platform.servicediscovery.api.service.ArchivedAssociationException;
+import io.cattle.platform.servicediscovery.api.service.ResourceArchiveChange;
 import io.cattle.platform.util.type.CollectionUtils;
 import io.github.ibuildthecloud.gdapi.context.ApiContext;
 import io.github.ibuildthecloud.gdapi.exception.ClientVisibleException;
@@ -39,17 +40,63 @@ import java.util.TreeSet;
 import java.util.function.Supplier;
 import jakarta.inject.Inject;
 import jakarta.inject.Named;
+import jakarta.inject.Provider;
 import org.jooq.Condition;
 
 /** Archive metadata and lifecycle transitions share short, per-stack locks. */
 @Named
-public class ArchiveValidationFilter extends AbstractDefaultResourceManagerFilter implements ProcessStateTransitionGuard, ServiceInstanceAssociationGuard {
+public class ArchiveValidationFilter extends AbstractDefaultResourceManagerFilter
+        implements ProcessStateTransitionGuard, ServiceInstanceAssociationGuard, ResourceArchiveChange {
     @Inject ObjectManager objectManager;
     @Inject LockManager lockManager;
     @Inject ArchiveInstances instances;
+    @Inject Provider<ArchiveEligibilityRead> eligibilityRead;
     private final ThreadLocal<Set<Long>> held = ThreadLocal.withInitial(HashSet::new);
+    private final ThreadLocal<ArchiveChange> typedChange = new ThreadLocal<>();
     private static final Set<String> SAFE_SERVICE_STATES = Set.of("inactive", "updating-inactive", "removing", "removed", "purging", "purged");
     private static final Set<String> SAFE_INSTANCE_STATES = Set.of("stopped", "stopping", "removing", "removed", "purging", "purged");
+
+    @Override
+    public <T> T withChange(Object lockedTarget, boolean archived, Supplier<T> change) {
+        if (!(lockedTarget instanceof Stack || lockedTarget instanceof Service))
+            throw error(422, "ArchiveCreateUnsupported", "Only existing Stacks and Services support archive metadata changes.");
+        List<Long> ids = new ArrayList<>(new TreeSet<>(stackIds(lockedTarget)));
+        return tryLease(ids, 0, () -> {
+            eligibilityRead.get().validate(lockedTarget, archived);
+            ArchiveChange previous = typedChange.get();
+            typedChange.set(new ArchiveChange(lockedTarget, archived));
+            try { return change.get(); }
+            finally { if (previous == null) typedChange.remove(); else typedChange.set(previous); }
+        });
+    }
+
+    private <T> T tryLease(List<Long> ids, int offset, Supplier<T> change) {
+        if (offset == ids.size()) return change.get();
+        Long id = ids.get(offset);
+        if (held.get().contains(id)) return tryLease(ids, offset + 1, change);
+        boolean[] entered = { false };
+        T result = lockManager.tryLock(new ArchiveLock(id), () -> {
+            entered[0] = true; held.get().add(id);
+            try { return tryLease(ids, offset + 1, change); }
+            finally { held.get().remove(id); if (held.get().isEmpty()) held.remove(); }
+        });
+        if (!entered[0]) {
+            if (held.get().isEmpty()) held.remove();
+            throw error(409, "ArchiveConcurrentChange", "Archive lifecycle is busy. Wait for the current operation, then preview again.");
+        }
+        return result;
+    }
+
+    private record ArchiveChange(Object target, boolean archived) { }
+
+    private Object typedTarget(Object target, Map<String, Object> body) {
+        ArchiveChange change = typedChange.get();
+        if (change == null || body.size() != 1 || !Objects.equals(body.get("archived"), change.archived())
+                || !Objects.equals(ObjectUtils.getKind(target), ObjectUtils.getKind(change.target()))
+                || !Objects.equals(ObjectUtils.getId(target), ObjectUtils.getId(change.target()))
+                || !Objects.equals(ObjectUtils.getAccountId(target), ObjectUtils.getAccountId(change.target()))) return null;
+        return change.target();
+    }
 
     @Override public Class<?>[] getTypeClasses() { return new Class<?>[] { Stack.class, Service.class, Instance.class }; }
     @Override public String[] getTypes() {
@@ -87,12 +134,15 @@ public class ArchiveValidationFilter extends AbstractDefaultResourceManagerFilte
         if (archiveField && !(body.get("archived") instanceof Boolean)) throw error(422, "InvalidOption", "archived must be a boolean.");
         Long destination = parentId(body);
         if (!archiveField && !parentField && !selectorFields) return super.update(type, id, request, next);
-        Set<Long> locks = stackIds(target);
+        // Discover the lease from the same fresh target too; an old ancestry must not acquire a second blocking lock.
+        Object typedTarget = archiveField ? typedTarget(target, body) : null;
+        Set<Long> locks = stackIds(typedTarget == null ? target : typedTarget);
         if (destination != null) locks.add(destination);
         Supplier<Object> update = () -> {
           boolean[] ordinaryUpdate = { false };
           Object result = withLocks(locks, () -> {
-            Object current = objectManager.reload(target);
+            // A typed caller already owns a current locking read. An ordinary RR reload can be older.
+            Object current = typedTarget == null ? objectManager.reload(target) : typedTarget;
             if (!locks.containsAll(stackIds(current)))
                 throw error(409, "ArchiveConcurrentChange", "The resource moved while it was being updated. Reload and try again.");
             boolean changed = archiveField && archived(current) != Boolean.TRUE.equals(body.get("archived"));
@@ -113,7 +163,10 @@ public class ArchiveValidationFilter extends AbstractDefaultResourceManagerFilte
             }
             if (changed) {
                 assertMetadataOnly(current, body, "archived");
-                if (Boolean.TRUE.equals(body.get("archived"))) assertArchivable(current);
+                if (Boolean.TRUE.equals(body.get("archived"))) {
+                    if (typedTarget == null) assertArchivable(current);
+                    else eligibilityRead.get().validate(current, true);
+                }
             }
             if (moved) {
                 assertMetadataOnly(current, body, body.containsKey("stackId") ? "stackId" : "environmentId");

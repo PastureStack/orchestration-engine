@@ -22,6 +22,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Supplier;
 import org.junit.After;
 import org.junit.Test;
 
@@ -174,6 +175,47 @@ public class AiResourceChangePlanServiceTest {
         }
     }
 
+    @Test public void archiveOwnerEligibilityIsRepeatedBeforePersistenceConfirmationAndAtomicClaim() {
+        Fixture f = new Fixture(); f.archiveAllowed = false;
+        assertCode(422, "ArchiveRequiresStopped", () -> f.previewArchive("archive"));
+        assertTrue(f.documents.isEmpty()); assertEquals(0, f.claims); assertEquals(0, f.dispatched);
+        f.archiveAllowed = true; f.previewArchive("archive"); f.archiveAllowed = false;
+        assertCode(422, "ArchiveRequiresStopped", f::confirm);
+        assertEquals("pending", f.documents.get(f.id).get("confirmationState"));
+        f.archiveAllowed = true; f.confirm(); f.archiveAllowed = false;
+        assertCode(422, "ArchiveRequiresStopped", () -> f.apply(false));
+        assertEquals("preview", f.documents.get(f.id).get("status")); assertEquals(0, f.claims); assertEquals(0, f.dispatched);
+        f.archiveAllowed = true; assertEquals("accepted", f.apply(false).get("status"));
+        int checks = f.archiveChecks; f.apply(false);
+        assertEquals(checks, f.archiveChecks); assertEquals(1, f.claims); assertEquals(1, f.dispatched);
+    }
+
+    @Test public void archiveLeaseConflictFailsBeforeAnOperationIsClaimedAndRestoreUsesTheSameOwner() {
+        Fixture f = new Fixture(); f.previewArchive("restore"); f.confirm();
+        f.archiveAllowed = false; f.archiveDenial = "ArchiveConcurrentChange";
+        assertCode(409, "ArchiveConcurrentChange", () -> f.apply(false));
+        assertEquals(0, f.claims); assertEquals(0, f.dispatched);
+        f.archiveAllowed = true; f.apply(false); assertEquals(1, f.dispatched);
+        verify(f.domain, times(4)).withArchiveChange(argThat(descriptor -> "restore".equals(descriptor.operation())), eq(f.target), any());
+    }
+
+    @Test public void archiveRejectsAnOlderNormalManagerViewBeforePreviewConfirmationOrClaim() {
+        Fixture f = new Fixture(); ServiceRecord stale = new ServiceRecord();
+        stale.setName(f.target.getName()); stale.setDescription(f.target.getDescription()); stale.setState(f.target.getState());
+        stale.setData(Map.of("fields", Map.of("archived", true, "unrelatedSetting", "previous")));
+        when(f.domain.visible(any(), any(), anyString())).thenReturn(stale);
+        assertCode(409, "ArchiveConcurrentChange", () -> f.previewArchive("restore"));
+        assertTrue(f.documents.isEmpty()); assertEquals(0, f.archiveChecks);
+        when(f.domain.visible(any(), any(), anyString())).thenReturn(f.target); f.previewArchive("restore");
+        when(f.domain.visible(any(), any(), anyString())).thenReturn(stale);
+        assertCode(409, "ArchiveConcurrentChange", f::confirm);
+        assertEquals("pending", f.documents.get(f.id).get("confirmationState"));
+        when(f.domain.visible(any(), any(), anyString())).thenReturn(f.target); f.confirm();
+        when(f.domain.visible(any(), any(), anyString())).thenReturn(stale);
+        assertCode(409, "ArchiveConcurrentChange", () -> f.apply(false));
+        assertEquals(0, f.claims); assertEquals(0, f.dispatched);
+    }
+
     private static void assertCode(int status, String code, Runnable action) {
         var error = assertThrows(ClientVisibleException.class, action::run); assertEquals(status, error.getStatus()); assertEquals(code, error.getCode());
     }
@@ -186,7 +228,8 @@ public class AiResourceChangePlanServiceTest {
         final Map<String, Map<String, Object>> documents = new LinkedHashMap<>();
         final List<String> audits = new ArrayList<>(); final JacksonJsonMapper json = new JacksonJsonMapper();
         final AiResourceChangePlanService service = new AiResourceChangePlanService() { @Override protected void requireEnabled() { } };
-        String id; int dispatched, claims; boolean complete, failDispatch, writeAllowed = true, create;
+        String id; int dispatched, claims, archiveChecks; boolean complete, failDispatch, writeAllowed = true, create, archiveAllowed = true;
+        String archiveDenial = "ArchiveRequiresStopped";
         Fixture() {
             when(policy.getAuthenticatedAsAccountId()).thenReturn(42L); when(policy.getAccountId()).thenReturn(77L);
             target.setId(7L); target.setAccountId(77L); target.setKind("service"); target.setName("probe"); target.setDescription("old");
@@ -196,9 +239,10 @@ public class AiResourceChangePlanServiceTest {
             when(domain.receiptTarget(any(), any(), anyMap())).thenReturn(target);
             when(domain.snapshot(any())).thenAnswer(call -> {
                 if (call.getArgument(0) == null) return Map.of();
-                Map<String, Object> snapshot = new LinkedHashMap<>(); snapshot.put("name", target.getName()); snapshot.put("description",
-                        target.getDescription());
-                snapshot.put("state", target.getState()); return snapshot;
+                ServiceRecord row = call.getArgument(0);
+                Map<String, Object> snapshot = new LinkedHashMap<>(); snapshot.put("name", row.getName()); snapshot.put("description",
+                        row.getDescription());
+                snapshot.put("state", row.getState()); snapshot.put("data", row.getData()); return snapshot;
             });
             when(domain.prepare(any(), any(), nullable(String.class), anyMap())).thenAnswer(call -> prepare(call.getArgument(3)));
             when(domain.prepare(any(), any(), nullable(String.class), anyMap(), anyMap())).thenAnswer(call -> prepare(call.getArgument(3)));
@@ -207,6 +251,11 @@ public class AiResourceChangePlanServiceTest {
                     "new private description")));
             when(domain.publicId(anyString(), any())).thenReturn("1i91");
             when(domain.complete(any(), any(), anyMap(), anyMap())).thenAnswer(call -> complete);
+            when(domain.withArchiveChange(any(), any(), any())).thenAnswer(call -> {
+                archiveChecks++;
+                if (!archiveAllowed) throw new ClientVisibleException("ArchiveConcurrentChange".equals(archiveDenial) ? 409 : 422, archiveDenial);
+                return ((Supplier<?>) call.getArgument(2)).get();
+            });
             when(domain.dispatch(any(), any(), nullable(String.class), anyMap(), anyString())).thenAnswer(call -> {
                 dispatched++; if (failDispatch) throw new IllegalStateException("secret dispatch detail");
                 if (create) { InstanceRecord result = new InstanceRecord(); result.setId(91L); result.setKind("container"); return result; }
@@ -253,6 +302,11 @@ public class AiResourceChangePlanServiceTest {
             Map<String, Object> result = service.preview(request); id = (String) result.get("id"); return result;
         }
         void confirm() { service.action(id, request("confirm", false)); }
+        Map<String, Object> previewArchive(String operation) {
+            ApiRequest preview = request(null, false); preview.setId(null);
+            preview.setRequestObject(Map.of("resourceType", "service", "operation", operation, "resourceId", "1s7", "parameters", Map.of()));
+            Map<String, Object> result = service.preview(preview); id = (String) result.get("id"); return result;
+        }
         Map<String, Object> apply(boolean key) { return service.action(id, request("apply", key)); }
     }
 }

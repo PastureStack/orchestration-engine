@@ -27,6 +27,10 @@ public record AiResourceChangeDescriptor(String resourceType, String operation, 
                     : Set.of("name", "description", "image", "command", "entryPoint"));
         }
         add(result, "service", "scale", "PUT", null, "update", Set.of("scale"));
+        for (String type : Set.of("stack", "service")) {
+            add(result, type, "archive", "PUT", null, "update", Set.of());
+            add(result, type, "restore", "PUT", null, "update", Set.of());
+        }
         return Map.copyOf(result);
     }
 
@@ -43,6 +47,7 @@ public record AiResourceChangeDescriptor(String resourceType, String operation, 
     }
 
     public boolean createsResource() { return "create".equals(operation); }
+    public boolean changesArchive() { return Set.of("archive", "restore").contains(operation); }
 
     public Map<String, Object> parameters(Object value) {
         if (!(value instanceof Map<?, ?> input) || input.size() > parameterNames.size()) throw error("ResourceChangeInputInvalid");
@@ -93,6 +98,7 @@ public record AiResourceChangeDescriptor(String resourceType, String operation, 
     }
 
     public Map<String, Object> body(Map<String, Object> parameters) {
+        if (changesArchive()) return new LinkedHashMap<>(Map.of("archived", "archive".equals(operation)));
         Map<String, Object> body = new LinkedHashMap<>(parameters);
         if (createsResource()) {
             body.put("type", resourceType);

@@ -110,6 +110,62 @@ public class AiResourceChangeReceiptAuthorizationTest {
     }
 
     private static String rejected(Runnable action) { return assertThrows(ClientVisibleException.class, action::run).getCode(); }
+    @Test public void terminalFailureProjectionStillRequiresTheActualLiveReceiptGuards() throws Exception {
+        Fixture f = new Fixture(); String id = "aichange-11111111-1111-1111-1111-111111111111";
+        var credential = new io.cattle.platform.core.model.tables.records.CredentialRecord();
+        credential.setId(7L); credential.setAccountId(42L); credential.setKind("apiKeyRestricted"); credential.setState("active");
+        credential.setData(new ApiKeyPolicyCodec().store(credential, f.key.policy(), 3));
+        when(f.objects.loadResource(io.cattle.platform.core.model.Credential.class, 7L)).thenReturn(credential);
+        AiKeyAuthorization live = new AiKeyAuthorization(); inject(live, "objects", f.objects);
+        inject(live, "authenticator", f.domain.authenticator); inject(live, "targets", f.resolver); f.domain.keys = live;
+        Map<String, Object> plan = new LinkedHashMap<>(Map.of("id", id, "resourceType", "stack", "operation", "remove",
+                "internalResourceId", 889L, "resourceId", "1st889", "accountId", 5L, "actorId", 42L));
+        plan.putAll(Map.of("credentialId", 7L, "credentialRevision", 3L, "credentialKind", "apiKeyRestricted",
+                "status", "running", "confirmationState", "approved", "dispatchAcknowledged", true, "operationId", id));
+        plan.put(AiResourceChangePlanStore.PRIVATE_FAILURE, AiResourceChangePlanStore.AUTHORIZATION_DENIED);
+        AiResourceChangePlanService service = new AiResourceChangePlanService(); service.domain = f.domain;
+        service.auditSinks = List.of(mock(ApiKeyAuditSink.class)); service.locks = mock(LockManager.class);
+        when(service.locks.lock(any(), any())).thenAnswer(call -> ((LockCallback<?>) call.getArgument(1)).doWithLock());
+        service.store = new AiResourceChangePlanStore() {
+            @Override public Map<String, Object> load(String selected) { return id.equals(selected) ? new LinkedHashMap<>(plan) : null; }
+            @Override public void save(Map<String, Object> value) { }
+        };
+        f.request.setId(id); Map<String, Object> result = service.get(id, f.request);
+        assertEquals("failed", result.get("status")); assertEquals(false, result.get("verifiedResult"));
+        assertEquals(id, result.get("operationId")); assertFalse(result.containsKey(AiResourceChangePlanStore.PRIVATE_FAILURE));
+        f.stack.setState("removed"); f.stack.setRemoved(new java.util.Date());
+        assertEquals("failed", service.get(id, f.request).get("status"));
+        credential.setState("inactive"); assertEquals("ApiKeyRevoked", rejected(() -> service.get(id, f.request)));
+        credential.setState("active"); credential.setData(new ApiKeyPolicyCodec().store(credential, f.key.policy(), 4));
+        assertEquals("ApiKeyPolicyChanged", rejected(() -> service.get(id, f.request)));
+        credential.setData(new ApiKeyPolicyCodec().store(credential, f.key.policy(), 3));
+        ((SchemaImpl) f.schemas.getSchema("stack")).setResourceMethods(List.of());
+        assertEquals("PermissionDenied", rejected(() -> service.get(id, f.request)));
+        ((SchemaImpl) f.schemas.getSchema("stack")).setResourceMethods(List.of("GET"));
+        var otherKey = new io.cattle.platform.core.model.tables.records.CredentialRecord();
+        otherKey.setId(99L); otherKey.setAccountId(42L); otherKey.setKind("apiKeyRestricted"); otherKey.setState("active");
+        otherKey.setData(new ApiKeyPolicyCodec().store(otherKey, f.key.policy(), 3));
+        when(f.objects.loadResource(io.cattle.platform.core.model.Credential.class, 99L)).thenReturn(otherKey);
+        ApiKeyCredentialContext.attach(f.request, new ApiKeyCredentialContext(99, 42, "apiKeyRestricted", 3, f.key.policy()));
+        assertEquals("NotFound", rejected(() -> service.get(id, f.request)));
+        ApiKeyCredentialContext.attach(f.request, f.key);
+        f.stack.setState("active"); f.stack.setRemoved(null);
+        f.attach(ApiKeyPolicy.Scope.project("1a5"), ApiKeyPolicy.Scope.resource("stack", "1st889"));
+        credential.setData(new ApiKeyPolicyCodec().store(credential, f.key.policy(), 3));
+        assertEquals("KeyPolicyDenied", rejected(() -> service.get(id, f.request)));
+        f.stack.setState("removed"); f.stack.setRemoved(new java.util.Date());
+        // A cookie for another actor/project cannot use this private marker as authority.
+        AccountRecord other = new AccountRecord(); other.setId(99L); other.setState("active");
+        when(f.objects.loadResource(Account.class, 99L)).thenReturn(other);
+        AccountRecord project = new AccountRecord(); project.setId(5L); project.setKind("project"); project.setState("active");
+        ApiRequest cookie = new ApiRequest(null, f.schemas); cookie.setId(id); cookie.setType("aiResourceChangePlan"); cookie.setMethod("GET");
+        ApiContext.getContext().setPolicy(new AccountPolicy(project, other, Set.of(), new NoPolicyOptions()));
+        assertEquals("NotFound", rejected(() -> service.get(id, cookie)));
+        project.setId(6L); other.setId(42L); when(f.objects.loadResource(Account.class, 6L)).thenReturn(project);
+        ApiContext.getContext().setPolicy(new AccountPolicy(project, other, Set.of(), new NoPolicyOptions()));
+        assertEquals("NotFound", rejected(() -> service.get(id, cookie)));
+    }
+
     private static void inject(Object target, String name, Object value) throws Exception {
         var field = target.getClass().getDeclaredField(name); field.setAccessible(true); field.set(target, value);
     }

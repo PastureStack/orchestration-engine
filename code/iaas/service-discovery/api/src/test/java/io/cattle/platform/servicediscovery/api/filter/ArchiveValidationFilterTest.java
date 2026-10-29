@@ -361,6 +361,66 @@ public class ArchiveValidationFilterTest {
         action.setAction("deactivateservices");f.filter.resourceAction("stack",action,next);assertEquals(1,actions.get());
     }
 
+    @Test public void typedArchiveAndRestoreReuseTheOwnerWithoutStartingStoppingOrCascadingFlags() {
+        Fixture f = new Fixture(); f.children.add(f.service);
+        f.filter.withChange(f.service, true, () -> f.update(f.service, true));
+        f.filter.withChange(f.stack, true, () -> f.update(f.stack, true));
+        f.filter.withChange(f.stack, false, () -> f.update(f.stack, false));
+        assertTrue(ArchiveValidationFilter.archived(f.service));
+        f.filter.withChange(f.stack, true, () -> f.update(f.stack, true));
+        f.filter.withChange(f.service, false, () -> f.update(f.service, false));
+        assertTrue(ArchiveValidationFilter.archived(f.stack)); assertFalse(ArchiveValidationFilter.archived(f.service));
+        assertEquals("inactive", f.service.getState()); assertEquals("active", f.stack.getState());
+        assertCode("ResourceArchived", () -> f.filter.transition(f.service, "state", "activating", () -> true));
+    }
+
+    @Test public void typedPreviewRejectsNonStoppedSidekicksAndInfrastructureBeforeItsCallback() {
+        Fixture active = new Fixture(); active.service.setState("active");
+        assertCode("ArchiveRequiresStopped", () -> active.filter.withChange(active.service, true, () -> active.update(active.service, true)));
+        Fixture sidekick = new Fixture(); sidekick.related.add(instance(9, "running"));
+        assertCode("ArchiveRequiresStopped", () -> sidekick.filter.withChange(sidekick.stack, true, () -> sidekick.update(sidekick.stack, true)));
+        Fixture infra = new Fixture(); DataAccessor.setField(infra.stack, "group", "infra");
+        assertCode("ArchiveSystemResource", () -> infra.filter.withChange(infra.service, true, () -> infra.update(infra.service, true)));
+        assertEquals(0, active.writes.get() + sidekick.writes.get() + infra.writes.get());
+        DataAccessor.setField(infra.service, "archived", true);
+        infra.filter.withChange(infra.service, false, () -> infra.update(infra.service, false));
+        assertFalse(ArchiveValidationFilter.archived(infra.service));
+    }
+
+    @Test public void typedRowLockedCallerNeverWaitsBehindTheOrdinaryArchiveLeaseAndPutReentersIt() throws Exception {
+        Fixture f = new Fixture(); CountDownLatch ordinaryOwnsLease = new CountDownLatch(1), release = new CountDownLatch(1);
+        f.beforeWrite = () -> { ordinaryOwnsLease.countDown(); await(release); };
+        var pool = Executors.newSingleThreadExecutor();
+        try {
+            var ordinary = pool.submit(() -> f.update(f.service, true));
+            assertTrue(ordinaryOwnsLease.await(3, TimeUnit.SECONDS));
+            assertCode("ArchiveConcurrentChange", () -> f.filter.withChange(f.service, true, () -> f.update(f.service, true)));
+            assertEquals(0, f.writes.get());
+            release.countDown(); ordinary.get(3, TimeUnit.SECONDS);
+            f.beforeWrite = () -> { }; AtomicInteger acquisitions = new AtomicInteger();
+            f.beforeLock = id -> acquisitions.incrementAndGet();
+            f.filter.withChange(f.service, false, () -> f.update(f.service, false));
+            assertEquals("filtered PUT must reuse the exact lease", 1, acquisitions.get());
+            assertFalse(ArchiveValidationFilter.archived(f.service));
+        } finally { release.countDown(); pool.shutdownNow(); }
+    }
+
+    @Test public void typedPutKeepsTheFreshLockedTargetInsteadOfAnOlderOrdinaryReload() {
+        Fixture f = new Fixture();
+        ServiceRecord stale = new ServiceRecord(); stale.setId(2L); stale.setStackId(99L); stale.setState("active");
+        stale.setAccountId(1L); stale.setKind("service"); f.reloadedService = stale; f.readTarget = stale;
+        List<String> locks = new ArrayList<>(); f.beforeLock = locks::add;
+        DataAccessor.setField(f.service, "archived", true);
+        f.filter.withChange(f.service, false, () -> f.update(f.service, false));
+        assertFalse("a stale false archive value must not turn restore into a no-op", ArchiveValidationFilter.archived(f.service));
+        assertEquals(List.of("archive.stack.1"), locks); locks.clear();
+        f.filter.withChange(f.service, true, () -> f.update(f.service, true));
+        assertTrue("the stopped locked target must be used for the filtered PUT", ArchiveValidationFilter.archived(f.service));
+        assertEquals(List.of("archive.stack.1"), locks);
+        assertCode("ArchiveRequiresStopped", () -> f.update(f.service, true));
+        assertEquals(2, f.writes.get());
+    }
+
     private static void await(CountDownLatch latch) {
         try {assertTrue("barrier timed out", latch.await(5, TimeUnit.SECONDS));} catch (InterruptedException e) {Thread.currentThread().interrupt(); throw new AssertionError(e);}
     }
@@ -375,13 +435,15 @@ public class ArchiveValidationFilterTest {
         final Map<Long,Stack> stacks=new ConcurrentHashMap<>();
         final List<Service> children=new ArrayList<>(); final List<Instance> related=new ArrayList<>();
         final List<Service> mappedServices=new ArrayList<>();
+        Service reloadedService;
+        Object readTarget;
         final AtomicInteger writes=new AtomicInteger(); Runnable beforeWrite=()->{},beforeCreate=()->{};
         java.util.function.Consumer<String> beforeLock=id->{};
         Fixture() {
             service.setId(2L);service.setAccountId(1L);service.setStackId(1L);service.setState("inactive");service.setKind("service");service.setName("svc");stacks.put(1L,stack);
             mappedServices.add(service);
             filter.objectManager=(ObjectManager)Proxy.newProxyInstance(getClass().getClassLoader(),new Class<?>[]{ObjectManager.class},(p,m,a)-> {
-                if(m.getName().equals("reload"))return a[0] instanceof Service?service:a[0];
+                if(m.getName().equals("reload"))return a[0] instanceof Service ? reloadedService == null ? service : reloadedService : a[0];
                 if(m.getName().equals("loadResource")&&a[0]==Stack.class)return stacks.get(a[1]);
                 if(m.getName().equals("loadResource")&&a[0].equals("service"))return service;
                 if(m.getName().equals("find"))return children;
@@ -391,16 +453,20 @@ public class ArchiveValidationFilterTest {
             filter.lockManager=(LockManager)Proxy.newProxyInstance(getClass().getClassLoader(),new Class<?>[]{LockManager.class},(p,m,a)->{
                 beforeLock.accept(((LockDefinition)a[0]).getLockId());
                 ReentrantLock lock=locks.computeIfAbsent(((LockDefinition)a[0]).getLockId(),key->new ReentrantLock());
-                lock.lock();try{return ((LockCallback<?>)a[1]).doWithLock();}finally{lock.unlock();}
+                if (m.getName().equals("tryLock")) { if (!lock.tryLock()) return null; }
+                else lock.lock();
+                try{return ((LockCallback<?>)a[1]).doWithLock();}finally{lock.unlock();}
             });
             filter.instances=new ArchiveValidationFilter.ArchiveInstances(){
                 @Override public List<? extends Instance> related(Object r){return related;}
                 @Override public List<? extends Service> lifecycleOwners(Instance i){return mappedServices;}
             };
+            ArchiveEligibilityRead reader = new ArchiveEligibilityRead(); reader.owner = () -> filter;
+            filter.eligibilityRead = () -> reader;
         }
         Object update(Object target,boolean value){return filter.update(target instanceof Stack?"stack":"service",target instanceof Stack?"1":"2",request(Map.of("archived",value)),next(target));}
         ResourceManager next(Object target){return (ResourceManager)Proxy.newProxyInstance(getClass().getClassLoader(),new Class<?>[]{ResourceManager.class},(p,m,a)->{
-            if(m.getName().equals("getById"))return target;
+            if(m.getName().equals("getById"))return readTarget == null ? target : readTarget;
             if(m.getName().equals("update")){
                 beforeWrite.run();
                 Map<?,?> body=(Map<?,?>)((ApiRequest)a[2]).getRequestObject();

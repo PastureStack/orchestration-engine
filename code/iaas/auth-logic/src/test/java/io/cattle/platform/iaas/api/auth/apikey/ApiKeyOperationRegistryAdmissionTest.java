@@ -150,7 +150,8 @@ public class ApiKeyOperationRegistryAdmissionTest {
         assertFalse(ApiKeyOperations.of("POST", action, null, "pluginResource").registered());
         assertFalse(ApiKeyOperations.of("POST", action, null).registered());
         for (String unsupported : List.of("setmembers", "changesecret", "activateservices", "deactivateservices", "setservicelinks", "replay", "backup", "console", "proxy", "portpreflight", "volumepreflight")) {
-            if ("stack".equals(canonical) && Set.of("activateservices", "deactivateservices").contains(unsupported))
+            if (("stack".equals(canonical) && Set.of("activateservices", "deactivateservices").contains(unsupported))
+                    || ("service".equals(type) && "setservicelinks".equals(unsupported)))
                 assertEquals(new ApiKeyOperations.Operation("update", true), ApiKeyOperations.of("POST", unsupported, null, type));
             else assertFalse(ApiKeyOperations.of("POST", unsupported, null, type).registered());
         }

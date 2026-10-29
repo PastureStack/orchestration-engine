@@ -169,6 +169,7 @@ public class GenericWhitelistedProxy extends AbstractResponseGenerator implement
             throw new ClientVisibleException(ResponseCodes.BAD_REQUEST, "InvalidRedirect",
                     "The redirect is invalid/empty", null);
         }
+        if (isPrivateCatalogPath(uri)) throw privateCatalogDenied();
 
         String host = uri.getPort() > 0 ? String.format("%s:%s", uri.getHost(), uri.getPort()) : uri.getHost();
 
@@ -336,6 +337,7 @@ public class GenericWhitelistedProxy extends AbstractResponseGenerator implement
     Predicate<URI> targetPolicy(HttpServletRequest servletRequest, URI initialTarget) {
         boolean trustedInternalRoute = Boolean.TRUE.equals(servletRequest.getAttribute(ALLOWED_HOST));
         return candidate -> {
+            if (isPrivateCatalogPath(candidate)) throw privateCatalogDenied();
             if (!sameOrigin(initialTarget, candidate)) {
                 return false;
             }
@@ -360,6 +362,38 @@ public class GenericWhitelistedProxy extends AbstractResponseGenerator implement
             }
             return false;
         };
+    }
+
+    /** The typed gateway calls this owner directly; no public proxy identity,
+     * trusted-host flag, Full key or same-origin redirect may open its namespace.
+     * Gorilla matches decoded URL.Path after cleanPath, so raw-prefix checks are insufficient.
+     */
+    static boolean isPrivateCatalogPath(URI uri) {
+        String path = uri == null ? null : uri.getPath();
+        if (path == null) return false;
+        for (int pass = 0; pass < 4; pass++) {
+            java.util.Deque<String> segments = new java.util.ArrayDeque<>();
+            for (String segment : path.replace('\\', '/').split("/+")) {
+                int parameter = segment.indexOf(';');
+                if (parameter >= 0) segment = segment.substring(0, parameter);
+                if (segment.isEmpty() || ".".equals(segment)) continue;
+                if ("..".equals(segment)) { if (!segments.isEmpty()) segments.removeLast(); }
+                else segments.addLast(segment);
+            }
+            var iterator = segments.iterator();
+            if (iterator.hasNext() && "v1-catalog".equals(iterator.next()) && iterator.hasNext() && "ai".equals(iterator.next())) return true;
+            if (pass == 3 || path.indexOf('%') < 0) return false;
+            String decoded;
+            try { decoded = URLDecoder.decode(path.replace("+", "%2B"), StandardCharsets.UTF_8); }
+            catch (IllegalArgumentException invalidEscape) { return false; }
+            if (decoded.equals(path)) return false;
+            path = decoded;
+        }
+        return false;
+    }
+
+    private static ClientVisibleException privateCatalogDenied() {
+        return new ClientVisibleException(ResponseCodes.FORBIDDEN, "CatalogPrivateRouteDenied", "CatalogPrivateRouteDenied", null);
     }
 
     static boolean sameOrigin(URI first, URI second) {

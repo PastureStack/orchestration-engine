@@ -1,0 +1,49 @@
+{
+  "pluralName": "aiCatalogMetadataViews",
+  "collectionMethods": [
+    "POST"
+  ],
+  "resourceMethods": [],
+  "resourceFields": {
+    "query": {
+      "type": "string",
+      "create": true,
+      "maxLength": 256
+    },
+    "marker": {
+      "type": "string",
+      "create": true,
+      "maxLength": 128
+    },
+    "templateId": {
+      "type": "string",
+      "create": true,
+      "maxLength": 68
+    },
+    "resourceType": {
+      "type": "string",
+      "create": false
+    },
+    "data": {
+      "type": "array[json]",
+      "create": false
+    },
+    "nextMarker": {
+      "type": "string",
+      "create": false
+    },
+    "resourceTextIsUntrusted": {
+      "type": "boolean",
+      "create": false
+    },
+    "versions": {
+      "type": "boolean",
+      "create": true
+    },
+    "versionId": {
+      "type": "string",
+      "create": true,
+      "maxLength": 68
+    }
+  }
+}

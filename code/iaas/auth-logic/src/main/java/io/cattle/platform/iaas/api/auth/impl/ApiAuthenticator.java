@@ -67,6 +67,7 @@ public class ApiAuthenticator extends AbstractApiRequestHandler {
     @Inject ApiKeyAuthorizationService apiKeyAuthorization;
     @Inject ApiKeyDelegationService delegationService;
     @Inject List<ApiKeyAuditSink> auditSinks = java.util.Collections.emptyList();
+    @Inject io.cattle.platform.iaas.api.auth.ai.catalog.AiCatalogLaunchDelegation catalogLaunchDelegation;
 
     @Override
     public void handle(ApiRequest request) throws IOException {
@@ -125,6 +126,13 @@ public class ApiAuthenticator extends AbstractApiRequestHandler {
             String singleType = schemaFactory.getSingularName(request.getType());
             if (singleType != null) {
                 request.setType(singleType);
+            }
+        }
+        if (catalogLaunchDelegation != null) {
+            var delegated = catalogLaunchDelegation.admit(request, authenticatedAsAccount);
+            if (delegated != null) {
+                policy = delegated.authorization().policy(); schemaFactory = delegated.authorization().schemas();
+                authenticatedAsAccount = delegated.actor();
             }
         }
         saveInContext(request, policy, schemaFactory, authenticatedAsAccount);

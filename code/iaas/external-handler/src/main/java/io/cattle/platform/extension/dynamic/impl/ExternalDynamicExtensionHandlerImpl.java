@@ -11,6 +11,7 @@ import io.cattle.platform.object.meta.ObjectMetaDataManager;
 import io.cattle.platform.object.process.ObjectProcessManager;
 import io.cattle.platform.object.util.DataAccessor;
 import io.cattle.platform.process.common.handler.EventBasedProcessHandler;
+import io.cattle.platform.process.common.handler.ProcessEventDecorator;
 import io.cattle.platform.util.type.PriorityUtils;
 
 import java.util.ArrayList;
@@ -31,6 +32,7 @@ public class ExternalDynamicExtensionHandlerImpl implements DynamicExtensionHand
     ObjectManager objectManager;
     ObjectProcessManager objectProcessManager;
     ObjectMetaDataManager objectMetaDataManager;
+    @Inject List<ProcessEventDecorator> eventDecorators = Collections.emptyList();
 
     @Override
     public List<?> getExtensionList(String key, Class<?> type) {
@@ -82,6 +84,7 @@ public class ExternalDynamicExtensionHandlerImpl implements DynamicExtensionHand
         }
 
         EventBasedProcessHandler processHandler = new EventBasedProcessHandler(eventService, objectManager, objectProcessManager, objectMetaDataManager);
+        processHandler.setEventDecorators(eventDecorators);
 
         processHandler.setEventName(String.format("%s;handler=%s", eventName, handlerName));
         processHandler.setName(handlerName);

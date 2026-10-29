@@ -26,6 +26,7 @@ public class TransformInspect implements ScriptsHandler {
 
     @Inject
     JsonMapper jsonMapper;
+    @Inject java.util.List<io.cattle.platform.api.auth.CatalogLaunchTransformAuthorization> catalogAuthorizers = java.util.Collections.emptyList();
 
     @Override
     public boolean handle(ApiRequest request) throws IOException {
@@ -39,6 +40,8 @@ public class TransformInspect implements ScriptsHandler {
         if (reqObj == null) {
             return true;
         }
+        if (catalogAuthorizers.isEmpty() && delegated(request)) throw new ClientVisibleException(503, "CatalogLaunchUnavailable");
+        for (var authorizer : catalogAuthorizers) authorizer.authorize(request, reqObj);
 
         Instance instance = new InstanceRecord();
         transformer.transform(reqObj, instance);
@@ -56,7 +59,8 @@ public class TransformInspect implements ScriptsHandler {
             return null;
         }
 
-        byte[] content = IOUtils.toByteArray(is);
+        byte[] content = delegated(request) ? is.readNBytes(1048577) : IOUtils.toByteArray(is);
+        if (delegated(request) && content.length > 1048576) throw new ClientVisibleException(422, "CatalogLaunchInputInvalid");
         if (content.length == 0) {
             return null;
         }
@@ -66,5 +70,10 @@ public class TransformInspect implements ScriptsHandler {
         } catch (IOException e) {
             throw new ClientVisibleException(ResponseCodes.BAD_REQUEST, ValidationErrorCodes.INVALID_BODY_CONTENT);
         }
+    }
+
+    private boolean delegated(ApiRequest request) {
+        return request.getServletContext() != null && request.getServletContext().getRequest()
+                .getHeader(io.cattle.platform.api.auth.CatalogLaunchTransformAuthorization.HEADER) != null;
     }
 }

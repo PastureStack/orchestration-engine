@@ -64,6 +64,22 @@ public class AiResourceViewServiceTest {
         verifyNoInteractions(f.manager, f.keyAccess, f.authenticator);
     }
 
+    @Test public void archiveStateIsBooleanAndAuthorizedCollectionsRetainArchivedRows() {
+        for (String type : List.of("stack", "service", "loadBalancerService", "dnsService", "externalService")) {
+            assertEquals(false, AiResourceViewService.project(type, "1", Map.of("name", "ordinary")).get("archived"));
+            assertEquals(true, AiResourceViewService.project(type, "2", Map.of("name", "kept", "archived", true)).get("archived"));
+        }
+        assertFalse(AiResourceViewService.project("container", "1", Map.of("archived", true)).containsKey("archived"));
+        Fixture f = new Fixture();
+        f.rows.add(new ResourceImpl("1", "stack", Map.of("name", "ordinary")));
+        f.rows.add(new ResourceImpl("2", "stack", Map.of("name", "kept", "archived", true)));
+        Map<String, Object> response = f.service.read(f.request(Map.of("resourceType", "stack")));
+        List<?> rows = (List<?>) response.get("data");
+        assertEquals(2, rows.size()); assertEquals(false, ((Map<?, ?>) rows.get(0)).get("archived"));
+        assertEquals(true, ((Map<?, ?>) rows.get(1)).get("archived"));
+        verify(f.manager).list(eq("stack"), argThat((ApiRequest request) -> !request.getConditions().containsKey("archived")));
+    }
+
     @Test public void globalReadsRebuildTheVerifiedPrincipalAuthorityAndRestoreContext() {
         Fixture f = new Fixture(); f.rows.add(row("1", "safe"));
         ApiRequest original = f.request(Map.of("resourceType", "certificate"));

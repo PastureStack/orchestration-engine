@@ -1125,6 +1125,306 @@ public class ApiKeyProcessAuthorizationTest {
         }
     }
 
+    @Test public void inactiveServiceDeactivationWithLiveManagedMapAndNullInstanceParentsUsesPersistedProofAndRealFormatter() throws Exception {
+        managedLifecycle(); metadata.put("requestMethod", "POST"); metadata.put("requestAction", "deactivate");
+        when(schema.getResourceActions()).thenReturn(Map.of("deactivate", new Action()));
+        var service = new io.cattle.platform.core.model.tables.records.ServiceRecord();
+        service.setId(2L); service.setAccountId(5L); service.setStackId(8L); service.setState("inactive");
+        var instance = new io.cattle.platform.core.model.tables.records.InstanceRecord();
+        instance.setId(3L); instance.setAccountId(5L); instance.setState("stopping");
+        var map = new io.cattle.platform.core.model.tables.records.ServiceExposeMapRecord();
+        map.setId(1L); map.setAccountId(5L); map.setInstanceId(3L); map.setServiceId(2L);
+        map.setManaged(true); map.setUpgrade(false); map.setState("active");
+        when(hook.objectManager.loadResource(Service.class, 2L)).thenReturn(service);
+        when(hook.objectManager.loadResource("service", 2L)).thenReturn(service);
+        when(hook.objectManager.loadResource(Instance.class, 3L)).thenReturn(instance);
+        when(hook.objectManager.loadResource("instance", "3")).thenReturn(instance);
+        when(hook.objectManager.loadResource(ServiceExposeMap.class, 1L)).thenReturn(map);
+        when(hook.objectManager.find(ServiceExposeMap.class, SERVICE_EXPOSE_MAP.INSTANCE_ID, 3L,
+                SERVICE_EXPOSE_MAP.SERVICE_ID, 2L, SERVICE_EXPOSE_MAP.MANAGED, true)).thenReturn(List.of(map));
+        when(hook.objectManager.find(ServiceExposeMap.class, SERVICE_EXPOSE_MAP.INSTANCE_ID, 3L,
+                SERVICE_EXPOSE_MAP.REMOVED, null, SERVICE_EXPOSE_MAP.MANAGED, true)).thenReturn(List.of(map));
+        when(hook.objectManager.find(ServiceExposeMap.class, SERVICE_EXPOSE_MAP.INSTANCE_ID, 3L,
+                SERVICE_EXPOSE_MAP.REMOVED, null)).thenReturn(List.of(map));
+        var factory = mock(SchemaFactory.class);
+        when(factory.getBaseType("container")).thenReturn("instance"); when(factory.getBaseType("project")).thenReturn("account");
+        DefaultIdFormatter formatter = new DefaultIdFormatter(); formatter.setSchemaFactory(factory);
+        formatter.setTypeMappings(Map.of("credential", "c", "account", "a", "service", "s", "stack", "st", "instance", "i"));
+        hook.targets.idFormatter = formatter;
+        policy(new ApiKeyPolicy(ApiKeyPolicy.Mode.CUSTOM, ApiKeyPolicy.Effect.DENY, null,
+                List.of(new ApiKeyPolicy.Rule("project", ApiKeyPolicy.Effect.ALLOW, ApiKeyPolicy.Scope.project("1a5"),
+                        Set.of("read", "create", "update", "delete"))), ApiKeyPolicy.Purpose.AI_BRIDGE));
+        ProcessRecord stop = managedJob("instance.stop", "service", "2");
+        var json = new io.cattle.platform.json.JacksonJsonMapper(); stop.setData(json.readValue(json.writeValueAsString(stop.getData())));
+        Map<String, Object> stored = ProcessAuthorization.metadata(stop);
+        assertNotNull(ProcessAuthorization.verifiedChild(stop)); assertEquals("active", map.getState());
+        assertNull(instance.getServiceId()); assertNull(instance.getStackId()); ApiContext.remove();
+        try (RealWorkerAuthority authority = new RealWorkerAuthority()) {
+            hook.authenticator = authority.authenticator;
+            hook.beforeExecution(stop, stored);
+            assertNull(ApiContext.getContext());
+        }
+    }
+
+    @Test public void serviceDeactivationCompletionBetweenAuthorizationReadsKeepsManagedStopAuthorized() throws Exception {
+        inactiveServiceDeactivationWithLiveManagedMapAndNullInstanceParentsUsesPersistedProofAndRealFormatter();
+        Service current = hook.objectManager.loadResource(Service.class, 2L);
+        var beforeCompletion = new io.cattle.platform.core.model.tables.records.ServiceRecord();
+        beforeCompletion.setId(current.getId()); beforeCompletion.setAccountId(current.getAccountId());
+        beforeCompletion.setStackId(current.getStackId()); beforeCompletion.setState("deactivating");
+        // The worker's root read can precede ServiceDeactivate's final state
+        // write. Its subsequent ownership reload observes inactive, with the
+        // same persisted identity, account, stack and still-live managed map.
+        when(hook.objectManager.loadResource("service", 2L)).thenReturn(beforeCompletion);
+        ProcessRecord stop = managedJob("instance.stop", "service", "2");
+        var json = new io.cattle.platform.json.JacksonJsonMapper();
+        stop.setData(json.readValue(json.writeValueAsString(stop.getData())));
+        ApiContext.remove();
+        try (RealWorkerAuthority authority = new RealWorkerAuthority()) {
+            hook.authenticator = authority.authenticator;
+            for (int replay = 0; replay < 100; replay++) hook.beforeExecution(stop, ProcessAuthorization.metadata(stop));
+        }
+    }
+
+    @Test public void completedDeactivationRetainsIdentityOwnerMappingKeyAndExplicitDenyChecks() throws Exception {
+        for (String mutation : List.of("uuid", "owner", "stack", "mapping", "instance", "revision", "expired", "revoked", "principal", "deny")) {
+            setup();
+            inactiveServiceDeactivationWithLiveManagedMapAndNullInstanceParentsUsesPersistedProofAndRealFormatter();
+            var current = (io.cattle.platform.core.model.tables.records.ServiceRecord) hook.objectManager.loadResource(Service.class, 2L);
+            current.setUuid("original-service");
+            var before = new io.cattle.platform.core.model.tables.records.ServiceRecord();
+            before.setId(2L); before.setAccountId(5L); before.setStackId(8L);
+            before.setUuid("original-service"); before.setState("deactivating");
+            when(hook.objectManager.loadResource("service", 2L)).thenReturn(before);
+            if (mutation.equals("uuid")) current.setUuid("replacement-service");
+            if (mutation.equals("owner")) current.setAccountId(6L);
+            if (mutation.equals("stack")) current.setStackId(9L);
+            var map = (io.cattle.platform.core.model.tables.records.ServiceExposeMapRecord) hook.objectManager.loadResource(ServiceExposeMap.class, 1L);
+            if (mutation.equals("mapping")) map.setServiceId(9L);
+            if (mutation.equals("instance")) map.setInstanceId(4L);
+            if (mutation.equals("revision")) {
+                var codec = new ApiKeyPolicyCodec();
+                Map<String, Object> changed = codec.store(key, codec.read(key), 2);
+                when(key.getData()).thenReturn(changed);
+            }
+            if (mutation.equals("revoked")) when(key.getState()).thenReturn("inactive");
+            if (mutation.equals("expired") || mutation.equals("deny")) {
+                policy(new ApiKeyPolicy(ApiKeyPolicy.Mode.CUSTOM, ApiKeyPolicy.Effect.DENY,
+                        mutation.equals("expired") ? now.minusSeconds(1) : null,
+                        List.of(new ApiKeyPolicy.Rule("project", ApiKeyPolicy.Effect.ALLOW, ApiKeyPolicy.Scope.project("1a5"), Set.of("update")),
+                                new ApiKeyPolicy.Rule("child", ApiKeyPolicy.Effect.DENY, ApiKeyPolicy.Scope.resource("container", "1i3"),
+                                        mutation.equals("deny") ? Set.of("update") : Set.of("delete"))), ApiKeyPolicy.Purpose.AI_BRIDGE));
+            }
+            ProcessRecord stop = managedJob("instance.stop", "service", "2");
+            try (RealWorkerAuthority authority = new RealWorkerAuthority()) {
+                if (mutation.equals("principal")) authority.principal.setState("inactive");
+                hook.authenticator = authority.authenticator; ApiContext.remove();
+                String expected = switch (mutation) {
+                    case "owner", "principal" -> "OwnerPermissionDenied";
+                    case "revision" -> "ApiKeyPolicyChanged";
+                    case "expired" -> "ApiKeyExpired";
+                    case "revoked" -> "ApiKeyRevoked";
+                    case "deny" -> "KeyPolicyDenied";
+                    default -> "KeyScopeDenied";
+                };
+                assertEquals(mutation, expected, assertThrows(ProcessAuthorizationDeniedException.class,
+                        () -> hook.beforeExecution(stop, ProcessAuthorization.metadata(stop))).getCode());
+            }
+        }
+    }
+
+    @Test public void completedDeactivationDoesNotAuthorizeUnrelatedStateDrift() throws Exception {
+        for (String state : List.of("active", "activating", "restarting", "removing", "removed")) {
+            setup();
+            inactiveServiceDeactivationWithLiveManagedMapAndNullInstanceParentsUsesPersistedProofAndRealFormatter();
+            var before = new io.cattle.platform.core.model.tables.records.ServiceRecord();
+            before.setId(2L); before.setAccountId(5L); before.setStackId(8L); before.setState(state);
+            when(hook.objectManager.loadResource("service", 2L)).thenReturn(before);
+            ProcessRecord stop = managedJob("instance.stop", "service", "2");
+            try (RealWorkerAuthority authority = new RealWorkerAuthority()) {
+                hook.authenticator = authority.authenticator;
+                assertEquals(state, "KeyScopeDenied", assertThrows(ProcessAuthorizationDeniedException.class,
+                        () -> hook.beforeExecution(stop, ProcessAuthorization.metadata(stop))).getCode());
+            }
+        }
+    }
+
+    @Test public void serviceDeleteCompletionBetweenReadsKeepsItsAlreadyScheduledStopAuthorized() throws Exception {
+        inactiveServiceDeactivationWithLiveManagedMapAndNullInstanceParentsUsesPersistedProofAndRealFormatter();
+        metadata.put("operation", "delete"); metadata.put("requestMethod", "DELETE"); metadata.remove("requestAction");
+        var current = (io.cattle.platform.core.model.tables.records.ServiceRecord) hook.objectManager.loadResource(Service.class, 2L);
+        current.setUuid("service-delete"); current.setState("removing");
+        var before = new io.cattle.platform.core.model.tables.records.ServiceRecord();
+        before.setId(2L); before.setAccountId(5L); before.setStackId(8L);
+        before.setUuid("service-delete"); before.setState("removing");
+        var rootRead = new java.util.concurrent.atomic.AtomicBoolean();
+        when(hook.objectManager.loadResource("service", 2L)).thenAnswer(call -> { rootRead.set(true); return before; });
+        // ServiceRemove schedules the stop before it completes. The subsequent
+        // ownership reload is a deterministic barrier for its final row write.
+        ProcessRecord stop = managedJob("instance.stop", "service", "2");
+        when(hook.objectManager.loadResource(Service.class, 2L)).thenAnswer(call -> {
+            assertTrue(rootRead.get()); assertNotNull(ProcessAuthorization.verifiedChild(stop));
+            current.setState("removed"); current.setRemoved(new java.util.Date(1)); return current;
+        });
+        try (RealWorkerAuthority authority = new RealWorkerAuthority()) {
+            hook.authenticator = authority.authenticator; ApiContext.remove();
+            for (int replay = 0; replay < 100; replay++) hook.beforeExecution(stop, ProcessAuthorization.metadata(stop));
+        }
+        assertEquals("removed", current.getState());
+    }
+
+    @Test public void stackDeleteMapRetirementBetweenReadsKeepsItsAlreadyScheduledStopAuthorized() throws Exception {
+        inactiveServiceDeactivationWithLiveManagedMapAndNullInstanceParentsUsesPersistedProofAndRealFormatter();
+        metadata.put("operation", "delete"); metadata.put("requestMethod", "DELETE"); metadata.remove("requestAction");
+        var before = (io.cattle.platform.core.model.tables.records.ServiceExposeMapRecord) hook.objectManager.loadResource(ServiceExposeMap.class, 1L);
+        before.setUuid("managed-map");
+        metadata.put("targetType", "stack"); metadata.put("targetId", "8");
+        Stack stack = hook.objectManager.loadResource(Stack.class, 8L);
+        when(hook.objectManager.loadResource("stack", 8L)).thenReturn(stack);
+        var queryRead = new java.util.concurrent.atomic.AtomicBoolean();
+        when(hook.objectManager.find(ServiceExposeMap.class, SERVICE_EXPOSE_MAP.INSTANCE_ID, 3L,
+                SERVICE_EXPOSE_MAP.MANAGED, true)).thenAnswer(call -> { queryRead.set(true); return List.of(before); });
+        var current = new io.cattle.platform.core.model.tables.records.ServiceExposeMapRecord();
+        current.setId(1L); current.setAccountId(5L); current.setInstanceId(3L); current.setServiceId(2L);
+        current.setUuid("managed-map"); current.setManaged(true); current.setUpgrade(false);
+        var service = (io.cattle.platform.core.model.tables.records.ServiceRecord) hook.objectManager.loadResource(Service.class, 2L);
+        service.setState("removed"); service.setRemoved(new java.util.Date(1));
+        // StackRemove schedules ServiceRemove; that owner retires its SEM after
+        // scheduling the instance. Complete that write between query/reload.
+        ProcessRecord stop = managedJob("instance.stop", "service", "2");
+        when(hook.objectManager.loadResource(ServiceExposeMap.class, 1L)).thenAnswer(call -> {
+            assertTrue(queryRead.get()); assertNotNull(ProcessAuthorization.verifiedChild(stop));
+            current.setState("removed"); current.setRemoved(new java.util.Date(1)); return current;
+        });
+        when(hook.objectManager.find(ServiceExposeMap.class, SERVICE_EXPOSE_MAP.INSTANCE_ID, 3L,
+                SERVICE_EXPOSE_MAP.REMOVED, null)).thenReturn(List.of());
+        try (RealWorkerAuthority authority = new RealWorkerAuthority()) {
+            hook.authenticator = authority.authenticator; ApiContext.remove();
+            for (int replay = 0; replay < 100; replay++) hook.beforeExecution(stop, ProcessAuthorization.metadata(stop));
+        }
+        assertEquals("removed", current.getState());
+    }
+
+    @Test public void nativeScaleDownCompletionBetweenReadsKeepsItsRetiredManagedStopAuthorized() throws Exception {
+        inactiveServiceDeactivationWithLiveManagedMapAndNullInstanceParentsUsesPersistedProofAndRealFormatter();
+        metadata.put("operation", "update"); metadata.put("requestMethod", "PUT"); metadata.remove("requestAction");
+        var current = (io.cattle.platform.core.model.tables.records.ServiceRecord) hook.objectManager.loadResource(Service.class, 2L);
+        current.setUuid("scale-down"); current.setState("updating-active");
+        var before = new io.cattle.platform.core.model.tables.records.ServiceRecord();
+        before.setId(2L); before.setAccountId(5L); before.setStackId(8L);
+        before.setUuid("scale-down"); before.setState("updating-active");
+        var rootRead = new java.util.concurrent.atomic.AtomicBoolean();
+        when(hook.objectManager.loadResource("service", 2L)).thenAnswer(call -> { rootRead.set(true); return before; });
+        ProcessRecord stop = managedJob("instance.stop", "service", "2");
+        var map = (io.cattle.platform.core.model.tables.records.ServiceExposeMapRecord) hook.objectManager.loadResource(ServiceExposeMap.class, 1L);
+        map.setState("removed"); map.setRemoved(new java.util.Date(1));
+        when(hook.objectManager.find(ServiceExposeMap.class, SERVICE_EXPOSE_MAP.INSTANCE_ID, 3L,
+                SERVICE_EXPOSE_MAP.REMOVED, null)).thenReturn(List.of());
+        when(hook.objectManager.loadResource(Service.class, 2L)).thenAnswer(call -> {
+            assertTrue(rootRead.get()); assertNotNull(ProcessAuthorization.verifiedChild(stop));
+            current.setState("active"); return current;
+        });
+        try (RealWorkerAuthority authority = new RealWorkerAuthority()) {
+            hook.authenticator = authority.authenticator; ApiContext.remove();
+            for (int replay = 0; replay < 100; replay++) hook.beforeExecution(stop, ProcessAuthorization.metadata(stop));
+        }
+    }
+
+    @Test public void mapRetirementProgressStillRejectsReplacementReassignmentAndUntrustedJobs() throws Exception {
+        stackDeleteMapRetirementBetweenReadsKeepsItsAlreadyScheduledStopAuthorized();
+        var current = (io.cattle.platform.core.model.tables.records.ServiceExposeMapRecord) hook.objectManager.loadResource(ServiceExposeMap.class, 1L);
+        when(hook.objectManager.loadResource(ServiceExposeMap.class, 1L)).thenReturn(current);
+        var instance = (io.cattle.platform.core.model.tables.records.InstanceRecord) hook.objectManager.loadResource(Instance.class, 3L);
+        try (RealWorkerAuthority authority = new RealWorkerAuthority()) {
+            hook.authenticator = authority.authenticator;
+            for (String mutation : List.of("uuid", "owner", "service", "instance", "unmanaged", "upgrade", "state", "running", "proof")) {
+                current.setUuid("managed-map"); current.setAccountId(5L); current.setServiceId(2L); current.setInstanceId(3L);
+                current.setManaged(true); current.setUpgrade(false); current.setState("removed"); current.setRemoved(new java.util.Date(1));
+                instance.setState("stopping");
+                if (mutation.equals("uuid")) current.setUuid("different-map");
+                if (mutation.equals("owner")) current.setAccountId(6L);
+                if (mutation.equals("service")) current.setServiceId(9L);
+                if (mutation.equals("instance")) current.setInstanceId(4L);
+                if (mutation.equals("unmanaged")) current.setManaged(false);
+                if (mutation.equals("upgrade")) current.setUpgrade(true);
+                if (mutation.equals("state")) { current.setState("inactive"); current.setRemoved(null); }
+                if (mutation.equals("running")) instance.setState("running");
+                ProcessRecord stop = managedJob("instance.stop", "service", "2");
+                if (mutation.equals("proof")) stop.getData().remove(ProcessAuthorization.VERIFIED_CHILD_KEY);
+                assertEquals(mutation, mutation.equals("owner") ? "OwnerPermissionDenied" : "KeyScopeDenied",
+                        assertThrows(ProcessAuthorizationDeniedException.class,
+                                () -> hook.beforeExecution(stop, ProcessAuthorization.metadata(stop))).getCode());
+            }
+        }
+    }
+
+    @Test public void managedMapRemoveTransitionBetweenReadsKeepsScheduledStopAuthorized() throws Exception {
+        stackDeleteMapRetirementBetweenReadsKeepsItsAlreadyScheduledStopAuthorized();
+        var current = (io.cattle.platform.core.model.tables.records.ServiceExposeMapRecord) hook.objectManager.loadResource(ServiceExposeMap.class, 1L);
+        when(hook.objectManager.loadResource(ServiceExposeMap.class, 1L)).thenReturn(current);
+        current.setState("removing"); current.setRemoved(null);
+        when(hook.objectManager.find(ServiceExposeMap.class, SERVICE_EXPOSE_MAP.INSTANCE_ID, 3L,
+                SERVICE_EXPOSE_MAP.REMOVED, null)).thenReturn(List.of(current));
+        ProcessRecord stop = managedJob("instance.stop", "service", "2");
+        try (RealWorkerAuthority authority = new RealWorkerAuthority()) {
+            hook.authenticator = authority.authenticator;
+            for (int replay = 0; replay < 100; replay++) hook.beforeExecution(stop, ProcessAuthorization.metadata(stop));
+        }
+    }
+
+    /** Real worker authorization: only persisted account reads are stubbed. */
+    private static final class RealWorkerAuthority implements AutoCloseable {
+        private static final String ADMIN_OPTION = "account.type.admin.all.accounts";
+        private final Object previous = com.netflix.config.ConfigurationManager.getConfigInstance().getProperty(ADMIN_OPTION);
+        final ApiAuthenticator authenticator = new ApiAuthenticator();
+        final io.cattle.platform.core.model.tables.records.AccountRecord principal =
+                new io.cattle.platform.core.model.tables.records.AccountRecord();
+
+        RealWorkerAuthority() throws Exception {
+            com.netflix.config.ConfigurationManager.getConfigInstance().setProperty(ADMIN_OPTION, true);
+            principal.setId(10L); principal.setKind("admin"); principal.setState("active");
+            var project = new io.cattle.platform.core.model.tables.records.AccountRecord();
+            project.setId(5L); project.setKind("project"); project.setState("active");
+            var auth = mock(io.cattle.platform.iaas.api.auth.dao.impl.AuthDaoImpl.class, CALLS_REAL_METHODS);
+            doReturn(principal).when(auth).getAccountById(10L);
+            doReturn(project).when(auth).getAccountById(5L);
+            var accounts = mock(io.cattle.platform.core.dao.impl.AccountDaoImpl.class, CALLS_REAL_METHODS);
+            doReturn(principal).when(accounts).getAccountById(10L);
+            doReturn(project).when(accounts).getAccountById(5L);
+            var core = mock(SchemaFactory.class);
+            java.nio.file.Path root = java.nio.file.Path.of("").toAbsolutePath();
+            while (root != null && !java.nio.file.Files.isDirectory(root.resolve("resources/content/schema/v1"))) root = root.getParent();
+            assertNotNull(root);
+            var role = new io.cattle.platform.api.schema.FileSchemaFactory();
+            role.setFile("schema/v1/owner.ser"); role.setId("owner"); role.setSchemaFactory(core);
+            ClassLoader original = Thread.currentThread().getContextClassLoader();
+            try (var loader = new java.net.URLClassLoader(new java.net.URL[] { root.resolve("resources/content").toUri().toURL() }, original)) {
+                Thread.currentThread().setContextClassLoader(loader);
+                role.start();
+            } finally { Thread.currentThread().setContextClassLoader(original); }
+            assertTrue(role.getSchema("service").getResourceActions().containsKey("deactivate"));
+            var authorization = new io.cattle.platform.iaas.api.auth.impl.DefaultAuthorizationProvider();
+            inject(authorization, "authDao", auth); inject(authorization, "accountDao", accounts);
+            authorization.setOptionsFactory(new io.cattle.platform.iaas.api.auth.AchaiusPolicyOptionsFactory());
+            authorization.setSchemaFactoryList(List.of(role)); authorization.start();
+            authenticator.setAuthDao(auth); inject(authenticator, "accountDao", accounts);
+            authenticator.setAuthorizationProviders(List.of(authorization));
+            authenticator.setIdentityProviders(List.of(new io.cattle.platform.iaas.api.auth.integration.internal.rancher.RancherIdentityProvider()));
+            var external = mock(io.cattle.platform.iaas.api.auth.integration.external.ExternalServiceAuthProvider.class);
+            when(external.getPrincipalIdentities(any())).thenReturn(Set.of());
+            inject(authenticator, "externalAuthProvider", external);
+        }
+
+        private static void inject(Object target, String name, Object value) throws Exception {
+            var field = target.getClass().getDeclaredField(name); field.setAccessible(true); field.set(target, value);
+        }
+
+        @Override public void close() {
+            if (previous == null) com.netflix.config.ConfigurationManager.getConfigInstance().clearProperty(ADMIN_OPTION);
+            else com.netflix.config.ConfigurationManager.getConfigInstance().setProperty(ADMIN_OPTION, previous);
+        }
+    }
+
     @Test public void stackRetirementCannotBorrowAnotherStacksServiceOrDifferentOperation() {
         ServiceExposeMap map = managedLifecycle(); managedStackRoot(map);
         metadata.put("operation", "delete"); metadata.put("requestMethod", "DELETE");

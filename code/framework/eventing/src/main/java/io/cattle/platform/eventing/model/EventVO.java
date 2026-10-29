@@ -356,7 +356,8 @@ public class EventVO<T> implements Event {
         return "EventVO [id=" + id + ", name=" + name + ", previousNames=" + Arrays.toString(previousNames) + ", replyTo=" + replyTo + ", resourceId="
                 + resourceId + ", resourceType=" + resourceType + ", publisher=" + publisher + ", transitioning=" + transitioning + ", transitioningMessage="
                 + transitioningMessage + ", transitioningInternalMessage=" + transitioningInternalMessage + ", previousIds=" + Arrays.toString(previousIds)
-                + ", data=" + data + ", time=" + time + ", listenerKey=" + listenerKey + ", transitioningProgress=" + transitioningProgress + "]";
+                + ", data=" + EventDiagnostics.data(data) + ", time=" + time + ", listenerKey=" + listenerKey + ", transitioningProgress=" +
+                        transitioningProgress + "]";
     }
 
 }

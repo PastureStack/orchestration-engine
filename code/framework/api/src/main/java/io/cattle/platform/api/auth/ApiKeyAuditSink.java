@@ -4,6 +4,11 @@ import io.github.ibuildthecloud.gdapi.request.ApiRequest;
 
 /** Durable admission of an API-key authorization decision, before execution. */
 public interface ApiKeyAuditSink {
+    /** Catalog launch decisions contain identity/outcome metadata only, never answers, Compose or executor proof. */
+    default void recordCatalogLaunchDecision(ApiRequest request, Policy policy, String action, String planId,
+            Long stackId, boolean allowed, String reason) {
+        throw new IllegalStateException("Catalog launch audit unavailable");
+    }
     /** Fixed typed-resource decisions; never records parameters or private snapshots. */
     default void recordResourceChangeDecision(ApiRequest request, Policy policy, String action, String receiptId,
             String resourceType, Long resourceId, boolean allowed, String reason) {

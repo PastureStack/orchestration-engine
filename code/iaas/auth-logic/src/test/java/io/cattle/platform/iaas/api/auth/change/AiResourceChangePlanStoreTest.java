@@ -45,7 +45,8 @@ public class AiResourceChangePlanStoreTest {
     }
     private static Connection database() throws Exception {
         Connection connection = DriverManager.getConnection("jdbc:h2:mem:resource-plan-" + UUID.randomUUID() + ";DATABASE_TO_LOWER=TRUE");
-        connection.createStatement().execute("CREATE TABLE ai_resource_change_plan(id VARCHAR(64) PRIMARY KEY,state VARCHAR(32),document CLOB,actor_id BIGINT,expires_at BIGINT)");
+        connection.createStatement().execute("CREATE TABLE ai_resource_change_plan(id VARCHAR(64) PRIMARY KEY,state VARCHAR(32),"
+                + "document CLOB,actor_id BIGINT,expires_at BIGINT,execution_binding CLOB,failure_code VARCHAR(64))");
         return connection;
     }
     private static AiResourceChangePlanStore store(Connection connection) {

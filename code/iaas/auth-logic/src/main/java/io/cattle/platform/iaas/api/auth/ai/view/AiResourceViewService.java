@@ -54,9 +54,10 @@ public class AiResourceViewService {
     private static final List<String> COMMON_FIELDS = List.of("name", "description", "state", "kind", "created", "healthState");
     private static final Map<String, List<String>> FIELDS = Map.ofEntries(
             Map.entry("project", List.of("orchestration")),
-            Map.entry("service", List.of("scale", "stackId")),
-            Map.entry("loadBalancerService", List.of("scale", "stackId")),
-            Map.entry("dnsService", List.of("stackId")), Map.entry("externalService", List.of("stackId")),
+            Map.entry("stack", List.of("archived")),
+            Map.entry("service", List.of("scale", "stackId", "archived")),
+            Map.entry("loadBalancerService", List.of("scale", "stackId", "archived")),
+            Map.entry("dnsService", List.of("stackId", "archived")), Map.entry("externalService", List.of("stackId", "archived")),
             Map.entry("container", List.of("imageUuid", "memory", "cpuShares", "startCount", "networkMode")),
             Map.entry("virtualMachine", List.of("imageUuid", "memory", "cpuShares")),
             Map.entry("host", List.of("hostname", "agentIpAddress", "dockerVersion", "memTotal", "cpuCount")),
@@ -237,7 +238,10 @@ public class AiResourceViewService {
         if (!READ_TYPES.contains(type) || id == null || fields == null) throw error(503, "ResourceViewUnavailable");
         Map<String, Object> safe = new LinkedHashMap<>(); safe.put("id", id); safe.put("type", type);
         for (String field : COMMON_FIELDS) scalar(safe, fields, field);
-        for (String field : FIELDS.getOrDefault(type, List.of())) scalar(safe, fields, field);
+        for (String field : FIELDS.getOrDefault(type, List.of())) {
+            if ("archived".equals(field)) safe.put(field, Boolean.TRUE.equals(fields.get(field)));
+            else scalar(safe, fields, field);
+        }
         if (Set.of("service", "loadBalancerService", "dnsService", "externalService").contains(type)
                 && fields.get("launchConfig") instanceof Map<?, ?> launch && launch.get("imageUuid") instanceof String image)
             safe.put("imageUuid", image.substring(0, Math.min(image.length(), 512)));

@@ -1,0 +1,8 @@
+{
+    "collectionMethods": [],
+    "resourceMethods": [],
+    "resourceFields": {
+        "answers": { "type": "map[json]", "create": true },
+        "referenceBindings": { "type": "map[string]", "create": true }
+    }
+}

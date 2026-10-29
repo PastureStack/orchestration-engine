@@ -8,21 +8,25 @@ Rancher 1.6 ecosystem. It is not affiliated with Rancher Labs or SUSE.
 This fork of [`rancher/cattle`](https://github.com/rancher/cattle) preserves
 upstream history, authorship, licenses, and dependency notices.
 
-## Current source: Engine 0.183.358
+## Current source candidate: Engine 0.183.359
 
-Use the [current Server release](https://github.com/PastureStack/server#current-release)
-for an assembled platform. `cattle.jar` alone is not a Server installation.
-Versioned artifacts and validation evidence belong in the
-[release notes](docs/releases), including the [358 release](docs/releases/orchestration-engine-0.183.358.md).
+Use the [Server installation guide](https://github.com/PastureStack/server#quick-start)
+for an assembled platform; `cattle.jar` alone is not a Server installation.
+This candidate adds bounded Catalog Compose Stack plans through the native
+Catalog/Compose owners, stopped-only Archive/restore and accurate asynchronous
+authorization-failure receipts. Normal Full and legacy paths remain unchanged.
+Managed lifecycle cleanup retains exact native identity, current Key/role and
+explicit child-DENY checks. Restore never starts workloads.
 
-This release preserves scoped service retirement ancestry only through
-verified scheduling edges, with live Key/role/explicit-DENY checks. Named/file
-volumes retain their normal deactivation path and never inherit destructive
-removal authority. Typed name queries filter through the native owner before
-pagination. Previous read fixes remain. Required component CI/CodeQL passed with 3,631 tests
-and zero failures/errors; the published artifact preserves its original CI bytes.
-Designated Server/8080 acceptance remains separate and pending. This does not
-complete all frontend WebMCP workflows.
+Catalog launch requires the matching Catalog 0.20.17, Compose 0.14.40 and
+Web Console 1.6.200/bridge 0.2.2 contracts. Safe metadata reads and launch are
+separate; `api.ai.catalog.launch.enabled=false` is the default. Private inputs
+and plan approval remain human console actions. Unsupported templates, external
+volumes, advanced forms and remaining frontend workflows are explicitly pending.
+
+Required component CI/CodeQL, immutable artifact verification, assembled Server
+and designated 8080 acceptance remain pending. The [candidate release note](docs/releases/orchestration-engine-0.183.359.md)
+records these boundaries; original published versions and evidence are retained.
 
 ## Optional AI resource workflows
 

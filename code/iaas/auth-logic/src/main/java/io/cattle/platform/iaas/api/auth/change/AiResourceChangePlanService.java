@@ -47,11 +47,11 @@ public class AiResourceChangePlanService {
             Object parent = descriptor.createsResource() && "service".equals(descriptor.resourceType())
                     ? domain.lock("stack", domain.internalId("stack", text(parameters.get("stackId")))) : null;
             Policy actor = domain.actor(request);
-            if (target != null) domain.visible(request, descriptor, resourceId);
+            if (target != null) visibleTarget(request, descriptor, resourceId, target);
             if (parent != null) domain.parent(request, descriptor, parameters);
             domain.ready(descriptor, target, parent);
             Map<String, Object> body = domain.prepare(request, descriptor, resourceId, parameters);
-            return locked("actor-" + actor.getAuthenticatedAsAccountId(), () -> {
+            Supplier<Map<String, Object>> save = () -> locked("actor-" + actor.getAuthenticatedAsAccountId(), () -> {
                 store.prune(clock.millis());
                 if (store.pendingCount(actor.getAuthenticatedAsAccountId()) >= 64) throw error(409, "ResourceChangeQuotaExceeded");
                 Map<String, Object> plan = new LinkedHashMap<>();
@@ -72,6 +72,7 @@ public class AiResourceChangePlanService {
                 audit(request, "preview", plan, true, "ResourceChangePreviewCreated");
                 store.insert(plan); return output(plan);
             });
+            return descriptor.changesArchive() ? domain.withArchiveChange(descriptor, target, save) : save.get();
         });
     }
 
@@ -132,38 +133,49 @@ public class AiResourceChangePlanService {
             if (!clock.instant().isBefore(java.time.Instant.parse(text(plan.get("expiresAt"))))) throw error(409, "ResourceChangePlanExpired");
             if (!domain.snapshot(target).equals(plan.get("snapshot")) || !domain.snapshot(parent).equals(plan.get("parentSnapshot")))
                 throw error(409, "ResourceChangePlanStale");
-            if (!descriptor.createsResource()) domain.visible(request, descriptor, text(plan.get("resourceId")));
+            if (!descriptor.createsResource()) visibleTarget(request, descriptor, text(plan.get("resourceId")), target);
             domain.parent(request, descriptor, parameters); domain.ready(descriptor, target, parent);
             if (!domain.prepare(request, descriptor, text(plan.get("resourceId")), parameters, plan).equals(plan.get("body")))
                 throw error(409, "ResourceChangePlanStale");
-            if ("confirm".equals(action)) {
-                audit(request, action, plan, true, "ResourceChangeConfirmed");
-                plan.put("confirmationState", "approved"); plan.put("messageCode", "ResourceChangeReady"); store.save(plan); return output(plan);
-            }
-            if (!"approved".equals(plan.get("confirmationState"))) throw error(409, "ResourceChangeNeedsConfirmation");
-            if (plan.containsKey("credentialId") && ApiKeyCredentialContext.get(request) == null) throw error(403, "ResourceChangeBoundKeyRequired");
-            audit(request, action, plan, true, "ResourceChangeAccepted");
-            plan.put("status", "dispatching"); plan.put("operationId", id); plan.put("acceptedAt", clock.millis());
-            plan.put("messageCode", "ResourceChangeDispatchUncertain");
-            if (!store.claim(plan)) return output(owned(store.load(id), request));
-            try {
-                Object result = domain.dispatch(request, descriptor, text(plan.get("resourceId")), parameters, id);
-                if (descriptor.createsResource()) {
-                    Object createdId = ObjectUtils.getId(result);
-                    long numericId = createdId instanceof Number numeric ? numeric.longValue() : domain.internalId(descriptor.resourceType(), text(createdId));
-                    if (numericId <= 0) throw new IllegalStateException("Created resource identity unavailable");
-                    plan.put("internalResourceId", numericId); plan.put("resourceId", domain.publicId(descriptor.resourceType(), numericId));
+            Supplier<Map<String, Object>> change = () -> {
+                if ("confirm".equals(action)) {
+                    audit(request, action, plan, true, "ResourceChangeConfirmed");
+                    plan.put("confirmationState", "approved"); plan.put("messageCode", "ResourceChangeReady"); store.save(plan); return output(plan);
                 }
-                plan.put("dispatchAcknowledged", true);
-                plan.put("status", "accepted"); plan.put("messageCode", "ResourceChangeAccepted");
-            } catch (RuntimeException uncertain) {
-                // A domain manager can schedule work before its response fails.
-                // The durable claim is never reset and this operation never replays.
-                plan.put("status", "unknown"); plan.put("messageCode", "ResourceChangeDispatchUncertain");
-                plan.put("dispatchAcknowledged", false);
-            }
-            store.save(plan); return output(plan);
+                if (!"approved".equals(plan.get("confirmationState"))) throw error(409, "ResourceChangeNeedsConfirmation");
+                if (plan.containsKey("credentialId") && ApiKeyCredentialContext.get(request) == null) throw error(403, "ResourceChangeBoundKeyRequired");
+                audit(request, action, plan, true, "ResourceChangeAccepted");
+                plan.put("status", "dispatching"); plan.put("operationId", id); plan.put("acceptedAt", clock.millis());
+                plan.put("messageCode", "ResourceChangeDispatchUncertain");
+                if (!store.claim(plan)) return output(owned(store.load(id), request));
+                try {
+                    Object result = domain.dispatch(request, descriptor, text(plan.get("resourceId")), parameters, id);
+                    if (descriptor.createsResource()) {
+                        Object createdId = ObjectUtils.getId(result);
+                        long numericId = createdId instanceof Number numeric ? numeric.longValue()
+                                : domain.internalId(descriptor.resourceType(), text(createdId));
+                        if (numericId <= 0) throw new IllegalStateException("Created resource identity unavailable");
+                        plan.put("internalResourceId", numericId); plan.put("resourceId", domain.publicId(descriptor.resourceType(), numericId));
+                    }
+                    plan.put("dispatchAcknowledged", true);
+                    plan.put("status", "accepted"); plan.put("messageCode", "ResourceChangeAccepted");
+                } catch (RuntimeException uncertain) {
+                    // A domain manager can schedule work before its response fails.
+                    // The durable claim is never reset and this operation never replays.
+                    plan.put("status", "unknown"); plan.put("messageCode", "ResourceChangeDispatchUncertain");
+                    plan.put("dispatchAcknowledged", false);
+                }
+                store.save(plan); return output(plan);
+            };
+            return descriptor.changesArchive() ? domain.withArchiveChange(descriptor, target, change) : change.get();
         }));
+    }
+
+    private void visibleTarget(ApiRequest request, AiResourceChangeDescriptor descriptor, String id, Object lockedTarget) {
+        Object visible = domain.visible(request, descriptor, id);
+        // The final normal manager also uses the ambient RR snapshot. Reject an older view before claiming a JSON metadata write.
+        if (descriptor.changesArchive() && !domain.snapshot(lockedTarget).equals(domain.snapshot(visible)))
+            throw error(409, "ArchiveConcurrentChange");
     }
 
     protected Map<String, Object> owned(Map<String, Object> plan, ApiRequest request) {
@@ -179,6 +191,7 @@ public class AiResourceChangePlanService {
     }
 
     protected void observe(Map<String, Object> plan, ApiRequest request) {
+        if (AiResourceChangePlanStore.projectFailure(plan)) { eraseSnapshot(plan); store.save(plan); return; }
         String status = text(plan.get("status"));
         if (!Set.of("dispatching", "accepted", "running", "unknown").contains(status)) return;
         // A coincidentally matching state cannot prove that an interrupted
@@ -233,6 +246,7 @@ public class AiResourceChangePlanService {
     }
 
     protected Map<String, Object> output(Map<String, Object> plan) {
+        AiResourceChangePlanStore.projectFailure(plan);
         Map<String, Object> output = new LinkedHashMap<>();
         for (String field : List.of("id", "resourceType", "operation", "resourceId", "targetPath", "changes", "confirmationState",
                 "status", "operationId", "verifiedResult", "messageCode", "expiresAt")) output.put(field, plan.get(field));
