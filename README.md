@@ -8,11 +8,12 @@ Rancher 1.6 ecosystem. It is not affiliated with Rancher Labs or SUSE.
 This fork of [`rancher/cattle`](https://github.com/rancher/cattle) preserves
 upstream history, authorship, licenses, and dependency notices.
 
-## Current source candidate: Engine 0.183.359
+## Current release: Engine 0.183.359
 
 Use the [Server installation guide](https://github.com/PastureStack/server#quick-start)
 for an assembled platform; `cattle.jar` alone is not a Server installation.
-This candidate adds bounded Catalog Compose Stack plans through the native
+The [published release](https://github.com/PastureStack/orchestration-engine/releases/tag/v0.183.359)
+adds bounded Catalog Compose Stack plans through the native
 Catalog/Compose owners, stopped-only Archive/restore and accurate asynchronous
 authorization-failure receipts. Normal Full and legacy paths remain unchanged.
 Managed lifecycle cleanup retains exact native identity, current Key/role and
@@ -24,9 +25,12 @@ separate; `api.ai.catalog.launch.enabled=false` is the default. Private inputs
 and plan approval remain human console actions. Unsupported templates, external
 volumes, advanced forms and remaining frontend workflows are explicitly pending.
 
-Required component CI/CodeQL, immutable artifact verification, assembled Server
-and designated 8080 acceptance remain pending. The [candidate release note](docs/releases/orchestration-engine-0.183.359.md)
-records these boundaries; original published versions and evidence are retained.
+Required component CI/CodeQL passed, and the original CI artifact and twelve
+public assets were verified without rebuilding. Assembled Server559 and its
+designated browser, role, cross-ID and weak-model acceptance remain pending.
+The [release note](docs/releases/orchestration-engine-0.183.359.md) records the
+immutable artifact and these boundaries; this is not complete coverage of the
+243 frontend business groups.
 
 ## Optional AI resource workflows
 
@@ -54,16 +58,18 @@ Unused pending or approved-but-unsubmitted plans can be cancelled from the
 human inbox. Client-reported audit events remain distinct from server-verified
 authorization and completion evidence.
 
-All AI backend features are opt-in. Append required properties to the existing
-JVM options without replacing its other arguments:
+Enable the flags for the selected AI workflow by appending properties to the
+existing JVM options without replacing its other arguments:
 
 ```text
 -Dapi.ai.bridge.enabled=true
 -Dapi.ai.service.upgrade.enabled=true
 -Dapi.ai.resource.change.enabled=true
+-Dapi.ai.catalog.launch.enabled=true
 ```
 
-The bridge, upgrade-plan and resource-change flags each default to false.
+The bridge, upgrade-plan, resource-change and Catalog-launch flags each default
+to false. Enabling one does not enable the others.
 Other platform operations remain available through their ordinary UI/API;
 this release is not complete WebMCP coverage of every frontend function.
 
@@ -147,7 +153,7 @@ evidence are maintained in the
 Acceptance is limited to the documented affected paths, not every resource and
 role combination.
 Versioned evidence and upgrade boundaries are in the
-[356 release note](docs/releases/orchestration-engine-0.183.356.md);
+[359 release note](docs/releases/orchestration-engine-0.183.359.md);
 older changes remain in [release notes](docs/releases).
 
 ## Build and validation
@@ -162,7 +168,7 @@ Before publishing an Engine artifact, run the complete package gate:
 
 ```sh
 bash scripts/check-cattle-jdk25-full-package
-ENGINE_VERSION=0.183.356 bash scripts/build --release
+ENGINE_VERSION=0.183.359 bash scripts/build --release
 bash scripts/check-release-artifact dist/artifacts/cattle.jar
 ```
 
@@ -188,24 +194,37 @@ are not translated.
 The inherited project uses [Apache License 2.0](LICENSE). Bundled dependencies
 retain their own licenses and attribution.
 
-# Optional AI service image upgrade flow
+## Optional AI service image upgrade flow
 
 `api.ai.service.upgrade.enabled=false` is the default. Enabling it opts in to
 the `aiServiceUpgradePlans` API in the existing project-scoped API context.
-This is ordinary authenticated cookie collaboration using current project RBAC;
-it is not restricted API-key delegation. Existing UI/API authorization is unchanged.
+A Cookie actor can use ordinary authenticated collaboration. An independent
+stdio client can instead preview and apply with its selected API Key, bounded
+by the owner's live project permissions and Key policy. Key-created plans bind
+the credential identity and policy revision; that same Key must apply them.
+Using a browser's shared Cookie alone does not establish strict credential
+isolation. Ordinary UI/API authorization remains unchanged.
 
 * `POST /v2-beta/projects/{projectId}/aiServiceUpgradePlans` with `serviceId` and
-  `image` creates a five-minute, actor-bound preview. It does not upgrade a service.
+  `image` creates a five-minute actor/project-bound preview and, for Key callers,
+  a credential/revision binding. It does not upgrade a service.
 * The confirmation UI separately calls `POST .../{planId}?action=confirm` with an
-  empty body. Confirmation is not a model tool and no `confirmed` input is accepted.
+  empty body. The same owner's human session confirms through the console;
+  API Keys cannot confirm, and a bound Key's current scope, expiry and revision
+  are rechecked. Confirmation is not a model tool and no `confirmed` input is
+  accepted.
 * `POST .../{planId}?action=apply` with an empty body requires that approval,
   current write permission and the unchanged server snapshot. It invokes the
   existing service upgrade action and chains its normal finish-upgrade process.
-* `GET .../{planId}` reads the same durable operation. `accepted` and `running`
+* `GET .../{planId}` reads the same durable operation under current authorization;
+  Key callers must match its credential and revision. `accepted` and `running`
   are not success. Success requires the finish process, active service, requested
-  image, retained primary/secondary settings and healthy matching instances.
-* `cancel` cancels an unaccepted preview only. It does not undo an upgrade.
+  image, retained primary/secondary settings, healthy matching instances and
+  retired-instance attachment cleanup.
+* The human inbox can list up to twenty own pending plans in the current
+  project. Key callers cannot list the inbox, confirm or cancel. Human `cancel`
+  can cancel a pending or approved-but-unsubmitted preview before dispatch;
+  it does not undo an accepted upgrade.
 
 Plans and receipts live in the dedicated `ai_service_upgrade_plan` table
 (migration 127). The full private snapshot is never returned. An atomic claim
@@ -221,10 +240,12 @@ Each actor can retain at most 20 pending previews. Creating a preview deletes
 expired, unaccepted previews; cancellation and a verified terminal result remove
 the private snapshot while retaining the receipt metadata.
 
-`POST /v2-beta/projects/{projectId}/aiToolCallEvents` accepts only the six tool
-names (or `unknown`), `start`/`result`, enumerated status/reason, and an optional
-opaque correlation ID. It executes no command. An active cookie actor, including
-a readonly project member, can record their own bounded metadata. The returned
+`POST /v2-beta/projects/{projectId}/aiToolCallEvents` accepts only the twelve
+command names in [ClientToolAuditEvent](code/framework/api/src/main/java/io/cattle/platform/api/auth/ClientToolAuditEvent.java)
+(or `unknown`), `start`/`result`, enumerated status/reason, and an optional
+opaque correlation ID. It executes no command. Active session or API Key actors
+can report their own bounded metadata under the applicable role and Key checks;
+a readonly member's report grants no resource mutation. The returned
 `requestId` and `accepted:true` acknowledge durable outbox storage only; the
 reported channel, phase and result remain explicitly `client_reported`, never
 proof of authorization or business success. A start requires `pending`; a result
