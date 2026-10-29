@@ -10,6 +10,10 @@ upstream history, authorship, licenses, and dependency notices.
 
 ## Engine 0.183.355
 
+[Engine 0.183.355 is published](https://github.com/PastureStack/orchestration-engine/releases/tag/v0.183.355).
+The original CI artifact passed 363 test suites and 3,469 cases with no
+failures or errors, required CodeQL checks, and the full security release gate.
+
 This release also updates the existing Guava JRE dependency to official
 `33.7.2-jre` for [CVE-2026-102554](https://github.com/google/guava/security/advisories/GHSA-xxph-c9ww-hj94).
 Source and packaged-JAR gates reject earlier versions; Java 25 and the
@@ -41,11 +45,13 @@ instances and relevant old-instance cleanup have been verified. Client-reported
 audit events remain distinct from server-verified results and do not record
 description contents.
 
-The candidate includes focused source and packaging evidence. The r10 native
-upgrade acceptance remains pending; this document does not claim that the final
-QA image, published Engine artifact or assembled Server has passed that run.
+The published `cattle.jar` SHA-256 is
+`a7f651f84a9fe6deef2c9f66f50c13c70e450e25f9dfa6fb59129b2681f9f54f`.
+Its original producer and signed merged source have identical trees; the
+release uses the tested CI bytes without a publication rebuild. Assembled
+Server qualification and 8080 deployment remain separate acceptance steps.
 The [release note](docs/releases/orchestration-engine-0.183.355.md) records the
-new private plan table, rollback boundary and remaining release gates.
+artifact identity, new private plan table, security evidence and rollback boundary.
 
 ## Retained changes from Engine 0.183.354
 
