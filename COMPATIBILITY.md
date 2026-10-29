@@ -4,6 +4,21 @@ The migration preserves established `io.cattle.*` Java packages, Maven coordinat
 
 New operator-facing names use PastureStack and `PASTURESTACK_*`. Compatibility identifiers must be changed only with an explicit data migration, a dual-read or dual-write transition, a rollback plan, and cross-repository verification.
 
+## Engine v0.183.357
+
+Typed domain requests can reach authorization after the normal validator has
+already decoded their ID. The shared parent resolver now accepts this internal
+decimal representation without decoding it again. Public policy scope IDs still
+require the existing typed roundtrip; this grants no new role or resource access.
+
+The ProcessPool owner supplies a read-only canonical bean identity while
+preserving its existing display names, counters, methods and null native ID.
+AI projections hash that identity for stable opaque references, including unnamed
+or duplicate-display-name pools. The AI adapter excludes the unsupported
+`activeSetting` collection without changing its ordinary schema or permissions.
+The compatible Web Console/bridge remains 1.6.199/0.2.1. Existing source-level
+coverage is separate from the still-pending complete typed workload sequence.
+
 ## Engine v0.183.356
 
 The new `aiResourceView` and `aiResourceChangePlan` APIs are typed protocol

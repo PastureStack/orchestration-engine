@@ -1,0 +1,11 @@
+{
+    "resourceFields": {
+        "poolKey": {
+            "type": "string",
+            "create": false,
+            "update": false,
+            "nullable": true,
+            "attributes": { "extendFrozenSchema": true }
+        }
+    }
+}

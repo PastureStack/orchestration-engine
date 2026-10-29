@@ -213,7 +213,7 @@ public class AiResourceViewServiceTest {
 
     @Test public void runtimePoolsWithoutDatabaseIdsUseOnlyTheirAuthorizedNamedCollection() {
         Fixture f = new Fixture();
-        f.rows.add(new ResourceImpl(null, "processPool", new LinkedHashMap<>(Map.of("name", "api work / pool", "activeTasks", 3))));
+        f.rows.add(new ResourceImpl(null, "processPool", new LinkedHashMap<>(Map.of("name", "api work / pool", "poolKey", "ApiExecutor", "activeTasks", 3))));
         Map<String, Object> result = f.service.read(f.request(Map.of("resourceType", "processPool")));
         Map<?, ?> item = (Map<?, ?>) ((List<?>) result.get("data")).getFirst();
         String id = (String) item.get("id"); assertTrue(id.matches("pool-[0-9a-f]{64}"));
@@ -222,6 +222,59 @@ public class AiResourceViewServiceTest {
         assertEquals(id, ((Map<?, ?>) ((List<?>) result.get("data")).getFirst()).get("id"));
         verify(f.manager, never()).getById(anyString(), anyString(), any());
         assertEquals("NotFound", rejected(() -> f.service.read(f.request(Map.of("resourceType", "processPool", "resourceId", "pool-" + "0".repeat(64))))));
+    }
+
+    @Test public void poolIdentityUsesOwnerBeanKeysAcrossEmptyDuplicateAndReorderedDisplayNames() {
+        Fixture f = new Fixture();
+        f.rows.add(new ResourceImpl(null, "processPool", new LinkedHashMap<>(Map.of("name", "", "poolKey", "ApiExecutor", "activeTasks", 1))));
+        f.rows.add(new ResourceImpl(null, "processPool", new LinkedHashMap<>(Map.of("name", "shared", "poolKey", "FirstExecutor"))));
+        f.rows.add(new ResourceImpl(null, "processPool", new LinkedHashMap<>(Map.of("name", "shared", "poolKey", "SecondExecutor"))));
+        Map<String, Object> result = f.service.read(f.request(Map.of("resourceType", "processPool")));
+        List<?> rows = (List<?>) result.get("data");
+        assertEquals(3, rows.size());
+        List<?> ids = rows.stream().map(row -> ((Map<?, ?>) row).get("id")).toList();
+        assertEquals(3, new java.util.HashSet<>(ids).size());
+        assertFalse(rows.toString().contains("poolKey")); assertFalse(rows.toString().contains("ApiExecutor"));
+        assertTrue(rows.stream().allMatch(row -> ((Map<?, ?>) row).get("name") instanceof String name && !name.isBlank()));
+        java.util.Collections.reverse(f.rows);
+        assertEquals(rows, f.service.read(f.request(Map.of("resourceType", "processPool"))).get("data"));
+        for (Object id : ids) {
+            Map<String, Object> detail = f.service.read(f.request(Map.of("resourceType", "processPool", "resourceId", id)));
+            assertEquals(id, ((Map<?, ?>) ((List<?>) detail.get("data")).getFirst()).get("id"));
+        }
+        verify(f.manager, never()).getById(anyString(), anyString(), any());
+    }
+
+    @Test public void activeSettingIsNotInventedAsAReadableCollectionOrAnAuthorizedDomainGet() {
+        Fixture f = new Fixture();
+        assertFalse(AiResourceViewService.READ_TYPES.contains("activeSetting"));
+        assertEquals("ResourceViewInputInvalid", rejected(() -> f.service.read(f.request(Map.of("resourceType", "activeSetting")))));
+        verifyNoInteractions(f.manager, f.keyAccess, f.authenticator, f.service.keyAuthorization);
+    }
+
+    @Test public void actualPoolOwnerCollectionSupportsAuthorizedOpaqueDetailWithNativeNullIds() throws Exception {
+        Fixture f = new Fixture();
+        var executor = new java.util.concurrent.ThreadPoolExecutor(1, 1, 1, java.util.concurrent.TimeUnit.SECONDS,
+                new java.util.concurrent.LinkedBlockingQueue<>(8)) { };
+        var real = new io.cattle.platform.iaas.api.manager.ProcessPoolManager() {
+            @Override public Resource convertResponse(Object object, ApiRequest request) {
+                var pool = (io.cattle.platform.core.addon.ProcessPool) object;
+                return new ResourceImpl(null, "processPool", new LinkedHashMap<>(Map.of("name", pool.getName(),
+                        "poolKey", pool.getPoolKey(), "activeTasks", pool.getActiveTasks())));
+            }
+        };
+        try {
+            for (var entry : Map.of("executors", (Object) List.of(executor), "executorBeans", Map.of("ActualOwnerBean", executor)).entrySet()) {
+                var field = io.cattle.platform.iaas.api.manager.ProcessPoolManager.class.getDeclaredField(entry.getKey());
+                field.setAccessible(true); field.set(real, entry.getValue());
+            }
+            when(f.service.managers.getResourceManagerByType("processPool")).thenReturn(real);
+            List<?> rows = (List<?>) f.service.read(f.request(Map.of("resourceType", "processPool"))).get("data");
+            assertEquals(1, rows.size()); String id = (String) ((Map<?, ?>) rows.getFirst()).get("id");
+            assertEquals(rows, f.service.read(f.request(Map.of("resourceType", "processPool", "resourceId", id))).get("data"));
+            assertEquals("NotFound", rejected(() -> f.service.read(f.request(Map.of("resourceType", "processPool", "resourceId", "pool-" + "0".repeat(64))))));
+            verify(f.keyAccess, times(3)).authorize(any(), eq(f.live));
+        } finally { executor.shutdownNow(); }
     }
 
     private static Resource row(String id, String name) {

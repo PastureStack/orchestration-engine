@@ -1250,7 +1250,7 @@ public class ApiKeyTargetResolver {
         if (raw == null) return null;
         try {
             String value = raw.toString();
-            Long id = Long.valueOf(idFormatter.parseId(value));
+            Long id = Long.valueOf(value.matches("[0-9]+") ? value : idFormatter.parseId(value));
             // Raw numeric IDs are valid for internal requests. External typed IDs
             // must round-trip as the expected schema, not an unrelated prefix.
             if (!value.matches("[0-9]+") && !value.equals(format(type, id))) denied("KeyScopeDenied");

@@ -3,6 +3,7 @@ package io.cattle.platform.core.addon;
 public class ProcessPool {
 
     String name;
+    String poolKey;
     int activeTasks, poolSize, maxPoolSize, minPoolSize, queueSize, queueRemainingCapacity;
     long completedTasks, rejectedTasks;
 
@@ -12,6 +13,15 @@ public class ProcessPool {
 
     public void setName(String name) {
         this.name = name;
+    }
+
+    /** Stable owner bean identity; it is unrelated to the native resource's absent database ID. */
+    public String getPoolKey() {
+        return poolKey;
+    }
+
+    public void setPoolKey(String poolKey) {
+        this.poolKey = poolKey;
     }
 
     public int getActiveTasks() {
