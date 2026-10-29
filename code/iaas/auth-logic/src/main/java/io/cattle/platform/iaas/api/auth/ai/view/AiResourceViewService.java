@@ -43,10 +43,10 @@ public class AiResourceViewService {
             "loadBalancerService", "dnsService", "externalService", "container", "virtualMachine",
             "host", "volume", "snapshot", "backup", "backupTarget", "storagePool", "storageDriver",
             "network", "networkDriver", "certificate", "registry", "registryCredential", "apiKey",
-            "apiKeyRestricted", "setting", "activeSetting", "machineDriver", "secret", "processExecution", "processPool", "auditLog");
+            "apiKeyRestricted", "setting", "machineDriver", "secret", "processExecution", "processPool", "auditLog");
     private static final Set<String> GLOBAL_TYPES = Set.of("project", "projectTemplate", "account", "apiKey", "apiKeyRestricted",
-            "setting", "activeSetting", "machineDriver", "processExecution", "processPool", "auditLog");
-    private static final Set<String> MEMORY_COLLECTIONS = Set.of("project", "setting", "activeSetting", "processPool");
+            "setting", "machineDriver", "processExecution", "processPool", "auditLog");
+    private static final Set<String> MEMORY_COLLECTIONS = Set.of("project", "setting", "processPool");
     private static final List<String> COMMON_FIELDS = List.of("name", "description", "state", "kind", "created", "healthState");
     private static final Map<String, List<String>> FIELDS = Map.ofEntries(
             Map.entry("project", List.of("orchestration")),
@@ -61,7 +61,7 @@ public class AiResourceViewService {
             Map.entry("registry", List.of()), Map.entry("registryCredential", List.of()),
             Map.entry("apiKey", List.of("apiKeyPolicyRevision")),
             Map.entry("apiKeyRestricted", List.of("apiKeyPolicyRevision")),
-            Map.entry("setting", List.of("source", "inDb")), Map.entry("activeSetting", List.of("source", "inDb")),
+            Map.entry("setting", List.of("source", "inDb")),
             Map.entry("machineDriver", List.of("builtin", "active")),
             Map.entry("processExecution", List.of("processName", "startTime", "endTime", "exitReason")),
             Map.entry("processPool", List.of("activeTasks", "poolSize", "queueSize")),
@@ -141,6 +141,8 @@ public class AiResourceViewService {
             String id = "processPool".equals(type) ? poolId(resource.getFields()) : resource.getId();
             if (id == null) throw error(503, "ResourceViewUnavailable");
             Map<String, Object> safe = project(type, id, resource.getFields());
+            if ("processPool".equals(type) && (!(safe.get("name") instanceof String name) || name.isBlank()))
+                safe.put("name", "Process pool " + id.substring(5, 17));
             if (marker == null || compareIds((String) safe.get("id"), marker) > 0) visible.add(safe);
         }
         if ("processPool".equals(type) && input.get("resourceId") instanceof String selected) {
@@ -262,12 +264,14 @@ public class AiResourceViewService {
         catch (NumberFormatException nonnumeric) { return left.compareTo(right); }
     }
 
-    // ProcessPoolManager exposes a named runtime statistic, not a persisted
+    // ProcessPoolManager exposes an owner-supplied bean identity, not a persisted
     // object with an ID. Its detail is resolved only inside the same authorized
     // collection, never by treating this digest as a database ID or permission.
     private static String poolId(Map<String, Object> fields) {
-        if (!(fields.get("name") instanceof String name) || name.isEmpty()) throw error(503, "ResourceViewUnavailable");
-        try { return "pool-" + HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(name.getBytes(StandardCharsets.UTF_8))); }
+        if (!(fields.get("poolKey") instanceof String key) || key.isBlank() || key.length() > 512
+                || key.chars().anyMatch(value -> value < 32 || value == 127)) throw error(503, "ResourceViewUnavailable");
+        try { return "pool-" + HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256")
+                .digest(("process-pool-bean:" + key).getBytes(StandardCharsets.UTF_8))); }
         catch (NoSuchAlgorithmException unavailable) { throw error(503, "ResourceViewUnavailable"); }
     }
 

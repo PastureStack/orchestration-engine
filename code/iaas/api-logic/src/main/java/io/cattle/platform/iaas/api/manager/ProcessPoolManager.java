@@ -20,6 +20,8 @@ public class ProcessPoolManager extends AbstractNoOpResourceManager {
 
     @Inject
     List<ThreadPoolExecutor> executors;
+    @Inject
+    Map<String, ThreadPoolExecutor> executorBeans = Map.of();
 
     @Override
     public Class<?>[] getTypeClasses() {
@@ -33,6 +35,9 @@ public class ProcessPoolManager extends AbstractNoOpResourceManager {
         for (ThreadPoolExecutor executor : executors) {
             ProcessPool pool = new ProcessPool();
             pool.setName(NamedUtils.getName(executor));
+            // Match actual beans by identity. Display names and collection order are not unique or stable identities.
+            pool.setPoolKey(executorBeans.entrySet().stream().filter(entry -> entry.getValue() == executor)
+                    .map(Map.Entry::getKey).sorted().findFirst().orElse(null));
             pool.setActiveTasks(executor.getActiveCount());
             pool.setPoolSize(executor.getPoolSize());
             pool.setMinPoolSize(executor.getCorePoolSize());
