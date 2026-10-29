@@ -11,6 +11,7 @@ import io.cattle.platform.core.model.Image;
 import io.cattle.platform.core.model.ImageStoragePoolMap;
 import io.cattle.platform.engine.context.EngineContext;
 import io.cattle.platform.engine.process.LaunchConfiguration;
+import io.cattle.platform.engine.process.ProcessAuthorization;
 import io.cattle.platform.engine.process.ProcessAuthorizationHook;
 import io.cattle.platform.engine.process.ProcessAuthorizationDeniedException;
 import io.cattle.platform.iaas.api.auth.impl.ApiAuthenticator;
@@ -58,7 +59,10 @@ public class ApiKeyProcessAuthorization implements ProcessAuthorizationHook {
         metadata.put("requestCollection", request.getId() == null);
         if (request.getAction() != null) metadata.put("requestAction", request.getAction());
         if (request.getLink() != null) metadata.put("requestLink", request.getLink());
-        metadata.put("targetType", request.getType());
+        String targetType = request.getType();
+        if (key.policy() != null && key.policy().getMode() == ApiKeyPolicy.Mode.CUSTOM
+                && targets.isAliasServiceLinkAction(request)) targetType = "dnsService";
+        metadata.put("targetType", targetType);
         metadata.put("targetId", request.getId() == null ? config.getResourceId() : request.getId());
         Long createdProjectId = ProjectCreationScope.currentProjectId();
         if (createdProjectId != null && "project".equals(request.getType()) && request.getId() == null
@@ -67,6 +71,7 @@ public class ApiKeyProcessAuthorization implements ProcessAuthorizationHook {
             metadata.put("targetId", createdProjectId.toString());
         }
         metadata.put("preview", false);
+        if (ProcessAuthorization.aliasLinkExecution(config, metadata)) metadata.putAll(targets.aliasSchedulingReferences(config, metadata, owner));
         return metadata;
     }
 
@@ -145,6 +150,14 @@ public class ApiKeyProcessAuthorization implements ProcessAuthorizationHook {
             }
             if (imageEnsure && ensure == null) ensure = targets.resolveImageEnsureDependency(root, child, current.policy(),
                     EngineContext.getEngineContext().currentVerifiedExecution(), metadata);
+            var alias = targets.resolveAliasServiceDependency(root, child, current.policy(), current.schemas(), config, metadata);
+            if (alias != null) {
+                var reference = evaluator.evaluate(policy, new ApiKeyPolicyEvaluator.Request(true, "read", true,
+                        List.of(alias.reference())), clock.instant());
+                if (!reference.allowed()) denied(reference.reason().getCode());
+                cleanup = alias.lifecycle();
+            }
+            if (cleanup == null) cleanup = targets.resolveExternalServiceDependency(root, child, current.policy(), config, metadata);
             if (cleanup == null) cleanup = targets.resolveUpgradeCleanupDependency(root, child, current.policy(), config,
                     EngineContext.getEngineContext().currentVerifiedExecution(), EngineContext.getEngineContext().parentVerifiedExecution(), metadata);
             var lifecycle = cleanup != null ? cleanup : ensure != null ? ensure : dependency == null

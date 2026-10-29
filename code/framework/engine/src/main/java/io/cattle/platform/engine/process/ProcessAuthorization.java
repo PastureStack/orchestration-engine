@@ -18,7 +18,8 @@ public final class ProcessAuthorization {
     public static final String CAPTURED_EXECUTION_KEY = "_apiKeyCapturedExecution";
     private static final Set<String> FIELDS = Set.of("keyId", "policyRevision", "principalAccountId", "accountId",
             "requestId", "operation", "targetType", "targetId", "preview", "requestMethod", "requestAction", "requestLink",
-            "requestCollection", "projectCreation");
+            "requestCollection", "projectCreation", "aliasServiceUuid", "aliasMapUuid", "aliasConsumedServiceId", "aliasConsumedServiceUuid",
+            "aliasStackId", "aliasStackUuid", "aliasConsumedStackId", "aliasConsumedStackUuid");
 
     private ProcessAuthorization() { }
 
@@ -75,7 +76,7 @@ public final class ProcessAuthorization {
         }
         if (!metadata.isEmpty()) {
             data.put(DATA_KEY, sanitize(metadata));
-            if (Boolean.TRUE.equals(metadata.get("projectCreation")) && config.getResourceType() != null
+            if ((Boolean.TRUE.equals(metadata.get("projectCreation")) || aliasLinkExecution(config, metadata)) && config.getResourceType() != null
                     && config.getResourceId() != null && config.getProcessName() != null
                     && (config.getAccountId() == null || config.getAccountId() instanceof Number)) {
                 Map<String, Object> binding = new HashMap<>();
@@ -89,7 +90,9 @@ public final class ProcessAuthorization {
             if (parent != null && (Set.of("volume", "instance").contains(parent.resourceType())
                     || projectNetworkCreationEdge(parent.resourceType(), parent.resourceId(), config, metadata)
                     || upgradeUnmountEdge(parent.resourceType(), config, metadata)
-                    || serviceRetirementEdge(parent.resourceType(), parent.resourceId(), config, metadata))
+                    || serviceRetirementEdge(parent.resourceType(), parent.resourceId(), config, metadata)
+                    || externalServiceEdge(parent.resourceType(), parent.resourceId(), config, metadata)
+                    || aliasRemovalEdge(parent.resourceType(), parent.resourceId(), config, metadata))
                     && parent.resourceId() != null && parent.resourceId().matches("[0-9]+")
                     && parent.rootAuthorization().equals(metadata)
                     && config.getResourceType() != null && config.getResourceId() != null && config.getProcessName() != null) {
@@ -161,7 +164,8 @@ public final class ProcessAuthorization {
         Map<String, Object> binding = sanitize(rawBinding);
         if (binding.isEmpty() || !binding.equals(rawBinding) || !binding.equals(metadata(config))) return null;
         boolean creationEdge = projectNetworkCreationEdge(parentType, parentId, config, binding);
-        boolean retirementEdge = serviceRetirementEdge(parentType, parentId, config, binding);
+        boolean retirementEdge = serviceRetirementEdge(parentType, parentId, config, binding)
+                || externalServiceEdge(parentType, parentId, config, binding) || aliasRemovalEdge(parentType, parentId, config, binding);
         if (!Set.of("volume", "instance").contains(parentType) && !creationEdge
                 && !retirementEdge && !upgradeUnmountEdge(parentType, config, binding)) return null;
         if (creationEdge && !executionBound(config)) return null;
@@ -181,6 +185,43 @@ public final class ProcessAuthorization {
             }
         }
         return new VerifiedChild(parentType, parentId, binding, references);
+    }
+
+    /** Only the native External Service owner may schedule its endpoint-only map. */
+    private static boolean externalServiceEdge(String parentType, String parentId,
+            LaunchConfiguration config, Map<String, Object> binding) {
+        if (!"service".equals(parentType) || !"externalService".equals(binding.get("targetType"))
+                || !Objects.equals(parentId, binding.get("targetId"))
+                || !Boolean.FALSE.equals(binding.get("requestCollection")) || !Boolean.FALSE.equals(binding.get("preview"))
+                || binding.containsKey("requestLink") || !"serviceExposeMap".equals(config.getResourceType())
+                || !Set.of("serviceexposemap.create", "serviceexposemap.remove").contains(config.getProcessName())) return false;
+        String method = Objects.toString(binding.get("requestMethod"), "");
+        String operation = Objects.toString(binding.get("operation"), "");
+        if ("DELETE".equals(method)) return "delete".equals(operation) && !binding.containsKey("requestAction")
+                && "serviceexposemap.remove".equals(config.getProcessName());
+        return "update".equals(operation) && ("PUT".equals(method) && !binding.containsKey("requestAction")
+                || "POST".equals(method) && Set.of("activate", "deactivate").contains(Objects.toString(binding.get("requestAction"), "")));
+    }
+
+    /** A normal Alias link action schedules these native maps directly, without an Instance or a fabricated Service frame. */
+    public static boolean aliasLinkRequest(Map<String, Object> binding) {
+        return binding != null && "dnsService".equals(binding.get("targetType")) && "POST".equals(binding.get("requestMethod"))
+                && "setservicelinks".equals(binding.get("requestAction")) && "update".equals(binding.get("operation"))
+                && Boolean.FALSE.equals(binding.get("requestCollection")) && Boolean.FALSE.equals(binding.get("preview"))
+                && !binding.containsKey("requestLink");
+    }
+
+    public static boolean aliasLinkExecution(LaunchConfiguration config, Map<String, Object> binding) {
+        return aliasLinkRequest(binding) && "serviceConsumeMap".equals(config.getResourceType())
+                && Set.of("serviceconsumemap.create", "serviceconsumemap.remove").contains(config.getProcessName());
+    }
+
+    private static boolean aliasRemovalEdge(String parentType, String parentId, LaunchConfiguration config, Map<String, Object> binding) {
+        return "service".equals(parentType) && Objects.equals(parentId, binding.get("targetId"))
+                && "dnsService".equals(binding.get("targetType")) && "DELETE".equals(binding.get("requestMethod"))
+                && "delete".equals(binding.get("operation")) && !binding.containsKey("requestAction") && !binding.containsKey("requestLink")
+                && Boolean.FALSE.equals(binding.get("requestCollection")) && Boolean.FALSE.equals(binding.get("preview"))
+                && "serviceConsumeMap".equals(config.getResourceType()) && "serviceconsumemap.remove".equals(config.getProcessName());
     }
 
     private static boolean serviceRetirementEdge(String parentType, String parentId,

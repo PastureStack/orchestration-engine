@@ -12,6 +12,9 @@ import io.github.ibuildthecloud.gdapi.model.Schema;
 import io.github.ibuildthecloud.gdapi.model.ListOptions;
 import io.github.ibuildthecloud.gdapi.request.ApiRequest;
 import io.github.ibuildthecloud.gdapi.request.resource.ResourceManagerLocator;
+import io.github.ibuildthecloud.gdapi.request.resource.ResourceManager;
+import io.github.ibuildthecloud.gdapi.request.resource.ResourceManagerFilter;
+import io.cattle.platform.iaas.api.auth.ai.catalog.AiCatalogLaunchResponseFilter;
 import io.github.ibuildthecloud.gdapi.util.ResponseCodes;
 import java.time.Clock;
 import java.util.List;
@@ -28,13 +31,19 @@ import org.jooq.Condition;
 import org.jooq.Table;
 
 /** Attenuation after live authentication, never a replacement for owner RBAC. */
-public class ApiKeyAuthorizationService implements ApiResourceAccess {
+public class ApiKeyAuthorizationService implements ApiResourceAccess, ResourceManager.ScopedCollectionQueryGuard {
     @Inject ApiKeyTargetResolver targets;
     @Inject List<ApiKeyAuditSink> auditSinks;
     @Inject ResourceManagerLocator resourceManagers;
     @Inject ObjectManager objectManager;
     Clock clock = Clock.systemUTC();
     private final ApiKeyPolicyEvaluator evaluator = new ApiKeyPolicyEvaluator();
+
+    @Override public boolean attestsQueryPreservingFilter(ResourceManagerFilter filter) {
+        // This final owner filter delegates both lists unchanged, then only
+        // validates the returned graph. Unknown filters retain deny-by-default.
+        return filter != null && filter.getClass() == AiCatalogLaunchResponseFilter.class;
+    }
 
     public void authorize(ApiRequest request, Policy owner) {
         ApiKeyCredentialContext key = ApiKeyCredentialContext.get(request);
@@ -68,7 +77,8 @@ public class ApiKeyAuthorizationService implements ApiResourceAccess {
                 throw forbidden("ApiKeyExpired");
             }
             if (key.restricted() && delegatesUnboundAuthority(request)) throw forbidden("ApiKeyRestrictedDelegationUnsupported");
-            if (("aiToolCallEvent".equals(request.getType()) || "aiResourceView".equals(request.getType()) || "aiCatalogMetadataView".equals(request.getType())
+            if (("aiToolCallEvent".equals(request.getType()) || "aiResourceView".equals(request.getType()) || "aiAuditQuery".equals(request.getType())
+                    || "aiCatalogMetadataView".equals(request.getType())
                     || "aiCatalogStackLaunchOptions".equals(request.getType())) && "POST".equals(request.getMethod())
                     && request.getId() == null && request.getAction() == null && request.getLink() == null) {
                 if (!ownerAllows(request)) throw forbidden("OwnerPermissionDenied");

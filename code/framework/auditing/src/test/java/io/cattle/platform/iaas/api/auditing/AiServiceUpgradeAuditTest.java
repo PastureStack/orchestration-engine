@@ -25,6 +25,42 @@ import org.junit.rules.TemporaryFolder;
 
 public class AiServiceUpgradeAuditTest {
     @Rule public TemporaryFolder temporary = new TemporaryFolder();
+    @Test public void cookieQueryCompletionProjectsCanonicalMetadataButNeverRawPayload() {
+        var row = new io.cattle.platform.core.model.tables.records.AuditLogRecord();
+        row.setResourceType("aiAuditQuery");
+        row.setData(Map.of("fields", Map.of("decision", "ALLOW", "outcome", "SUCCEEDED", "phase", "completion",
+                "evidenceSource", "server_observed", "requestObject", "PRIVATE")));
+        var converted = new io.github.ibuildthecloud.gdapi.model.impl.ResourceImpl("1al1", "auditLog",
+                new HashMap<>(Map.of("requestObject", "PRIVATE", "responseObject", "PRIVATE")));
+        var filter = new AuditLogOutPutFilter(); filter.filter(new ApiRequest(null, null), row, converted);
+        assertEquals("ALLOW", converted.getFields().get("decision")); assertEquals("completion", converted.getFields().get("phase"));
+        assertFalse(converted.getFields().containsKey("requestObject")); assertFalse(converted.getFields().containsKey("responseObject"));
+        row.setResourceType("service"); converted.getFields().put("requestObject", "ordinary-human-payload");
+        filter.filter(new ApiRequest(null, null), row, converted);
+        assertEquals("ordinary-human-payload", converted.getFields().get("requestObject"));
+    }
+    @Test public void auditQueryCanonicalAllowDenyAndErrorUseExistingOutboxWithoutPayloads() throws Exception {
+        List<Map<?, ?>> delivered = new ArrayList<>(); List<Object[]> envelopes = new ArrayList<>();
+        AuditServiceImpl service = service(delivered, envelopes); ApiRequest request = new ApiRequest(null, null);
+        request.setType("aiAuditQuery"); request.setMethod("POST");
+        request.setRequestObject(Map.of("authorization", "PRIVATE-CREDENTIAL", "query", Map.of("requestId", "PRIVATE-FILTER")));
+        request.setAttribute("apiKey.audit.keyId", "1c8"); request.setAttribute("apiKey.audit.policyRevision", 3L);
+        request.setAttribute("apiKey.audit.verifiedPrincipalAccountId", 42L);
+        for (String outcome : List.of("ALLOW", "DENY", "ERROR")) {
+            service.recordAuditQueryOutcome(request, policy(), "aiaudit-11111111-1111-1111-1111-111111111111", outcome, "AuditQueryCompleted", 1);
+        }
+        assertEquals(3, delivered.size());
+        assertEquals("ALLOW", delivered.get(0).get("decision")); assertEquals("SUCCEEDED", delivered.get(0).get("outcome"));
+        assertEquals("DENY", delivered.get(1).get("decision")); assertEquals("DENIED", delivered.get(1).get("outcome"));
+        assertEquals("ERROR", delivered.get(2).get("outcome"));
+        for (Map<?, ?> event : delivered) {
+            assertEquals("completion", event.get("phase")); assertEquals("server_observed", event.get("evidenceSource"));
+            assertEquals("1c8", event.get("keyId")); assertEquals(3L, ((Number) event.get("policyRevision")).longValue());
+            assertFalse(event.toString().contains("PRIVATE")); assertFalse(event.containsKey("requestObject"));
+        }
+        assertEquals("api.aiAuditQuery.complete", envelopes.getFirst()[6]);
+        assertThrows(IllegalArgumentException.class, () -> service.recordAuditQueryOutcome(request, policy(), "caller", "ALLOW", "x", 0));
+    }
     @Test public void catalogTypedAndVerifiedDelegatedWritesKeepMetadataWithoutPrivateAnswersOrProof() throws Exception {
         List<Map<?, ?>> delivered = new ArrayList<>(); AuditServiceImpl service = service(delivered);
         service.auditLogDao = (AuditLogDao) Proxy.newProxyInstance(AuditLogDao.class.getClassLoader(), new Class<?>[] { AuditLogDao.class },

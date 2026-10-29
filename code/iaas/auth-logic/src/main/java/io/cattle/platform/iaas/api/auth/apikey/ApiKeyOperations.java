@@ -25,6 +25,7 @@ public final class ApiKeyOperations {
             Map.entry("service.continueupgrade", "upgrade"),
             Map.entry("service.create", "create"),
             Map.entry("service.setservicelinks", "update"),
+            Map.entry("dnsservice.setservicelinks", "update"),
             Map.entry("container.create", "create"),
             Map.entry("container.allocate", "update"),
             Map.entry("container.deallocate", "update"),
@@ -50,7 +51,8 @@ public final class ApiKeyOperations {
 
     public static Operation of(String method, String action, String link, String resourceType) {
         String verb = method == null ? "" : method.toUpperCase(Locale.ROOT);
-        if (("aiResourceView".equals(resourceType) || "aiCatalogMetadataView".equals(resourceType) || "aiCatalogStackLaunchOptions".equals(resourceType))
+        if (("aiResourceView".equals(resourceType) || "aiAuditQuery".equals(resourceType) || "aiCatalogMetadataView".equals(resourceType)
+                || "aiCatalogStackLaunchOptions".equals(resourceType))
                 && "POST".equals(verb) && action == null && link == null)
             return known("read");
         if ("aiCatalogStackLaunchPlan".equals(resourceType)) {

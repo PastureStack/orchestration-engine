@@ -4,6 +4,11 @@ import io.github.ibuildthecloud.gdapi.request.ApiRequest;
 
 /** Durable admission of an API-key authorization decision, before execution. */
 public interface ApiKeyAuditSink {
+    /** Canonical completion of the fixed audit-query owner, never a client report or a page admission. */
+    default void recordAuditQueryOutcome(ApiRequest request, Policy policy, String queryId,
+            String outcome, String reason, int count) {
+        throw new IllegalStateException("Audit query outcome auditing is unavailable");
+    }
     /** Catalog launch decisions contain identity/outcome metadata only, never answers, Compose or executor proof. */
     default void recordCatalogLaunchDecision(ApiRequest request, Policy policy, String action, String planId,
             Long stackId, boolean allowed, String reason) {

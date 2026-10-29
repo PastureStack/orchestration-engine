@@ -28,6 +28,13 @@ public interface ResourceManager {
      */
     default boolean supportsScopedCollectionQuery(Object guard) { return false; }
 
+    /** Server-side guard attestation for a known result validator, never a caller-supplied capability.
+     * The underlying query must still contain this exact guard and retain its SQL pagination contract.
+     */
+    interface ScopedCollectionQueryGuard {
+        boolean attestsQueryPreservingFilter(ResourceManagerFilter filter);
+    }
+
     Object create(String type, ApiRequest request);
 
     Object update(String type, String id, ApiRequest request);

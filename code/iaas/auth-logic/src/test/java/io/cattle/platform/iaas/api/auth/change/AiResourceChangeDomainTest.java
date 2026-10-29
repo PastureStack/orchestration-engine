@@ -61,6 +61,82 @@ import org.junit.Test;
 public class AiResourceChangeDomainTest {
     @After public void cleanup() { ApiContext.remove(); }
 
+    @Test public void externalServiceUsesTheExactFilteredNativeManagerForEveryTypedLifecycleIntent() throws Exception {
+        Fixture f = new Fixture(); when(f.schemas.getSchema("externalService")).thenReturn(f.schema);
+        Map<String, io.github.ibuildthecloud.gdapi.model.Field> fields = new java.util.LinkedHashMap<>();
+        for (String field : List.of("name", "description", "hostname", "externalIpAddresses", "stackId", "launchConfig", "startOnCreate")) {
+            FieldImpl capability = new FieldImpl(); capability.setCreate(true); capability.setUpdate(true); fields.put(field, capability);
+        }
+        when(f.schema.getResourceFields()).thenReturn(fields);
+        ResourceManager filtered = mock(ResourceManager.class); f.domain.managers = mock(ResourceManagerLocator.class);
+        when(f.domain.managers.getResourceManagerByType("externalService")).thenReturn(filtered);
+        ServiceRecord target = new ServiceRecord(); target.setId(7L); target.setKind("externalService");
+        Object previous = ArchaiusUtil.getConfiguration().getProperty("api.ai.bridge.enabled");
+        try {
+            ArchaiusUtil.getConfiguration().setProperty("api.ai.bridge.enabled", true);
+            for (String operation : List.of("create", "update_targets", "update_metadata", "start", "stop", "remove")) {
+                var descriptor = AiResourceChangeDescriptor.require("externalService", operation);
+                Map<String, Object> parameters = descriptor.parameters(switch (operation) {
+                case "create" -> Map.of("name", "db", "stackId", "1st3", "hostname", "db.test");
+                case "update_targets" -> Map.of("externalIpAddresses", List.of("192.0.2.1"));
+                case "update_metadata" -> Map.of("description", "");
+                default -> Map.of();
+                });
+                java.util.function.Consumer<ApiRequest> exact = actual -> {
+                    assertEquals("externalService", actual.getType()); assertEquals(descriptor.method(), actual.getMethod());
+                    assertEquals(descriptor.action(), actual.getAction()); assertEquals(descriptor.body(parameters), actual.getRequestObject());
+                    assertSame(actual, ApiContext.getContext().getApiRequest()); assertTrue(AiResourceChangeDomain.trustedDomain(actual));
+                };
+                when(filtered.create(eq("externalService"), any())).thenAnswer(call -> { exact.accept(call.getArgument(1)); return target; });
+                when(filtered.update(eq("externalService"), eq("1s7"), any())).thenAnswer(call -> { exact.accept(call.getArgument(2)); return target; });
+                when(filtered.delete(eq("externalService"), eq("1s7"), any())).thenAnswer(call -> { exact.accept(call.getArgument(2)); return target; });
+                when(filtered.resourceAction(eq("externalService"), any())).thenAnswer(call -> { exact.accept(call.getArgument(1)); return target; });
+                assertEquals(descriptor.body(parameters), f.domain.prepare(f.request, descriptor, descriptor.createsResource() ? null : "1s7", parameters));
+                assertSame(target, f.domain.dispatch(f.request, descriptor, descriptor.createsResource() ? null : "1s7", parameters, "plan"));
+                assertSame(f.request, ApiContext.getContext().getApiRequest());
+            }
+            verify(filtered, times(1)).create(eq("externalService"), any());
+            verify(filtered, times(2)).update(eq("externalService"), eq("1s7"), any());
+            verify(filtered, times(2)).resourceAction(eq("externalService"), any());
+            verify(filtered, times(1)).delete(eq("externalService"), eq("1s7"), any());
+        } finally {
+            if (previous == null) ArchaiusUtil.getConfiguration().clearProperty("api.ai.bridge.enabled");
+            else ArchaiusUtil.getConfiguration().setProperty("api.ai.bridge.enabled", previous);
+        }
+    }
+
+    @Test public void externalFieldRoleRevisionAndCrossKindOrProjectReadsFailBeforeTheNativeMutation() throws Exception {
+        Fixture f = new Fixture(); when(f.schemas.getSchema("externalService")).thenReturn(f.schema);
+        FieldImpl hostname = new FieldImpl(); hostname.setUpdate(false);
+        when(f.schema.getResourceFields()).thenReturn(Map.of("hostname", hostname));
+        var descriptor = AiResourceChangeDescriptor.require("externalService", "update_targets");
+        assertEquals("PermissionDenied", assertThrows(ClientVisibleException.class,
+                () -> f.domain.prepare(f.request, descriptor, "1s7", Map.of("hostname", "db.test"))).getCode());
+        verify(f.validation, never()).generate(any());
+        Object previous = ArchaiusUtil.getConfiguration().getProperty("api.ai.bridge.enabled");
+        try {
+            ArchaiusUtil.getConfiguration().setProperty("api.ai.bridge.enabled", true);
+            hostname.setUpdate(true); FieldImpl ips = new FieldImpl(); ips.setUpdate(true);
+            when(f.schema.getResourceFields()).thenReturn(Map.of("hostname", hostname, "externalIpAddresses", ips));
+            when(f.http.getHeader(ApiKeyAiBridgeGuard.EXPECTED_REVISION_HEADER)).thenReturn("2");
+            assertEquals("ApiKeyPolicyChanged", assertThrows(ClientVisibleException.class,
+                    () -> f.domain.prepare(f.request, descriptor, "1s7", Map.of("hostname", "db.test"))).getCode());
+            when(f.http.getHeader(ApiKeyAiBridgeGuard.EXPECTED_REVISION_HEADER)).thenReturn("3");
+            ResourceManager manager = mock(ResourceManager.class); f.domain.managers = mock(ResourceManagerLocator.class);
+            when(f.domain.managers.getResourceManagerByType("externalService")).thenReturn(manager);
+            ServiceRecord row = new ServiceRecord(); row.setId(7L); row.setKind("service"); row.setAccountId(77L);
+            when(manager.getById(eq("externalService"), eq("1s7"), any())).thenReturn(row);
+            assertEquals("NotFound", assertThrows(ClientVisibleException.class, () -> f.domain.visible(f.request, descriptor, "1s7")).getCode());
+            row.setKind("externalService"); row.setAccountId(88L);
+            assertEquals("NotFound", assertThrows(ClientVisibleException.class, () -> f.domain.visible(f.request, descriptor, "1s7")).getCode());
+            row.setAccountId(77L); assertSame(row, f.domain.visible(f.request, descriptor, "1s7"));
+            verify(manager, never()).update(anyString(), anyString(), any());
+        } finally {
+            if (previous == null) ArchaiusUtil.getConfiguration().clearProperty("api.ai.bridge.enabled");
+            else ArchaiusUtil.getConfiguration().setProperty("api.ai.bridge.enabled", previous);
+        }
+    }
+
     @Test public void copiedDomainUsesRealRevisionGuardAndRestoresOriginalContext() throws Exception {
         Fixture f = new Fixture(); Object before = ArchaiusUtil.getConfiguration().getProperty("api.ai.bridge.enabled");
         try {
@@ -329,6 +405,91 @@ public class AiResourceChangeDomainTest {
         }
         Connection open() throws Exception { Connection result = DriverManager.getConnection(url); result.setAutoCommit(false); return result; }
         @Override public void close() throws Exception { owner.close(); }
+    }
+
+    @Test public void aliasReferenceReadsKeepTheActualTypeAndStackAuthorityAndRejectSourceChangesBeforeMutation() throws Exception {
+        Fixture f = aliasFixture(); var descriptor = AiResourceChangeDescriptor.require("dnsService", "update_targets");
+        Map<String, Object> parameters = Map.of("serviceIds", List.of("1s9"));
+        Object before = ArchaiusUtil.getConfiguration().getProperty("api.ai.bridge.enabled");
+        try {
+            ArchaiusUtil.getConfiguration().setProperty("api.ai.bridge.enabled", true);
+            Map<String, Object> refs = f.domain.aliasReferenceSnapshot(f.request, descriptor, "1s7", parameters);
+            Map<String, Object> plan = Map.of("referenceSnapshot", refs);
+            assertEquals(Map.of("serviceLinks", List.of(Map.of("serviceId", "1s9"))),
+                    f.domain.prepare(f.request, descriptor, "1s7", parameters, plan));
+            ResourceManager manager = f.domain.managers.getResourceManagerByType("dnsService");
+            when(manager.resourceAction(eq("dnsService"), any())).thenAnswer(call -> {
+                ApiRequest actual = call.getArgument(1); assertEquals("setservicelinks", actual.getAction());
+                assertEquals(Map.of("serviceLinks", List.of(Map.of("serviceId", "1s9"))), actual.getRequestObject());
+                assertTrue(AiResourceChangeDomain.trustedDomain(actual)); return f.domain.objects.loadResource(Service.class, 7L);
+            });
+            assertNotNull(f.domain.dispatch(f.request, descriptor, "1s7", parameters, "own-plan"));
+            ServiceRecord target = (ServiceRecord) f.domain.objects.loadResource(Service.class, 9L);
+            target.setUuid("replacement");
+            assertEquals("ResourceChangePlanStale", assertThrows(ClientVisibleException.class,
+                    () -> f.domain.prepare(f.request, descriptor, "1s7", parameters, plan)).getCode()); target.setUuid("target");
+            var stack = (StackRecord) f.domain.objects.loadResource(io.cattle.platform.core.model.Stack.class, 3L);
+            stack.setUuid("replacement-stack");
+            assertEquals("ResourceChangePlanStale", assertThrows(ClientVisibleException.class,
+                    () -> f.domain.prepare(f.request, descriptor, "1s7", parameters, plan)).getCode()); stack.setUuid("stack");
+            when(f.schema.getResourceMethods()).thenReturn(List.of());
+            assertEquals("PermissionDenied", assertThrows(ClientVisibleException.class,
+                    () -> f.domain.prepare(f.request, descriptor, "1s7", parameters, plan)).getCode());
+            when(f.schema.getResourceMethods()).thenReturn(List.of("GET", "PUT", "DELETE")); target.setAccountId(88L);
+            assertEquals("NotFound", assertThrows(ClientVisibleException.class,
+                    () -> f.domain.prepare(f.request, descriptor, "1s7", parameters, plan)).getCode());
+            verify(manager, times(1)).resourceAction(eq("dnsService"), any());
+            assertSame(f.request, ApiContext.getContext().getApiRequest());
+        } finally {
+            if (before == null) ArchaiusUtil.getConfiguration().clearProperty("api.ai.bridge.enabled");
+            else ArchaiusUtil.getConfiguration().setProperty("api.ai.bridge.enabled", before);
+        }
+    }
+
+    @Test public void aliasSelfAdvancedLinksAndIncomingConsumersStopBeforeAnyRemovalDispatch() {
+        Fixture f = aliasFixture(); ServiceRecord alias = (ServiceRecord) f.domain.objects.loadResource(Service.class, 7L);
+        var descriptor = AiResourceChangeDescriptor.require("dnsService", "remove");
+        var link = new io.cattle.platform.core.model.tables.records.ServiceConsumeMapRecord();
+        link.setId(11L); link.setServiceId(7L); link.setConsumedServiceId(7L); link.setAccountId(77L);
+        when(f.domain.objects.find(io.cattle.platform.core.model.ServiceConsumeMap.class, "serviceId", 7L, "removed", null))
+                .thenReturn(List.of(link));
+        assertEquals("ResourceChangeUnsupported", assertThrows(ClientVisibleException.class,
+                () -> f.domain.ready(descriptor, alias, null)).getCode());
+        link.setConsumedServiceId(9L); link.setName("advanced-alias");
+        assertEquals("ResourceChangeUnsupported", assertThrows(ClientVisibleException.class,
+                () -> f.domain.ready(descriptor, alias, null)).getCode());
+        link.setName(null);
+        when(f.domain.objects.find(io.cattle.platform.core.model.ServiceConsumeMap.class, "consumedServiceId", 7L, "removed", null))
+                .thenReturn(List.of(link));
+        assertEquals("ResourceChangeUnsupported", assertThrows(ClientVisibleException.class,
+                () -> f.domain.ready(descriptor, alias, null)).getCode());
+        verify(f.domain.managers.getResourceManagerByType("dnsService"), never()).delete(anyString(), anyString(), any());
+    }
+
+    private static Fixture aliasFixture() {
+        Fixture f = new Fixture(); when(f.schemas.getSchema("dnsService")).thenReturn(f.schema);
+        when(f.schemas.getSchema("stack")).thenReturn(f.schema);
+        when(f.schema.getResourceMethods()).thenReturn(List.of("GET", "PUT", "DELETE"));
+        when(f.schema.getResourceActions()).thenReturn(Map.of("setservicelinks", mock(io.github.ibuildthecloud.gdapi.model.Action.class)));
+        f.domain.targets = mock(io.cattle.platform.iaas.api.auth.apikey.ApiKeyTargetResolver.class);
+        when(f.domain.targets.parseScopeId(anyString(), anyString())).thenAnswer(call ->
+                Long.parseLong(((String) call.getArgument(1)).replaceFirst("^1(?:st|s)", "")));
+        var formatter = new io.cattle.platform.api.formatter.DefaultIdFormatter(); formatter.setSchemaFactory(f.schemas);
+        when(f.schemas.getBaseType("dnsService")).thenReturn("service"); formatter.setTypeMappings(Map.of("service", "s", "stack", "st"));
+        ApiContext.getContext().setIdFormatter(formatter);
+        var alias = new ServiceRecord(); alias.setId(7L); alias.setUuid("alias"); alias.setKind("dnsService");
+        alias.setAccountId(77L); alias.setStackId(3L); alias.setName("alias"); alias.setState("inactive");
+        var target = new ServiceRecord(); target.setId(9L); target.setUuid("target"); target.setKind("service");
+        target.setAccountId(77L); target.setStackId(3L); target.setName("db"); target.setState("active");
+        var stack = new StackRecord(); stack.setId(3L); stack.setUuid("stack"); stack.setKind("stack"); stack.setAccountId(77L); stack.setName("Blue");
+        when(f.domain.objects.loadResource(Service.class, 7L)).thenReturn(alias); when(f.domain.objects.loadResource(Service.class, 9L)).thenReturn(target);
+        when(f.domain.objects.loadResource(io.cattle.platform.core.model.Stack.class, 3L)).thenReturn(stack);
+        f.domain.managers = mock(ResourceManagerLocator.class); var manager = mock(ResourceManager.class);
+        when(f.domain.managers.getResourceManagerByType(anyString())).thenReturn(manager);
+        when(manager.getById(eq("dnsService"), eq("1s7"), any())).thenReturn(alias);
+        when(manager.getById(eq("service"), eq("1s9"), any())).thenReturn(target);
+        when(manager.getById(eq("stack"), eq("1st3"), any())).thenReturn(stack);
+        return f;
     }
 
     private static class Fixture {

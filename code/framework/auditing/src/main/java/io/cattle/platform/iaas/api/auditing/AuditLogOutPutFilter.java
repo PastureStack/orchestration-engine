@@ -24,7 +24,8 @@ public class AuditLogOutPutFilter implements ResourceOutputFilter {
         if (original instanceof AuditLogRecord) {
             AuditLogRecord auditLogRecord = (AuditLogRecord) original;
             java.util.Map<String, Object> fields = DataUtils.getFields(auditLogRecord);
-            if (fields.get("keyId") instanceof String || "aiToolCallEvent".equals(auditLogRecord.getResourceType())) {
+            if (fields.get("keyId") instanceof String || "aiToolCallEvent".equals(auditLogRecord.getResourceType())
+                    || "aiAuditQuery".equals(auditLogRecord.getResourceType())) {
                 // Key events expose only approved metadata, including on detail.
                 converted.getFields().remove("requestObject");
                 converted.getFields().remove("responseObject");

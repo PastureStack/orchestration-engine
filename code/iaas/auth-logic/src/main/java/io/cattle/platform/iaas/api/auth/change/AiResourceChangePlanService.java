@@ -44,7 +44,7 @@ public class AiResourceChangePlanService {
             String resourceId = text(input.get("resourceId"));
             if (descriptor.createsResource() ? resourceId != null : resourceId == null) throw error(422, "ResourceChangeInputInvalid");
             Object target = resourceId == null ? null : domain.lock(descriptor.resourceType(), domain.internalId(descriptor.resourceType(), resourceId));
-            Object parent = descriptor.createsResource() && "service".equals(descriptor.resourceType())
+            Object parent = descriptor.requiresStackParent()
                     ? domain.lock("stack", domain.internalId("stack", text(parameters.get("stackId")))) : null;
             Policy actor = domain.actor(request);
             if (target != null) visibleTarget(request, descriptor, resourceId, target);
@@ -59,6 +59,8 @@ public class AiResourceChangePlanService {
                 plan.put("resourceId", resourceId); plan.put("internalResourceId", target == null ? null : ObjectUtils.getId(target));
                 plan.put("actorId", actor.getAuthenticatedAsAccountId()); plan.put("accountId", actor.getAccountId());
                 plan.put("parameters", parameters); plan.put("body", body);
+                if ("dnsService".equals(descriptor.resourceType()) && Set.of("update_targets", "remove").contains(descriptor.operation()))
+                    plan.put("referenceSnapshot", domain.aliasReferenceSnapshot(request, descriptor, resourceId, parameters));
                 plan.put("snapshot", domain.snapshot(target)); plan.put("parentSnapshot", domain.snapshot(parent));
                 plan.put("targetPath", domain.targetPath(request, target, parent, parameters));
                 plan.put("changes", domain.changes(descriptor, target, parameters));
@@ -116,7 +118,7 @@ public class AiResourceChangePlanService {
             AiResourceChangeDescriptor descriptor = descriptor(loaded);
             Object target = loaded.get("internalResourceId") instanceof Number targetId ? domain.lock(descriptor.resourceType(), targetId.longValue()) : null;
             Map<String, Object> parameters = map(loaded.get("parameters"));
-            Object parent = descriptor.createsResource() && "service".equals(descriptor.resourceType())
+            Object parent = descriptor.requiresStackParent()
                     ? domain.lock("stack", domain.internalId("stack", text(parameters.get("stackId")))) : null;
             Map<String, Object> plan = owned(loaded, request);
             if ("apply".equals(action) && !"preview".equals(plan.get("status"))) {
@@ -253,7 +255,9 @@ public class AiResourceChangePlanService {
         output.put("resourceTextIsUntrusted", true); return output;
     }
 
-    private void eraseSnapshot(Map<String, Object> plan) { plan.remove("snapshot"); plan.remove("parentSnapshot"); plan.remove("body"); }
+    private void eraseSnapshot(Map<String, Object> plan) {
+        plan.remove("snapshot"); plan.remove("parentSnapshot"); plan.remove("body"); plan.remove("referenceSnapshot");
+    }
     private AiResourceChangeDescriptor descriptor(Map<String, Object> plan) {
         return AiResourceChangeDescriptor.require(text(plan.get("resourceType")), text(plan.get("operation")));
     }

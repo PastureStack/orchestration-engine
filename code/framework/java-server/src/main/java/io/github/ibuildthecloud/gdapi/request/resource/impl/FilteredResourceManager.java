@@ -56,17 +56,20 @@ public class FilteredResourceManager implements ResourceManager {
     public final boolean supportsScopedCollectionQuery(Object guard) {
         if (guard == null || filter == null || next == null) return false;
         try {
-            // Both wrapper entry points and both filter overloads must remain
-            // pure delegation. An override may synthesize an unscoped list.
-            boolean transparent = getClass().getMethod("list", String.class, ApiRequest.class)
+            // Wrapper overrides and unknown filter overrides can synthesize an
+            // unscoped list. Only the actual SQL guard may attest an exact known
+            // result validator; it cannot replace the underlying query proof.
+            boolean unchangedWrapper = getClass().getMethod("list", String.class, ApiRequest.class)
                     .getDeclaringClass() == FilteredResourceManager.class
                     && getClass().getMethod("list", String.class, Map.class, ListOptions.class)
-                    .getDeclaringClass() == FilteredResourceManager.class
-                    && filter.getClass().getMethod("list", String.class, ApiRequest.class, ResourceManager.class)
+                    .getDeclaringClass() == FilteredResourceManager.class;
+            boolean unchangedFilter = filter.getClass().getMethod("list", String.class, ApiRequest.class, ResourceManager.class)
                     .getDeclaringClass() == AbstractResourceManagerFilter.class
                     && filter.getClass().getMethod("list", String.class, Map.class, ListOptions.class, ResourceManager.class)
                     .getDeclaringClass() == AbstractResourceManagerFilter.class;
-            return transparent && next.supportsScopedCollectionQuery(guard);
+            boolean validator = guard instanceof ResourceManager.ScopedCollectionQueryGuard verifier
+                    && verifier.attestsQueryPreservingFilter(filter);
+            return unchangedWrapper && (unchangedFilter || validator) && next.supportsScopedCollectionQuery(guard);
         } catch (NoSuchMethodException | SecurityException unknownPath) {
             return false;
         }
