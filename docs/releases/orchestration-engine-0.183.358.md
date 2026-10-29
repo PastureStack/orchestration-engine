@@ -1,4 +1,4 @@
-# Orchestration Engine 0.183.358 source candidate
+# Orchestration Engine 0.183.358
 
 ## Behavior
 
@@ -32,8 +32,13 @@ search cases passed with actual module test compilation. Local JDK is
 25.0.4.101 and Maven 3.9.16; required component CI qualifies its own toolchain.
 No runtime dependency is updated. Previous unaffected evidence is retained.
 
-Full required CI/CodeQL, original artifact verification, assembled Server and
-fresh 8080 lifecycle/weak-model acceptance remain pending. This is not complete
+Required component CI/CodeQL passed: 374 suites, 3,631 tests, zero failures/errors
+and one existing conditional skip. Eleven public assets match original CI bytes;
+JAR SHA256 `46ad548c6e284a7758eb7f65c85fb5878e2ebdc861ef5c396a00a6510709b733`.
+Producer `1da1f4c37fe43b8c387045c263d286f7db01c574` and signed release/tag
+source `50569f39f241216d38661f49828dec0d925bb605` share the tested tree.
+Assembled Server publication and fresh 8080 lifecycle/weak-model acceptance
+remain separate pending gates. This is not complete
 Catalog, advanced-form or frontend coverage. The frozen Catalog/Archive work is
 separate. Roll back through the assembled Server procedure, preserve data and
 plan receipts, and never blindly replay an uncertain or revoked operation.

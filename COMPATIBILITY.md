@@ -1,11 +1,12 @@
 # Compatibility Contract
 
-## Engine 0.183.358 source candidate
+## Engine 0.183.358 release
 
-Verified managed retirement and native name-query fixes await required CI and
-8080 acceptance. Ordinary Full/legacy API paths remain unchanged; historical
+The managed retirement and native name-query fixes passed required component
+CI/CodeQL; original CI bytes are published. Designated 8080 acceptance remains
+a separate pending gate. Ordinary Full/legacy API paths remain unchanged; historical
 rows or request bodies do not supply cleanup authority. Named/file storage
-keeps its normal deactivation path without REMOVE. See [candidate boundaries](docs/releases/orchestration-engine-0.183.358.md).
+keeps its normal deactivation path without REMOVE. See [release boundaries](docs/releases/orchestration-engine-0.183.358.md).
 
 The migration preserves established `io.cattle.*` Java packages, Maven coordinates, database schemas and migration IDs, setting keys, API resource and field names, event names, Docker labels, generated client types, and internal service identifiers. These values are persisted or consumed across repositories and are not product branding.
 
