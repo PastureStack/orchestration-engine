@@ -2,6 +2,14 @@ package io.cattle.platform.iaas.api.auth.apikey;
 import static org.junit.Assert.*;
 import org.junit.Test;
 public class ApiKeyOperationsTest {
+    @Test public void stackChildLifecycleActionsAreExactReviewedPairs() {
+        for (String action : new String[] { "activateservices", "deactivateservices" }) {
+            assertEquals("update", ApiKeyOperations.of("POST", action, null, "stack").id());
+            assertTrue(ApiKeyOperations.of("POST", action, null, "stack").registered());
+            assertFalse(ApiKeyOperations.of("POST", action, null, "service").registered());
+            assertFalse(ApiKeyOperations.of("POST", action, null, "pluginStack").registered());
+        }
+    }
     @Test public void sensitiveDownloadsAreExportsNotOrdinaryReads() {
         for (String link : new String[] {"composeConfig", "config", "pem", "certificate", "dockerComposeConfig", "rancherComposeConfig"}) {
             assertEquals("export", ApiKeyOperations.of("GET", null, link).id());

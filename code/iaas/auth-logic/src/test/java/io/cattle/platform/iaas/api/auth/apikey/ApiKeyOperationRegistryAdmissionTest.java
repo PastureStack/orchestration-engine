@@ -6,6 +6,8 @@ import io.cattle.platform.api.auth.ApiKeyAuditSink;
 import io.cattle.platform.api.auth.Policy;
 import io.cattle.platform.core.model.Account;
 import io.cattle.platform.core.model.Stack;
+import io.cattle.platform.core.model.Service;
+import static io.cattle.platform.core.model.tables.ServiceTable.SERVICE;
 import io.cattle.platform.core.model.tables.records.*;
 import io.cattle.platform.object.ObjectManager;
 import io.github.ibuildthecloud.gdapi.context.ApiContext;
@@ -44,6 +46,8 @@ public class ApiKeyOperationRegistryAdmissionTest {
             {"container", "updateunhealthy", "update"}, {"volume", "create", "create"},
             {"volume", "allocate", "update"}, {"volume", "deallocate", "update"},
             {"environment", "addoutputs", "update"}, {"instance", "allocate", "update"}
+            , {"stack", "activateservices", "update"}, {"stack", "deactivateservices", "update"}
+            , {"environment", "activateservices", "update"}, {"environment", "deactivateservices", "update"}
         };
     }
     private final String type, action, operation;
@@ -145,11 +149,37 @@ public class ApiKeyOperationRegistryAdmissionTest {
     @Test public void unsupportedRootsAndSensitiveOrMultiTargetActionsStayUnknown() {
         assertFalse(ApiKeyOperations.of("POST", action, null, "pluginResource").registered());
         assertFalse(ApiKeyOperations.of("POST", action, null).registered());
-        for (String unsupported : List.of("setmembers", "changesecret", "activateservices", "setservicelinks", "replay", "backup", "console", "proxy", "portpreflight", "volumepreflight")) {
-            assertFalse(ApiKeyOperations.of("POST", unsupported, null, type).registered());
+        for (String unsupported : List.of("setmembers", "changesecret", "activateservices", "deactivateservices", "setservicelinks", "replay", "backup", "console", "proxy", "portpreflight", "volumepreflight")) {
+            if ("stack".equals(canonical) && Set.of("activateservices", "deactivateservices").contains(unsupported))
+                assertEquals(new ApiKeyOperations.Operation("update", true), ApiKeyOperations.of("POST", unsupported, null, type));
+            else assertFalse(ApiKeyOperations.of("POST", unsupported, null, type).registered());
         }
+        for (String other : List.of("pluginResource", "composeProject", "kubernetesStack"))
+            for (String batch : List.of("activateservices", "deactivateservices"))
+                assertFalse(ApiKeyOperations.of("POST", batch, null, other).registered());
         request.setAction("futurePluginAction");
         when(schema.getResourceActions()).thenReturn(Map.of("futurePluginAction", mock(Action.class)));
         custom(rule("allow", ApiKeyPolicy.Effect.ALLOW, targetId, operation)); denied("UnknownOperation");
+    }
+
+    @Test public void stackBatchChecksEveryChildBeforeDispatchButInheritsTheAuthorizedRootGrant() throws Exception {
+        if (!"stack".equals(canonical) || !Set.of("activateservices", "deactivateservices").contains(action)) return;
+        ServiceRecord child = new ServiceRecord(); child.setId(21L); child.setStackId(10L); child.setAccountId(5L);
+        when(resolver.objectManager.find(Service.class, SERVICE.STACK_ID, 10L, SERVICE.REMOVED, null)).thenReturn(List.of(child));
+        ApiKeyPolicy.Rule allow = rule("root", ApiKeyPolicy.Effect.ALLOW, targetId, "update");
+        ApiKeyPolicy.Rule denyChild = new ApiKeyPolicy.Rule("child", ApiKeyPolicy.Effect.DENY,
+                ApiKeyPolicy.Scope.resource("service", "1s21"), Set.of("update"));
+        custom(allow, denyChild); denied("KeyPolicyDenied");
+        clearInvocations(audit, manager); custom(allow); dispatch(); decision("ALLOW");
+        verify(manager).resourceAction(type, request);
+    }
+
+    @Test public void stackBatchRejectsForeignRelationsAndRevokedChildOwnersBeforeAnyEffects() {
+        if (!"stack".equals(canonical) || !Set.of("activateservices", "deactivateservices").contains(action)) return;
+        ServiceRecord child = new ServiceRecord(); child.setId(21L); child.setStackId(10L); child.setAccountId(88L);
+        when(resolver.objectManager.find(Service.class, SERVICE.STACK_ID, 10L, SERVICE.REMOVED, null)).thenReturn(List.of(child));
+        custom(rule("root", ApiKeyPolicy.Effect.ALLOW, targetId, "update")); denied("KeyScopeDenied");
+        child.setAccountId(5L); when(owner.authorizeObject(child)).thenReturn(null);
+        clearInvocations(audit); denied("OwnerPermissionDenied");
     }
 }

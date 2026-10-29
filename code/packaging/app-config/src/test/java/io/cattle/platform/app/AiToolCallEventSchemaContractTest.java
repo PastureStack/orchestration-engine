@@ -13,6 +13,15 @@ import org.junit.Test;
 
 /** The real request validator must accept exactly the server's bounded audit vocabulary. */
 public class AiToolCallEventSchemaContractTest {
+    @Test public void typedResourceBatchesHaveAuditNamesWithoutAnArbitraryTransportCommand() {
+        assertTrue(ClientToolAuditEvent.COMMANDS.containsAll(Set.of("list_capabilities", "find_resources", "get_resource",
+                "preview_resource_change", "apply_resource_change")));
+        for (String name : List.of("request", "http", "raw_http", "proxy", "execute_url")) {
+            assertFalse(new ClientToolAuditEvent("aitool-11111111-1111-1111-1111-111111111111",
+                    name, "start", "pending", "NONE", null).valid());
+        }
+    }
+
     @Test public void schemaEnumsExactlyMatchTheSharedServerConstants() throws Exception {
         Path root = Path.of("").toAbsolutePath();
         while (root != null && !Files.isDirectory(root.resolve("resources/content/schema"))) root = root.getParent();

@@ -1,0 +1,21 @@
+{
+    "pluralName": "aiResourceChangePlans",
+    "collectionMethods": [ "GET", "POST" ],
+    "resourceMethods": [ "GET" ],
+    "resourceActions": { "confirm": {}, "apply": {}, "cancel": {} },
+    "resourceFields": {
+        "resourceType": { "type": "enum", "options": [ "stack", "service", "container" ], "create": true, "required": true },
+        "operation": { "type": "enum", "options": [ "start", "stop", "restart", "remove", "create", "update_metadata", "scale" ], "create": true, "required": true },
+        "resourceId": { "type": "string", "create": true, "maxLength": 128, "nullable": true },
+        "parameters": { "type": "json", "create": true, "required": true },
+        "targetPath": { "type": "string", "create": false, "update": false },
+        "changes": { "type": "array[json]", "create": false, "update": false },
+        "confirmationState": { "type": "string", "create": false, "update": false },
+        "status": { "type": "string", "create": false, "update": false },
+        "operationId": { "type": "string", "create": false, "update": false },
+        "verifiedResult": { "type": "boolean", "create": false, "update": false },
+        "messageCode": { "type": "string", "create": false, "update": false },
+        "expiresAt": { "type": "date", "create": false, "update": false },
+        "resourceTextIsUntrusted": { "type": "boolean", "create": false, "update": false }
+    }
+}

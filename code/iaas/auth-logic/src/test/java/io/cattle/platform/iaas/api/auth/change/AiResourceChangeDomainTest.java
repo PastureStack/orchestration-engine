@@ -1,0 +1,312 @@
+package io.cattle.platform.iaas.api.auth.change;
+
+import static org.junit.Assert.*;
+import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.Mockito.*;
+import static io.cattle.platform.core.model.tables.ServiceTable.SERVICE;
+import io.cattle.platform.api.auth.Policy;
+import io.cattle.platform.archaius.util.ArchaiusUtil;
+import io.cattle.platform.core.model.Account;
+import io.cattle.platform.core.model.Instance;
+import io.cattle.platform.core.model.Mount;
+import io.cattle.platform.core.model.Nic;
+import io.cattle.platform.core.model.Port;
+import io.cattle.platform.core.model.Service;
+import io.cattle.platform.core.model.ServiceExposeMap;
+import io.cattle.platform.core.model.tables.records.AccountRecord;
+import io.cattle.platform.core.model.tables.records.InstanceRecord;
+import io.cattle.platform.core.model.tables.records.MountRecord;
+import io.cattle.platform.core.model.tables.records.NicRecord;
+import io.cattle.platform.core.model.tables.records.PortRecord;
+import io.cattle.platform.core.model.tables.records.ServiceExposeMapRecord;
+import io.cattle.platform.core.model.tables.records.ServiceRecord;
+import io.cattle.platform.core.model.tables.records.StackRecord;
+import io.cattle.platform.iaas.api.auth.ai.AiKeyAuthorization;
+import io.cattle.platform.iaas.api.auth.apikey.ApiKeyAiBridgeGuard;
+import io.cattle.platform.iaas.api.auth.apikey.ApiKeyAuthorizationService;
+import io.cattle.platform.iaas.api.auth.apikey.ApiKeyCredentialContext;
+import io.cattle.platform.iaas.api.auth.apikey.ApiKeyPolicy;
+import io.cattle.platform.iaas.api.auth.impl.ApiAuthenticator;
+import io.cattle.platform.json.JacksonJsonMapper;
+import io.cattle.platform.object.ObjectManager;
+import io.cattle.platform.servicediscovery.api.service.ServiceDeploymentReadiness;
+import io.github.ibuildthecloud.gdapi.context.ApiContext;
+import io.github.ibuildthecloud.gdapi.exception.ClientVisibleException;
+import io.github.ibuildthecloud.gdapi.factory.SchemaFactory;
+import io.github.ibuildthecloud.gdapi.model.Schema;
+import io.github.ibuildthecloud.gdapi.model.impl.FieldImpl;
+import io.github.ibuildthecloud.gdapi.request.ApiRequest;
+import io.github.ibuildthecloud.gdapi.request.resource.ResourceManager;
+import io.github.ibuildthecloud.gdapi.request.resource.ResourceManagerLocator;
+import io.github.ibuildthecloud.gdapi.server.model.ApiServletContext;
+import io.github.ibuildthecloud.gdapi.validation.ValidationHandler;
+import jakarta.servlet.http.HttpServletRequest;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.util.Arrays;
+import java.util.Date;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+import org.jooq.SQLDialect;
+import org.jooq.conf.Settings;
+import org.jooq.impl.DSL;
+import org.junit.After;
+import org.junit.Test;
+
+public class AiResourceChangeDomainTest {
+    @After public void cleanup() { ApiContext.remove(); }
+
+    @Test public void copiedDomainUsesRealRevisionGuardAndRestoresOriginalContext() throws Exception {
+        Fixture f = new Fixture(); Object before = ArchaiusUtil.getConfiguration().getProperty("api.ai.bridge.enabled");
+        try {
+            ArchaiusUtil.getConfiguration().setProperty("api.ai.bridge.enabled", true);
+            var descriptor = AiResourceChangeDescriptor.require("service", "update_metadata");
+            assertEquals(Map.of("name", "after"), f.domain.prepare(f.request, descriptor, "1s7", Map.of("name", "after")));
+            assertSame(f.request, ApiContext.getContext().getApiRequest()); assertSame(f.policy, ApiContext.getContext().getPolicy());
+            assertFalse(AiResourceChangeDomain.trustedDomain(f.request));
+            for (String revision : Arrays.asList(null, "2")) {
+                when(f.http.getHeader(ApiKeyAiBridgeGuard.EXPECTED_REVISION_HEADER)).thenReturn(revision);
+                assertEquals("ApiKeyPolicyChanged", assertThrows(ClientVisibleException.class,
+                        () -> f.domain.prepare(f.request, descriptor, "1s7", Map.of("name", "after"))).getCode());
+                assertSame(f.request, ApiContext.getContext().getApiRequest()); assertSame(f.policy, ApiContext.getContext().getPolicy());
+            }
+        } finally {
+            if (before == null) ArchaiusUtil.getConfiguration().clearProperty("api.ai.bridge.enabled");
+            else ArchaiusUtil.getConfiguration().setProperty("api.ai.bridge.enabled", before);
+        }
+    }
+
+    @Test public void currentFieldCapabilityAndManagerVisibilityCannotBeBorrowedFromTheSyntheticType() throws Exception {
+        Fixture f = new Fixture(); f.name.setUpdate(false);
+        assertEquals("PermissionDenied", assertThrows(ClientVisibleException.class,
+                () -> f.domain.prepare(f.request, AiResourceChangeDescriptor.require("service", "update_metadata"), "1s7", Map.of("name", "after"))).getCode());
+        verify(f.validation, never()).generate(any());
+    }
+
+    @Test public void removalWaitsForOldPortsAndAttachmentsRatherThanOnlyTheRemovedRoot() {
+        AiResourceChangeDomain domain = new AiResourceChangeDomain(); domain.objects = mock(ObjectManager.class);
+        InstanceRecord instance = new InstanceRecord(); instance.setId(7L); instance.setState("removed"); instance.setRemoved(new Date());
+        PortRecord port = new PortRecord(); port.setInstanceId(7L);
+        when(domain.objects.find(Port.class, "instanceId", 7L, "removed", null)).thenReturn(List.of(port));
+        var descriptor = AiResourceChangeDescriptor.require("container", "remove");
+        assertFalse(domain.complete(descriptor, instance, Map.of(), Map.of()));
+        when(domain.objects.find(Port.class, "instanceId", 7L, "removed", null)).thenReturn(List.of());
+        assertTrue(domain.complete(descriptor, instance, Map.of(), Map.of()));
+    }
+
+    @Test public void stackStopUsesChildrenAndAnEmptyStackIsExplicitlySummarized() {
+        AiResourceChangeDomain domain = new AiResourceChangeDomain(); domain.objects = mock(ObjectManager.class); domain.json = new JacksonJsonMapper();
+        StackRecord stack = new StackRecord(); stack.setId(3L); stack.setState("active");
+        ServiceRecord child = new ServiceRecord(); child.setId(7L); child.setState("active");
+        when(domain.objects.find(Service.class, "stackId", 3L, "removed", null)).thenReturn(List.of(child));
+        var descriptor = AiResourceChangeDescriptor.require("stack", "stop");
+        Map<String, Object> before = Map.of("childServices", List.of(Map.of("id", 7)));
+        assertFalse(domain.complete(descriptor, stack, Map.of(), before));
+        child.setState("inactive"); assertTrue(domain.complete(descriptor, stack, Map.of(), before));
+        when(domain.objects.find(Service.class, "stackId", 3L, "removed", null)).thenReturn(List.of());
+        assertFalse(domain.complete(descriptor, stack, Map.of(), before));
+        assertTrue(domain.complete(descriptor, stack, Map.of(), Map.of("childServices", List.of())));
+        assertTrue(domain.changes(descriptor, stack, Map.of()).stream().anyMatch(change -> "emptyStack".equals(change.get("field")) &&
+                Boolean.TRUE.equals(change.get("after"))));
+        assertTrue(domain.changes(descriptor, stack, Map.of()).stream().anyMatch(change -> "childServiceState".equals(change.get("field")) &&
+                "inactive".equals(change.get("after"))));
+        assertFalse(domain.changes(descriptor, stack, Map.of()).stream().anyMatch(change -> "state".equals(change.get("field"))));
+    }
+
+    @Test public void removalSummaryCountsManagedInstancesAndMountsWithoutPromisingDataDeletion() {
+        AiResourceChangeDomain domain = new AiResourceChangeDomain(); domain.objects = mock(ObjectManager.class);
+        StackRecord stack = new StackRecord(); stack.setId(3L); stack.setState("active");
+        ServiceRecord service = new ServiceRecord(); service.setId(7L);
+        ServiceExposeMapRecord managed = new ServiceExposeMapRecord(); managed.setManaged(true); managed.setInstanceId(10L);
+        ServiceExposeMapRecord unmanaged = new ServiceExposeMapRecord(); unmanaged.setManaged(false); unmanaged.setInstanceId(11L);
+        MountRecord mount = new MountRecord(); mount.setId(20L); mount.setVolumeId(30L); mount.setPath("private-mounted-path");
+        when(domain.objects.find(Service.class, "stackId", 3L, "removed", null)).thenReturn(List.of(service));
+        when(domain.objects.find(ServiceExposeMap.class, "serviceId", 7L, "removed", null)).thenReturn(List.of(managed, managed, unmanaged));
+        when(domain.objects.find(Mount.class, "instanceId", 10L, "removed", null)).thenReturn(List.of(mount));
+        var changes = domain.changes(AiResourceChangeDescriptor.require("stack", "remove"), stack, Map.of());
+        assertEquals(List.of("state", "affectedServiceCount", "affectedInstanceCount", "affectedMountCount", "mountedDataRule"),
+                changes.stream().map(change -> change.get("field")).toList());
+        assertEquals("removed", changes.get(0).get("after"));
+        for (int index : List.of(1, 2, 3)) assertEquals(1, changes.get(index).get("before"));
+        assertEquals(0, changes.get(2).get("after"));
+        assertTrue(changes.get(3).containsKey("after")); assertNull(changes.get(3).get("after"));
+        assertEquals("EXISTING_DOMAIN_RETENTION_NO_ADDITIONAL_PURGE", changes.get(4).get("after"));
+        assertFalse(changes.toString().contains("private-mounted-path"));
+        verify(domain.objects, never()).find(Mount.class, "instanceId", 11L, "removed", null);
+        assertEquals("running", domain.changes(AiResourceChangeDescriptor.require("container", "start"), instance(10L), Map.of()).get(0).get("after"));
+        assertEquals("operation", domain.changes(AiResourceChangeDescriptor.require("service", "restart"), service, Map.of()).get(0).get("field"));
+        assertEquals("restart", domain.changes(AiResourceChangeDescriptor.require("service", "restart"), service, Map.of()).get(0).get("after"));
+    }
+
+    @Test public void scaleAndRestartNeedTheActualHealthyInstanceCountsAndRestartEvidence() {
+        AiResourceChangeDomain domain = new AiResourceChangeDomain(); domain.objects = mock(ObjectManager.class);
+        domain.deploymentReadiness = mock(ServiceDeploymentReadiness.class);
+        ServiceRecord service = new ServiceRecord(); service.setId(7L); service.setAccountId(77L); service.setState("active");
+        service.setData(Map.of("fields", Map.of("scale", 2)));
+        ServiceExposeMapRecord first = new ServiceExposeMapRecord(); first.setManaged(true); first.setInstanceId(10L);
+        ServiceExposeMapRecord second = new ServiceExposeMapRecord(); second.setManaged(true); second.setInstanceId(11L);
+        InstanceRecord a = instance(10), b = instance(11);
+        when(domain.objects.loadResource(Instance.class, 10L)).thenReturn(a); when(domain.objects.loadResource(Instance.class, 11L)).thenReturn(b);
+        when(domain.objects.find(ServiceExposeMap.class, "serviceId", 7L, "removed", null)).thenReturn(List.of(first));
+        assertFalse(domain.complete(AiResourceChangeDescriptor.require("service", "scale"), service, Map.of("scale", 2), Map.of()));
+        when(domain.objects.find(ServiceExposeMap.class, "serviceId", 7L, "removed", null)).thenReturn(List.of(first, second));
+        when(domain.deploymentReadiness.isReady(service)).thenReturn(true);
+        assertTrue(domain.complete(AiResourceChangeDescriptor.require("service", "scale"), service, Map.of("scale", 2), Map.of()));
+        var restart = AiResourceChangeDescriptor.require("service", "restart");
+        Map<String, Object> before = Map.of("managedInstances", List.of(Map.of("id", 10L, "startCount", 1), Map.of("id", 11L, "startCount", 1)));
+        assertFalse(domain.complete(restart, service, Map.of(), before));
+        a.setStartCount(2L); assertFalse(domain.complete(restart, service, Map.of(), before));
+        b.setStartCount(2L); assertTrue(domain.complete(restart, service, Map.of(), before));
+    }
+
+    @Test public void scaleDownWaitsForSurplusInstancesMapsPortsNicsAndMountRetirement() {
+        AiResourceChangeDomain domain = new AiResourceChangeDomain(); domain.objects = mock(ObjectManager.class);
+        domain.deploymentReadiness = mock(ServiceDeploymentReadiness.class);
+        ServiceRecord service = new ServiceRecord(); service.setId(7L); service.setAccountId(77L); service.setState("active");
+        service.setData(Map.of("fields", Map.of("scale", 1)));
+        ServiceExposeMapRecord first = new ServiceExposeMapRecord(); first.setManaged(true); first.setInstanceId(10L);
+        ServiceExposeMapRecord retired = new ServiceExposeMapRecord(); retired.setManaged(true); retired.setInstanceId(11L);
+        InstanceRecord a = instance(10), b = instance(11);
+        when(domain.objects.loadResource(Instance.class, 10L)).thenReturn(a);
+        when(domain.objects.loadResource(Instance.class, 11L)).thenReturn(b);
+        when(domain.objects.find(ServiceExposeMap.class, "serviceId", 7L, "removed", null)).thenReturn(List.of(first, retired));
+        var descriptor = AiResourceChangeDescriptor.require("service", "scale");
+        Map<String, Object> before = Map.of("managedInstances", List.of(Map.of("id", 10L), Map.of("id", 11L)));
+        assertFalse(domain.complete(descriptor, service, Map.of("scale", 1), before));
+        when(domain.deploymentReadiness.isReady(service)).thenReturn(true);
+        when(domain.objects.find(ServiceExposeMap.class, "serviceId", 7L, "removed", null)).thenReturn(List.of(first));
+        assertFalse(domain.complete(descriptor, service, Map.of("scale", 1), before));
+        b.setRemoved(new Date()); b.setState("removed");
+        when(domain.objects.find(ServiceExposeMap.class, "instanceId", 11L, "removed", null)).thenReturn(List.of(retired));
+        assertFalse(domain.complete(descriptor, service, Map.of("scale", 1), before));
+        when(domain.objects.find(ServiceExposeMap.class, "instanceId", 11L, "removed", null)).thenReturn(List.of());
+        when(domain.objects.find(Port.class, "instanceId", 11L, "removed", null)).thenReturn(List.of(new PortRecord()));
+        assertFalse(domain.complete(descriptor, service, Map.of("scale", 1), before));
+        when(domain.objects.find(Port.class, "instanceId", 11L, "removed", null)).thenReturn(List.of());
+        when(domain.objects.find(Nic.class, "instanceId", 11L, "removed", null)).thenReturn(List.of(new NicRecord()));
+        assertFalse(domain.complete(descriptor, service, Map.of("scale", 1), before));
+        when(domain.objects.find(Nic.class, "instanceId", 11L, "removed", null)).thenReturn(List.of());
+        MountRecord mount = new MountRecord(); mount.setState("deactivating");
+        when(domain.objects.find(Mount.class, "instanceId", 11L, "removed", null)).thenReturn(List.of(mount));
+        assertFalse(domain.complete(descriptor, service, Map.of("scale", 1), before));
+        mount.setState("inactive"); assertTrue(domain.complete(descriptor, service, Map.of("scale", 1), before));
+    }
+
+    @Test public void manualScaleRejectsUnsupportedDeploymentModeWithoutBlockingItsOtherLifecycleActions() {
+        AiResourceChangeDomain domain = new AiResourceChangeDomain(); domain.deploymentReadiness = mock(ServiceDeploymentReadiness.class);
+        ServiceRecord service = new ServiceRecord(); service.setState("active");
+        var scale = AiResourceChangeDescriptor.require("service", "scale");
+        var rejected = assertThrows(ClientVisibleException.class, () -> domain.ready(scale, service, null));
+        assertEquals(422, rejected.getStatus()); assertEquals("ResourceChangeUnsupported", rejected.getCode());
+        domain.ready(AiResourceChangeDescriptor.require("service", "stop"), service, null);
+        domain.ready(AiResourceChangeDescriptor.require("service", "restart"), service, null);
+        service.setState("inactive"); domain.ready(AiResourceChangeDescriptor.require("service", "start"), service, null);
+        service.setState("active"); when(domain.deploymentReadiness.supportsManualScale(service)).thenReturn(true);
+        domain.ready(scale, service, null);
+        verify(domain.deploymentReadiness, times(2)).supportsManualScale(service);
+        verifyNoMoreInteractions(domain.deploymentReadiness);
+    }
+
+    @Test public void lockingReadKeepsOrdinaryUiUpdatesOutsideTheAtomicDispatchWindow() throws Exception {
+        try (Database database = new Database(); Connection ai = database.open(); Connection ui = database.open(); var pool =
+                Executors.newSingleThreadExecutor()) {
+            AiResourceChangeDomain domain = new AiResourceChangeDomain(); domain.setConfiguration(DSL.using(ai, SQLDialect.H2, new
+                    Settings().withRenderSchema(false)).configuration());
+            assertEquals("old", ((Service) domain.lock("service", 7)).getDescription());
+            CountDownLatch attempted = new CountDownLatch(1);
+            var write = pool.submit(() -> { attempted.countDown(); return
+                    ui.createStatement().executeUpdate("UPDATE service SET description='ui' WHERE id=7"); });
+            assertTrue(attempted.await(2, TimeUnit.SECONDS));
+            assertThrows(java.util.concurrent.TimeoutException.class, () -> write.get(150, TimeUnit.MILLISECONDS));
+            ai.commit(); assertEquals(1, (int) write.get(3, TimeUnit.SECONDS)); ui.commit();
+        }
+    }
+
+    @Test public void stopMustObserveOriginalInstancesEvenAfterTheirServiceMapsRetire() {
+        AiResourceChangeDomain domain = new AiResourceChangeDomain(); domain.objects = mock(ObjectManager.class);
+        ServiceRecord service = new ServiceRecord(); service.setId(7L); service.setAccountId(77L); service.setState("inactive");
+        StackRecord stack = new StackRecord(); stack.setId(3L); stack.setState("active");
+        InstanceRecord instance = instance(10L);
+        when(domain.objects.loadResource(Instance.class, 10L)).thenReturn(instance);
+        when(domain.objects.find(Service.class, "stackId", 3L, "removed", null)).thenReturn(List.of(service));
+        Map<String, Object> beforeService = Map.of("id", 7L, "managedInstances", List.of(Map.of("id", 10L)));
+        Map<String, Object> beforeStack = Map.of("childServices", List.of(beforeService));
+        var serviceStop = AiResourceChangeDescriptor.require("service", "stop");
+        var stackStop = AiResourceChangeDescriptor.require("stack", "stop");
+        assertFalse(domain.complete(serviceStop, service, Map.of(), beforeService));
+        assertFalse(domain.complete(stackStop, stack, Map.of(), beforeStack));
+        instance.setState("stopped");
+        assertTrue(domain.complete(serviceStop, service, Map.of(), beforeService));
+        assertTrue(domain.complete(stackStop, stack, Map.of(), beforeStack));
+        instance.setRemoved(new Date()); instance.setState("removed");
+        when(domain.objects.find(Port.class, "instanceId", 10L, "removed", null)).thenReturn(List.of(new PortRecord()));
+        assertFalse(domain.complete(serviceStop, service, Map.of(), beforeService));
+        assertFalse(domain.complete(stackStop, stack, Map.of(), beforeStack));
+        when(domain.objects.find(Port.class, "instanceId", 10L, "removed", null)).thenReturn(List.of());
+        assertTrue(domain.complete(serviceStop, service, Map.of(), beforeService));
+        assertTrue(domain.complete(stackStop, stack, Map.of(), beforeStack));
+        instance.setAccountId(88L); assertFalse(domain.complete(serviceStop, service, Map.of(), beforeService));
+    }
+
+    @Test public void earlierUiUpdateWinsAndAutocommitCannotPretendToHoldTheCasLock() throws Exception {
+        try (Database database = new Database(); Connection ai = database.open()) {
+            database.owner.createStatement().executeUpdate("UPDATE service SET description='ui' WHERE id=7");
+            AiResourceChangeDomain domain = new AiResourceChangeDomain(); domain.setConfiguration(DSL.using(ai, SQLDialect.H2, new
+                    Settings().withRenderSchema(false)).configuration());
+            assertEquals("ui", ((Service) domain.lock("service", 7)).getDescription()); ai.commit(); ai.setAutoCommit(true);
+            assertEquals("ResourceChangeTransactionRequired", assertThrows(ClientVisibleException.class, () -> domain.lock("service", 7)).getCode());
+        }
+    }
+
+    private static InstanceRecord instance(long id) {
+        InstanceRecord result = new InstanceRecord(); result.setId(id); result.setAccountId(77L); result.setState("running");
+                result.setHealthState("healthy"); result.setStartCount(1L); return result;
+    }
+    private static class Database implements AutoCloseable {
+        final String url = "jdbc:h2:mem:change-lock-" + UUID.randomUUID() + ";DATABASE_TO_LOWER=TRUE;LOCK_TIMEOUT=5000";
+        final Connection owner;
+        Database() throws Exception {
+            owner = DriverManager.getConnection(url);
+            var db = DSL.using(owner, SQLDialect.H2, new Settings().withRenderSchema(false));
+            db.createTable(SERVICE).columns(Arrays.stream(SERVICE.fields()).map(field -> DSL.field(field.getUnqualifiedName(),
+                    field.getDataType().getSQLDataType().nullable(true))).toList()).execute();
+            db.insertInto(SERVICE).set(SERVICE.ID, 7L).set(SERVICE.ACCOUNT_ID, 77L).set(SERVICE.KIND, "service").set(SERVICE.STATE,
+                    "active").set(SERVICE.DESCRIPTION, "old").execute();
+        }
+        Connection open() throws Exception { Connection result = DriverManager.getConnection(url); result.setAutoCommit(false); return result; }
+        @Override public void close() throws Exception { owner.close(); }
+    }
+
+    private static class Fixture {
+        final AiResourceChangeDomain domain = new AiResourceChangeDomain();
+        final Policy policy = mock(Policy.class); final SchemaFactory schemas = mock(SchemaFactory.class);
+        final Schema schema = mock(Schema.class); final FieldImpl name = new FieldImpl();
+        final HttpServletRequest http = mock(HttpServletRequest.class);
+        final ApiRequest request = new ApiRequest(new ApiServletContext(http, null, null), schemas);
+        final ValidationHandler validation = mock(ValidationHandler.class);
+        Fixture() {
+            when(policy.getAuthenticatedAsAccountId()).thenReturn(42L); when(policy.getAccountId()).thenReturn(77L);
+            domain.keys = mock(AiKeyAuthorization.class); when(domain.keys.actor(any())).thenReturn(policy);
+            AccountRecord actor = new AccountRecord(); actor.setId(42L); actor.setState("active");
+            AccountRecord project = new AccountRecord(); project.setId(77L); project.setState("active"); project.setKind("project");
+            domain.objects = mock(ObjectManager.class); when(domain.objects.loadResource(Account.class, 42L)).thenReturn(actor);
+                    when(domain.objects.loadResource(Account.class, 77L)).thenReturn(project);
+            domain.authenticator = mock(ApiAuthenticator.class); when(domain.authenticator.currentAuthorization(eq(42L), eq(77L),
+                    any())).thenReturn(new ApiAuthenticator.CurrentAuthorization(policy, schemas));
+            name.setCreate(true); name.setUpdate(true); when(schema.getResourceFields()).thenReturn(Map.of("name", name));
+                    when(schemas.getSchema("service")).thenReturn(schema);
+            domain.validation = validation; domain.json = new JacksonJsonMapper();
+            ApiKeyPolicy bridge = new ApiKeyPolicy(ApiKeyPolicy.Mode.FULL, ApiKeyPolicy.Effect.ALLOW, null, List.of(), ApiKeyPolicy.Purpose.AI_BRIDGE);
+            domain.keyAccess = new ApiKeyAuthorizationService() { @Override public void authorize(ApiRequest actual, Policy owner) {
+                    ApiKeyAiBridgeGuard.check(actual, bridge); } };
+            request.setType("aiResourceChangePlan"); request.setMethod("POST"); request.setRequestObject(Map.of());
+            when(http.getHeader(ApiKeyAiBridgeGuard.EXPECTED_REVISION_HEADER)).thenReturn("3");
+            ApiContext.newContext().setPolicy(policy); ApiContext.getContext().setApiRequest(request);
+            ApiKeyCredentialContext.attach(request, new ApiKeyCredentialContext(7, 42, "apiKeyRestricted", 3, bridge));
+        }
+    }
+}

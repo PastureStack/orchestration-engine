@@ -4,11 +4,16 @@
     <parent>
         <artifactId>cattle-parent</artifactId>
         <groupId>io.cattle</groupId>
-        <version>0.183.355</version>
+        <version>0.183.356</version>
         <relativePath>../../parent/pom.xml</relativePath>
     </parent>
     
     <dependencies>
+        <dependency>
+            <groupId>io.cattle</groupId>
+            <artifactId>cattle-iaas-service-discovery-api</artifactId>
+            <version>${project.version}</version>
+        </dependency>
         <dependency>
             <groupId>io.cattle</groupId>
             <artifactId>cattle-iaas-storage-service</artifactId>

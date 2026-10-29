@@ -32,6 +32,7 @@ import static io.cattle.platform.core.model.tables.IpAddressNicMapTable.IP_ADDRE
 import io.cattle.platform.core.model.Service;
 import io.cattle.platform.core.model.ServiceExposeMap;
 import static io.cattle.platform.core.model.tables.ServiceExposeMapTable.SERVICE_EXPOSE_MAP;
+import static io.cattle.platform.core.model.tables.ServiceTable.SERVICE;
 import static io.cattle.platform.core.model.tables.VolumeStoragePoolMapTable.VOLUME_STORAGE_POOL_MAP;
 import io.cattle.platform.core.model.Stack;
 import io.cattle.platform.core.model.Volume;
@@ -1146,6 +1147,23 @@ public class ApiKeyTargetResolver {
     }
 
     /** All schema-declared references must also be readable. Never trust a URL's parent alone. */
+    /** Exact Stack batch children inherit the root action grant, never an explicit child denial. */
+    public List<ApiKeyPolicyEvaluator.Target> stackLifecycleTargets(ApiRequest request, Policy owner) {
+        if (!"POST".equalsIgnoreCase(request.getMethod()) || request.getId() == null || request.getLink() != null
+                || !"stack".equals(ApiKeyQueryScopes.canonical(request.getType()))
+                || !Set.of("activateservices", "deactivateservices").contains(Objects.toString(request.getAction(), ""))) return List.of();
+        Stack root = objectManager.loadResource(Stack.class, parentId("stack", request.getId()));
+        if (root == null || root.getRemoved() != null || !Objects.equals(root.getAccountId(), owner.getAccountId())
+                || !ownerAuthorizes(root, owner)) denied("OwnerPermissionDenied");
+        List<ApiKeyPolicyEvaluator.Target> result = new ArrayList<>();
+        for (Service child : objectManager.find(Service.class, SERVICE.STACK_ID, root.getId(), SERVICE.REMOVED, null)) {
+            if (child.getRemoved() != null || !Objects.equals(child.getStackId(), root.getId())
+                    || !Objects.equals(child.getAccountId(), root.getAccountId())) denied("KeyScopeDenied");
+            result.add(resolveObject("service", child, owner));
+        }
+        return result;
+    }
+
     public List<ApiKeyPolicyEvaluator.Target> references(ApiRequest request, Policy owner) {
         List<ApiKeyPolicyEvaluator.Target> targets = new ArrayList<>();
         if (!"POST".equalsIgnoreCase(request.getMethod()) && !"PUT".equalsIgnoreCase(request.getMethod())) return targets;

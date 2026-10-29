@@ -6,12 +6,13 @@ import java.util.Set;
 public record ClientToolAuditEvent(String requestId, String command, String phase,
         String status, String reason, String correlationId) {
     public static final Set<String> COMMANDS = Set.of("find_stacks", "find_services", "get_service",
-            "preview_service_upgrade", "apply_service_upgrade", "get_operation", "update_service_description", "unknown");
+            "preview_service_upgrade", "apply_service_upgrade", "get_operation", "update_service_description",
+            "list_capabilities", "find_resources", "get_resource", "preview_resource_change", "apply_resource_change", "unknown");
     public static final Set<String> STATUSES = Set.of("pending", "succeeded", "accepted", "running",
             "failed", "unknown", "cancelled", "rejected", "needs_user");
     public static final Set<String> REASONS = Set.of("NONE", "INVALID_INPUT", "UNAVAILABLE", "CONTEXT_CHANGED",
             "STALE_REFERENCE", "FORBIDDEN", "SESSION_REQUIRED", "CONFLICT", "NEEDS_USER", "INVALID_RESPONSE",
-            "UNKNOWN_RESULT", "CANCELLED");
+            "UNKNOWN_RESULT", "CANCELLED", "CAPACITY");
     public static boolean validId(String value) {
         return value != null && value.matches("aitool-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}");
     }

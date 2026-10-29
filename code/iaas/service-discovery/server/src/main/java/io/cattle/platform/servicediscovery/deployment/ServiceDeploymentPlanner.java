@@ -171,6 +171,11 @@ public abstract class ServiceDeploymentPlanner {
                 || ifHealthyUnitsNeedReconcile();
     }
 
+    /** Observation only; unlike deploy(), this never creates or removes units. */
+    public boolean isDeploymentSettled() {
+        return !needToReconcileDeployment();
+    }
+
     private boolean ifHealthyUnitsNeedReconcile() {
         for (DeploymentUnit unit : healthyUnits) {
             if (!unit.isStarted()) {

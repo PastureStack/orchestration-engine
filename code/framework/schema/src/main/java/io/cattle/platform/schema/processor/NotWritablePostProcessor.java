@@ -11,9 +11,9 @@ public class NotWritablePostProcessor extends AbstractSchemaPostProcessor implem
 
     @Override
     public SchemaImpl postProcessRegister(SchemaImpl schema, SchemaFactory factory) {
-        // Self-reported audit metadata writes no user resource; readonly actors
-        // must still obtain its durable ACK before running read-only tools.
-        if ("aiToolCallEvent".equals(schema.getId())) {
+        // These POSTs either acknowledge client metadata or return an authorized
+        // server-side read projection; neither changes a user resource.
+        if ("aiToolCallEvent".equals(schema.getId()) || "aiResourceView".equals(schema.getId())) {
             schema.setCreate(true);
             schema.setUpdate(false);
             schema.setDeletable(false);

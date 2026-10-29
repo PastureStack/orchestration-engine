@@ -11,6 +11,8 @@ import io.cattle.platform.iaas.api.auth.apikey.ApiKeyPolicy;
 import io.cattle.platform.iaas.api.auth.apikey.ApiKeyPolicyCodec;
 import io.cattle.platform.iaas.api.auth.apikey.ApiKeyPolicyEvaluator;
 import io.cattle.platform.iaas.api.auth.apikey.ApiKeyTargetResolver;
+import io.cattle.platform.iaas.api.auth.apikey.ApiKeyOperations;
+import io.cattle.platform.iaas.api.auth.change.AiResourceChangeDomain;
 import io.cattle.platform.iaas.api.auth.impl.ApiAuthenticator;
 import io.cattle.platform.object.ObjectManager;
 import io.github.ibuildthecloud.gdapi.context.ApiContext;
@@ -104,6 +106,41 @@ public class AiKeyAuthorization {
         authorize(new ApiKeyCredentialContext(credentialId, ((Number) plan.get("actorId")).longValue(),
                 (String) plan.get("credentialKind"), ((Number) plan.get("credentialRevision")).longValue(), null),
                 owner.getAccountId(), service, operation, request);
+    }
+
+    /** A human may approve a Key-bound plan, but cannot lend the Key broader rights. */
+    public void authorizeBoundDomain(Map<String, Object> plan, ApiRequest domain) {
+        if (!plan.containsKey("credentialId")) return;
+        Policy owner = ApiUtils.getPolicy();
+        if (owner == null || !AiResourceChangeDomain.trustedDomain(domain)
+                || !(plan.get("credentialId") instanceof Number id)
+                || !(plan.get("credentialRevision") instanceof Number revision)
+                || !(plan.get("credentialKind") instanceof String kind)
+                || !(plan.get("actorId") instanceof Number actor) || actor.longValue() != owner.getAuthenticatedAsAccountId())
+            denied("OwnerPermissionDenied");
+        var verified = live(new ApiKeyCredentialContext(((Number) plan.get("credentialId")).longValue(),
+                ((Number) plan.get("actorId")).longValue(), (String) plan.get("credentialKind"),
+                ((Number) plan.get("credentialRevision")).longValue(), null), owner.getAccountId(), domain);
+        var operation = ApiKeyOperations.of(domain);
+        if (!operation.registered()) denied("UnknownOperation");
+        if (verified.policy() != null) {
+            var decision = evaluator.evaluate(verified.policy(), new ApiKeyPolicyEvaluator.Request(true, operation.id(), true,
+                    targets.resolve(domain, verified.authorization().policy())), clock.instant());
+            if (!decision.allowed()) denied(decision.reason().getCode());
+            if (verified.policy().getMode() != ApiKeyPolicy.Mode.FULL) {
+                var children = targets.stackLifecycleTargets(domain, verified.authorization().policy());
+                if (!children.isEmpty()) {
+                    var childDecision = evaluator.evaluateAuthorizedDependency(verified.policy(),
+                            new ApiKeyPolicyEvaluator.Request(true, operation.id(), true, children), clock.instant());
+                    if (!childDecision.allowed()) denied(childDecision.reason().getCode());
+                }
+            }
+            var references = targets.references(domain, verified.authorization().policy());
+            if (!references.isEmpty()) {
+                var read = evaluator.evaluate(verified.policy(), new ApiKeyPolicyEvaluator.Request(true, "read", true, references), clock.instant());
+                if (!read.allowed()) denied(read.reason().getCode());
+            }
+        }
     }
 
     /** Process capture must see the real domain request, while retaining its verified Key. */

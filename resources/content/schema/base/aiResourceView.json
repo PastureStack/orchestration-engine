@@ -1,0 +1,14 @@
+{
+  "pluralName": "aiResourceViews",
+  "collectionMethods": ["POST"],
+  "resourceMethods": [],
+  "resourceFields": {
+    "resourceType": {"type": "string", "create": true, "required": true, "maxLength": 64},
+    "resourceId": {"type": "string", "create": true, "maxLength": 128},
+    "query": {"type": "string", "create": true, "maxLength": 256},
+    "marker": {"type": "string", "create": true, "maxLength": 128},
+    "parentId": {"type": "string", "create": true, "maxLength": 128},
+    "data": {"type": "array[json]", "create": false},
+    "nextMarker": {"type": "string", "create": false}
+  }
+}

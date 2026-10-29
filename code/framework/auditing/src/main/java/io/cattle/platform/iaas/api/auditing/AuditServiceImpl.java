@@ -99,6 +99,8 @@ public class AuditServiceImpl implements AuditService, ApiKeyAuditSink, ApiReque
                     "dynamicSchema".toLowerCase(),
                     "aiToolCallEvent".toLowerCase(),
                     "aiServiceDescriptionUpdate".toLowerCase(),
+                    "aiResourceView".toLowerCase(),
+                    "aiResourceChangePlan".toLowerCase(),
                     ContainerEventConstants.CONTAINER_EVENT_KIND.toLowerCase(),
                     ExternalEventConstants.KIND_EXTERNAL_EVENT.toLowerCase(),
                     ExternalEventConstants.KIND_SERVICE_EVENT.toLowerCase(),
@@ -340,11 +342,26 @@ public class AuditServiceImpl implements AuditService, ApiKeyAuditSink, ApiReque
 
     private void recordServiceDecision(ApiRequest request, Policy policy, String action, String receiptId,
             String receiptPrefix, Long serviceId, boolean allowed, String reason, String eventType, String fallbackReason) {
+        recordTypedResourceDecision(request, policy, action, receiptId, receiptPrefix, "service", serviceId,
+                allowed, reason, eventType, fallbackReason);
+    }
+
+    @Override
+    public void recordResourceChangeDecision(ApiRequest request, Policy policy, String action, String receiptId,
+            String resourceType, Long resourceId, boolean allowed, String reason) {
+        if (!Set.of("stack", "service", "container", "aiResourceChangePlan").contains(resourceType))
+            throw new IllegalArgumentException("Invalid resource-change audit target");
+        recordTypedResourceDecision(request, policy, action, receiptId, "aichange", resourceType, resourceId,
+                allowed, reason, "api.aiResourceChangePlan." + action, "ResourceChangeDenied");
+    }
+
+    private void recordTypedResourceDecision(ApiRequest request, Policy policy, String action, String receiptId,
+            String receiptPrefix, String resourceType, Long resourceId, boolean allowed, String reason, String eventType, String fallbackReason) {
         Map<String, Object> data = new HashMap<>();
         data.put("eventId", UUID.randomUUID().toString());
         data.put("operation", action);
-        data.put("targetType", "service");
-        if (serviceId != null) data.put("targetId", String.valueOf(idFormatter.formatId("service", serviceId)));
+        data.put("targetType", resourceType);
+        if (resourceId != null) data.put("targetId", String.valueOf(idFormatter.formatId(resourceType, resourceId)));
         if (receiptId != null && receiptId.matches(receiptPrefix + "-[0-9a-f-]{36}")) data.put("requestId", receiptId);
         data.put("decision", allowed ? "ALLOW" : "DENY");
         if (policy != null) data.put("actor", formattedAccountId(policy.getAuthenticatedAsAccountId()));
@@ -356,7 +373,7 @@ public class AuditServiceImpl implements AuditService, ApiKeyAuditSink, ApiReque
             if (ClientToolAuditEvent.validId(correlation)) data.put("clientCorrelationId", correlation);
         }
         Map<String, Object> event = new HashMap<>();
-        event.put("resourceType", "service"); event.put("resourceId", serviceId);
+        event.put("resourceType", resourceType); event.put("resourceId", resourceId);
         event.put("accountId", policy == null ? null : policy.getAccountId());
         event.put("authenticatedAsAccountId", policy == null ? null : policy.getAuthenticatedAsAccountId());
         event.put("eventType", eventType);
