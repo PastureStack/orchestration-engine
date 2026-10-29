@@ -13,6 +13,7 @@ import io.cattle.platform.eventing.RetryCallback;
 import io.cattle.platform.eventing.exception.EventExecutionException;
 import io.cattle.platform.eventing.model.Event;
 import io.cattle.platform.eventing.model.EventVO;
+import io.cattle.platform.eventing.model.EventDiagnostics;
 import io.cattle.platform.json.JsonMapper;
 import io.cattle.platform.metrics.util.MetricsUtil;
 import io.cattle.platform.pool.PoolConfig;
@@ -81,19 +82,24 @@ public abstract class AbstractEventService implements EventService {
         try {
             eventString = jsonMapper.writeValueAsString(event);
         } catch (IOException e) {
+            if (EventDiagnostics.privateCatalog(event)) throw new IllegalStateException("Private Catalog event serialization unavailable");
             throw new IllegalStateException("Failed to marshall event [" + event + "] to string", e);
         }
 
         if (event.getName() == null) {
-            log.error("Can not publish an event with a null name : {}", eventString);
+            log.error("Can not publish an event with a null name : {}", EventDiagnostics.serialized(eventString));
             return false;
         }
 
         try {
-            getEventLogOut().debug(eventString);
+            getEventLogOut().debug(EventDiagnostics.serialized(eventString));
             increment(event, request);
             return doPublish(event.getName(), event, eventString);
         } catch (Throwable e) {
+            if (EventDiagnostics.privateCatalog(event)) {
+                log.warn("Private Catalog event publication failed");
+                return false;
+            }
             log.warn("Failed to publish event [" + eventString + "]", e);
             return false;
         }

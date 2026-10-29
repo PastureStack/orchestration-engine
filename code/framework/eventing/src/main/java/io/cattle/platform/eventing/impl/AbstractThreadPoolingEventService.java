@@ -54,6 +54,10 @@ public abstract class AbstractThreadPoolingEventService extends AbstractEventSer
 
             onEvent(event);
         } catch (IOException e) {
+            if (io.cattle.platform.eventing.model.EventDiagnostics.privateCatalog(new String(bytes, java.nio.charset.StandardCharsets.UTF_8))) {
+                log.warn("Private Catalog event deserialization failed");
+                return;
+            }
             try {
                 log.warn("Failed to unmarshall event [{}]", new String(bytes, "UTF-8"), e);
             } catch (UnsupportedEncodingException e1) {
@@ -63,7 +67,7 @@ public abstract class AbstractThreadPoolingEventService extends AbstractEventSer
     }
 
     protected void onEvent(String listenerKey, String eventName, String eventString) {
-        getEventLogIn().debug(eventString);
+        getEventLogIn().debug(io.cattle.platform.eventing.model.EventDiagnostics.serialized(eventString));
 
         try {
             EventVO<?> event = jsonMapper.readValue(eventString, EventVO.class);
@@ -74,6 +78,10 @@ public abstract class AbstractThreadPoolingEventService extends AbstractEventSer
 
             onEvent(event);
         } catch (IOException e) {
+            if (io.cattle.platform.eventing.model.EventDiagnostics.privateCatalog(eventString)) {
+                log.warn("Private Catalog event deserialization failed");
+                return;
+            }
             log.warn("Failed to unmarshall event [{}]", eventString, e);
         }
     }

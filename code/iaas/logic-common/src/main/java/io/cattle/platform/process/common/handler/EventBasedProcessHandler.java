@@ -36,6 +36,7 @@ public class EventBasedProcessHandler extends AbstractObjectProcessHandler imple
     Long timeoutMillis;
     String onError;
     int priority = Priority.SPECIFIC;
+    java.util.List<ProcessEventDecorator> eventDecorators = java.util.Collections.emptyList();
 
     public EventBasedProcessHandler(EventService eventService, ObjectManager objectManager, ObjectProcessManager objectProcessManager,
             ObjectMetaDataManager objectMetaDataManager) {
@@ -80,7 +81,8 @@ public class EventBasedProcessHandler extends AbstractObjectProcessHandler imple
 
         String eventName = getEventName() == null ? process.getName() : getEventName();
 
-        Event request = EventVO.newEvent(eventName).withResourceId(idString).withResourceType(type).withData(state.getData());
+        EventVO<Object> request = EventVO.newEvent(eventName).withResourceId(idString).withResourceType(type).withData(state.getData());
+        for (ProcessEventDecorator decorator : eventDecorators) decorator.decorate(state, process, request);
 
         EventCallOptions options = new EventCallOptions(retry, timeoutMillis);
         options.setProgressIsKeepAlive(true);
@@ -165,6 +167,10 @@ public class EventBasedProcessHandler extends AbstractObjectProcessHandler imple
 
     public void setEventName(String eventName) {
         this.eventName = eventName;
+    }
+
+    public void setEventDecorators(java.util.List<ProcessEventDecorator> eventDecorators) {
+        this.eventDecorators = eventDecorators == null ? java.util.Collections.emptyList() : eventDecorators;
     }
 
     public Integer getRetry() {

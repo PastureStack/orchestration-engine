@@ -491,8 +491,7 @@ public class ApiKeyTargetResolver {
         if (rows.isEmpty()) return null;
         boolean deleting = "delete".equals(binding.get("operation"));
         Service service = root instanceof Service supplied
-                ? deleting ? cleanupProjection(Service.class, supplied, owner, "accountId", "stackId", "state")
-                        : persisted(Service.class, supplied, owner, "accountId", "stackId", "state")
+                ? managedRetirementService(supplied, owner, binding, scheduled != null || frame != null)
                 : cleanupResource(Service.class, rows.getFirst().getServiceId(), owner);
         if (root instanceof Stack stack) {
             if (!Objects.equals(stack.getId(), executionResourceId("stack", Objects.toString(binding.get("targetId"), "")))
@@ -527,8 +526,10 @@ public class ApiKeyTargetResolver {
         Set<ApiKeyPolicyEvaluator.Target> resources = new LinkedHashSet<>();
         resources.add(scope); resources.add(resolveObject("service", service, owner));
         for (ServiceExposeMap row : rows) {
-            ServiceExposeMap map = cleanupProjection(ServiceExposeMap.class, row, owner,
-                    "accountId", "instanceId", "serviceId", "managed", "upgrade", "state");
+            ServiceExposeMap map = managedRetirementMap(row, owner);
+            if (Set.of("removing", "removed").contains(String.valueOf(map.getState()))
+                    && !Set.of("stopping", "stopped", "removing", "removed")
+                    .contains(String.valueOf(instance.getState()))) denied("KeyScopeDenied");
             if (!Objects.equals(map.getInstanceId(), instance.getId()) || !Objects.equals(map.getServiceId(), service.getId())
                     || !Objects.equals(map.getAccountId(), service.getAccountId()) || !Boolean.TRUE.equals(map.getManaged())
                     || Boolean.TRUE.equals(map.getUpgrade())) denied("KeyScopeDenied");
@@ -539,7 +540,11 @@ public class ApiKeyTargetResolver {
                 SERVICE_EXPOSE_MAP.INSTANCE_ID, instance.getId(), SERVICE_EXPOSE_MAP.REMOVED, null);
         if (live == null) denied("KeyScopeDenied");
         for (ServiceExposeMap row : live) {
-            ServiceExposeMap map = persisted(ServiceExposeMap.class, row, owner, "accountId", "instanceId", "serviceId", "managed", "upgrade");
+            if (row.getRemoved() != null) denied("KeyScopeDenied");
+            ServiceExposeMap map = managedRetirementMap(row, owner);
+            if (Set.of("removing", "removed").contains(String.valueOf(map.getState()))
+                    && !Set.of("stopping", "stopped", "removing", "removed")
+                    .contains(String.valueOf(instance.getState()))) denied("KeyScopeDenied");
             if (!Objects.equals(map.getInstanceId(), instance.getId()) || !Objects.equals(map.getServiceId(), service.getId())
                     || !Objects.equals(map.getAccountId(), service.getAccountId()) || !Boolean.TRUE.equals(map.getManaged())
                     || Boolean.TRUE.equals(map.getUpgrade())) denied("KeyScopeDenied");
@@ -562,6 +567,50 @@ public class ApiKeyTargetResolver {
             return new LifecycleDependency(target, List.copyOf(resources));
         }
         return new LifecycleDependency(scope, List.copyOf(resources));
+    }
+
+    private Service managedRetirementService(Service supplied, Policy owner, Map<String, Object> binding, boolean hasProof) {
+        Service stored = "delete".equals(binding.get("operation"))
+                ? cleanupResource(Service.class, supplied.getId(), owner)
+                : persisted(Service.class, supplied, owner, "accountId", "stackId", "uuid");
+        for (String field : List.of("accountId", "stackId", "uuid")) {
+            if (!Objects.equals(ObjectUtils.getPropertyIgnoreErrors(supplied, field),
+                    ObjectUtils.getPropertyIgnoreErrors(stored, field))) denied("KeyScopeDenied");
+        }
+        // The service owner schedules its managed child before completing its
+        // own row. Permit only these forward transitions across the two reads.
+        boolean completedDeactivation = hasProof && "deactivating".equals(supplied.getState())
+                && "inactive".equals(stored.getState()) && "service".equals(binding.get("targetType"))
+                && "POST".equals(binding.get("requestMethod")) && "deactivate".equals(binding.get("requestAction"))
+                && "update".equals(binding.get("operation"));
+        boolean completedUpdate = hasProof && "updating-active".equals(supplied.getState()) && "active".equals(stored.getState())
+                && "service".equals(binding.get("targetType")) && "PUT".equals(binding.get("requestMethod"))
+                && "update".equals(binding.get("operation")) && !binding.containsKey("requestAction");
+        boolean completedRemoval = hasProof && "removing".equals(supplied.getState()) && supplied.getRemoved() == null
+                && "removed".equals(stored.getState()) && stored.getRemoved() != null
+                && "service".equals(binding.get("targetType")) && "DELETE".equals(binding.get("requestMethod"))
+                && "delete".equals(binding.get("operation"));
+        boolean unchanged = Objects.equals(supplied.getState(), stored.getState())
+                && Objects.equals(supplied.getRemoved(), stored.getRemoved());
+        if (!unchanged && !completedDeactivation && !completedUpdate && !completedRemoval) denied("KeyScopeDenied");
+        return stored;
+    }
+
+    /** Invoked only after the exact service/instance scheduling edge passed. */
+    private ServiceExposeMap managedRetirementMap(ServiceExposeMap supplied, Policy owner) {
+        ServiceExposeMap stored = cleanupResource(ServiceExposeMap.class, supplied.getId(), owner);
+        for (String field : List.of("uuid", "accountId", "instanceId", "serviceId", "managed", "upgrade")) {
+            if (!Objects.equals(ObjectUtils.getPropertyIgnoreErrors(supplied, field),
+                    ObjectUtils.getPropertyIgnoreErrors(stored, field))) denied("KeyScopeDenied");
+        }
+        boolean removing = supplied.getRemoved() == null && "active".equals(supplied.getState())
+                && "removing".equals(stored.getState()) && stored.getRemoved() == null;
+        boolean retired = supplied.getRemoved() == null && Set.of("active", "removing").contains(String.valueOf(supplied.getState()))
+                && "removed".equals(stored.getState()) && stored.getRemoved() != null;
+        boolean unchanged = Objects.equals(supplied.getState(), stored.getState())
+                && Objects.equals(supplied.getRemoved(), stored.getRemoved());
+        if (!unchanged && !removing && !retired) denied("KeyScopeDenied");
+        return stored;
     }
 
     private LifecycleDependency upgradeRemoval(Object root, Object resource, Policy owner,

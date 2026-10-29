@@ -72,7 +72,7 @@ public class ApiKeyOperationInventoryProjectionTest {
         var actual = ApiKeyOperations.of(method, action, link, type);
         assertEquals(row.toString(), expected, actual.id());
         boolean registered = !expected.startsWith("action:") && !expected.startsWith("method:")
-                && !expected.startsWith("ai-plan:") && !expected.startsWith("ai-change:");
+                && !expected.startsWith("ai-plan:") && !expected.startsWith("ai-change:") && !expected.startsWith("ai-catalog-launch:");
         assertEquals(row.toString(), registered, actual.registered());
         if (!registered) {
             assertTrue("unreviewed effect " + action,
@@ -102,8 +102,8 @@ public class ApiKeyOperationInventoryProjectionTest {
                         ApiKeyPolicy.Scope.global(), Set.copyOf(ApiKeyOperations.OPERATIONS))));
         ApiKeyCredentialContext.attach(request, new ApiKeyCredentialContext(1, 1, "apiKey", 1, custom));
         String canonical = ApiKeyQueryScopes.canonical(type);
-        boolean humanApproval = Set.of("aiServiceUpgradePlan", "aiResourceChangePlan").contains(type)
-                && Set.of("confirm", "cancel").contains(action);
+        boolean humanApproval = Set.of("aiServiceUpgradePlan", "aiResourceChangePlan", "aiCatalogStackLaunchPlan").contains(type)
+                && Set.of("confirm", "cancel", "completeInputs").contains(action);
         String code = humanApproval ? "AiKeyConfirmationForbidden" : ("apiKey".equals(canonical) || "token".equals(canonical))
                 ? "ApiKeyRestrictedDelegationUnsupported" : "UnknownOperation";
         assertEquals(code, assertThrows(ClientVisibleException.class, () -> guard.authorize(request, owner)).getCode());

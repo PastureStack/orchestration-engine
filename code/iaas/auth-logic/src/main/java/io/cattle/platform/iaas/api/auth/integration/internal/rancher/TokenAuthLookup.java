@@ -47,7 +47,9 @@ public class TokenAuthLookup implements AccountLookup, Priority {
     public Account getAccount(ApiRequest request) {
         if (!Strings.CS.equals(AbstractTokenUtil.TOKEN, request.getType()) && isConfigured()) {
             tokenUtils().findAndSetJWT();
-            return getAccountAccessInternal();
+            Account account = getAccountAccessInternal();
+            if (account != null) io.cattle.platform.api.auth.ApiCookieAuthentication.verified(request, tokenUtils().getJWT());
+            return account;
         }
         return null;
     }

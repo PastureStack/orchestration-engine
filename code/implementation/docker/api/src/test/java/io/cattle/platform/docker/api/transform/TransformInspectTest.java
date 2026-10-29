@@ -3,12 +3,19 @@ package io.cattle.platform.docker.api.transform;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertThrows;
 
 import io.cattle.platform.core.model.Instance;
+import io.cattle.platform.api.auth.CatalogLaunchTransformAuthorization;
 import io.cattle.platform.docker.transform.DockerInspectTransformVolume;
 import io.cattle.platform.docker.transform.DockerTransformer;
 import io.cattle.platform.json.JacksonJsonMapper;
 import io.github.ibuildthecloud.gdapi.request.ApiRequest;
+import io.github.ibuildthecloud.gdapi.exception.ClientVisibleException;
+import io.github.ibuildthecloud.gdapi.server.model.ApiServletContext;
+import jakarta.servlet.http.HttpServletRequest;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
@@ -17,10 +24,40 @@ import java.nio.charset.StandardCharsets;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.lang.reflect.Proxy;
 
 import org.junit.Test;
 
 public class TransformInspectTest {
+
+    @Test
+    public void ordinaryTransformAlwaysInvokesTheAuthorizationSpi() throws IOException {
+        TransformInspect handler = new TransformInspect();
+        CapturingTransformer transformer = new CapturingTransformer();
+        handler.transformer = transformer; handler.jsonMapper = new JacksonJsonMapper();
+        TestApiRequest request = new TestApiRequest("POST", "transform", "{\"Name\":\"legacy\"}");
+        AtomicInteger calls = new AtomicInteger();
+        handler.catalogAuthorizers = List.of((selected, inspect) -> {
+            assertSame(request, selected); assertEquals("legacy", inspect.get("Name")); calls.incrementAndGet();
+        });
+        assertTrue(handler.handle(request)); assertEquals(1, calls.get());
+        assertEquals("legacy", transformer.inspect.get("Name")); assertTrue(request.getResponseObject() instanceof Instance);
+    }
+
+    @Test
+    public void proofWithNoAuthorizationSpiFailsBeforeTransformation() {
+        TransformInspect handler = new TransformInspect();
+        CapturingTransformer transformer = new CapturingTransformer();
+        handler.transformer = transformer; handler.jsonMapper = new JacksonJsonMapper();
+        TestApiRequest request = new TestApiRequest("POST", "transform", "{\"Name\":\"delegated\"}");
+        HttpServletRequest http = (HttpServletRequest) Proxy.newProxyInstance(HttpServletRequest.class.getClassLoader(),
+                new Class<?>[] {HttpServletRequest.class}, (proxy, method, args) -> "getHeader".equals(method.getName())
+                        && CatalogLaunchTransformAuthorization.HEADER.equals(args[0]) ? "proof" : null);
+        request.setRequestServletContext(new ApiServletContext(http, null, null));
+        assertEquals(503, assertThrows(ClientVisibleException.class, () -> handler.handle(request)).getStatus());
+        assertNull(transformer.inspect); assertNull(request.getResponseObject());
+    }
 
     @Test
     public void transformRequestPassesTypedInspectMapToTransformer() throws IOException {

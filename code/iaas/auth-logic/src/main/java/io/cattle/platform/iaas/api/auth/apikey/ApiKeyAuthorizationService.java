@@ -50,7 +50,14 @@ public class ApiKeyAuthorizationService implements ApiResourceAccess {
         try {
             ApiKeyPolicy policy = key.policy();
             ApiKeyAiBridgeGuard.check(request, policy);
-            if (("aiServiceUpgradePlan".equals(request.getType()) || "aiResourceChangePlan".equals(request.getType()))
+            if (io.cattle.platform.iaas.api.auth.ai.catalog.AiCatalogLaunchDelegation.bootstrap(request)) {
+                // Only an authenticated launcher with a verified, live, claimed
+                // exact graph reaches this role-metadata / exact-inspect path.
+                request.setAttribute("apiKey.audit.operation", "read"); record(request, owner, true, "CatalogLaunchOwnerMetadataAllowed");
+                return;
+            }
+            if (("aiServiceUpgradePlan".equals(request.getType()) || "aiResourceChangePlan".equals(request.getType())
+                    || "aiCatalogStackLaunchPlan".equals(request.getType()))
                     && !("GET".equals(request.getMethod()) && request.getId() != null && request.getAction() == null && request.getLink() == null
                     || "POST".equals(request.getMethod()) && request.getLink() == null
                     && (request.getId() == null && request.getAction() == null || request.getId() != null && "apply".equals(request.getAction()))))
@@ -61,21 +68,23 @@ public class ApiKeyAuthorizationService implements ApiResourceAccess {
                 throw forbidden("ApiKeyExpired");
             }
             if (key.restricted() && delegatesUnboundAuthority(request)) throw forbidden("ApiKeyRestrictedDelegationUnsupported");
-            if (("aiToolCallEvent".equals(request.getType()) || "aiResourceView".equals(request.getType())) && "POST".equals(request.getMethod())
+            if (("aiToolCallEvent".equals(request.getType()) || "aiResourceView".equals(request.getType()) || "aiCatalogMetadataView".equals(request.getType())
+                    || "aiCatalogStackLaunchOptions".equals(request.getType())) && "POST".equals(request.getMethod())
                     && request.getId() == null && request.getAction() == null && request.getLink() == null) {
                 if (!ownerAllows(request)) throw forbidden("OwnerPermissionDenied");
                 if (policy != null && policy.getMode() == ApiKeyPolicy.Mode.CLOSED) throw forbidden("KeyPolicyDenied");
                 // A view's actual domain request must still pass this service
                 // and its ordinary SQL-scoped manager before safe projection.
-                record(request, owner, true, "aiResourceView".equals(request.getType()) ? "AiResourceViewAdmission" : "AiToolMetadataAllowed");
+                record(request, owner, true, "aiCatalogMetadataView".equals(request.getType()) ? "AiCatalogMetadataAdmission"
+                        : "aiResourceView".equals(request.getType()) ? "AiResourceViewAdmission" : "AiToolMetadataAllowed");
                 return;
             }
-            if ("aiResourceChangePlan".equals(request.getType())) {
+            if ("aiResourceChangePlan".equals(request.getType()) || "aiCatalogStackLaunchPlan".equals(request.getType())) {
                 if (!ownerAllows(request)) throw forbidden("OwnerPermissionDenied");
                 if (policy != null && policy.getMode() == ApiKeyPolicy.Mode.CLOSED) throw forbidden("KeyPolicyDenied");
                 // The fixed adapter performs the real create/update/delete
                 // authorization before a durable claim or domain dispatch.
-                record(request, owner, true, "AiResourceChangeAdmission");
+                record(request, owner, true, "aiCatalogStackLaunchPlan".equals(request.getType()) ? "AiCatalogLaunchAdmission" : "AiResourceChangeAdmission");
                 return;
             }
             if (policy != null && policy.getMode() != ApiKeyPolicy.Mode.FULL) {

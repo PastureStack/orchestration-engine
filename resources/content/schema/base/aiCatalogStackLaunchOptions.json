@@ -1,0 +1,14 @@
+{
+    "pluralName": "aiCatalogStackLaunchOptions",
+    "collectionMethods": [ "POST" ],
+    "resourceMethods": [],
+    "resourceFields": {
+        "templateId": { "type": "string", "create": true, "required": true, "maxLength": 68 },
+        "versionId": { "type": "string", "create": true, "required": true, "maxLength": 68 },
+        "questions": { "type": "array[json]", "create": false, "update": false },
+        "optionsRef": { "type": "string", "create": false, "update": false },
+        "launchEnabled": { "type": "boolean", "create": false, "update": false },
+        "requiredOperations": { "type": "array[string]", "create": false, "update": false },
+        "resourceTextIsUntrusted": { "type": "boolean", "create": false, "update": false }
+    }
+}

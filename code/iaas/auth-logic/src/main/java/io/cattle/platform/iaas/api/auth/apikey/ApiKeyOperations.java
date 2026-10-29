@@ -24,6 +24,7 @@ public final class ApiKeyOperations {
             Map.entry("stack.deactivateservices", "update"),
             Map.entry("service.continueupgrade", "upgrade"),
             Map.entry("service.create", "create"),
+            Map.entry("service.setservicelinks", "update"),
             Map.entry("container.create", "create"),
             Map.entry("container.allocate", "update"),
             Map.entry("container.deallocate", "update"),
@@ -49,8 +50,15 @@ public final class ApiKeyOperations {
 
     public static Operation of(String method, String action, String link, String resourceType) {
         String verb = method == null ? "" : method.toUpperCase(Locale.ROOT);
-        if ("aiResourceView".equals(resourceType) && "POST".equals(verb) && action == null && link == null)
+        if (("aiResourceView".equals(resourceType) || "aiCatalogMetadataView".equals(resourceType) || "aiCatalogStackLaunchOptions".equals(resourceType))
+                && "POST".equals(verb) && action == null && link == null)
             return known("read");
+        if ("aiCatalogStackLaunchPlan".equals(resourceType)) {
+            if ("GET".equals(verb) && action == null && link == null) return known("read");
+            if ("POST".equals(verb) && action == null && link == null) return known("create");
+            if ("POST".equals(verb) && "apply".equals(action) && link == null) return known("create");
+            return new Operation("ai-catalog-launch:" + String.valueOf(action), false);
+        }
         if ("aiResourceChangePlan".equals(resourceType)) {
             if ("GET".equals(verb) && action == null && link == null) return known("read");
             if ("POST".equals(verb) && link == null && (action == null || "apply".equals(action))) return known("update");

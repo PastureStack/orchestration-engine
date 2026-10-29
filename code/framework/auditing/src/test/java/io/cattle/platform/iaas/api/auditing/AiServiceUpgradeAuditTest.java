@@ -25,6 +25,33 @@ import org.junit.rules.TemporaryFolder;
 
 public class AiServiceUpgradeAuditTest {
     @Rule public TemporaryFolder temporary = new TemporaryFolder();
+    @Test public void catalogTypedAndVerifiedDelegatedWritesKeepMetadataWithoutPrivateAnswersOrProof() throws Exception {
+        List<Map<?, ?>> delivered = new ArrayList<>(); AuditServiceImpl service = service(delivered);
+        service.auditLogDao = (AuditLogDao) Proxy.newProxyInstance(AuditLogDao.class.getClassLoader(), new Class<?>[] { AuditLogDao.class },
+                (proxy, method, args) -> {
+                    assertTrue(List.of("create", "createApiKeyEvent").contains(method.getName()));
+                    delivered.add(new HashMap<>((Map<?, ?>) args[2])); return null;
+                });
+        ApiRequest request = new ApiRequest(null, null); request.setMethod("POST");
+        request.setRequestObject(Map.of("environment", Map.of("PASSWORD", "synthetic-human-private"), "proof", "cld1.synthetic-proof"));
+        request.setResponseObject(Map.of("dockerCompose", "synthetic-frozen-compose"));
+        request.setAttribute("requestStartTime", 1L); request.setAttribute("requestEndTime", 2L);
+        for (String type : List.of("aiCatalogStackLaunchOptions", "aiCatalogStackLaunchPlan", "aiCatalogStackLaunchInputs")) {
+            request.setType(type); service.logRequest(request, policy());
+        }
+        assertTrue(delivered.isEmpty());
+        request.setType("service"); service.logRequest(request, policy());
+        assertTrue(delivered.removeFirst().containsKey("requestObject")); // Unverified body text cannot omit normal audit.
+        io.cattle.platform.api.auth.ApiAuditPayload.verifiedCatalogLaunch(request); service.logRequest(request, policy());
+        assertFalse(delivered.getFirst().containsKey("requestObject")); assertFalse(delivered.getFirst().containsKey("responseObject"));
+        String plan = "aicataloglaunch-11111111-1111-1111-1111-111111111111";
+        service.recordCatalogLaunchDecision(request, policy(), "apply", plan, 889L, true, "CatalogLaunchAccepted");
+        service.recordCatalogLaunchDecision(request, policy(), "delegate", plan, 889L, false, "KeyScopeDenied");
+        assertEquals("ALLOW", delivered.get(1).get("decision")); assertEquals("DENY", delivered.get(2).get("decision"));
+        assertEquals(plan, delivered.get(1).get("requestId"));
+        for (String value : List.of("synthetic-human-private", "cld1.", "synthetic-frozen-compose", "environment", "PASSWORD"))
+            assertFalse(value, delivered.toString().contains(value));
+    }
     @Test public void typedChangesAndViewsNeverEnterGenericPayloadAudit() throws Exception {
         List<Map<?, ?>> delivered = new ArrayList<>(); AuditServiceImpl service = service(delivered);
         ApiRequest request = new ApiRequest(null, null); request.setMethod("POST");
@@ -135,6 +162,10 @@ public class AiServiceUpgradeAuditTest {
     }
     private Policy policy() {
         return (Policy) Proxy.newProxyInstance(Policy.class.getClassLoader(), new Class<?>[] { Policy.class },
-                (proxy, method, args) -> method.getName().equals("getAccountId") ? 77L : method.getName().equals("getAuthenticatedAsAccountId") ? 42L : null);
+                (proxy, method, args) -> {
+                    if (method.getName().equals("getAccountId")) return 77L;
+                    if (method.getName().equals("getAuthenticatedAsAccountId")) return 42L;
+                    return null;
+                });
     }
 }

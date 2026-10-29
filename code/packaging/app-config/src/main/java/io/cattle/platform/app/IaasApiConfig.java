@@ -63,11 +63,36 @@ import io.cattle.platform.iaas.api.auth.ai.AiToolCallEvent;
 import io.cattle.platform.iaas.api.auth.ai.AiToolCallEventService;
 import io.cattle.platform.iaas.api.auth.ai.AiToolCallEventResourceManager;
 import io.cattle.platform.iaas.api.auth.ai.view.AiResourceView;
+import io.cattle.platform.iaas.api.auth.ai.catalog.AiCatalogMetadataView;
+import io.cattle.platform.iaas.api.auth.ai.catalog.AiCatalogLaunchAccess;
+import io.cattle.platform.iaas.api.auth.ai.catalog.AiCatalogLaunchGateway;
+import io.cattle.platform.iaas.api.auth.ai.catalog.AiCatalogLaunchRunner;
+import io.cattle.platform.iaas.api.auth.ai.catalog.AiCatalogLaunchGraph;
+import io.cattle.platform.iaas.api.auth.ai.catalog.AiCatalogLaunchMaterializer;
+import io.cattle.platform.iaas.api.auth.ai.catalog.AiCatalogLaunchPrivate;
+import io.cattle.platform.iaas.api.auth.ai.catalog.AiCatalogLaunchOptionsStore;
+import io.cattle.platform.iaas.api.auth.ai.catalog.AiCatalogLaunchPlanStore;
+import io.cattle.platform.iaas.api.auth.ai.catalog.AiCatalogLaunchOptionsService;
+import io.cattle.platform.iaas.api.auth.ai.catalog.AiCatalogLaunchOptionsResourceManager;
+import io.cattle.platform.iaas.api.auth.ai.catalog.AiCatalogLaunchPlanService;
+import io.cattle.platform.iaas.api.auth.ai.catalog.AiCatalogLaunchPlanResourceManager;
+import io.cattle.platform.iaas.api.auth.ai.catalog.AiCatalogLaunchBinding;
+import io.cattle.platform.iaas.api.auth.ai.catalog.AiCatalogLaunchObservation;
+import io.cattle.platform.iaas.api.auth.ai.catalog.AiCatalogLaunchDelegation;
+import io.cattle.platform.iaas.api.auth.ai.catalog.AiCatalogLaunchResponseFilter;
+import io.cattle.platform.iaas.api.auth.ai.catalog.AiCatalogStackLaunchOptions;
+import io.cattle.platform.iaas.api.auth.ai.catalog.AiCatalogStackLaunchPlan;
+import io.cattle.platform.iaas.api.auth.ai.catalog.AiCatalogStackLaunchInputs;
+
+import io.cattle.platform.iaas.api.auth.ai.catalog.AiCatalogMetadataGateway;
+import io.cattle.platform.iaas.api.auth.ai.catalog.AiCatalogMetadataService;
+import io.cattle.platform.iaas.api.auth.ai.catalog.AiCatalogMetadataResourceManager;
 import io.cattle.platform.iaas.api.auth.ai.view.AiResourceViewService;
 import io.cattle.platform.iaas.api.auth.ai.view.AiResourceViewResourceManager;
 import io.cattle.platform.iaas.api.auth.change.AiResourceChangePlan;
 import io.cattle.platform.iaas.api.auth.change.AiResourceChangeDomain;
 import io.cattle.platform.iaas.api.auth.change.AiResourceChangePlanStore;
+import io.cattle.platform.iaas.api.auth.change.AiResourceChangeProcessObserver;
 import io.cattle.platform.iaas.api.auth.change.AiResourceChangePlanService;
 import io.cattle.platform.iaas.api.auth.change.AiResourceChangePlanResourceManager;
 import io.cattle.platform.iaas.api.auth.impl.DefaultAuthorizationProvider;
@@ -917,10 +942,70 @@ public class IaasApiConfig {
     AiResourceViewResourceManager AiResourceViewResourceManager() { return new AiResourceViewResourceManager(); }
 
     @Bean
+    AiCatalogLaunchAccess AiCatalogLaunchAccess() { return new AiCatalogLaunchAccess(); }
+
+    @Bean
+    AiCatalogLaunchGateway AiCatalogLaunchGateway() { return new AiCatalogLaunchGateway(); }
+
+    @Bean
+    AiCatalogLaunchRunner AiCatalogLaunchRunner() { return new AiCatalogLaunchRunner(); }
+
+    @Bean
+    AiCatalogLaunchGraph AiCatalogLaunchGraph() { return new AiCatalogLaunchGraph(); }
+
+    @Bean
+    AiCatalogLaunchMaterializer AiCatalogLaunchMaterializer() { return new AiCatalogLaunchMaterializer(); }
+
+    @Bean
+    AiCatalogLaunchPrivate AiCatalogLaunchPrivate() { return new AiCatalogLaunchPrivate(); }
+
+    @Bean
+    AiCatalogLaunchOptionsStore AiCatalogLaunchOptionsStore() { return new AiCatalogLaunchOptionsStore(); }
+
+    @Bean
+    AiCatalogLaunchPlanStore AiCatalogLaunchPlanStore() { return new AiCatalogLaunchPlanStore(); }
+
+    @Bean
+    AiCatalogLaunchOptionsService AiCatalogLaunchOptionsService() { return new AiCatalogLaunchOptionsService(); }
+
+    @Bean
+    AiCatalogLaunchOptionsResourceManager AiCatalogLaunchOptionsResourceManager() { return new AiCatalogLaunchOptionsResourceManager(); }
+
+    @Bean
+    AiCatalogLaunchPlanService AiCatalogLaunchPlanService() { return new AiCatalogLaunchPlanService(); }
+
+    @Bean
+    AiCatalogLaunchPlanResourceManager AiCatalogLaunchPlanResourceManager() { return new AiCatalogLaunchPlanResourceManager(); }
+
+    @Bean
+    AiCatalogLaunchBinding AiCatalogLaunchBinding() { return new AiCatalogLaunchBinding(); }
+
+    @Bean
+    AiCatalogLaunchObservation AiCatalogLaunchObservation() { return new AiCatalogLaunchObservation(); }
+
+    @Bean
+    AiCatalogLaunchDelegation AiCatalogLaunchDelegation() { return new AiCatalogLaunchDelegation(); }
+
+    @Bean
+    AiCatalogLaunchResponseFilter AiCatalogLaunchResponseFilter() { return new AiCatalogLaunchResponseFilter(); }
+
+    @Bean
+    AiCatalogMetadataGateway AiCatalogMetadataGateway() { return new AiCatalogMetadataGateway(); }
+
+    @Bean
+    AiCatalogMetadataService AiCatalogMetadataService() { return new AiCatalogMetadataService(); }
+
+    @Bean
+    AiCatalogMetadataResourceManager AiCatalogMetadataResourceManager() { return new AiCatalogMetadataResourceManager(); }
+
+    @Bean
     AiResourceChangeDomain AiResourceChangeDomain() { return new AiResourceChangeDomain(); }
 
     @Bean
     AiResourceChangePlanStore AiResourceChangePlanStore() { return new AiResourceChangePlanStore(); }
+
+    @Bean
+    AiResourceChangeProcessObserver AiResourceChangeProcessObserver() { return new AiResourceChangeProcessObserver(); }
 
     @Bean
     AiResourceChangePlanService AiResourceChangePlanService() { return new AiResourceChangePlanService(); }
@@ -932,7 +1017,9 @@ public class IaasApiConfig {
     TypeSet ApiKeyPolicyTypes() {
         TypeSet types = new TypeSet("ApiKeyPolicyTypes");
         types.setTypeClasses(Arrays.<Class<?>>asList(ApiKeyPolicyPreview.class, ApiKeyDelegationCompletion.class,
-                AiServiceUpgradePlan.class, AiServiceDescriptionUpdate.class, AiToolCallEvent.class, AiResourceView.class, AiResourceChangePlan.class));
+                AiServiceUpgradePlan.class, AiServiceDescriptionUpdate.class, AiToolCallEvent.class, AiResourceView.class,
+                        AiResourceChangePlan.class, AiCatalogMetadataView.class,
+                AiCatalogStackLaunchOptions.class, AiCatalogStackLaunchPlan.class, AiCatalogStackLaunchInputs.class));
         return types;
     }
 

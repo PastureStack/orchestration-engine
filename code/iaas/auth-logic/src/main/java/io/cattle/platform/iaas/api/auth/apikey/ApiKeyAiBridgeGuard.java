@@ -5,6 +5,7 @@ import io.github.ibuildthecloud.gdapi.exception.ClientVisibleException;
 import io.github.ibuildthecloud.gdapi.request.ApiRequest;
 import io.cattle.platform.iaas.api.auth.ai.view.AiResourceViewService;
 import io.cattle.platform.iaas.api.auth.change.AiResourceChangeDomain;
+import io.cattle.platform.iaas.api.auth.ai.catalog.AiCatalogLaunchAccess;
 import java.util.Set;
 
 /** Server-verified purpose, independent of user-controlled channel headers. */
@@ -18,6 +19,13 @@ public final class ApiKeyAiBridgeGuard {
         if (!allows(request)) denied("AiBridgeRouteDenied");
         String expected = request.getServletContext() == null ? null
                 : request.getServletContext().getRequest().getHeader(EXPECTED_REVISION_HEADER);
+        // This fresh server-only request already reloaded the original credential
+        // against its persisted plan revision. A human Cookie cannot lend rights.
+        if (AiCatalogLaunchAccess.trustedDomain(request)) {
+            ApiKeyCredentialContext bound = ApiKeyCredentialContext.get(request);
+            if (bound == null) denied("ApiKeyPolicyChanged");
+            expected = Long.toString(bound.revision());
+        }
         // Only discovery can run before a bridge pins the first verified revision.
         boolean bootstrap = "GET".equals(request.getMethod()) && "project".equals(request.getType())
                 && request.getId() == null && request.getAction() == null && request.getLink() == null;
@@ -39,20 +47,23 @@ public final class ApiKeyAiBridgeGuard {
     public static boolean allows(ApiRequest request) {
         if (request == null || request.getLink() != null) return false;
         String type = request.getType();
+        if (AiCatalogLaunchAccess.trustedDomain(request)) return true;
         if (AiResourceChangeDomain.trustedDomain(request)) return true;
         if (Boolean.TRUE.equals(request.getAttribute(AiResourceViewService.DOMAIN_READ_ATTRIBUTE))
                 && "GET".equals(request.getMethod()) && request.getAction() == null
                 && AiResourceViewService.READ_TYPES.contains(type == null ? "" : type)) return true;
         if ("GET".equals(request.getMethod()) && request.getAction() == null) {
             return Set.of("project", "stack", "service").contains(type == null ? "" : type)
-                    || Set.of("aiServiceUpgradePlan", "aiResourceChangePlan").contains(type == null ? "" : type) && request.getId() != null;
+                    || Set.of("aiServiceUpgradePlan", "aiResourceChangePlan", "aiCatalogStackLaunchPlan").contains(type == null ? "" : type) &&
+                            request.getId() != null;
         }
         if (!"POST".equals(request.getMethod())) return false;
-        if ("aiServiceUpgradePlan".equals(type) || "aiResourceChangePlan".equals(type))
+        if ("aiServiceUpgradePlan".equals(type) || "aiResourceChangePlan".equals(type) || "aiCatalogStackLaunchPlan".equals(type))
             return request.getId() == null && request.getAction() == null
                     || request.getId() != null && "apply".equals(request.getAction());
         return request.getId() == null && request.getAction() == null
-                && Set.of("aiToolCallEvent", "aiServiceDescriptionUpdate", "aiResourceView").contains(type == null ? "" : type);
+                && Set.of("aiToolCallEvent", "aiServiceDescriptionUpdate", "aiResourceView", "aiCatalogMetadataView", "aiCatalogStackLaunchOptions")
+                        .contains(type == null ? "" : type);
     }
 
     private static void denied(String code) { throw new ClientVisibleException(403, code, code, null); }

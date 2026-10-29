@@ -13,7 +13,8 @@ public class NotWritablePostProcessor extends AbstractSchemaPostProcessor implem
     public SchemaImpl postProcessRegister(SchemaImpl schema, SchemaFactory factory) {
         // These POSTs either acknowledge client metadata or return an authorized
         // server-side read projection; neither changes a user resource.
-        if ("aiToolCallEvent".equals(schema.getId()) || "aiResourceView".equals(schema.getId())) {
+        if ("aiToolCallEvent".equals(schema.getId()) || "aiResourceView".equals(schema.getId()) || "aiCatalogMetadataView".equals(schema.getId())
+                || "aiCatalogStackLaunchOptions".equals(schema.getId())) {
             schema.setCreate(true);
             schema.setUpdate(false);
             schema.setDeletable(false);

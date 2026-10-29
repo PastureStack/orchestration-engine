@@ -26,6 +26,7 @@ import io.cattle.platform.object.ObjectManager;
 import io.cattle.platform.object.util.DataAccessor;
 import io.cattle.platform.object.util.ObjectUtils;
 import io.cattle.platform.servicediscovery.api.service.ServiceDeploymentReadiness;
+import io.cattle.platform.servicediscovery.api.service.ResourceArchiveChange;
 import io.github.ibuildthecloud.gdapi.context.ApiContext;
 import io.github.ibuildthecloud.gdapi.exception.ClientVisibleException;
 import io.github.ibuildthecloud.gdapi.model.ListOptions;
@@ -49,6 +50,7 @@ public class AiResourceChangeDomain extends AbstractJooqDao {
     private static final String DOMAIN = "ai.resource.change.domain.descriptor";
     private static final String PARENT_READ = "ai.resource.change.parent.read";
     @Inject ObjectManager objects;
+    @Inject AiResourceChangeProcessObserver processObserver;
     @Inject ResourceManagerLocator managers;
     @Inject ApiAuthenticator authenticator;
     @Inject AiKeyAuthorization keys;
@@ -57,6 +59,7 @@ public class AiResourceChangeDomain extends AbstractJooqDao {
     @Inject JsonMapper json;
     @Inject ApiKeyTargetResolver targets;
     @Inject ServiceDeploymentReadiness deploymentReadiness;
+    @Inject ResourceArchiveChange archiveChanges;
 
     /** This marker only exists on a fresh, server-created domain request. */
     public static boolean trustedDomain(ApiRequest request) {
@@ -123,16 +126,18 @@ public class AiResourceChangeDomain extends AbstractJooqDao {
                 descriptor.method(), descriptor.action(), descriptor.body(parameters));
         return authorized(original, request, () -> {
             request.setAttribute("apiKey.audit.requestId", planId);
-            ResourceManager manager = manager(descriptor.resourceType());
-            Object result = switch (descriptor.method()) {
-            case "PUT" -> manager.update(descriptor.resourceType(), request.getId(), request);
-            case "DELETE" -> manager.delete(descriptor.resourceType(), request.getId(), request);
-            case "POST" -> descriptor.createsResource() ? manager.create(descriptor.resourceType(), request)
-                    : manager.resourceAction(descriptor.resourceType(), request);
-            default -> throw error(422, "ResourceChangeUnsupported");
-            };
-            if (result == null) throw error(404, "NotFound");
-            return result;
+            return processObserver.dispatch(request, planId, () -> {
+                ResourceManager manager = manager(descriptor.resourceType());
+                Object result = switch (descriptor.method()) {
+                case "PUT" -> manager.update(descriptor.resourceType(), request.getId(), request);
+                case "DELETE" -> manager.delete(descriptor.resourceType(), request.getId(), request);
+                case "POST" -> descriptor.createsResource() ? manager.create(descriptor.resourceType(), request)
+                        : manager.resourceAction(descriptor.resourceType(), request);
+                default -> throw error(422, "ResourceChangeUnsupported");
+                };
+                if (result == null) throw error(404, "NotFound");
+                return result;
+            });
         });
     }
 
@@ -268,6 +273,8 @@ public class AiResourceChangeDomain extends AbstractJooqDao {
     public boolean complete(AiResourceChangeDescriptor descriptor, Object target, Map<String, Object> parameters,
             Map<String, Object> before) {
         if (target == null) return false;
+        if (descriptor.changesArchive()) return ObjectUtils.getRemoved(target) == null
+                && Boolean.TRUE.equals(DataAccessor.field(target, "archived", Object.class)) == "archive".equals(descriptor.operation());
         String state = ObjectUtils.getState(target);
         if ("remove".equals(descriptor.operation())) return ObjectUtils.getRemoved(target) != null
                 && Set.of("removed", "purged").contains(state) && removalSettled(descriptor.resourceType(), target)
@@ -403,6 +410,8 @@ public class AiResourceChangeDomain extends AbstractJooqDao {
 
     public List<Map<String, Object>> changes(AiResourceChangeDescriptor descriptor, Object target, Map<String, Object> parameters) {
         List<Map<String, Object>> result = new ArrayList<>();
+        if (descriptor.changesArchive()) return List.of(change("archived",
+                Boolean.TRUE.equals(DataAccessor.field(target, "archived", Object.class)), "archive".equals(descriptor.operation())));
         if (parameters.isEmpty()) {
             if ("restart".equals(descriptor.operation())) result.add(change("operation", null, "restart"));
             else if ("stack".equals(descriptor.resourceType()) && Set.of("start", "stop").contains(descriptor.operation())) {
@@ -446,6 +455,10 @@ public class AiResourceChangeDomain extends AbstractJooqDao {
         if (!Set.of("command", "entryPoint").contains(field)) return value;
         try { return json.writeValueAsString(value); }
         catch (IOException failure) { throw new IllegalStateException("Resource-change summary unavailable", failure); }
+    }
+
+    public <T> T withArchiveChange(AiResourceChangeDescriptor descriptor, Object lockedTarget, Supplier<T> change) {
+        return archiveChanges.withChange(lockedTarget, "archive".equals(descriptor.operation()), change);
     }
 
     private Map<String, Object> change(String field, Object before, Object after) {

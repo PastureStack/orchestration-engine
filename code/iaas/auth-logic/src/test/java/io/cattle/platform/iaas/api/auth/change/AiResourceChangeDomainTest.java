@@ -29,6 +29,7 @@ import io.cattle.platform.iaas.api.auth.apikey.ApiKeyPolicy;
 import io.cattle.platform.iaas.api.auth.impl.ApiAuthenticator;
 import io.cattle.platform.json.JacksonJsonMapper;
 import io.cattle.platform.object.ObjectManager;
+import io.cattle.platform.object.util.DataAccessor;
 import io.cattle.platform.servicediscovery.api.service.ServiceDeploymentReadiness;
 import io.github.ibuildthecloud.gdapi.context.ApiContext;
 import io.github.ibuildthecloud.gdapi.exception.ClientVisibleException;
@@ -85,6 +86,55 @@ public class AiResourceChangeDomainTest {
         assertEquals("PermissionDenied", assertThrows(ClientVisibleException.class,
                 () -> f.domain.prepare(f.request, AiResourceChangeDescriptor.require("service", "update_metadata"), "1s7", Map.of("name", "after"))).getCode());
         verify(f.validation, never()).generate(any());
+    }
+
+    @Test public void archiveUsesOnlyTheOrdinaryArchivedFieldCapabilityAndFilteredPut() throws Exception {
+        Fixture f = new Fixture(); FieldImpl archived = new FieldImpl(); archived.setUpdate(false);
+        when(f.schema.getResourceFields()).thenReturn(Map.of("archived", archived));
+        var descriptor = AiResourceChangeDescriptor.require("service", "archive");
+        assertEquals("PermissionDenied", assertThrows(ClientVisibleException.class,
+                () -> f.domain.prepare(f.request, descriptor, "1s7", Map.of())).getCode());
+        verify(f.validation, never()).generate(any());
+        archived.setUpdate(true);
+        Object before = ArchaiusUtil.getConfiguration().getProperty("api.ai.bridge.enabled");
+        try {
+            ArchaiusUtil.getConfiguration().setProperty("api.ai.bridge.enabled", true);
+            assertEquals(Map.of("archived", true), f.domain.prepare(f.request, descriptor, "1s7", Map.of()));
+            ResourceManager filtered = mock(ResourceManager.class); f.domain.managers = mock(ResourceManagerLocator.class);
+            when(f.domain.managers.getResourceManagerByType("service")).thenReturn(filtered);
+            ServiceRecord target = new ServiceRecord(); target.setId(7L); target.setState("inactive");
+            when(filtered.update(eq("service"), eq("1s7"), any())).thenAnswer(call -> {
+                ApiRequest actual = call.getArgument(2);
+                assertEquals("PUT", actual.getMethod()); assertNull(actual.getAction());
+                assertEquals(Map.of("archived", true), actual.getRequestObject());
+                assertSame(actual, ApiContext.getContext().getApiRequest());
+                return target;
+            });
+            assertSame(target, f.domain.dispatch(f.request, descriptor, "1s7", Map.of(), "plan"));
+            verify(filtered, never()).resourceAction(anyString(), any()); verify(filtered, never()).delete(anyString(), anyString(), any());
+            assertSame(f.request, ApiContext.getContext().getApiRequest());
+        } finally {
+            if (before == null) ArchaiusUtil.getConfiguration().clearProperty("api.ai.bridge.enabled");
+            else ArchaiusUtil.getConfiguration().setProperty("api.ai.bridge.enabled", before);
+        }
+    }
+
+    @Test public void archiveSummaryAndReceiptObserveTheBooleanWithoutChangingLifecycleOrChildFlags() {
+        AiResourceChangeDomain domain = new AiResourceChangeDomain(); domain.objects = mock(ObjectManager.class);
+        for (String type : List.of("stack", "service")) {
+            Object target = "stack".equals(type) ? new StackRecord() : new ServiceRecord();
+            var archive = AiResourceChangeDescriptor.require(type, "archive");
+            var restore = AiResourceChangeDescriptor.require(type, "restore");
+            assertEquals(List.of(Map.of("field", "archived", "before", false, "after", true)), domain.changes(archive, target, Map.of()));
+            assertFalse(domain.complete(archive, target, Map.of(), Map.of()));
+            assertTrue(domain.complete(restore, target, Map.of(), Map.of()));
+            DataAccessor.setField(target, "archived", true);
+            assertEquals(List.of(Map.of("field", "archived", "before", true, "after", true)), domain.changes(archive, target, Map.of()));
+            assertEquals(List.of(Map.of("field", "archived", "before", true, "after", false)), domain.changes(restore, target, Map.of()));
+            assertTrue(domain.complete(archive, target, Map.of(), Map.of()));
+            assertFalse(domain.complete(restore, target, Map.of(), Map.of()));
+        }
+        verifyNoInteractions(domain.objects);
     }
 
     @Test public void removalWaitsForOldPortsAndAttachmentsRatherThanOnlyTheRemovedRoot() {
@@ -290,6 +340,9 @@ public class AiResourceChangeDomainTest {
         final ValidationHandler validation = mock(ValidationHandler.class);
         Fixture() {
             when(policy.getAuthenticatedAsAccountId()).thenReturn(42L); when(policy.getAccountId()).thenReturn(77L);
+            domain.processObserver = new AiResourceChangeProcessObserver() {
+                @Override public <T> T dispatch(ApiRequest actual, String id, java.util.function.Supplier<T> operation) { return operation.get(); }
+            };
             domain.keys = mock(AiKeyAuthorization.class); when(domain.keys.actor(any())).thenReturn(policy);
             AccountRecord actor = new AccountRecord(); actor.setId(42L); actor.setState("active");
             AccountRecord project = new AccountRecord(); project.setId(77L); project.setState("active"); project.setKind("project");

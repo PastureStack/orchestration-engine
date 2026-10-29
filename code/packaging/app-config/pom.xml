@@ -4,11 +4,16 @@
     <parent>
         <groupId>io.cattle</groupId>
         <artifactId>cattle-parent</artifactId>
-        <version>0.183.358</version>
+        <version>0.183.359</version>
         <relativePath>../../parent/pom.xml</relativePath>
     </parent>
     <packaging>jar</packaging>
     <dependencies>
+        <dependency>
+            <groupId>com.h2database</groupId>
+            <artifactId>h2</artifactId>
+            <scope>test</scope>
+        </dependency>
         <dependency>
             <groupId>io.cattle</groupId>
             <artifactId>cattle-framework-spring-module</artifactId>

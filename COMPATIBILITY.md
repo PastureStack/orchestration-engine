@@ -1,5 +1,26 @@
 # Compatibility Contract
 
+## Engine 0.183.359 source candidate
+
+Catalog private ingress requires an Engine-verified context before any proxy
+request or redirect can reach the private Catalog API; loopback alone is not
+authority. The matching Catalog/Compose versions are required together.
+Typed launch retains live read/create/update destination checks and delegates
+business mutations to native owners. Archive/restore reuses the existing stopped
+eligibility and Stack lock; it never changes running state or mounted data.
+
+Exact native Service/SEM forward completion keeps valid queued cleanup while
+retaining UUID/owner/Stack/Key/revision/role and explicit-DENY boundaries.
+Background authorization failure uses private exact process bindings and a
+monotonic scalar failure marker; stale document saves cannot clear it. Own-plan
+reads still require current authorization. No secret or raw process payload is
+projected. Database additions preserve existing rows and plan receipts.
+The existing removed-resource receipt is a bound safe plan result, not a removed
+object GET. It checks current actor/project/role/object policy and the original
+live Key identity/revision; it does not rerun every target selector after removal.
+Required CI/CodeQL and combined runtime/browser acceptance remain pending.
+See the [candidate release note](docs/releases/orchestration-engine-0.183.359.md).
+
 ## Engine 0.183.358 release
 
 The managed retirement and native name-query fixes passed required component

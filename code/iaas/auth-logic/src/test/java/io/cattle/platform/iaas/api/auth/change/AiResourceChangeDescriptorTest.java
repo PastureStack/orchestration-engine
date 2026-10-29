@@ -23,9 +23,16 @@ public class AiResourceChangeDescriptorTest {
         assertEquals("restart", AiResourceChangeDescriptor.require("service", "restart").action()); count++;
         assertEquals("restart", AiResourceChangeDescriptor.require("container", "restart").action()); count++;
         assertEquals("update", AiResourceChangeDescriptor.require("service", "scale").keyOperation()); count++;
-        assertEquals(18, count);
-        for (String operation : List.of("restart", "archive", "restore", "shell", "execute_url", "POST"))
+        for (String type : List.of("stack", "service")) for (String operation : List.of("archive", "restore")) {
+            var archive = AiResourceChangeDescriptor.require(type, operation);
+            assertEquals("PUT", archive.method()); assertEquals("update", archive.keyOperation());
+            assertEquals(Map.of("archived", operation.equals("archive")), archive.body(archive.parameters(Map.of()))); count++;
+            assertCode("ResourceChangeInputInvalid", () -> archive.parameters(Map.of("archived", true)));
+        }
+        assertEquals(22, count);
+        for (String operation : List.of("restart", "shell", "execute_url", "POST"))
             assertCode("ResourceChangeUnsupported", () -> AiResourceChangeDescriptor.require("stack", operation));
+        assertCode("ResourceChangeUnsupported", () -> AiResourceChangeDescriptor.require("container", "archive"));
         assertCode("ResourceChangeUnsupported", () -> AiResourceChangeDescriptor.require("credential", "remove"));
     }
 

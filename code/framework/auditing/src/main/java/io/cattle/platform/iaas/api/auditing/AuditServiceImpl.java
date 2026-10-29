@@ -101,6 +101,9 @@ public class AuditServiceImpl implements AuditService, ApiKeyAuditSink, ApiReque
                     "aiServiceDescriptionUpdate".toLowerCase(),
                     "aiResourceView".toLowerCase(),
                     "aiResourceChangePlan".toLowerCase(),
+                    "aiCatalogStackLaunchOptions".toLowerCase(),
+                    "aiCatalogStackLaunchPlan".toLowerCase(),
+                    "aiCatalogStackLaunchInputs".toLowerCase(),
                     ContainerEventConstants.CONTAINER_EVENT_KIND.toLowerCase(),
                     ExternalEventConstants.KIND_EXTERNAL_EVENT.toLowerCase(),
                     ExternalEventConstants.KIND_SERVICE_EVENT.toLowerCase(),
@@ -158,7 +161,8 @@ public class AuditServiceImpl implements AuditService, ApiKeyAuditSink, ApiReque
             return;
         }
         Map<String, Object> data = new HashMap<>();
-        if (!"apikey".equalsIgnoreCase(request.getType()) && !"apikeyrestricted".equalsIgnoreCase(request.getType())
+        if (!io.cattle.platform.api.auth.ApiAuditPayload.omitted(request)
+                && !"apikey".equalsIgnoreCase(request.getType()) && !"apikeyrestricted".equalsIgnoreCase(request.getType())
                 && !StringUtils.startsWithIgnoreCase(request.getType(), "apiKeyDelegation")) {
             putInAsString(data, request.getType(), "requestObject", "Failed to convert request object to json.", request.getRequestObject());
             putInAsString(data, request.getType(), "responseObject", "Failed to convert response object to json.", request.getResponseObject());
@@ -353,6 +357,15 @@ public class AuditServiceImpl implements AuditService, ApiKeyAuditSink, ApiReque
             throw new IllegalArgumentException("Invalid resource-change audit target");
         recordTypedResourceDecision(request, policy, action, receiptId, "aichange", resourceType, resourceId,
                 allowed, reason, "api.aiResourceChangePlan." + action, "ResourceChangeDenied");
+    }
+
+    @Override
+    public void recordCatalogLaunchDecision(ApiRequest request, Policy policy, String action, String planId,
+            Long stackId, boolean allowed, String reason) {
+        if (!Set.of("preview", "read", "completeInputs", "confirm", "apply", "cancel", "delegate", "complete").contains(action))
+            action = "unknown";
+        recordTypedResourceDecision(request, policy, action, planId, "aicataloglaunch", "stack", stackId,
+                allowed, reason, "api.aiCatalogStackLaunchPlan." + action, "CatalogLaunchDenied");
     }
 
     private void recordTypedResourceDecision(ApiRequest request, Policy policy, String action, String receiptId,

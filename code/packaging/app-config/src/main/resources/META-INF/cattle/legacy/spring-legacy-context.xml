@@ -121,6 +121,13 @@
         </tx:attributes>
     </tx:advice>
 
+    <!-- Only the archive owner reads its eligibility graph here; the caller retains its fresh locked target and lease. -->
+    <tx:advice id="ArchiveEligibilityReadAdvice" transaction-manager="CoreTransactionManager">
+        <tx:attributes>
+            <tx:method name="validate" propagation="REQUIRES_NEW" isolation="READ_COMMITTED" read-only="true" />
+        </tx:attributes>
+    </tx:advice>
+
     <tx:advice id="ApiDelegateAdvice" transaction-manager="CoreTransactionManager">
         <tx:attributes>
             <!--
@@ -145,6 +152,8 @@
     </tx:advice>
 
     <aop:config>
+        <aop:advisor advice-ref="ArchiveEligibilityReadAdvice"
+            pointcut="execution(* io.cattle.platform.servicediscovery.api.filter.ArchiveEligibilityRead.validate(..))" />
         <aop:advisor advice-ref="GenericResourceDaoImplAdvice"
             pointcut="execution(* io.cattle.platform.core.dao.GenericResourceDao.*(..))" />
         <aop:advisor advice-ref="IpAddressDaoImplAdvice"
