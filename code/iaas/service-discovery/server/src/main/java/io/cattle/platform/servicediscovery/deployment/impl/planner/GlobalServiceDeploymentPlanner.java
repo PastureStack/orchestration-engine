@@ -23,10 +23,12 @@ public class GlobalServiceDeploymentPlanner extends ServiceDeploymentPlanner {
     
     List<Long> hostIds = new ArrayList<>();
     Map<Long, DeploymentUnit> hostToUnits = new HashMap<>();
+    private final List<DeploymentUnit> observedUnits;
 
     public GlobalServiceDeploymentPlanner(Service service, Stack stack,
             List<DeploymentUnit> units, DeploymentServiceContext context) {
         super(service, units, context, stack);
+        observedUnits = units == null ? List.of() : List.copyOf(units);
         Map<String, String> labels = ServiceDiscoveryUtil.getMergedServiceLabels(service, context.allocationHelper);
         if (service.getSystem()) {
             labels.put(SystemLabels.LABEL_CONTAINER_SYSTEM, "true");
@@ -114,6 +116,17 @@ public class GlobalServiceDeploymentPlanner extends ServiceDeploymentPlanner {
     @Override
     public boolean needToReconcileDeploymentImpl() {
         return !hostToUnits.keySet().containsAll(hostIds);
+    }
+
+    @Override
+    public boolean isDeploymentSettled() {
+        if (!super.isDeploymentSettled() || observedUnits.size() != hostIds.size()) return false;
+        java.util.Set<Long> observedHosts = new java.util.HashSet<>();
+        for (DeploymentUnit unit : observedUnits) {
+            String hostId = getHostId(unit);
+            if (hostId == null || !observedHosts.add(Long.valueOf(hostId))) return false;
+        }
+        return observedHosts.equals(new java.util.HashSet<>(hostIds));
     }
 
     private String getHostId(DeploymentUnit unit) {

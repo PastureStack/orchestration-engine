@@ -36,6 +36,7 @@ import io.cattle.platform.object.process.StandardProcess;
 import io.cattle.platform.object.resource.ResourceMonitor;
 import io.cattle.platform.object.util.DataAccessor;
 import io.cattle.platform.servicediscovery.api.dao.ServiceExposeMapDao;
+import io.cattle.platform.servicediscovery.api.service.ServiceDeploymentReadiness;
 import io.cattle.platform.servicediscovery.api.util.ServiceDiscoveryUtil;
 import io.cattle.platform.servicediscovery.deployment.DeploymentManager;
 import io.cattle.platform.servicediscovery.deployment.DeploymentUnitInstanceFactory;
@@ -63,7 +64,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 
-public class DeploymentManagerImpl implements DeploymentManager {
+public class DeploymentManagerImpl implements DeploymentManager, ServiceDeploymentReadiness {
 
     private static final String RECONCILE = "reconcile";
     private static final Logger log = LoggerFactory.getLogger(DeploymentManagerImpl.class);
@@ -116,6 +117,25 @@ public class DeploymentManagerImpl implements DeploymentManager {
     @Override
     public boolean isHealthy(Service service) {
         return !activate(service, true, false);
+    }
+
+    /** This path observes the planner only: never activate, reconcile, deploy or schedule work. */
+    @Override
+    public boolean isReady(Service authorizedService) {
+        if (authorizedService == null) return false;
+        Service current = objectMgr.loadResource(Service.class, authorizedService.getId());
+        if (current == null || current.getRemoved() != null || !CommonStatesConstants.ACTIVE.equals(current.getState())
+                || !java.util.Objects.equals(current.getAccountId(), authorizedService.getAccountId())
+                || !java.util.Objects.equals(current.getKind(), authorizedService.getKind())) return false;
+        if (DataAccessor.field(current, ServiceConstants.FIELD_SCALE_POLICY, Object.class) != null
+                && DataAccessor.fieldInteger(current, ServiceConstants.FIELD_DESIRED_SCALE) == null) return false;
+        ServiceDeploymentPlanner planner = getPlanner(current);
+        return planner.isDeploymentSettled() && !planner.isHealthcheckInitiailizing();
+    }
+
+    @Override
+    public boolean supportsManualScale(Service authorizedService) {
+        return authorizedService != null && authorizedService.getRemoved() == null && !sdSvc.isGlobalService(authorizedService);
     }
 
     @Override

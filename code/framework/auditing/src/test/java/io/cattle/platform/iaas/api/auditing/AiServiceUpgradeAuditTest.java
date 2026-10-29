@@ -25,6 +25,22 @@ import org.junit.rules.TemporaryFolder;
 
 public class AiServiceUpgradeAuditTest {
     @Rule public TemporaryFolder temporary = new TemporaryFolder();
+    @Test public void typedChangesAndViewsNeverEnterGenericPayloadAudit() throws Exception {
+        List<Map<?, ?>> delivered = new ArrayList<>(); AuditServiceImpl service = service(delivered);
+        ApiRequest request = new ApiRequest(null, null); request.setMethod("POST");
+        request.setRequestObject(Map.of("parameters", Map.of("command", List.of("private-program-secret")), "snapshot", "private-snapshot"));
+        for (String type : List.of("aiResourceChangePlan", "aiResourceView")) {
+            request.setType(type); service.logRequest(request, policy());
+        }
+        assertTrue(delivered.isEmpty());
+        String id = "aichange-11111111-1111-1111-1111-111111111111";
+        service.recordResourceChangeDecision(request, policy(), "apply", id, "container", 10L, true, "ResourceChangeAccepted");
+        service.recordResourceChangeDecision(request, policy(), "apply", id, "container", 10L, false, "KeyScopeDenied");
+        assertEquals("ALLOW", delivered.get(0).get("decision")); assertEquals("DENY", delivered.get(1).get("decision"));
+        assertEquals("container", delivered.get(0).get("targetType")); assertEquals(id, delivered.get(0).get("requestId"));
+        assertFalse(delivered.toString().contains("private-program-secret")); assertFalse(delivered.toString().contains("private-snapshot"));
+        assertFalse(delivered.toString().contains("parameters"));
+    }
     @Test public void bothAllowAndDenyUseDurableMetadataOnlyAudit() throws Exception {
         List<Map<?, ?>> delivered = new ArrayList<>();
         AuditServiceImpl service = service(delivered);
@@ -113,7 +129,8 @@ public class AiServiceUpgradeAuditTest {
         }
         service.apiKeyOutbox = new ApiKeyAuditOutbox(directory, json);
         service.auditLogDao = (AuditLogDao) Proxy.newProxyInstance(AuditLogDao.class.getClassLoader(), new Class<?>[] { AuditLogDao.class },
-                (proxy, method, args) -> { assertEquals("createApiKeyEvent", method.getName()); delivered.add(new HashMap<>((Map<?, ?>) args[2])); envelopes.add(args.clone()); return null; });
+                (proxy, method, args) -> { assertEquals("createApiKeyEvent", method.getName()); delivered.add(new HashMap<>((Map<?, ?>) args[2]));
+                        envelopes.add(args.clone()); return null; });
         return service;
     }
     private Policy policy() {

@@ -119,6 +119,31 @@ public class ApiKeyProcessAuthorizationTest {
         when(schema.getResourceActions()).thenReturn(Map.of("upgrade", mock(Action.class)));
         hook.beforeExecution(job, metadata);
     }
+    @Test public void queuedStackServiceActionsStillRecheckChildDenialsAndOwnerAccess() {
+        var stack = new io.cattle.platform.core.model.tables.records.StackRecord(); stack.setId(8L); stack.setAccountId(5L);
+        var service = new io.cattle.platform.core.model.tables.records.ServiceRecord();
+        service.setId(11L); service.setAccountId(5L); service.setStackId(8L);
+        when(hook.targets.parseScopeId("stack", "8")).thenReturn(8L);
+        when(hook.objectManager.loadResource("stack", 8L)).thenReturn(stack);
+        when(hook.objectManager.loadResource("service", "11")).thenReturn(service);
+        SchemaFactory factory = mock(SchemaFactory.class); when(factory.getSchema("stack")).thenReturn(schema);
+        when(hook.authenticator.currentAuthorization(eq(10L), eq(5L), any())).thenReturn(new ApiAuthenticator.CurrentAuthorization(owner, factory));
+        when(schema.getResourceActions()).thenReturn(Map.of("activateservices", new Action(), "deactivateservices", new Action()));
+        when(hook.targets.resolveObject("stack", stack, owner)).thenReturn(ApiKeyPolicyEvaluator.Target.stackResource("stack", "1st8", "1a5", "1st8"));
+        when(hook.targets.resolveObject("service", service, owner)).thenReturn(ApiKeyPolicyEvaluator.Target.stackResource("service", "1s11", "1a5", "1st8"));
+        var allow = new ApiKeyPolicy.Rule("root", ApiKeyPolicy.Effect.ALLOW, ApiKeyPolicy.Scope.resource("stack", "1st8"), Set.of("update"));
+        var denyChild = new ApiKeyPolicy.Rule("child", ApiKeyPolicy.Effect.DENY, ApiKeyPolicy.Scope.resource("service", "1s11"), Set.of("update"));
+        metadata.put("targetType", "stack"); metadata.put("targetId", "8"); metadata.put("requestMethod", "POST");
+        for (String action : List.of("activateservices", "deactivateservices")) {
+            metadata.put("requestAction", action);
+            job = new LaunchConfiguration("service." + ("activateservices".equals(action) ? "activate" : "deactivate"), "service", "11", 5L, 0, Map.of());
+            policy(new ApiKeyPolicy(ApiKeyPolicy.Mode.CUSTOM, ApiKeyPolicy.Effect.DENY, null, List.of(allow, denyChild)));
+            deny("KeyPolicyDenied");
+            policy(new ApiKeyPolicy(ApiKeyPolicy.Mode.CUSTOM, ApiKeyPolicy.Effect.DENY, null, List.of(allow)));
+            hook.beforeExecution(job, metadata);
+        }
+        when(owner.authorizeObject(service)).thenReturn(null); deny("OwnerPermissionDenied");
+    }
     @Test public void fullLegacyQueuedMetadataRetainsOriginalOwnerBoundary() {
         metadata.put("operation", "export"); metadata.put("requestLink", "composeConfig");
         hook.beforeExecution(job, metadata);

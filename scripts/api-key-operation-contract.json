@@ -9,8 +9,8 @@
   "scope": "Declared v1/v2 and source handler/process union; source-only review, not current artifact packaging, live role/state availability or asynchronous completion.",
   "sourceInputs": {
     "algorithm": "c03-source-inputs-v1",
-    "count": 371,
-    "sha256": "519af891f9de0e0d77f964fccb9b6727121605141e36a8997b77159070ea2027",
+    "count": 374,
+    "sha256": "794492e672672181ce1e8df3b83a8294bb9c9ef87e15839b4c15bbb8949f76ad",
     "anchors": [
       "AbstractSchemaFactory.java",
       "ApiAuthenticator.java",
@@ -108,7 +108,9 @@
       "container.updateunhealthy": "update",
       "volume.create": "create",
       "volume.allocate": "update",
-      "volume.deallocate": "update"
+      "volume.deallocate": "update",
+      "stack.activateservices": "update",
+      "stack.deactivateservices": "update"
     },
     "unsupported": {
       "activateservices": "multi-target service activation/update",
@@ -161,19 +163,104 @@
     "link",
     "expectedOperation"
   ],
-  "tupleCount": 1379,
-  "tupleSha256": "4af243643758f0b8e033f0ca20689726925c12d946ce9d181eb08a4b6b5df9fe",
+  "tupleCount": 1386,
+  "tupleSha256": "ea33565fb683e5f88ac6092657c2b9ad54c555e76c90f937e1f02d22a95409f4",
   "extensionReview": {
-    "version": "0.183.355",
-    "scope": "The original 1371 operation tuples are unchanged. Eight declarations were re-extracted from the three explicit AI resource schemas and reviewed against ApiKeyOperations. Classification does not imply Key admission: plan collection GET is human-only, and confirm/cancel reject every API Key.",
+    "version": "0.183.356",
+    "scope": "Source-only B1/B2 extension: re-extracted the complete baseline and current schema/handler/process union. Original producer identity is unchanged. Seven typed API tuples are added; only the two exact stack service actions change classification. Classification does not grant admission or prove asynchronous completion.",
+    "previous": {
+      "version": "0.183.355",
+      "scope": "The original 1371 operation tuples are unchanged. Eight declarations were re-extracted from the three explicit AI resource schemas and reviewed against ApiKeyOperations. Classification does not imply Key admission: plan collection GET is human-only, and confirm/cancel reject every API Key.",
+      "schemas": [
+        "resources/content/schema/base/aiServiceDescriptionUpdate.json",
+        "resources/content/schema/base/aiServiceUpgradePlan.json",
+        "resources/content/schema/base/aiToolCallEvent.json"
+      ],
+      "addedTuples": [
+        [
+          "aiServiceDescriptionUpdate",
+          "collection",
+          "POST",
+          "",
+          "",
+          "update"
+        ],
+        [
+          "aiServiceUpgradePlan",
+          "collection",
+          "GET",
+          "",
+          "",
+          "read"
+        ],
+        [
+          "aiServiceUpgradePlan",
+          "collection",
+          "POST",
+          "",
+          "",
+          "upgrade"
+        ],
+        [
+          "aiServiceUpgradePlan",
+          "resource",
+          "GET",
+          "",
+          "",
+          "read"
+        ],
+        [
+          "aiServiceUpgradePlan",
+          "resource",
+          "POST",
+          "confirm",
+          "",
+          "ai-plan:confirm"
+        ],
+        [
+          "aiServiceUpgradePlan",
+          "resource",
+          "POST",
+          "apply",
+          "",
+          "upgrade"
+        ],
+        [
+          "aiServiceUpgradePlan",
+          "resource",
+          "POST",
+          "cancel",
+          "",
+          "ai-plan:cancel"
+        ],
+        [
+          "aiToolCallEvent",
+          "collection",
+          "POST",
+          "",
+          "",
+          "create"
+        ]
+      ]
+    },
     "schemas": [
       "resources/content/schema/base/aiServiceDescriptionUpdate.json",
       "resources/content/schema/base/aiServiceUpgradePlan.json",
-      "resources/content/schema/base/aiToolCallEvent.json"
+      "resources/content/schema/base/aiToolCallEvent.json",
+      "resources/content/schema/base/aiResourceView.json",
+      "resources/content/schema/base/aiResourceChangePlan.json"
     ],
     "addedTuples": [
       [
-        "aiServiceDescriptionUpdate",
+        "aiResourceChangePlan",
+        "collection",
+        "GET",
+        "",
+        "",
+        "read"
+      ],
+      [
+        "aiResourceChangePlan",
         "collection",
         "POST",
         "",
@@ -181,23 +268,7 @@
         "update"
       ],
       [
-        "aiServiceUpgradePlan",
-        "collection",
-        "GET",
-        "",
-        "",
-        "read"
-      ],
-      [
-        "aiServiceUpgradePlan",
-        "collection",
-        "POST",
-        "",
-        "",
-        "upgrade"
-      ],
-      [
-        "aiServiceUpgradePlan",
+        "aiResourceChangePlan",
         "resource",
         "GET",
         "",
@@ -205,37 +276,134 @@
         "read"
       ],
       [
-        "aiServiceUpgradePlan",
-        "resource",
-        "POST",
-        "confirm",
-        "",
-        "ai-plan:confirm"
-      ],
-      [
-        "aiServiceUpgradePlan",
+        "aiResourceChangePlan",
         "resource",
         "POST",
         "apply",
         "",
-        "upgrade"
+        "update"
       ],
       [
-        "aiServiceUpgradePlan",
+        "aiResourceChangePlan",
         "resource",
         "POST",
         "cancel",
         "",
-        "ai-plan:cancel"
+        "ai-change:cancel"
       ],
       [
-        "aiToolCallEvent",
+        "aiResourceChangePlan",
+        "resource",
+        "POST",
+        "confirm",
+        "",
+        "ai-change:confirm"
+      ],
+      [
+        "aiResourceView",
         "collection",
         "POST",
         "",
         "",
-        "create"
+        "read"
       ]
+    ],
+    "changedTuples": [
+      {
+        "before": [
+          "stack",
+          "resource",
+          "POST",
+          "activateservices",
+          "",
+          "action:activateservices"
+        ],
+        "after": [
+          "stack",
+          "resource",
+          "POST",
+          "activateservices",
+          "",
+          "update"
+        ],
+        "rationale": "Existing Stack child-service lifecycle handler; fixed typed pair, live child authorization remains required."
+      },
+      {
+        "before": [
+          "stack",
+          "resource",
+          "POST",
+          "deactivateservices",
+          "",
+          "action:deactivateservices"
+        ],
+        "after": [
+          "stack",
+          "resource",
+          "POST",
+          "deactivateservices",
+          "",
+          "update"
+        ],
+        "rationale": "Existing Stack child-service lifecycle handler; fixed typed pair, live child authorization remains required."
+      }
+    ],
+    "authorizationRationale": {
+      "aiResourceView": "Read semantic POST. Synthetic admission is followed by authorized domain reads and safe projection, never raw GET expansion.",
+      "aiResourceChangePlan": "Preview/apply are classified update admission only. Fixed domain adapter rechecks the actual create/update/delete operation and Key references. Collection GET and confirm/cancel are human-only; every Key is denied confirmation/cancellation.",
+      "stackServiceActions": "The two exact Stack batch actions preflight every persisted child with current owner and same-project/Stack checks. An authorized root grant is inherited only for dependency evaluation; explicit child DENY still wins before manager dispatch. The same recheck applies to human approval of bound-Key plans, and queued execution retains its independent live child checks. General Full and legacy admission paths are unchanged."
+    },
+    "sourceInputChanges": [
+      {
+        "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/apikey/ApiKeyAuthorizationService.java",
+        "before": "8062f242159f18d5c21fc14ab65ce42c6cbb8a3bd6cb30dc0cb461bc9a282fbb",
+        "after": "9ceda0f5118d38fc45fc83bd4a16eb92717a20f7837bcabb804975600c59d2c5"
+      },
+      {
+        "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/apikey/ApiKeyOperations.java",
+        "before": "5b13ab34ee167596cc7f4b664dcc6afc6ab18f12442ed6d44a35b58ad08b40b9",
+        "after": "494a57d48564da85f14de564a82906444fa732f1adb201fe27d8c0ca88ea65e5"
+      },
+      {
+        "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/apikey/ApiKeyTargetResolver.java",
+        "before": "391918c715b70d8fd9a607da01ac9acc85a1e3e04901c12cc21feb6ba1d98c2e",
+        "after": "b31333ffc5de2ec8fbee9d38daacd83b91578525d1fe1b61a73abac6355aa009"
+      },
+      {
+        "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiResourceChangePlanResourceManager.java",
+        "before": null,
+        "after": "37da81bdccdb528c1d7f1b18217d3896cabd0ad601e6a3809fd50913b6613050"
+      },
+      {
+        "path": "resources/content/schema/admin/admin-auth.json",
+        "before": "be3f0ba2a4fa51a1c42fbf4fc7abe457b65420e8664301fa462474e015a6796f",
+        "after": "79a757118dd66055c6e7e4c03ded4b0dd8ef1965887c50a4c106e15836d4938f"
+      },
+      {
+        "path": "resources/content/schema/base/aiResourceChangePlan.json",
+        "before": null,
+        "after": "ec4b5ceb31e42dceb71c2fb0f475daf868a19a08ad9644dcf17ee8c06c769786"
+      },
+      {
+        "path": "resources/content/schema/base/aiResourceView.json",
+        "before": null,
+        "after": "024fb697f3d5e1ed511544ff6922f3b78c351f01e74df1a36faeee3e7f3dba95"
+      },
+      {
+        "path": "resources/content/schema/base/aiToolCallEvent.json",
+        "before": "58333f82f8842bf13ed0780251a21000a0f59a56a1ef1bc4354dd03aca4cd7e8",
+        "after": "6d4cfccd6f4901d71e7ba8ec0818de0f769f3bd8e41794dc4ca9616a3794bfbf"
+      },
+      {
+        "path": "resources/content/schema/project/project-auth.json",
+        "before": "c939bcf67064be956929820f561a5dde9512facf16eb18dc4f7910ab16e852c3",
+        "after": "96dcb3b12d6ba0a15e5532df71c68683b2fe87a8946ecb71c10109dea4f17585"
+      },
+      {
+        "path": "resources/content/schema/user/user-auth.json",
+        "before": "9080a03720c6c9a9bdc84d3d9fb82ed5e2d0cbbcf16d5774a2a842d8677731f7",
+        "after": "91c44ff87f288c967d38cfe0c6c1dd04e4ac09919cd6c6ba8407806a61168a2f"
+      }
     ]
   },
   "tuples": [
@@ -292,6 +460,13 @@
     ["agentgroup","resource","POST","purge","","delete"],
     ["agentgroup","resource","POST","remove","","delete"],
     ["agentgroup","resource","POST","update","","update"],
+    ["aiResourceChangePlan","collection","GET","","","read"],
+    ["aiResourceChangePlan","collection","POST","","","update"],
+    ["aiResourceChangePlan","resource","GET","","","read"],
+    ["aiResourceChangePlan","resource","POST","apply","","update"],
+    ["aiResourceChangePlan","resource","POST","cancel","","ai-change:cancel"],
+    ["aiResourceChangePlan","resource","POST","confirm","","ai-change:confirm"],
+    ["aiResourceView","collection","POST","","","read"],
     ["aiServiceDescriptionUpdate","collection","POST","","","update"],
     ["aiServiceUpgradePlan","collection","GET","","","read"],
     ["aiServiceUpgradePlan","collection","POST","","","upgrade"],
@@ -1427,11 +1602,11 @@
     ["stack","resource","DELETE","","","delete"],
     ["stack","resource","GET","","","read"],
     ["stack","resource","GET","","composeConfig","export"],
-    ["stack","resource","POST","activateservices","","action:activateservices"],
+    ["stack","resource","POST","activateservices","","update"],
     ["stack","resource","POST","addoutputs","","update"],
     ["stack","resource","POST","cancelupgrade","","upgrade"],
     ["stack","resource","POST","create","","create"],
-    ["stack","resource","POST","deactivateservices","","action:deactivateservices"],
+    ["stack","resource","POST","deactivateservices","","update"],
     ["stack","resource","POST","error","","update"],
     ["stack","resource","POST","exportconfig","","export"],
     ["stack","resource","POST","finishupgrade","","upgrade"],

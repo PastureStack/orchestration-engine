@@ -8,104 +8,53 @@ Rancher 1.6 ecosystem. It is not affiliated with Rancher Labs or SUSE.
 This fork of [`rancher/cattle`](https://github.com/rancher/cattle) preserves
 upstream history, authorship, licenses, and dependency notices.
 
-## Engine 0.183.355
+## Current source: Engine 0.183.356
 
-[Engine 0.183.355 is published](https://github.com/PastureStack/orchestration-engine/releases/tag/v0.183.355).
-The original CI artifact passed 363 test suites and 3,469 cases with no
-failures or errors, required CodeQL checks, and the full security release gate.
+Use the [current Server release](https://github.com/PastureStack/server#current-release)
+for an assembled platform. `cattle.jar` alone is not a Server installation.
+Versioned artifacts and validation evidence belong in the
+[release notes](docs/releases), including the [356 release](docs/releases/orchestration-engine-0.183.356.md).
 
-This release also updates the existing Guava JRE dependency to official
-`33.7.2-jre` for [CVE-2026-102554](https://github.com/google/guava/security/advisories/GHSA-xxph-c9ww-hj94).
-Source and packaged-JAR gates reject earlier versions; Java 25 and the
-existing stable Guava JRE compatibility line are retained.
-The Maven build runtime receives that same Guava patch, and the installed
-Ubuntu Brotli library receives its official same-series security update.
+## Optional AI resource workflows
 
-Engine [0.183.355](docs/releases/orchestration-engine-0.183.355.md) provides the
-backend contracts for the seven WebMCP v1.3 service tools: Stack and Service
-discovery, Service details, conditional description updates, upgrade preview,
-approved upgrade application, and operation status. A compatible Web Console
-or bridge supplies the tool protocol; the Engine uses its existing resource
-managers, live role checks, API Key policy and durable audit sink.
+The Engine supplies typed, bounded metadata queries and human-reviewed resource
+plans for compatible Web Console and stdio clients. It reuses real resource
+managers, current role/membership checks and the owner's live API Key policy.
+Ordinary Full and legacy API Key capabilities are retained.
 
-The dedicated `ai-bridge` Key purpose is disabled by default through
-`api.ai.bridge.enabled=false`; image-upgrade plans separately require
-`api.ai.service.upgrade.enabled=true`. The bridge verifies the server-issued
-purpose and policy revision. Revisions, expiry, revocation and current owner
-access are rechecked at writes and queued execution. Ordinary Full and legacy
-Key capabilities remain unchanged.
+`aiResourceView` returns an authorized scalar projection, not secret values,
+private keys, raw process logs or full launch configurations. Queries and opaque
+pagination remain subject to the underlying domain manager's authorization.
 
-Description updates compare the expected description under the existing
-database write transaction, preserve empty strings and Unicode, and change
-only that field. Upgrade application requires a short-lived, actor-bound plan
-approved by the human's cookie session; a Key cannot approve its own plan.
-Accepted work keeps its original authorization through stop/start/removal and
-the verified cleanup chain. An operation is successful only after the new
-instances and relevant old-instance cleanup have been verified. Client-reported
-audit events remain distinct from server-verified results and do not record
-description contents.
+`aiResourceChangePlan` supports Stack, Service and Container creation, metadata
+editing and the explicitly registered lifecycle operations. Creation currently
+covers the named basic fields and creates stopped workloads; it does not claim
+all advanced UI form fields. A short-lived plan captures the target state and
+Key revision. A human cookie session reviews and approves it; a Key cannot
+approve or cancel its own plan. Apply claims one durable operation before
+dispatch; an uncertain dispatch is never automatically replayed.
 
-The published `cattle.jar` SHA-256 is
-`a7f651f84a9fe6deef2c9f66f50c13c70e450e25f9dfa6fb59129b2681f9f54f`.
-Its original producer and signed merged source have identical trees; the
-release uses the tested CI bytes without a publication rebuild. Assembled
-Server qualification and 8080 deployment remain separate acceptance steps.
-The [release note](docs/releases/orchestration-engine-0.183.355.md) records the
-artifact identity, new private plan table, security evidence and rollback boundary.
+Completion observes the deployment module's actual desired units, sidekicks and
+global-host eligibility, plus retired instances and attachment cleanup. A
+Stack's state alone cannot prove its child services have started or stopped.
+Unused pending or approved-but-unsubmitted plans can be cancelled from the
+human inbox. Client-reported audit events remain distinct from server-verified
+authorization and completion evidence.
 
-## Retained changes from Engine 0.183.354
+All AI backend features are opt-in. Append required properties to the existing
+JVM options without replacing its other arguments:
 
-Engine [0.183.354](docs/releases/orchestration-engine-0.183.354.md) refreshes
-the existing Java 25 baseline to Temurin 25.0.5+8 and the reviewed Ubuntu CA
-package. Python packaging tools and certificate bundles are pinned and checked
-in the builder, including newly created virtual environments. Pip is a
-reproducible downstream 26.2.2+pasturestack.1 rebuild using released urllib3
-2.8.0 and pip's original vendoring patches, not an official PyPA release.
-Existing affected
-Ubuntu packages receive the official same-series micro-updates recorded in
-`ubuntu-security-packages.lock`; unrelated locked packages and application
-contracts are retained. This is not a database,
-authorization or networking migration.
+```text
+-Dapi.ai.bridge.enabled=true
+-Dapi.ai.service.upgrade.enabled=true
+-Dapi.ai.resource.change.enabled=true
+```
 
-Current build recipes use Docker CLI 29.9.2 and include the official SQLite
-security update. These build-only changes do not change the published
-0.183.354 JAR or broaden the supported Docker host range. Release checks inspect
-all severities: every available fix, High/Critical finding and unreviewed finding
-blocks publication. Only exact, documented Low/Medium findings without an
-official fix may remain; raw findings and dependency evidence are retained.
+The bridge, upgrade-plan and resource-change flags each default to false.
+Other platform operations remain available through their ordinary UI/API;
+this release is not complete WebMCP coverage of every frontend function.
 
-## Retained changes from Engine 0.183.353
-
-Engine [0.183.353](docs/releases/orchestration-engine-0.183.353.md) refreshes
-public endpoint references when a service upgrade replaces a container while
-retaining the same published IP address and port. Endpoint reconciliation
-compares IP address, port, service, host and instance together, independent of
-list order. This prevents a later service edit from submitting a stale instance
-reference. Existing reference authorization and removed-instance checks remain
-in place.
-
-## Retained changes from Engine 0.183.352
-
-Engine [0.183.352](docs/releases/orchestration-engine-0.183.352.md) separates live
-project permission checks from request-local capability grants. Custom API Key
-scope checks no longer add project action metadata while filtering account
-responses. Normal project access still supplies its existing owner and
-set-members capabilities; live membership and inactive-project checks remain.
-This corrects an authorization-check side effect, not a demonstrated
-unauthorized write. Full and legacy Keys gain no new restriction.
-
-The Engine also closes the API Key revocation race at the database write
-boundary and prevents structured authentication, environment and driver secrets
-from entering ordinary audit payloads or jOOQ DEBUG/TRACE logs. Release assets,
-packaged Server acceptance and deployment each require their own evidence;
-source tests alone do not establish runtime acceptance.
-
-Before committing a Key-authenticated synchronous write, the existing write
-transaction locks and rereads that Key's current state, owner, kind, policy
-revision and expiry. A stale grant rejects the request and rolls back the
-write. Full and legacy Keys retain their existing operation capabilities;
-self-policy updates use the existing manager's lock and compare-and-swap.
-This is not a new transaction-wide lock on all owner role/membership changes.
+## Platform behavior
 
 ### Stopped workload archiving
 
@@ -131,7 +80,7 @@ readonly remains read-only. Create-with-archive and mixed archive/configuration
 changes are rejected. Per-Stack locks serialize archive writes with lifecycle
 state transitions. Stop and delete keep their existing behavior.
 
-## Retained platform behavior
+### API Keys and environments
 
 The Engine supports full, closed and custom API Key policies, expiry and per-Key audit on
 both API roots. A Key is always bounded by its owner's live permissions;
@@ -185,7 +134,7 @@ evidence are maintained in the
 Acceptance is limited to the documented affected paths, not every resource and
 role combination.
 Versioned evidence and upgrade boundaries are in the
-[355 release note](docs/releases/orchestration-engine-0.183.355.md);
+[356 release note](docs/releases/orchestration-engine-0.183.356.md);
 older changes remain in [release notes](docs/releases).
 
 ## Build and validation
@@ -200,7 +149,7 @@ Before publishing an Engine artifact, run the complete package gate:
 
 ```sh
 bash scripts/check-cattle-jdk25-full-package
-ENGINE_VERSION=0.183.355 bash scripts/build --release
+ENGINE_VERSION=0.183.356 bash scripts/build --release
 bash scripts/check-release-artifact dist/artifacts/cattle.jar
 ```
 

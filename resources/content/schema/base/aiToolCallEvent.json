@@ -3,10 +3,10 @@
     "collectionMethods": [ "POST" ],
     "resourceMethods": [],
     "resourceFields": {
-        "command": { "type": "enum", "options": [ "find_stacks", "find_services", "get_service", "preview_service_upgrade", "apply_service_upgrade", "get_operation", "update_service_description", "unknown" ], "create": true, "required": true },
+        "command": { "type": "enum", "options": [ "find_stacks", "find_services", "get_service", "preview_service_upgrade", "apply_service_upgrade", "get_operation", "update_service_description", "list_capabilities", "find_resources", "get_resource", "preview_resource_change", "apply_resource_change", "unknown" ], "create": true, "required": true },
         "phase": { "type": "enum", "options": [ "start", "result" ], "create": true, "required": true },
         "status": { "type": "enum", "options": [ "pending", "succeeded", "accepted", "running", "failed", "unknown", "cancelled", "rejected", "needs_user" ], "create": true, "required": true },
-        "reason": { "type": "enum", "options": [ "NONE", "INVALID_INPUT", "UNAVAILABLE", "CONTEXT_CHANGED", "STALE_REFERENCE", "FORBIDDEN", "SESSION_REQUIRED", "CONFLICT", "NEEDS_USER", "INVALID_RESPONSE", "UNKNOWN_RESULT", "CANCELLED" ], "create": true, "required": true },
+        "reason": { "type": "enum", "options": [ "NONE", "INVALID_INPUT", "UNAVAILABLE", "CONTEXT_CHANGED", "STALE_REFERENCE", "FORBIDDEN", "SESSION_REQUIRED", "CONFLICT", "NEEDS_USER", "INVALID_RESPONSE", "UNKNOWN_RESULT", "CANCELLED", "CAPACITY" ], "create": true, "required": true },
         "correlationId": { "type": "string", "create": true, "maxLength": 43, "nullable": true },
         "requestId": { "type": "string", "create": false, "update": false },
         "accepted": { "type": "boolean", "create": false, "update": false },

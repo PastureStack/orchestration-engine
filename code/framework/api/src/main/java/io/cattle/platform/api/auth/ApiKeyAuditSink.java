@@ -4,6 +4,11 @@ import io.github.ibuildthecloud.gdapi.request.ApiRequest;
 
 /** Durable admission of an API-key authorization decision, before execution. */
 public interface ApiKeyAuditSink {
+    /** Fixed typed-resource decisions; never records parameters or private snapshots. */
+    default void recordResourceChangeDecision(ApiRequest request, Policy policy, String action, String receiptId,
+            String resourceType, Long resourceId, boolean allowed, String reason) {
+        throw new IllegalStateException("Resource-change audit unavailable");
+    }
     void recordDecision(ApiRequest request, Policy policy);
     default void recordClientToolEvent(Policy policy, ClientToolAuditEvent event) {
         throw new IllegalStateException("Client tool auditing is unavailable");

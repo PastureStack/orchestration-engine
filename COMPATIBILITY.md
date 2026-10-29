@@ -4,6 +4,28 @@ The migration preserves established `io.cattle.*` Java packages, Maven coordinat
 
 New operator-facing names use PastureStack and `PASTURESTACK_*`. Compatibility identifiers must be changed only with an explicit data migration, a dual-read or dual-write transition, a rollback plan, and cross-repository verification.
 
+## Engine v0.183.356
+
+The new `aiResourceView` and `aiResourceChangePlan` APIs are typed protocol
+surfaces, not a general HTTP proxy. Metadata reads rebuild the real caller's
+domain policy and use the existing filtered resource manager. Cross-project
+references, Key revisions and secret-field projections remain enforced.
+Resource-plan application revalidates the exact typed action and approved
+snapshot before dispatch. It does not grant additional ordinary API operations.
+
+The `ai_resource_change_plan` table is created through Liquibase. Preserve it
+and the existing upgrade-plan and Key-policy tables on code rollback. Retain
+the database/volume backup; never drop a migration or erase records to make an
+older Engine start. Disable new plan creation, let accepted operations settle,
+cancel unused plans and revoke dedicated bridge Keys before a downgrade.
+An older Engine cannot observe these new resource-operation receipts.
+
+Creation covers basic named fields only. Advanced container configuration,
+Catalog, security-management ceremonies and other frontend workflows require
+separate adapters and qualification. KVM remains outside this batch. The
+[356 release note](docs/releases/orchestration-engine-0.183.356.md) records the
+component-level evidence; Server and browser acceptance are separate results.
+
 ## Engine v0.183.355
 
 The optional WebMCP v1.3 backend adds actor-bound upgrade plans, a conditional

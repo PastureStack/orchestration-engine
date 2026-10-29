@@ -42,6 +42,7 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import org.junit.Test;
 
 public class AiServiceUpgradePlanServiceTest {
@@ -143,16 +144,30 @@ public class AiServiceUpgradePlanServiceTest {
         Fixture f = new Fixture();
         f.preview();
         String own = f.id;
-        Map<String,Object> foreign = new HashMap<>(f.document()); foreign.put("id", "aiplan-foreign"); foreign.put("accountId", 88); f.documents.put("aiplan-foreign", foreign);
-        Map<String,Object> approved = new HashMap<>(f.document()); approved.put("id", "aiplan-approved"); approved.put("confirmationState", "approved"); f.documents.put("aiplan-approved", approved);
+        Map<String,Object> foreign = new HashMap<>(f.document()); foreign.put("id", "aiplan-foreign"); foreign.put("accountId", 88);
+                f.documents.put("aiplan-foreign", foreign);
+        Map<String,Object> approved = new HashMap<>(f.document()); approved.put("id", "aiplan-approved"); approved.put("confirmationState",
+                "approved"); f.documents.put("aiplan-approved", approved);
         List<Map<String,Object>> pending = f.service.pending(f.request(Map.of()));
-        assertEquals(1, pending.size()); assertEquals(own,pending.getFirst().get("id"));
+        assertEquals(2, pending.size());
+        assertEquals(Set.of(own, "aiplan-approved"), pending.stream().map(plan -> plan.get("id")).collect(java.util.stream.Collectors.toSet()));
         assertFalse(pending.getFirst().containsKey("snapshot")); assertFalse(pending.getFirst().containsKey("actorId"));
         ApiContext.newContext().setPolicy(f.policy);
         try {
             f.key = new ApiKeyCredentialContext(7,42,"apiKeyRestricted",3,null);
             assertEquals("UpgradeHumanSessionRequired",rejected(()->f.service.pending(f.request(Map.of()))));
         } finally { ApiContext.remove(); }
+    }
+
+    @Test public void approvedUndispatchedPlansStayCancellableButAcceptedOperationsDoNot() {
+        Fixture f = new Fixture(); f.preview(); f.action("confirm");
+        List<Map<String, Object>> inbox = f.service.pending(f.request(Map.of()));
+        assertEquals(1, inbox.size()); assertEquals("approved", inbox.getFirst().get("confirmationState"));
+        assertEquals("cancelled", f.action("cancel").get("status"));
+        assertTrue(f.service.pending(f.request(Map.of())).isEmpty()); assertEquals(0, f.dispatched);
+        Fixture accepted = new Fixture(); accepted.preview(); accepted.action("confirm"); accepted.action("apply");
+        assertTrue(accepted.service.pending(accepted.request(Map.of())).isEmpty());
+        assertEquals("UpgradeAlreadyAccepted", rejected(() -> accepted.action("cancel"))); assertEquals(1, accepted.dispatched);
     }
 
     @Test public void previewIsPrivateImmutableAndDoesNotUpgrade() {
@@ -164,7 +179,8 @@ public class AiServiceUpgradePlanServiceTest {
         assertEquals("docker:app:1", DataAccessor.fieldMap(f.target, "launchConfig").get("imageUuid"));
         verify(f.manager, never()).resourceAction(anyString(), any());
         DataAccessor.fieldMap(f.target, "launchConfig").put("environment", Map.of("CHANGED", "yes"));
-        assertEquals(Map.of("KEEP", "yes"), ((Map<?, ?>) f.document().get("snapshot")).get("launchConfig") instanceof Map<?, ?> primary ? primary.get("environment") : null);
+        assertEquals(Map.of("KEEP", "yes"), ((Map<?, ?>) f.document().get("snapshot")).get("launchConfig") instanceof Map<?, ?> primary ?
+                primary.get("environment") : null);
     }
 
     @Test public void cannotSupplyApprovalOrChangeTheApprovedPayload() {
@@ -331,9 +347,12 @@ public class AiServiceUpgradePlanServiceTest {
         Fixture f = new Fixture();
         AiServiceUpgradePlanService live = new AiServiceUpgradePlanService(); live.json = new JacksonJsonMapper(); live.objects = mock(ObjectManager.class);
         ServiceExposeMapRecord primary = new ServiceExposeMapRecord(); primary.setInstanceId(101L); primary.setManaged(true); primary.setUpgrade(false);
-        ServiceExposeMapRecord side = new ServiceExposeMapRecord(); side.setInstanceId(102L); side.setDnsPrefix("side"); side.setManaged(true); side.setUpgrade(false);
-        InstanceRecord primaryInstance = new InstanceRecord(); primaryInstance.setState("running"); primaryInstance.setVersion("v1"); primaryInstance.setHealthState("healthy");
-        InstanceRecord sideInstance = new InstanceRecord(); sideInstance.setState("running"); sideInstance.setVersion("v1-side"); sideInstance.setHealthState("healthy");
+        ServiceExposeMapRecord side = new ServiceExposeMapRecord(); side.setInstanceId(102L); side.setDnsPrefix("side"); side.setManaged(true);
+                side.setUpgrade(false);
+        InstanceRecord primaryInstance = new InstanceRecord(); primaryInstance.setState("running"); primaryInstance.setVersion("v1");
+                primaryInstance.setHealthState("healthy");
+        InstanceRecord sideInstance = new InstanceRecord(); sideInstance.setState("running"); sideInstance.setVersion("v1-side");
+                sideInstance.setHealthState("healthy");
         when(live.objects.find(eq(ServiceExposeMap.class), eq("serviceId"), eq(10L), eq("removed"), isNull())).thenReturn(List.of(primary));
         when(live.objects.loadResource(Instance.class, 101L)).thenReturn(primaryInstance);
         when(live.objects.loadResource(Instance.class, 102L)).thenReturn(sideInstance);
@@ -372,7 +391,8 @@ public class AiServiceUpgradePlanServiceTest {
             primary.put("environment", Map.of("KEEP", "yes")); primary.put("ports", List.of("8080:80/tcp"));
             primary.put("dataVolumes", List.of("named:/data")); primary.put("memory", 512); primary.put("version", "v1");
             DataAccessor.setField(target, "launchConfig", primary); DataAccessor.setField(target, "scale", 1);
-            DataAccessor.setField(target, "secondaryLaunchConfigs", List.of(Map.of("name", "side", "imageUuid", "docker:side:1", "version", "v1-side", "environment", Map.of("SIDE", "kept"))));
+            DataAccessor.setField(target, "secondaryLaunchConfigs", List.of(Map.of("name", "side", "imageUuid", "docker:side:1", "version",
+                    "v1-side", "environment", Map.of("SIDE", "kept"))));
             when(schemas.getSchema("service")).thenReturn(schema); when(schema.getResourceMethods()).thenReturn(List.of("GET", "PUT"));
             when(schema.getResourceActions()).thenReturn(Map.of("upgrade", new Action(), "finishupgrade", new Action()));
             when(manager.getById(anyString(), anyString(), any())).thenReturn(target);
@@ -389,7 +409,8 @@ public class AiServiceUpgradePlanServiceTest {
                     dispatched++; if (failDispatch) throw new IllegalStateException("connection lost");
                     super.dispatch(plan, target, request);
                 }
-                @Override protected void audit(ApiRequest request, String action, String id, Long target, boolean allowed, String reason) { if (!allowed) denied++; }
+                @Override protected void audit(ApiRequest request, String action, String id, Long target, boolean allowed, String reason) { if
+                        (!allowed) denied++; }
             };
             service.keyAuthorization = mock(AiKeyAuthorization.class);
             service.json = new JacksonJsonMapper(); service.clock = Clock.fixed(Instant.parse("2026-10-29T00:00:00Z"), ZoneOffset.UTC);
@@ -410,7 +431,8 @@ public class AiServiceUpgradePlanServiceTest {
                         && ((Number) plan.get("actorId")).longValue() == actor
                         && Instant.parse((String) plan.get("expiresAt")).toEpochMilli() > now).limit(20).map(service::map).toList();
                 }
-                @Override public int pendingCount(long actor) { return (int) documents.values().stream().filter(plan -> "preview".equals(plan.get("status")) && ((Number) plan.get("actorId")).longValue() == actor).count(); }
+                @Override public int pendingCount(long actor) { return (int) documents.values().stream().filter(plan ->
+                        "preview".equals(plan.get("status")) && ((Number) plan.get("actorId")).longValue() == actor).count(); }
                 @Override public void insert(Map<String, Object> plan) { save(plan); }
                 @Override public Map<String, Object> load(String id) { return documents.get(id) == null ? null : service.map(documents.get(id)); }
                 @Override public void save(Map<String, Object> plan) { documents.put((String) plan.get("id"), service.map(plan)); }
@@ -420,7 +442,8 @@ public class AiServiceUpgradePlanServiceTest {
                 }
             };
         }
-        ApiRequest request(Map<String, Object> body) { ApiRequest r = new ApiRequest(null, schemas); r.setRequestObject(new HashMap<>(body)); if (key != null) { ApiKeyCredentialContext.attach(r, key); r.setAttribute("apiKey.audit.decision", "ALLOW"); } return r; }
+        ApiRequest request(Map<String, Object> body) { ApiRequest r = new ApiRequest(null, schemas); r.setRequestObject(new HashMap<>(body)); if
+                (key != null) { ApiKeyCredentialContext.attach(r, key); r.setAttribute("apiKey.audit.decision", "ALLOW"); } return r; }
         ApiRequest parsedAction(String action, String body) throws Exception {
             Schema planSchema = mock(Schema.class);
             when(planSchema.getResourceActions()).thenReturn(Map.of("apply", new Action(), "confirm", new Action(), "cancel", new Action()));
@@ -438,7 +461,8 @@ public class AiServiceUpgradePlanServiceTest {
             return request;
         }
         ApiRequest request(String action, Map<String, Object> body) { ApiRequest r = request(body); r.setAction(action); return r; }
-        Map<String, Object> preview() { Map<String, Object> result = service.preview(request(Map.of("serviceId", target.getId().toString(), "image", "app:2"))); id = (String) result.get("id"); return result; }
+        Map<String, Object> preview() { Map<String, Object> result = service.preview(request(Map.of("serviceId", target.getId().toString(),
+                "image", "app:2"))); id = (String) result.get("id"); return result; }
         Map<String, Object> action(String name) { return service.action(id, request(name, Map.of())); }
         Map<String, Object> document() { return documents.get(id); }
     }

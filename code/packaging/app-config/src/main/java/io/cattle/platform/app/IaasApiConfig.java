@@ -62,6 +62,14 @@ import io.cattle.platform.iaas.api.auth.ai.AiKeyAuthorization;
 import io.cattle.platform.iaas.api.auth.ai.AiToolCallEvent;
 import io.cattle.platform.iaas.api.auth.ai.AiToolCallEventService;
 import io.cattle.platform.iaas.api.auth.ai.AiToolCallEventResourceManager;
+import io.cattle.platform.iaas.api.auth.ai.view.AiResourceView;
+import io.cattle.platform.iaas.api.auth.ai.view.AiResourceViewService;
+import io.cattle.platform.iaas.api.auth.ai.view.AiResourceViewResourceManager;
+import io.cattle.platform.iaas.api.auth.change.AiResourceChangePlan;
+import io.cattle.platform.iaas.api.auth.change.AiResourceChangeDomain;
+import io.cattle.platform.iaas.api.auth.change.AiResourceChangePlanStore;
+import io.cattle.platform.iaas.api.auth.change.AiResourceChangePlanService;
+import io.cattle.platform.iaas.api.auth.change.AiResourceChangePlanResourceManager;
 import io.cattle.platform.iaas.api.auth.impl.DefaultAuthorizationProvider;
 import io.cattle.platform.iaas.api.auth.integration.azure.AzureConfigManager;
 import io.cattle.platform.iaas.api.auth.integration.azure.AzureIdentityProvider;
@@ -903,10 +911,28 @@ public class IaasApiConfig {
     AiToolCallEventResourceManager AiToolCallEventResourceManager() { return new AiToolCallEventResourceManager(); }
 
     @Bean
+    AiResourceViewService AiResourceViewService() { return new AiResourceViewService(); }
+
+    @Bean
+    AiResourceViewResourceManager AiResourceViewResourceManager() { return new AiResourceViewResourceManager(); }
+
+    @Bean
+    AiResourceChangeDomain AiResourceChangeDomain() { return new AiResourceChangeDomain(); }
+
+    @Bean
+    AiResourceChangePlanStore AiResourceChangePlanStore() { return new AiResourceChangePlanStore(); }
+
+    @Bean
+    AiResourceChangePlanService AiResourceChangePlanService() { return new AiResourceChangePlanService(); }
+
+    @Bean
+    AiResourceChangePlanResourceManager AiResourceChangePlanResourceManager() { return new AiResourceChangePlanResourceManager(); }
+
+    @Bean
     TypeSet ApiKeyPolicyTypes() {
         TypeSet types = new TypeSet("ApiKeyPolicyTypes");
         types.setTypeClasses(Arrays.<Class<?>>asList(ApiKeyPolicyPreview.class, ApiKeyDelegationCompletion.class,
-                AiServiceUpgradePlan.class, AiServiceDescriptionUpdate.class, AiToolCallEvent.class));
+                AiServiceUpgradePlan.class, AiServiceDescriptionUpdate.class, AiToolCallEvent.class, AiResourceView.class, AiResourceChangePlan.class));
         return types;
     }
 

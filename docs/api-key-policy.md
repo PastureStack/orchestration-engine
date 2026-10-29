@@ -1,6 +1,6 @@
 # API Key policy and audit contract
 
-This describes Engine `0.183.355` source. Use the current Server release and its
+This describes Engine `0.183.356` source. Use the current Server release and its
 component manifest for the actual immutable platform pairing. Component source,
 publication and assembled-Server native qualification are separate gates;
 typed all-actions C-03 and complete UI/API or role/resource acceptance are not
@@ -8,12 +8,18 @@ established by the focused source tests.
 
 ## Optional AI bridge purpose
 
-`purpose=ai-bridge` restricts an existing policy to supported discovery and AI
-service endpoints. It retains the policy's Full/Closed/Custom scope and expiry
+`purpose=ai-bridge` restricts an existing policy to supported discovery and typed
+AI endpoints. It retains the policy's Full/Closed/Custom scope and expiry
 and never grants more authority than the current owner. It is disabled unless
 `api.ai.bridge.enabled=true`; upgrade plans separately require
 `api.ai.service.upgrade.enabled=true`. Ordinary General and legacy Keys keep
 their existing operation capabilities.
+
+Typed resource plans additionally require `api.ai.resource.change.enabled=true`.
+Metadata views project safe fields through the real domain authorization;
+resource plans bind the approved target state and exact typed operation. Keys
+cannot approve or cancel their own plans. A scope granting a parent's operation
+does not create an implicit child-resource grant.
 
 The server reports verified purpose and policy revision in
 `X-PastureStack-Key-Purpose` and `X-PastureStack-Key-Revision`. After initial
@@ -30,8 +36,8 @@ Applying a Key-bound plan requires the same Key and revision. Queued lifecycle
 work rechecks current authority and preserves explicit child DENY rules.
 
 Tool-event reports retain client-report labels and cannot prove that a business
-operation succeeded. The [355 release note](releases/orchestration-engine-0.183.355.md)
-describes the new plan table and the pending native-acceptance boundary.
+operation succeeded. The [356 release note](releases/orchestration-engine-0.183.356.md)
+describes resource plans, migration and the separate native-acceptance boundary.
 
 ## Authorization and updates
 

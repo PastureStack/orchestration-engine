@@ -20,6 +20,8 @@ public final class ApiKeyOperations {
             Map.entry("stack.addoutputs", "update"),
             Map.entry("stack.create", "create"),
             Map.entry("stack.error", "update"),
+            Map.entry("stack.activateservices", "update"),
+            Map.entry("stack.deactivateservices", "update"),
             Map.entry("service.continueupgrade", "upgrade"),
             Map.entry("service.create", "create"),
             Map.entry("container.create", "create"),
@@ -47,6 +49,13 @@ public final class ApiKeyOperations {
 
     public static Operation of(String method, String action, String link, String resourceType) {
         String verb = method == null ? "" : method.toUpperCase(Locale.ROOT);
+        if ("aiResourceView".equals(resourceType) && "POST".equals(verb) && action == null && link == null)
+            return known("read");
+        if ("aiResourceChangePlan".equals(resourceType)) {
+            if ("GET".equals(verb) && action == null && link == null) return known("read");
+            if ("POST".equals(verb) && link == null && (action == null || "apply".equals(action))) return known("update");
+            return new Operation("ai-change:" + String.valueOf(action), false);
+        }
         if ("aiServiceDescriptionUpdate".equals(resourceType) && "POST".equals(verb) && action == null && link == null)
             return known("update");
         if ("aiServiceUpgradePlan".equals(resourceType)) {

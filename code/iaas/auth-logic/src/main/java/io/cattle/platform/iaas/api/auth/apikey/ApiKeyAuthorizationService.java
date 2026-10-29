@@ -50,7 +50,7 @@ public class ApiKeyAuthorizationService implements ApiResourceAccess {
         try {
             ApiKeyPolicy policy = key.policy();
             ApiKeyAiBridgeGuard.check(request, policy);
-            if ("aiServiceUpgradePlan".equals(request.getType())
+            if (("aiServiceUpgradePlan".equals(request.getType()) || "aiResourceChangePlan".equals(request.getType()))
                     && !("GET".equals(request.getMethod()) && request.getId() != null && request.getAction() == null && request.getLink() == null
                     || "POST".equals(request.getMethod()) && request.getLink() == null
                     && (request.getId() == null && request.getAction() == null || request.getId() != null && "apply".equals(request.getAction()))))
@@ -61,11 +61,21 @@ public class ApiKeyAuthorizationService implements ApiResourceAccess {
                 throw forbidden("ApiKeyExpired");
             }
             if (key.restricted() && delegatesUnboundAuthority(request)) throw forbidden("ApiKeyRestrictedDelegationUnsupported");
-            if ("aiToolCallEvent".equals(request.getType()) && "POST".equals(request.getMethod())
+            if (("aiToolCallEvent".equals(request.getType()) || "aiResourceView".equals(request.getType())) && "POST".equals(request.getMethod())
                     && request.getId() == null && request.getAction() == null && request.getLink() == null) {
                 if (!ownerAllows(request)) throw forbidden("OwnerPermissionDenied");
                 if (policy != null && policy.getMode() == ApiKeyPolicy.Mode.CLOSED) throw forbidden("KeyPolicyDenied");
-                record(request, owner, true, "AiToolMetadataAllowed");
+                // A view's actual domain request must still pass this service
+                // and its ordinary SQL-scoped manager before safe projection.
+                record(request, owner, true, "aiResourceView".equals(request.getType()) ? "AiResourceViewAdmission" : "AiToolMetadataAllowed");
+                return;
+            }
+            if ("aiResourceChangePlan".equals(request.getType())) {
+                if (!ownerAllows(request)) throw forbidden("OwnerPermissionDenied");
+                if (policy != null && policy.getMode() == ApiKeyPolicy.Mode.CLOSED) throw forbidden("KeyPolicyDenied");
+                // The fixed adapter performs the real create/update/delete
+                // authorization before a durable claim or domain dispatch.
+                record(request, owner, true, "AiResourceChangeAdmission");
                 return;
             }
             if (policy != null && policy.getMode() != ApiKeyPolicy.Mode.FULL) {
@@ -87,6 +97,12 @@ public class ApiKeyAuthorizationService implements ApiResourceAccess {
                     if (!sql && !unscopedReadAllowed(policy)) throw forbidden("KeyScopeDenied");
                 } else {
                     check(policy, operation.id(), targets.resolve(request, owner));
+                    List<ApiKeyPolicyEvaluator.Target> children = targets.stackLifecycleTargets(request, owner);
+                    if (!children.isEmpty()) {
+                        var decision = evaluator.evaluateAuthorizedDependency(policy,
+                                new ApiKeyPolicyEvaluator.Request(true, operation.id(), true, children), clock.instant());
+                        if (!decision.allowed()) throw forbidden(decision.reason().getCode());
+                    }
                     List<ApiKeyPolicyEvaluator.Target> references = targets.references(request, owner);
                     if (!references.isEmpty()) check(policy, "read", references);
                 }

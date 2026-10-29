@@ -91,6 +91,43 @@ public class AiKeyAuthorizationTest {
         when(owner.getAuthenticatedAsAccountId()).thenReturn(43L);
         assertEquals("OwnerPermissionDenied", denied(() -> guard.authorizeBound(plan, service, "upgrade", human)));
     }
+    @Test public void typedHumanApprovalReevaluatesTheActualBoundKeyOperationAndRevision() {
+        Map<String, Object> plan = new HashMap<>(Map.of("credentialId", 7L, "credentialRevision", 3L, "credentialKind", "apiKeyRestricted", "actorId", 42L));
+        ApiRequest domain = new ApiRequest(null, request.getSchemaFactory()); domain.setType("service"); domain.setMethod("PUT"); domain.setId("10");
+        domain.setAttribute("ai.resource.change.domain.descriptor",
+                io.cattle.platform.iaas.api.auth.change.AiResourceChangeDescriptor.require("service", "update_metadata"));
+        when(guard.targets.resolve(domain, owner)).thenReturn(List.of(ApiKeyPolicyEvaluator.Target.stackResource("service", "1s10", "1a77", "1st3")));
+        assertEquals("KeyScopeDenied", denied(() -> guard.authorizeBoundDomain(plan, domain)));
+        policy(ApiKeyPolicy.Mode.CUSTOM, ApiKeyPolicy.Effect.DENY, null,
+                List.of(new ApiKeyPolicy.Rule("allow", ApiKeyPolicy.Effect.ALLOW, ApiKeyPolicy.Scope.stack("1st3"), Set.of("update"))));
+        guard.authorizeBoundDomain(plan, domain);
+        credential.getData().put(ApiKeyPolicyCodec.REVISION, 4L);
+        assertEquals("ApiKeyPolicyChanged", denied(() -> guard.authorizeBoundDomain(plan, domain)));
+    }
+    @Test public void boundResourceAuthorizationCannotBeUsedAsAnArbitraryDomainProxy() {
+        Map<String, Object> plan = new HashMap<>(Map.of("credentialId", 7L, "credentialRevision", 3L, "credentialKind", "apiKeyRestricted", "actorId", 42L));
+        ApiRequest external = new ApiRequest(null, null); external.setType("service"); external.setMethod("PUT"); external.setId("10");
+        external.setRequestObject(Map.of("ai.resource.change.domain.descriptor", true));
+        assertEquals("OwnerPermissionDenied", denied(() -> guard.authorizeBoundDomain(plan, external)));
+    }
+    @Test public void boundStackApprovalRechecksNewChildrenAndCurrentChildOwnership() {
+        Map<String, Object> plan = Map.of("credentialId", 7L, "credentialRevision", 3L, "credentialKind", "apiKeyRestricted", "actorId", 42L);
+        ApiRequest domain = new ApiRequest(null, request.getSchemaFactory());
+        domain.setType("stack"); domain.setMethod("POST"); domain.setId("3"); domain.setAction("activateservices");
+        domain.setAttribute("ai.resource.change.domain.descriptor",
+                io.cattle.platform.iaas.api.auth.change.AiResourceChangeDescriptor.require("stack", "start"));
+        var child = ApiKeyPolicyEvaluator.Target.stackResource("service", "1s11", "1a77", "1st3");
+        when(guard.targets.resolve(domain, owner)).thenReturn(List.of(ApiKeyPolicyEvaluator.Target.stackResource("stack", "1st3", "1a77", "1st3")));
+        policy(ApiKeyPolicy.Mode.CUSTOM, ApiKeyPolicy.Effect.DENY, null,
+                List.of(new ApiKeyPolicy.Rule("root", ApiKeyPolicy.Effect.ALLOW, ApiKeyPolicy.Scope.resource("stack", "1st3"), Set.of("update")),
+                        new ApiKeyPolicy.Rule("child", ApiKeyPolicy.Effect.DENY, ApiKeyPolicy.Scope.resource("service", "1s11"), Set.of("update"))));
+        when(guard.targets.stackLifecycleTargets(domain, owner)).thenReturn(List.of());
+        guard.authorizeBoundDomain(plan, domain);
+        when(guard.targets.stackLifecycleTargets(domain, owner)).thenReturn(List.of(child));
+        assertEquals("KeyPolicyDenied", denied(() -> guard.authorizeBoundDomain(plan, domain)));
+        when(guard.targets.stackLifecycleTargets(domain, owner)).thenThrow(new ClientVisibleException(403, "OwnerPermissionDenied"));
+        assertEquals("OwnerPermissionDenied", denied(() -> guard.authorizeBoundDomain(plan, domain)));
+    }
     @Test public void dispatchCapturesDomainRequestAndRestoresAfterFailure() {
         request.setAttribute("apiKey.audit.decision", "ALLOW"); request.setAttribute("apiKey.audit.requestId", "request-1");
         ApiRequest domain = new ApiRequest(request); domain.setType("service"); domain.setId("10"); domain.setMethod("POST"); domain.setAction("upgrade");

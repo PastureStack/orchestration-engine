@@ -3,6 +3,7 @@ package io.cattle.platform.iaas.api.auth.apikey;
 import static org.junit.Assert.*;
 import static org.mockito.Mockito.*;
 import io.cattle.platform.archaius.util.ArchaiusUtil;
+import io.cattle.platform.iaas.api.auth.ai.view.AiResourceViewService;
 import io.github.ibuildthecloud.gdapi.context.ApiContext;
 import io.github.ibuildthecloud.gdapi.exception.ClientVisibleException;
 import io.github.ibuildthecloud.gdapi.request.ApiRequest;
@@ -16,6 +17,22 @@ import org.junit.Test;
 public class ApiKeyAiBridgeGuardTest {
     @Before public void setup() { ApiContext.newContext(); }
     @After public void cleanup() { ApiContext.remove(); }
+    @Test public void safeViewAllowsOnlyItsInternalReadAndNeverOpensDirectSensitiveRoutes() {
+        assertTrue(ApiKeyAiBridgeGuard.allows(request("aiResourceView", "POST", null, null)));
+        for (String type : AiResourceViewService.READ_TYPES) {
+            ApiRequest internal = request(type, "GET", "1", null);
+            internal.setAttribute(AiResourceViewService.DOMAIN_READ_ATTRIBUTE, Boolean.TRUE);
+            assertTrue(type, ApiKeyAiBridgeGuard.allows(internal));
+            internal.setAction("export"); assertFalse(ApiKeyAiBridgeGuard.allows(internal));
+            internal.setAction(null); internal.setLink("secretvalues"); assertFalse(ApiKeyAiBridgeGuard.allows(internal));
+            internal.setLink(null); internal.setMethod("PUT"); assertFalse(ApiKeyAiBridgeGuard.allows(internal));
+        }
+        for (String type : List.of("certificate", "setting", "apiKey", "registryCredential")) {
+            ApiRequest external = request(type, "GET", "1", null);
+            external.setRequestObject(java.util.Map.of(AiResourceViewService.DOMAIN_READ_ATTRIBUTE, true));
+            assertFalse(ApiKeyAiBridgeGuard.allows(external));
+        }
+    }
     @Test public void exactRouteAllowlistNeverIncludesGenericMutationConfirmationOrSecrets() {
         for (String type : List.of("project", "stack", "service")) {
             assertTrue(ApiKeyAiBridgeGuard.allows(request(type,"GET",null,null)));

@@ -132,7 +132,9 @@ public class AiServiceUpgradePlanService extends AbstractJooqDao {
         List<Map<String, Object>> result = new ArrayList<>();
         for (Map<String, Object> plan : store.pending(actor.getAuthenticatedAsAccountId(), clock.millis())) {
             if (number(plan.get("actorId")) != actor.getAuthenticatedAsAccountId()
-                    || number(plan.get("accountId")) != actor.getAccountId() || !"pending".equals(plan.get("confirmationState"))) continue;
+                    || number(plan.get("accountId")) != actor.getAccountId() || !"preview".equals(plan.get("status"))
+                    || plan.get("operationId") != null || !Set.of("pending", "approved").contains(Objects.toString(plan.get("confirmationState"),
+                            ""))) continue;
             try {
                 Service target = target(text(plan.get("internalServiceId")), request, true);
                 if (plan.containsKey("credentialId")) keyAuthorization.authorizeBound(plan, target, "upgrade", request);
