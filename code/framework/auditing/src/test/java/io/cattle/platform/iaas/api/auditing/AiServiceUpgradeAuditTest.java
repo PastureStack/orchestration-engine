@@ -104,6 +104,38 @@ public class AiServiceUpgradeAuditTest {
         assertFalse(delivered.toString().contains("private-program-secret")); assertFalse(delivered.toString().contains("private-snapshot"));
         assertFalse(delivered.toString().contains("parameters"));
     }
+    @Test public void supportedTypedDomainsRetainVerifiedAllowDenyMetadataWithoutPrivateFields() throws Exception {
+        List<Map<?, ?>> delivered = new ArrayList<>(); List<Object[]> envelopes = new ArrayList<>();
+        AuditServiceImpl service = service(delivered, envelopes); ApiRequest request = new ApiRequest(null, null);
+        request.setType("aiResourceChangePlan"); request.setMethod("POST");
+        request.setRequestObject(Map.of("hostname", "PRIVATE-HOST", "externalIpAddresses", List.of("PRIVATE-IP"),
+                "certificate", "PRIVATE-PEM", "key", "PRIVATE-KEY", "targetServices", List.of("PRIVATE-TARGET")));
+        request.setAttribute("apiKey.audit.keyId", "1c8"); request.setAttribute("apiKey.audit.policyRevision", 3L);
+        request.setAttribute("apiKey.audit.verifiedPrincipalAccountId", 42L);
+        String receipt = "aichange-11111111-1111-1111-1111-111111111111";
+        for (String type : List.of("externalService", "dnsService", "certificate")) {
+            for (boolean allowed : List.of(true, false)) {
+                service.recordResourceChangeDecision(request, policy(), "preview", receipt, type, 10L, allowed,
+                        allowed ? "ResourceChangePreviewCreated" : "KeyScopeDenied");
+                Map<?, ?> data = delivered.getLast(); Object[] envelope = envelopes.getLast();
+                assertEquals(type, data.get("targetType")); assertEquals(type, envelope[0]);
+                assertEquals(77L, envelope[4]); assertEquals(42L, envelope[5]);
+                assertEquals(allowed ? "ALLOW" : "DENY", data.get("decision"));
+                assertEquals("admission", data.get("phase")); assertEquals(receipt, data.get("requestId"));
+                assertEquals("1c8", data.get("keyId")); assertEquals(3L, ((Number) data.get("policyRevision")).longValue());
+                assertEquals("1a42", data.get("actor")); assertEquals("api.aiResourceChangePlan.preview", envelope[6]);
+                assertEquals("BasicAuth", envelope[7]); assertFalse(data.containsKey("requestObject"));
+                assertFalse(data.toString().contains("PRIVATE")); assertFalse(data.containsKey("targetServices"));
+            }
+        }
+        assertEquals(6, delivered.size());
+        for (String unsupported : List.of("unregistered", "ExternalService", "secret", "certificate/key")) {
+            assertThrows(IllegalArgumentException.class, () -> service.recordResourceChangeDecision(request, policy(),
+                    "preview", receipt, unsupported, 10L, true, "ResourceChangePreviewCreated"));
+        }
+        assertEquals(6, delivered.size());
+    }
+
     @Test public void bothAllowAndDenyUseDurableMetadataOnlyAudit() throws Exception {
         List<Map<?, ?>> delivered = new ArrayList<>();
         AuditServiceImpl service = service(delivered);

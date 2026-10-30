@@ -1,12 +1,14 @@
 package io.cattle.platform.iaas.api.auth.change;
 
 import static io.cattle.platform.core.model.tables.InstanceTable.INSTANCE;
+import static io.cattle.platform.core.model.tables.CertificateTable.CERTIFICATE;
 import static io.cattle.platform.core.model.tables.ServiceTable.SERVICE;
 import static io.cattle.platform.core.model.tables.StackTable.STACK;
 
 import io.cattle.platform.api.auth.Policy;
 import io.cattle.platform.api.utils.ApiUtils;
 import io.cattle.platform.core.model.Account;
+import io.cattle.platform.core.model.Certificate;
 import io.cattle.platform.core.model.Instance;
 import io.cattle.platform.core.model.InstanceHostMap;
 import io.cattle.platform.core.model.InstanceLink;
@@ -233,7 +235,8 @@ public class AiResourceChangeDomain extends AbstractJooqDao {
         request.setSchemaFactory(current.schemas());
         Schema schema = current.schemas().getSchema(request.getType());
         if (schema == null) throw error(403, "PermissionDenied");
-        if (request.getAttribute(DOMAIN) instanceof AiResourceChangeDescriptor descriptor && "dnsService".equals(descriptor.resourceType())) {
+        if (request.getAttribute(DOMAIN) instanceof AiResourceChangeDescriptor descriptor
+                && Set.of("dnsService", "certificate").contains(descriptor.resourceType())) {
             if (request.getAction() != null) {
                 var actions = request.getId() == null ? schema.getCollectionActions() : schema.getResourceActions();
                 if (actions == null || !actions.containsKey(request.getAction())) throw error(403, "PermissionDenied");
@@ -279,6 +282,7 @@ public class AiResourceChangeDomain extends AbstractJooqDao {
         case "stack" -> create().selectFrom(STACK).where(STACK.ID.eq(id)).forUpdate().fetchOne();
         case "service", "externalService", "dnsService" -> create().selectFrom(SERVICE).where(SERVICE.ID.eq(id)).forUpdate().fetchOne();
         case "container" -> create().selectFrom(INSTANCE).where(INSTANCE.ID.eq(id)).forUpdate().fetchOne();
+        case "certificate" -> create().selectFrom(CERTIFICATE).where(CERTIFICATE.ID.eq(id)).forUpdate().fetchOne();
         default -> throw error(422, "ResourceChangeUnsupported");
         };
     }
@@ -286,7 +290,16 @@ public class AiResourceChangeDomain extends AbstractJooqDao {
     public Map<String, Object> snapshot(Object target) {
         Map<String, Object> result = new LinkedHashMap<>();
         if (target != null) for (String field : List.of("id", "accountId", "kind", "name", "description", "state", "removed",
-                "stackId", "startCount", "data")) result.put(field, ObjectUtils.getPropertyIgnoreErrors(target, field));
+                "stackId", "startCount", "data")) {
+            if (!(target instanceof Certificate) || !"data".equals(field))
+                result.put(field, ObjectUtils.getPropertyIgnoreErrors(target, field));
+        }
+        if (target instanceof Certificate certificate) {
+            // Certificate material is outside this metadata workflow and must never enter a durable plan.
+            result.remove("data");
+            result.put("uuid", certificate.getUuid());
+            result.put("certFingerprint", DataAccessor.fieldString(certificate, "certFingerprint"));
+        }
         if (target instanceof Service service) {
             List<Map<String, Object>> instances = new ArrayList<>();
             for (ServiceExposeMap link : objects.find(ServiceExposeMap.class, "serviceId", service.getId(), "removed", null)) {

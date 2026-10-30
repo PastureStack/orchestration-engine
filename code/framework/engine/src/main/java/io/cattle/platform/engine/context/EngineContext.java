@@ -32,21 +32,28 @@ public class EngineContext {
     public static final class VerifiedExecutionFrame {
         private final String resourceType;
         private final String resourceId;
+        private final String processName;
         private final Map<String, Object> rootAuthorization;
 
-        private VerifiedExecutionFrame(String resourceType, String resourceId, Map<String, Object> rootAuthorization) {
+        private VerifiedExecutionFrame(String resourceType, String resourceId, String processName, Map<String, Object> rootAuthorization) {
             this.resourceType = resourceType;
             this.resourceId = resourceId;
+            this.processName = processName;
             this.rootAuthorization = Map.copyOf(rootAuthorization);
         }
         public String resourceType() { return resourceType; }
         public String resourceId() { return resourceId; }
+        public String processName() { return processName; }
         public Map<String, Object> rootAuthorization() { return rootAuthorization; }
     }
 
     /** Framework-only lifecycle: call after every authorization hook passed. */
     public VerifiedExecutionFrame pushVerifiedExecution(String resourceType, String resourceId, Map<String, Object> binding) {
-        VerifiedExecutionFrame frame = new VerifiedExecutionFrame(resourceType, resourceId, binding);
+        return pushVerifiedExecution(resourceType, resourceId, null, binding);
+    }
+
+    public VerifiedExecutionFrame pushVerifiedExecution(String resourceType, String resourceId, String processName, Map<String, Object> binding) {
+        VerifiedExecutionFrame frame = new VerifiedExecutionFrame(resourceType, resourceId, processName, binding);
         verifiedExecutions.push(frame);
         return frame;
     }

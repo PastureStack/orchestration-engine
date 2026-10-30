@@ -819,6 +819,81 @@ public class ApiKeyTargetResolver {
         return new LifecycleDependency(container, List.copyOf(resources));
     }
 
+    /** InstanceRemove enumerates all owned NICs, including remove tombstones.
+     * Only its synchronous, verified remove frame may retain that exact edge;
+     * the normal owner still decides whether a remove is already complete. */
+    public LifecycleDependency resolveInstanceNetworkRemovalDependency(Object root, Object resource, Policy owner,
+            LaunchConfiguration config, EngineContext.VerifiedExecutionFrame frame,
+            EngineContext.VerifiedExecutionFrame parent, Map<String, Object> binding) {
+        if (!(root instanceof Instance supplied) || !(resource instanceof Nic || resource instanceof IpAddress)
+                || !"delete".equals(binding.get("operation")) || !"DELETE".equals(binding.get("requestMethod"))
+                || !Boolean.FALSE.equals(binding.get("requestCollection")) || !Boolean.FALSE.equals(binding.get("preview"))
+                || binding.containsKey("requestAction") || binding.containsKey("requestLink")
+                || !(binding.get("targetType") instanceof String rootType)
+                || !"container".equals(ApiKeyQueryScopes.canonical(rootType))
+                || !Objects.equals(supplied.getId(), executionResourceId(rootType, String.valueOf(binding.get("targetId"))))) return null;
+        boolean nicRemove = resource instanceof Nic && "nic".equals(config.getResourceType())
+                && "nic.remove".equals(config.getProcessName());
+        boolean ipDeactivate = resource instanceof IpAddress && "ipAddress".equals(config.getResourceType())
+                && "ipaddress.deactivate".equals(config.getProcessName());
+        if (!nicRemove && !ipDeactivate) return null;
+        var instanceFrame = nicRemove ? frame : parent;
+        if (!verified(instanceFrame, "instance", supplied.getId(), binding)
+                || !"instance.remove".equals(instanceFrame.processName())) return null;
+        if (!(config instanceof io.cattle.platform.engine.manager.impl.ProcessRecord)
+                || !ProcessAuthorization.metadata(config).equals(binding)) denied("KeyScopeDenied");
+        Instance instance = persisted(Instance.class, supplied, owner, "uuid", "accountId", "stackId", "serviceId");
+        if (instance.getUuid() == null) denied("KeyScopeDenied");
+        Long nicId = nicRemove ? ((Nic) resource).getId()
+                : frame == null ? null : executionResourceId("nic", frame.resourceId());
+        if (ipDeactivate && (!verified(frame, "nic", nicId, binding) || !"nic.remove".equals(frame.processName()))) denied("KeyScopeDenied");
+        Nic nic = nicId == null ? null : objectManager.loadResource(Nic.class, nicId);
+        if (nic == null || !Objects.equals(nicId, nic.getId()) || nic.getUuid() == null
+                || !Objects.equals(instance.getId(), nic.getInstanceId())
+                || !Objects.equals(instance.getAccountId(), nic.getAccountId())) denied("KeyScopeDenied");
+        boolean retired = Set.of("removed", "purging", "purged").contains(String.valueOf(nic.getState()));
+        if (!retired && nic.getRemoved() == null) return null; // Complete live ancestry retains the ordinary resolver.
+        if (!retired || nic.getRemoved() == null) denied("KeyScopeDenied");
+        if (!ownerAuthorizes(nic, owner)) denied("OwnerPermissionDenied");
+        if (nicRemove) {
+            for (String field : List.of("id", "uuid", "accountId", "instanceId", "networkId"))
+                if (!Objects.equals(ObjectUtils.getPropertyIgnoreErrors(resource, field),
+                        ObjectUtils.getPropertyIgnoreErrors(nic, field))) denied("KeyScopeDenied");
+        }
+        var scope = resolveObject("container", instance, owner);
+        Set<ApiKeyPolicyEvaluator.Target> resources = new LinkedHashSet<>();
+        resources.add(scope);
+        for (Long serviceId : instanceParents(instance, owner).serviceIds()) {
+            resources.add(resolveObject("service", liveResource(Service.class, serviceId, owner), owner));
+        }
+        var dependency = networkRemovalTarget("nic", nic.getId(), scope);
+        resources.add(dependency);
+        if (ipDeactivate) {
+            IpAddress address = persisted(IpAddress.class, resource, owner, "uuid", "accountId", "networkId");
+            if (address.getUuid() == null || !Objects.equals(address.getAccountId(), instance.getAccountId())
+                    || address.getNetworkId() != null && !Objects.equals(address.getNetworkId(), nic.getNetworkId())) denied("KeyScopeDenied");
+            List<IpAddressNicMap> maps = objectManager.find(IpAddressNicMap.class,
+                    IP_ADDRESS_NIC_MAP.IP_ADDRESS_ID, address.getId(), IP_ADDRESS_NIC_MAP.REMOVED, null);
+            if (maps == null || maps.isEmpty()) denied("KeyScopeDenied");
+            for (IpAddressNicMap row : maps) {
+                IpAddressNicMap map = persisted(IpAddressNicMap.class, row, owner, "uuid", "nicId", "ipAddressId");
+                if (map.getUuid() == null || !Objects.equals(map.getNicId(), nic.getId())
+                        || !Objects.equals(map.getIpAddressId(), address.getId())) denied("KeyScopeDenied");
+                resources.add(networkRemovalTarget("ipAddressNicMap", map.getId(), scope));
+            }
+            dependency = networkRemovalTarget("ipAddress", address.getId(), scope);
+            resources.add(dependency);
+        }
+        String type = nicRemove ? "nic" : "ipAddress";
+        if (!Objects.equals(ObjectUtils.getPropertyIgnoreErrors(resource, "id"), executionResourceId(type, config.getResourceId()))) denied("KeyScopeDenied");
+        return new LifecycleDependency(dependency, List.copyOf(resources));
+    }
+
+    private ApiKeyPolicyEvaluator.Target networkRemovalTarget(String type, Long id, ApiKeyPolicyEvaluator.Target scope) {
+        return scope.stackId() == null ? ApiKeyPolicyEvaluator.Target.projectResource(type, format(type, id), scope.projectId())
+                : ApiKeyPolicyEvaluator.Target.stackResource(type, format(type, id), scope.projectId(), scope.stackId());
+    }
+
     /** Exact teardown children only. A queued Volume map REMOVE uses the private
      * persisted scheduling edge, never an invented retry frame. Removed rows are
      * relationship evidence here only; ordinary resolvers remain fail-closed. */

@@ -198,7 +198,7 @@ public class DefaultProcessInstanceImpl implements ProcessInstance {
                     throw new ProcessExecutionExitException(RETRY_EXCEPTION);
                 }
             }
-            verifiedFrame = engineContext.pushVerifiedExecution(record.getResourceType(), record.getResourceId(), metadata);
+            verifiedFrame = engineContext.pushVerifiedExecution(record.getResourceType(), record.getResourceId(), record.getProcessName(), metadata);
             runDelegateLoop(engineContext);
 
             return exit(ExitReason.DONE);
@@ -278,6 +278,11 @@ public class DefaultProcessInstanceImpl implements ProcessInstance {
             } catch (TimeoutException t) {
                 throw new ProcessExecutionExitException(TIMEOUT, t);
             } catch (Throwable t) {
+                // Synchronous native children retain their structured terminal
+                // refusal. Retrying the parent cannot make that grant valid.
+                if (t instanceof ProcessInstanceException child && child.getExitReason() == AUTHORIZATION_DENIED) {
+                    throw new ProcessAuthorizationDeniedException("ChildAuthorizationDenied");
+                }
                 execution.setException(new ExceptionLog(t));
                 if (t instanceof LoggableException) {
                     ((LoggableException) t).log(log);

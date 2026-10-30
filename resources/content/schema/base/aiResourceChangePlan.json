@@ -4,7 +4,7 @@
     "resourceMethods": [ "GET" ],
     "resourceActions": { "confirm": {}, "apply": {}, "cancel": {} },
     "resourceFields": {
-        "resourceType": { "type": "enum", "options": [ "stack", "service", "container", "externalService", "dnsService" ], "create": true, "required": true },
+        "resourceType": { "type": "enum", "options": [ "stack", "service", "container", "externalService", "dnsService", "certificate" ], "create": true, "required": true },
         "operation": { "type": "enum", "options": [ "start", "stop", "restart", "remove", "create", "update_metadata", "update_targets", "scale", "archive", "restore" ], "create": true, "required": true },
         "resourceId": { "type": "string", "create": true, "maxLength": 128, "nullable": true },
         "parameters": { "type": "json", "create": true, "required": true },

@@ -492,7 +492,7 @@ public class AiResourceChangeDomainTest {
         return f;
     }
 
-    private static class Fixture {
+    static class Fixture {
         final AiResourceChangeDomain domain = new AiResourceChangeDomain();
         final Policy policy = mock(Policy.class); final SchemaFactory schemas = mock(SchemaFactory.class);
         final Schema schema = mock(Schema.class); final FieldImpl name = new FieldImpl();
