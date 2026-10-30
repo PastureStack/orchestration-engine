@@ -1,6 +1,9 @@
-# Orchestration Engine 0.183.360 candidate
+# Orchestration Engine 0.183.360
 
-Not yet published or runtime accepted.
+[Published release](https://github.com/PastureStack/orchestration-engine/releases/tag/v0.183.360)
+contains the original qualified CI bytes, without a publication rebuild.
+
+## Behavior
 
 API-Key audit events created inside a Core write transaction remain in the
 forced durable outbox until the existing independent replayer can commit them
@@ -40,6 +43,46 @@ added; only dnsService.setservicelinks changes from unsupported action to update
 Other existing tuple classifications and historical producer identity stay.
 Native read/write roles, Full/legacy paths, sessions and default opt-ins remain.
 
-Focused source cases qualify only their exact boundaries. Component CI/CodeQL,
-original artifact verification, combined Server, browser/role/cross-ID layouts
-and actual weak-model workflows remain pending. No runtime dependency changes.
+## Published component and rollout boundary
+
+The required [component gate](https://github.com/PastureStack/orchestration-engine/actions/runs/40986782556)
+and [CodeQL verification](https://github.com/PastureStack/orchestration-engine/actions/runs/40986782554)
+passed. CI executed 3,822 tests in 408 suites with zero failures/errors and one
+existing skip. The CodeQL alert gate reported no new alerts and zero annotations.
+Original CI artifact `12948190028` and all twelve published assets passed
+checksum verification by anonymous readback.
+
+| Immutable coordinate | Value |
+|---|---|
+| Producer | `72230c8b471312377bae968c0c17d63e8ad97ffb` |
+| Merged/tag source | `d6845eedd1df5ae8e69cc075d80b166bc8d26731` |
+| Shared tested tree | `29e283abea5eae51eda050865bb4d08e9d27daf3` |
+| Signed numeric tag | `v0.183.360` |
+| Original cattle.jar SHA-256 | `0ebbd517ee43e113f29cbc14fe542aa7c7900ae28d65d63a12c348b7f0ac9a21` |
+
+Download [cattle.jar](https://github.com/PastureStack/orchestration-engine/releases/download/v0.183.360/cattle.jar)
+with its [checksum](https://github.com/PastureStack/orchestration-engine/releases/download/v0.183.360/cattle.jar.sha256).
+Deployment uses the assembled [Server installation](https://github.com/PastureStack/server#quick-start),
+not a source SHA or a standalone JAR command. The release includes artifact SBOM,
+raw/effective scan, vendor proof, source-revision and unit-test evidence. Passing
+the applicable security gate does not mean zero reported CVEs. Provenance is the
+original GitHub artifact digest, source revision and same-tree producer binding;
+there is no native SLSA attestation claim. Later documentation commits do not
+replace that producer or move the tag.
+
+| Qualification | Status |
+|---|---|
+| Component source, complete required CI and CodeQL | Passed for the exact producer above. Focused cases qualify their named boundaries. |
+| Original artifact and public bytes | Passed; no publication rebuild. |
+| Matching assembled Server560 | Pending; designated QA still runs published Server559 / Web200. |
+| New browser/role/cross-ID/layout and actual weak-model workflows | Pending. Prior unaffected evidence and original failures are retained. |
+
+Use matching Web Console 1.6.201 / bridge 0.2.3, Catalog 0.20.17 and Compose
+0.14.40 contracts, including the matching broker audit-query executable. The four
+AI opt-ins retain false defaults. This release does not complete all 243 frontend
+business groups. No runtime dependency versions change.
+
+Roll back through the assembled Server procedure while preserving the database,
+operation receipts, audit spool, volumes and existing origin/JVM configuration.
+Do not blindly replay a denied, cancelled, revoked or uncertain operation; inspect
+its original receipt and partial effects. Existing release tags remain immutable.
