@@ -1,33 +1,31 @@
 # Compatibility Contract
 
-## Engine 0.183.360 release
+## Engine 0.183.361 release
 
-Use the matching Web Console 1.6.201 / bridge 0.2.3 and broker typed audit owner.
-Ordinary Full/legacy paths retain their existing permissions. AI typed operations
-remain bounded by current actor/role/Key authority; the private source-page read
-path does not open raw accounts, credentials or audit routes to delegated Keys.
-External endpoints and DNS ServiceConsumeMaps use native owners. DNS targets need
-a separate approval after creation. Incoming-consumer/cross-source Alias cleanup
-and advanced links remain unsupported, rather than borrowing an Instance grant.
-The existing four AI opt-ins keep their false defaults. Catalog still needs the
-matching Catalog 0.20.17 / Compose 0.14.40 private ingress contracts.
+Use Web Console 1.6.202 / bridge 0.2.4 and the matching Server561 broker. The
+fixed private audit child accepts normalized local HTTP(S) service origins;
+ordinary broker operator configuration remains unchanged. Credentials stay in
+private stdin. Raw audit payloads remain in the normal human UI.
 
-Audit queries use bounded fixed-process IPC to the installed matching broker.
-Only the complete owner result produces canonical audit outcome evidence.
-Payloads remain human-only in the ordinary audit UI. A Key does not gain the
-actor's broader audit visibility through this adapter. API Key audit delivery
-inside a Core transaction is deferred to the independent durable-spool replayer,
-so an outer rollback cannot discard the inner authorization decision.
+Verified Instance removal may re-enter its exact owned retired NIC/IP graph.
+Current role, Key/revision, root frame, UUID/FK and explicit-denial checks remain
+required; shared/foreign children and unrelated process frames remain denied.
+Structured child denials terminate the parent instead of retrying as UNKNOWN.
+
+Certificate metadata plans accept name/description only. No PEM/private-key/
+chain fields are projected or rewritten. External and Alias plans retain their
+separate native-owner and human-approval boundaries. Full/legacy permissions,
+Catalog/Archive/session behavior and four default-off AI opt-ins are preserved.
 
 | Boundary | Qualification |
 |---|---|
-| Component source and original artifact | Required CI/CodeQL passed; 3,822 tests in 408 suites, zero failures/errors and one existing skip. |
-| Public bytes | Twelve assets passed anonymous checksum readback. Producer `72230c8b471312377bae968c0c17d63e8ad97ffb` and merged/tag source `d6845eedd1df5ae8e69cc075d80b166bc8d26731` share the tested tree. |
-| Matching assembled Server and live workflows | Server560 and the new domain workflows remain pending; designated QA still runs Server559 / Web200. |
+| Component source and artifact | Required CI/CodeQL passed: 412 suites / 3,843 tests / zero failures/errors / one existing skip. |
+| Public bytes | Twelve original assets passed anonymous checksum readback. Producer `592bd47ca9417f24d5acea07b567b9385852f381` and tag source `4e86a5890798d64f1f3f656c6c78e4dedef7aa39` share the tested tree. |
+| Matching Server and live workflows | Server561 publication and designated business/role/layout/weak-model acceptance remain separate pending gates; prior baseline health is not whole-workflow acceptance. |
 
-The [release note](docs/releases/orchestration-engine-0.183.360.md) records the
-published hashes and rollback boundary. No native SLSA attestation is claimed;
-documentation changes do not replace the original artifact producer or tag.
+The [release note](docs/releases/orchestration-engine-0.183.361.md) records the
+published hashes and rollback boundary. No native SLSA attestation is claimed.
+Documentation commits do not replace the producer, tag or original artifact.
 
 ## Engine 0.183.358 release
 
