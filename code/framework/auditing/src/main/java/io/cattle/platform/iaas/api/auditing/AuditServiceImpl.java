@@ -374,7 +374,7 @@ public class AuditServiceImpl implements AuditService, ApiKeyAuditSink, ApiReque
     @Override
     public void recordResourceChangeDecision(ApiRequest request, Policy policy, String action, String receiptId,
             String resourceType, Long resourceId, boolean allowed, String reason) {
-        if (!Set.of("stack", "service", "container", "aiResourceChangePlan").contains(resourceType))
+        if (!Set.of("stack", "service", "container", "externalService", "dnsService", "certificate", "aiResourceChangePlan").contains(resourceType))
             throw new IllegalArgumentException("Invalid resource-change audit target");
         recordTypedResourceDecision(request, policy, action, receiptId, "aichange", resourceType, resourceId,
                 allowed, reason, "api.aiResourceChangePlan." + action, "ResourceChangeDenied");
