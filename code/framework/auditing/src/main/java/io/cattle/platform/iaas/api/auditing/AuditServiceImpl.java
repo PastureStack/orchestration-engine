@@ -330,6 +330,27 @@ public class AuditServiceImpl implements AuditService, ApiKeyAuditSink, ApiReque
     }
 
     @Override
+    public void recordAuditQueryOutcome(ApiRequest request, Policy policy, String queryId,
+            String outcome, String reason, int count) {
+        if (policy == null || !Set.of("ALLOW", "DENY", "ERROR").contains(outcome)
+                || queryId == null || !queryId.matches("aiaudit-[0-9a-f-]{36}") || count < 0 || count > 50)
+            throw new IllegalArgumentException("Invalid audit query completion");
+        Map<String, Object> data = new HashMap<>();
+        data.put("eventId", UUID.randomUUID().toString()); data.put("requestId", queryId);
+        data.put("operation", "read"); data.put("targetType", "auditLog"); data.put("phase", "completion");
+        data.put("decision", "ALLOW".equals(outcome) ? "ALLOW" : "DENY");
+        data.put("outcome", "ALLOW".equals(outcome) ? "SUCCEEDED" : "DENY".equals(outcome) ? "DENIED" : "ERROR");
+        data.put("reason", metadataValue(reason, "AuditQueryFailed")); data.put("resultCount", count);
+        data.put("evidenceSource", "server_observed");
+        Map<String, Object> event = new HashMap<>();
+        event.put("resourceType", "aiAuditQuery"); event.put("resourceId", null);
+        event.put("accountId", policy.getAccountId()); event.put("authenticatedAsAccountId", policy.getAuthenticatedAsAccountId());
+        event.put("eventType", "api.aiAuditQuery.complete"); event.put("authType", addVerifiedKeyIdentity(request, data));
+        event.put("runtime", 0); event.put("clientIp", ""); event.put("data", data);
+        outbox().persist(event, this::deliverApiKeyEvent);
+    }
+
+    @Override
     public void recordServiceUpgradeDecision(ApiRequest request, Policy policy, String action,
             String planId, Long serviceId, boolean allowed, String reason) {
         if (!Set.of("preview", "read", "confirm", "apply", "cancel").contains(action)) action = "unknown";

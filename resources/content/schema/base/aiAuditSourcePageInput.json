@@ -1,0 +1,13 @@
+{
+  "collectionMethods": [],
+  "resourceMethods": [],
+  "resourceFields": {
+    "limit": {"type": "int", "create": true, "min": 1, "max": 1000},
+    "marker": {"type": "string", "create": true, "maxLength": 128},
+    "projectId": {"type": "string", "create": true, "maxLength": 128},
+    "accountId": {"type": "string", "create": true, "maxLength": 128},
+    "from": {"type": "string", "create": true, "maxLength": 64},
+    "to": {"type": "string", "create": true, "maxLength": 64},
+    "keyKind": {"type": "enum", "create": true, "options": ["apiKey", "apiKeyRestricted"]}
+  }
+}

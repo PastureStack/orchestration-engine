@@ -17,6 +17,7 @@ import java.util.function.Consumer;
 import java.util.concurrent.TimeUnit;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 /**
  * Small durable, bounded, metadata-only outbox. Delivery is at least once;
@@ -145,6 +146,12 @@ public final class ApiKeyAuditOutbox {
     }
 
     private void replay(ApiKeyAuditDirectory.Access files, Consumer<Map<String, Object>> deliver) throws IOException {
+        // A successful SQL statement can still roll back with the caller's
+        // Core transaction. Keep both old and new events durable until the
+        // independent replayer can deliver without joining that transaction.
+        if (TransactionSynchronizationManager.isActualTransactionActive()) {
+            return;
+        }
         List<Path> paths = files.pending(MAX_EVENTS);
         int processed = 0;
         for (Path path : paths) {

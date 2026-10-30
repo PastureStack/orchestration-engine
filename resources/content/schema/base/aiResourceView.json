@@ -8,7 +8,10 @@
     "query": {"type": "string", "create": true, "maxLength": 256},
     "marker": {"type": "string", "create": true, "maxLength": 128},
     "parentId": {"type": "string", "create": true, "maxLength": 128},
+    "sourcePage": {"type": "aiAuditSourcePageInput", "create": true},
     "data": {"type": "array[json]", "create": false},
-    "nextMarker": {"type": "string", "create": false}
+    "nextMarker": {"type": "string", "create": false},
+    "sourcePageResult": {"type": "boolean", "create": false},
+    "nativeAuthority": {"type": "map[json]", "create": false}
   }
 }

@@ -18,7 +18,7 @@ public class AiResourceSchemaAuthorizationTest {
             for (String type : List.of("aiResourceView", "aiResourceChangePlan")) {
                 SchemaImpl schema = effective(role, type);
                 assertNotNull(role + ":" + type, schema); assertTrue(schema.isCreate());
-                List<String> inputs = "aiResourceView".equals(type) ? List.of("resourceType", "resourceId", "query", "marker", "parentId")
+                List<String> inputs = "aiResourceView".equals(type) ? List.of("resourceType", "resourceId", "query", "marker", "parentId", "sourcePage")
                         : List.of("resourceType", "operation", "resourceId", "parameters");
                 for (String field : inputs) assertTrue(role + ":" + type + ":" + field, schema.getResourceFields().get(field).isCreate());
                 for (var entry : schema.getResourceFields().entrySet()) if (!inputs.contains(entry.getKey())) assertFalse(entry.getKey(),

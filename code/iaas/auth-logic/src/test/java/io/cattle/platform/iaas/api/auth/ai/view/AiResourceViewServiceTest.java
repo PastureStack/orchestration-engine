@@ -293,6 +293,22 @@ public class AiResourceViewServiceTest {
         } finally { executor.shutdownNow(); }
     }
 
+    @Test public void aliasDetailUsesTheScopedSafeAdapterWithoutLeakingPrivateGraphDataOrReadingNamesInCollections() {
+        Fixture f = new Fixture(); f.service.resourceChanges = mock(io.cattle.platform.iaas.api.auth.change.AiResourceChangeDomain.class);
+        when(f.service.resourceChanges.aliasViewTargets(any(), eq("7"), eq(false))).thenReturn(
+                Map.of("linkedServiceCount", 1, "unresolvedTargetCount", 1, "targetServices", "[]"));
+        when(f.service.resourceChanges.aliasViewTargets(any(), eq("7"), eq(true))).thenReturn(
+                Map.of("linkedServiceCount", 1, "unresolvedTargetCount", 0, "targetServices", "[\"Blue / db\"]"));
+        Resource row = new ResourceImpl("7", "dnsService", Map.of("name", "alias", "state", "inactive", "serviceLinks", "PRIVATE_SENTINEL"));
+        f.rows.add(row); when(f.manager.getById(eq("dnsService"), eq("7"), any())).thenReturn(row);
+        Map<String, Object> list = f.service.read(f.request(Map.of("resourceType", "dnsService")));
+        Map<String, Object> detail = f.service.read(f.request(Map.of("resourceType", "dnsService", "resourceId", "7")));
+        assertEquals(1, ((Map<?, ?>) ((List<?>) list.get("data")).getFirst()).get("unresolvedTargetCount"));
+        assertEquals("[\"Blue / db\"]", ((Map<?, ?>) ((List<?>) detail.get("data")).getFirst()).get("targetServices"));
+        assertFalse(list.toString().contains("PRIVATE_SENTINEL")); assertFalse(detail.toString().contains("serviceLinks"));
+        verify(f.keyAccess, times(2)).authorize(any(), eq(f.live));
+    }
+
     private static Resource row(String id, String name) {
         return new ResourceImpl(id, "stack", new LinkedHashMap<>(Map.of("name", name, "state", "active", "key", "private-payload")));
     }

@@ -63,6 +63,11 @@ import io.cattle.platform.iaas.api.auth.ai.AiToolCallEvent;
 import io.cattle.platform.iaas.api.auth.ai.AiToolCallEventService;
 import io.cattle.platform.iaas.api.auth.ai.AiToolCallEventResourceManager;
 import io.cattle.platform.iaas.api.auth.ai.view.AiResourceView;
+import io.cattle.platform.iaas.api.auth.ai.audit.AiAuditQuery;
+import io.cattle.platform.iaas.api.auth.ai.audit.AiAuditQueryService;
+import io.cattle.platform.iaas.api.auth.ai.audit.AiAuditQueryRunner;
+import io.cattle.platform.iaas.api.auth.ai.audit.AiAuditQueryResourceManager;
+import io.cattle.platform.iaas.api.auth.ai.view.AiAuditSourcePageInput;
 import io.cattle.platform.iaas.api.auth.ai.catalog.AiCatalogMetadataView;
 import io.cattle.platform.iaas.api.auth.ai.catalog.AiCatalogLaunchAccess;
 import io.cattle.platform.iaas.api.auth.ai.catalog.AiCatalogLaunchGateway;
@@ -942,6 +947,15 @@ public class IaasApiConfig {
     AiResourceViewResourceManager AiResourceViewResourceManager() { return new AiResourceViewResourceManager(); }
 
     @Bean
+    AiAuditQueryService AiAuditQueryService() { return new AiAuditQueryService(); }
+
+    @Bean
+    AiAuditQueryRunner AiAuditQueryRunner() { return new AiAuditQueryRunner(); }
+
+    @Bean
+    AiAuditQueryResourceManager AiAuditQueryResourceManager() { return new AiAuditQueryResourceManager(); }
+
+    @Bean
     AiCatalogLaunchAccess AiCatalogLaunchAccess() { return new AiCatalogLaunchAccess(); }
 
     @Bean
@@ -1017,7 +1031,8 @@ public class IaasApiConfig {
     TypeSet ApiKeyPolicyTypes() {
         TypeSet types = new TypeSet("ApiKeyPolicyTypes");
         types.setTypeClasses(Arrays.<Class<?>>asList(ApiKeyPolicyPreview.class, ApiKeyDelegationCompletion.class,
-                AiServiceUpgradePlan.class, AiServiceDescriptionUpdate.class, AiToolCallEvent.class, AiResourceView.class,
+                AiServiceUpgradePlan.class, AiServiceDescriptionUpdate.class, AiToolCallEvent.class,
+                AiResourceView.class, AiAuditSourcePageInput.class, AiAuditQuery.class,
                         AiResourceChangePlan.class, AiCatalogMetadataView.class,
                 AiCatalogStackLaunchOptions.class, AiCatalogStackLaunchPlan.class, AiCatalogStackLaunchInputs.class));
         return types;

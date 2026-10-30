@@ -102,8 +102,8 @@ public class AiResourceChangePlanStore extends AbstractJooqDao {
     }
 
     static boolean projectFailure(Map<String, Object> plan) {
-        if (!AUTHORIZATION_DENIED.equals(plan.get(PRIVATE_FAILURE)) || !Boolean.TRUE.equals(plan.get("dispatchAcknowledged"))
-                || !java.util.Objects.equals(plan.get("id"), plan.get("operationId"))) return false;
+        if (!AUTHORIZATION_DENIED.equals(plan.get(PRIVATE_FAILURE)) || !(plan.get("id") instanceof String id)
+                || !id.matches("aichange-[0-9a-f-]{36}") || !id.equals(plan.get("operationId"))) return false;
         plan.put("status", "failed"); plan.put("verifiedResult", false); plan.put("messageCode", AUTHORIZATION_DENIED); return true;
     }
 
@@ -126,7 +126,26 @@ public class AiResourceChangePlanStore extends AbstractJooqDao {
         if (plan.get("snapshot") instanceof Map<?, ?> snapshot && snapshot.get("childServices") instanceof List<?> children) {
             for (Object child : children) if (child instanceof Map<?, ?> row && row.get("id") instanceof Number) services.add(row.get("id"));
         }
-        binding.put("services", services); return binding;
+        binding.put("services", services);
+        if ("dnsService".equals(descriptor.resourceType())) {
+            Object references = plan.get("referenceSnapshot") instanceof Map<?, ?> snapshot ? snapshot.get("after") : null;
+            binding.put("aliasReferences", pins(references, List.of("id", "uuid", "accountId", "stackId", "stackUuid", "kind")));
+            Object previous = plan.get("referenceSnapshot") instanceof Map<?, ?> snapshot ? snapshot.get("before") : null;
+            binding.put("aliasBeforeReferences", pins(previous, List.of("id", "uuid", "accountId", "stackId", "stackUuid", "kind")));
+            Object links = plan.get("snapshot") instanceof Map<?, ?> snapshot ? snapshot.get("aliasLinks") : null;
+            binding.put("aliasLinks", pins(links, List.of("id", "uuid", "accountId", "serviceId", "consumedServiceId", "consumedUuid")));
+        }
+        return binding;
+    }
+
+    private List<Map<String, Object>> pins(Object value, List<String> fields) {
+        List<Map<String, Object>> result = new java.util.ArrayList<>();
+        if (value instanceof List<?> rows) for (Object row : rows) if (row instanceof Map<?, ?> source) {
+            Map<String, Object> pin = new java.util.LinkedHashMap<>();
+            for (String field : fields) if (source.containsKey(field)) pin.put(field, source.get(field));
+            result.add(pin);
+        }
+        return result;
     }
 
     private String encode(Map<String, Object> plan) {

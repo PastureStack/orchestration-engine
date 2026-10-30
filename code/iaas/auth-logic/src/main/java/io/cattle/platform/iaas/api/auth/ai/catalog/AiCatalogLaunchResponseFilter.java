@@ -10,7 +10,7 @@ import java.util.List;
 import java.util.Map;
 
 /** Verify the actual normal-manager result, closing the interval after authentication's frozen-body check. */
-public class AiCatalogLaunchResponseFilter extends AbstractDefaultResourceManagerFilter {
+public final class AiCatalogLaunchResponseFilter extends AbstractDefaultResourceManagerFilter {
     @Inject AiCatalogLaunchDelegation delegation;
     @Override public String[] getTypes() { return new String[] { "stack", "service", "volumeTemplate", "secret" }; }
     @Override public Object create(String type, ApiRequest request, ResourceManager next) {

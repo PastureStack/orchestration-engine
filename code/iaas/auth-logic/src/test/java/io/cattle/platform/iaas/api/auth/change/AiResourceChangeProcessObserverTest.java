@@ -33,6 +33,54 @@ import org.junit.Test;
 public class AiResourceChangeProcessObserverTest {
     @After public void clear() { ApiContext.remove(); }
 
+    @Test public void terminalOwnerDenialIsAuthoritativeWhileTheHttpAcknowledgementIsStillBlocked() throws Exception {
+        try (Fixture f = new Fixture()) {
+            ProcessRecord child = f.child();
+            var terminal = new java.util.concurrent.CountDownLatch(1);
+            var allowAck = new java.util.concurrent.CountDownLatch(1);
+            var executor = java.util.concurrent.Executors.newSingleThreadExecutor();
+            var response = executor.submit(() -> {
+                f.observer.afterExecution(child, ProcessAuthorization.metadata(child), ExitReason.AUTHORIZATION_DENIED);
+                terminal.countDown();
+                try { assertTrue(allowAck.await(5, java.util.concurrent.TimeUnit.SECONDS)); }
+                catch (InterruptedException interrupted) { throw new IllegalStateException(interrupted); }
+                f.acknowledge();
+            });
+            try {
+                assertTrue(terminal.await(5, java.util.concurrent.TimeUnit.SECONDS));
+                assertFalse(response.isDone()); assertFalse(Boolean.TRUE.equals(f.store.load(f.id).get("dispatchAcknowledged")));
+                Map<String, Object> receipt = f.reader(true).get(f.id, f.receipt());
+                assertEquals("failed", receipt.get("status")); assertEquals(false, receipt.get("verifiedResult"));
+                assertEquals(f.id, receipt.get("operationId")); assertEquals(AiResourceChangePlanStore.AUTHORIZATION_DENIED, receipt.get("messageCode"));
+                allowAck.countDown(); response.get(5, java.util.concurrent.TimeUnit.SECONDS);
+                Map<String, Object> late = new LinkedHashMap<>(f.plan); late.put("status", "succeeded"); late.put("verifiedResult", true);
+                f.store.save(late); assertEquals("failed", late.get("status")); assertEquals(false, late.get("verifiedResult"));
+                assertEquals(0, f.dispatches);
+            } finally { allowAck.countDown(); executor.shutdownNow(); }
+        }
+    }
+
+    @Test public void missingScalarForeignOperationAndCancelledOwnerDoNotTurnAnUnknownDispatchIntoFailure() throws Exception {
+        try (Fixture f = new Fixture()) {
+            ProcessRecord child = f.child(); f.plan.put("status", "unknown"); f.store.save(f.plan);
+            f.observer.afterExecution(child, ProcessAuthorization.metadata(child), ExitReason.CANCELED);
+            assertNull(f.store.failure(f.id)); assertEquals("unknown", f.reader(true).get(f.id, f.receipt()).get("status"));
+            for (String mutation : List.of("scalar", "operation", "missing-operation", "missing-plan")) {
+                Map<String, Object> unknown = new LinkedHashMap<>(f.plan); unknown.put("status", "unknown");
+                unknown.put(AiResourceChangePlanStore.PRIVATE_FAILURE, AiResourceChangePlanStore.AUTHORIZATION_DENIED);
+                if (mutation.equals("scalar")) unknown.remove(AiResourceChangePlanStore.PRIVATE_FAILURE);
+                if (mutation.equals("operation")) unknown.put("operationId", "aichange-00000000-0000-0000-0000-000000000000");
+                if (mutation.equals("missing-operation")) unknown.remove("operationId");
+                if (mutation.equals("missing-plan")) { unknown.remove("id"); unknown.remove("operationId"); }
+                assertFalse(mutation, AiResourceChangePlanStore.projectFailure(unknown)); assertEquals("unknown", unknown.get("status"));
+            }
+            Map<String, Object> other = new LinkedHashMap<>(ProcessAuthorization.metadata(child));
+            other.put("requestId", "aichange-00000000-0000-0000-0000-000000000000");
+            child.getData().put(ProcessAuthorization.DATA_KEY, other);
+            f.observer.afterExecution(child, other, ExitReason.AUTHORIZATION_DENIED); assertNull(f.store.failure(f.id));
+        }
+    }
+
     @Test public void exactChildDenialBeforeApplySaveImmediatelyWinsAndKeepsSafeSameOperation() throws Exception {
         try (Fixture f = new Fixture()) {
             ProcessRecord child = f.child(); f.observer.afterExecution(child, ProcessAuthorization.metadata(child), ExitReason.AUTHORIZATION_DENIED);
@@ -180,7 +228,7 @@ public class AiResourceChangeProcessObserverTest {
             f.request.setAttribute(AiResourceChangeProcessObserver.ATTRIBUTE, Map.of("id", f.id));
             LaunchConfiguration config = new LaunchConfiguration("service.deactivate", "service", "7", 77L, 0,
                     Map.of(ProcessAuthorization.DATA_KEY, Map.of("requestId", f.id)));
-            ProcessAuthorization.prepare(config, List.of(new ApiKeyProcessAuthorization(), f.observer));
+            ProcessAuthorization.prepare(config, List.of(f.captureAuthorization, f.observer));
             ProcessRecord record = new ProcessRecord(config, 55L, "server"); record.setEndTime(new Date());
             f.observer.afterExecution(record, ProcessAuthorization.metadata(record), ExitReason.AUTHORIZATION_DENIED);
             assertTrue(((List<?>) f.store.execution(f.id).get("initial")).isEmpty()); assertNull(f.store.failure(f.id));
@@ -205,13 +253,13 @@ public class AiResourceChangeProcessObserverTest {
             f.request.setId(null); f.request.setAction(null);
             f.observer.dispatch(f.request, f.id, () -> {
                 ProcessAuthorization.prepare(new LaunchConfiguration("service.create", "service", "7", 77L, 0, Map.of()),
-                        List.of(new ApiKeyProcessAuthorization(), f.observer)); return null;
+                        List.of(f.captureAuthorization, f.observer)); return null;
             });
             assertNull(f.store.execution(f.id).get("rootId")); // Existing inactive resources cannot be borrowed.
             f.service.setState("requested");
             f.observer.dispatch(f.request, f.id, () -> {
                 LaunchConfiguration nativeRoot = new LaunchConfiguration("service.create", "service", "7", 77L, 0, Map.of());
-                ProcessAuthorization.prepare(nativeRoot, List.of(new ApiKeyProcessAuthorization(), f.observer)); return null;
+                ProcessAuthorization.prepare(nativeRoot, List.of(f.captureAuthorization, f.observer)); return null;
             });
             assertEquals(7L, ((Number) f.store.execution(f.id).get("rootId")).longValue());
             assertEquals("service-uuid", f.store.execution(f.id).get("rootUuid"));
@@ -229,6 +277,7 @@ public class AiResourceChangeProcessObserverTest {
         final String id = "aichange-" + UUID.randomUUID(); final Connection connection;
         final JacksonJsonMapper json = new JacksonJsonMapper(); final AiResourceChangePlanStore store = new AiResourceChangePlanStore();
         final ObjectManager objects = mock(ObjectManager.class); final ApiKeyTargetResolver targets = new ApiKeyTargetResolver();
+        final ApiKeyProcessAuthorization captureAuthorization = new ApiKeyProcessAuthorization();
         final AiResourceChangeProcessObserver observer = new AiResourceChangeProcessObserver();
         final ServiceRecord service = new ServiceRecord(); final InstanceRecord instance = new InstanceRecord();
         final ServiceExposeMapRecord link = new ServiceExposeMapRecord(); final Policy owner = mock(Policy.class);
@@ -244,6 +293,7 @@ public class AiResourceChangeProcessObserverTest {
             when(schemas.getBaseType("container")).thenReturn("instance"); DefaultIdFormatter formatter = new DefaultIdFormatter();
             formatter.setSchemaFactory(schemas); formatter.setTypeMappings(Map.of("stack", "st"));
             inject(targets, "objectManager", objects); inject(targets, "idFormatter", formatter);
+            inject(captureAuthorization, "targets", targets);
             when(owner.getAccountId()).thenReturn(77L); when(owner.getAuthenticatedAsAccountId()).thenReturn(42L);
             AccountRecord project = new AccountRecord(); project.setId(77L); project.setKind("project"); project.setUuid("project");
             AccountRecord actor = new AccountRecord(); actor.setId(42L); actor.setUuid("actor");
@@ -279,7 +329,7 @@ public class AiResourceChangeProcessObserverTest {
         }
         ProcessRecord child() throws Exception {
             final LaunchConfiguration root = new LaunchConfiguration("service.deactivate", "service", "7", 77L, 0, Map.of());
-            observer.dispatch(request, id, () -> { ProcessAuthorization.prepare(root, List.of(new ApiKeyProcessAuthorization(), observer)); return null; });
+            observer.dispatch(request, id, () -> { ProcessAuthorization.prepare(root, List.of(captureAuthorization, observer)); return null; });
             EngineContext engine = EngineContext.getEngineContext(); Map<String, Object> binding = ProcessAuthorization.metadata(root);
             engine.pushAuthorization(binding); var parent = engine.pushVerifiedExecution("service", "7", binding);
             LaunchConfiguration child = new LaunchConfiguration("instance.stop", "instance", "10", 77L, 0, Map.of("detail", "private payload"));

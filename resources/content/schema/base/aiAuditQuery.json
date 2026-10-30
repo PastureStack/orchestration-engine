@@ -1,0 +1,99 @@
+{
+  "pluralName": "aiAuditQueries",
+  "collectionMethods": [
+    "POST"
+  ],
+  "resourceMethods": [],
+  "resourceFields": {
+    "keyId": {
+      "type": "string",
+      "create": true,
+      "maxLength": 160
+    },
+    "environmentId": {
+      "type": "string",
+      "create": true,
+      "maxLength": 160
+    },
+    "from": {
+      "type": "string",
+      "create": true,
+      "maxLength": 160
+    },
+    "to": {
+      "type": "string",
+      "create": true,
+      "maxLength": 160
+    },
+    "lastMinutes": {
+      "type": "int",
+      "create": true
+    },
+    "decision": {
+      "type": "string",
+      "create": true,
+      "maxLength": 160
+    },
+    "outcome": {
+      "type": "string",
+      "create": true,
+      "maxLength": 160
+    },
+    "operation": {
+      "type": "string",
+      "create": true,
+      "maxLength": 160
+    },
+    "targetType": {
+      "type": "string",
+      "create": true,
+      "maxLength": 160
+    },
+    "requestId": {
+      "type": "string",
+      "create": true,
+      "maxLength": 160
+    },
+    "httpStatus": {
+      "type": "int",
+      "create": true
+    },
+    "limit": {
+      "type": "int",
+      "create": true
+    },
+    "offset": {
+      "type": "int",
+      "create": true
+    },
+    "eventId": {
+      "type": "string",
+      "create": true,
+      "maxLength": 160
+    },
+    "resourceType": {
+      "type": "string",
+      "create": false
+    },
+    "data": {
+      "type": "array[json]",
+      "create": false
+    },
+    "total": {
+      "type": "int",
+      "create": false
+    },
+    "nextOffset": {
+      "type": "int",
+      "create": false
+    },
+    "range": {
+      "type": "map[string]",
+      "create": false
+    },
+    "payloadPolicy": {
+      "type": "string",
+      "create": false
+    }
+  }
+}

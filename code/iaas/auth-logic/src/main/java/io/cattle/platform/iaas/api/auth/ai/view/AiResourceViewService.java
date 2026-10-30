@@ -5,6 +5,9 @@ import io.cattle.platform.api.utils.ApiUtils;
 import io.cattle.platform.iaas.api.auth.ai.AiKeyAuthorization;
 import io.cattle.platform.iaas.api.auth.apikey.ApiKeyAuthorizationService;
 import io.cattle.platform.iaas.api.auth.apikey.ApiKeyCredentialContext;
+import io.cattle.platform.iaas.api.auth.apikey.ApiKeyAiBridgeGuard;
+import io.cattle.platform.core.model.Account;
+import io.cattle.platform.object.ObjectManager;
 import io.cattle.platform.iaas.api.auth.impl.ApiAuthenticator;
 import io.cattle.platform.util.type.CollectionUtils;
 import io.github.ibuildthecloud.gdapi.condition.Condition;
@@ -77,14 +80,23 @@ public class AiResourceViewService {
     @Inject ApiKeyAuthorizationService keyAccess;
     @Inject ApiAuthenticator authenticator;
     @Inject ResourceManagerLocator managers;
+    @Inject ObjectManager objects;
+    @Inject io.cattle.platform.iaas.api.auth.change.AiResourceChangeDomain resourceChanges;
 
     public Map<String, Object> read(ApiRequest request) {
         Map<String, Object> input = input(request);
-        String type = (String) input.get("resourceType");
+        AiAuditSourcePage source = input.containsKey("sourcePage") ? AiAuditSourcePage.parse(input) : null;
+        String type = source == null ? (String) input.get("resourceType") : source.type;
         Policy current = keyAuthorization.actor(request);
         if (current == null || current.getAuthenticatedAsAccountId() <= 0) throw error(403, "PermissionDenied");
         long principal = current.getAuthenticatedAsAccountId();
         long account = GLOBAL_TYPES.contains(type) ? principal : current.getAccountId();
+        if (source != null && source.projectId != null) {
+            account = AiAuditSourcePage.number("project", source.projectId);
+            Account project = objects.loadResource(Account.class, account);
+            if (project == null || project.getRemoved() != null || !"project".equals(project.getKind()) || !"active".equals(project.getState()))
+                throw error(403, "OwnerPermissionDenied");
+        }
         ApiRequest domain = new ApiRequest(request);
         domain.setRequestServletContext(request.getServletContext());
         domain.setType(type); domain.setId(input.get("resourceId") == null || "processPool".equals(type)
@@ -94,11 +106,19 @@ public class AiResourceViewService {
         domain.setInclude(null);
         domain.setSort(new Sort("id", Sort.SortOrder.ASC, null));
         domain.setPagination(new Pagination(MEMORY_COLLECTIONS.contains(type) ? 10001 : 51));
+        if (source != null) source.configure(domain);
         // ApiRequest's copy constructor gives attributes a fresh map. This is
         // an internal marker, never derived from an HTTP header or input map.
         domain.setAttribute(DOMAIN_READ_ATTRIBUTE, Boolean.TRUE);
         ApiKeyCredentialContext key = ApiKeyCredentialContext.get(request);
-        if (key != null) ApiKeyCredentialContext.attach(domain, key);
+        if (key != null) {
+            // Source pages are one bounded query snapshot even for GENERAL
+            // Keys. A later revision cannot silently enlarge this query.
+            if (source != null && (request.getServletContext() == null
+                    || !Long.toString(key.revision()).equals(request.getServletContext().getRequest()
+                            .getHeader(ApiKeyAiBridgeGuard.EXPECTED_REVISION_HEADER)))) throw error(403, "ApiKeyPolicyChanged");
+            ApiKeyCredentialContext.attach(domain, key);
+        }
         var authority = authenticator.currentAuthorization(principal, account, domain);
         domain.setSchemaFactory(authority.schemas());
         Schema schema = authority.schemas().getSchema(type);
@@ -109,6 +129,11 @@ public class AiResourceViewService {
         context.setApiRequest(domain); context.setPolicy(authority.policy());
         try {
             keyAccess.authorize(domain, authority.policy());
+            if (source != null) {
+                ResourceManager manager = managers.getResourceManagerByType(type);
+                if (manager == null) throw error(404, "NotFound");
+                return source.fetch(manager, domain, authority.policy());
+            }
             return fetch(domain, input);
         } finally {
             context.setApiRequest(previous); context.setPolicy(previousPolicy);
@@ -152,6 +177,7 @@ public class AiResourceViewService {
             String id = "processPool".equals(type) ? poolId(resource.getFields()) : resource.getId();
             if (id == null) throw error(503, "ResourceViewUnavailable");
             Map<String, Object> safe = project(type, id, resource.getFields());
+            if ("dnsService".equals(type)) safe.putAll(resourceChanges.aliasViewTargets(domain, id, domain.getId() != null));
             if ("processPool".equals(type) && (!(safe.get("name") instanceof String name) || name.isBlank()))
                 safe.put("name", "Process pool " + id.substring(5, 17));
             if (marker == null || compareIds((String) safe.get("id"), marker) > 0) visible.add(safe);
@@ -245,6 +271,8 @@ public class AiResourceViewService {
         if (Set.of("service", "loadBalancerService", "dnsService", "externalService").contains(type)
                 && fields.get("launchConfig") instanceof Map<?, ?> launch && launch.get("imageUuid") instanceof String image)
             safe.put("imageUuid", image.substring(0, Math.min(image.length(), 512)));
+        if ("externalService".equals(type)) safe.putAll(
+                io.cattle.platform.iaas.api.auth.change.AiExternalServiceChange.summary(fields));
         if (Set.of("apiKey", "apiKeyRestricted").contains(type) && fields.get("apiKeyPolicy") instanceof Map<?, ?> policy) {
             for (String field : List.of("mode", "purpose", "expiresAt")) {
                 Object value = policy.get(field);
@@ -262,7 +290,7 @@ public class AiResourceViewService {
 
     private static Map<String, Object> input(ApiRequest request) {
         Map<String, Object> input = CollectionUtils.toMap(request.getRequestObject());
-        if (!Set.of("type", "resourceType", "resourceId", "query", "marker", "parentId").containsAll(input.keySet())
+        if (!Set.of("type", "resourceType", "resourceId", "query", "marker", "parentId", "sourcePage").containsAll(input.keySet())
                 || !(input.get("resourceType") instanceof String type) || !READ_TYPES.contains(type)) throw error(422, "ResourceViewInputInvalid");
         for (String key : List.of("resourceId", "marker", "parentId")) {
             Object value = input.get(key);

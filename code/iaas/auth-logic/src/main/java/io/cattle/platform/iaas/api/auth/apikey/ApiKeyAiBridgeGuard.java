@@ -62,7 +62,8 @@ public final class ApiKeyAiBridgeGuard {
             return request.getId() == null && request.getAction() == null
                     || request.getId() != null && "apply".equals(request.getAction());
         return request.getId() == null && request.getAction() == null
-                && Set.of("aiToolCallEvent", "aiServiceDescriptionUpdate", "aiResourceView", "aiCatalogMetadataView", "aiCatalogStackLaunchOptions")
+                && Set.of("aiToolCallEvent", "aiServiceDescriptionUpdate", "aiResourceView", "aiAuditQuery",
+                        "aiCatalogMetadataView", "aiCatalogStackLaunchOptions")
                         .contains(type == null ? "" : type);
     }
 

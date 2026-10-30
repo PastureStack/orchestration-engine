@@ -15,6 +15,7 @@ import io.cattle.platform.core.model.Nic;
 import io.cattle.platform.core.model.Port;
 import io.cattle.platform.core.model.Service;
 import io.cattle.platform.core.model.ServiceExposeMap;
+import io.cattle.platform.core.model.ServiceConsumeMap;
 import io.cattle.platform.db.jooq.dao.impl.AbstractJooqDao;
 import io.cattle.platform.iaas.api.auth.ai.AiKeyAuthorization;
 import io.cattle.platform.iaas.api.auth.apikey.ApiKeyAuthorizationService;
@@ -49,6 +50,8 @@ import java.util.function.Supplier;
 public class AiResourceChangeDomain extends AbstractJooqDao {
     private static final String DOMAIN = "ai.resource.change.domain.descriptor";
     private static final String PARENT_READ = "ai.resource.change.parent.read";
+    private static final String ALIAS_REFERENCE = "ai.resource.change.alias.reference";
+    private record AliasReference(String type, String publicId, String nativeId) { }
     @Inject ObjectManager objects;
     @Inject AiResourceChangeProcessObserver processObserver;
     @Inject ResourceManagerLocator managers;
@@ -66,8 +69,11 @@ public class AiResourceChangeDomain extends AbstractJooqDao {
         Object marker = request.getAttribute(DOMAIN);
         if (!(marker instanceof AiResourceChangeDescriptor descriptor) || request.getLink() != null
                 || AiResourceChangeDescriptor.require(descriptor.resourceType(), descriptor.operation()) != descriptor) return false;
-        boolean parent = Boolean.TRUE.equals(request.getAttribute(PARENT_READ)) && descriptor.createsResource()
-                && "service".equals(descriptor.resourceType()) && "stack".equals(request.getType());
+        boolean parent = Boolean.TRUE.equals(request.getAttribute(PARENT_READ)) && descriptor.requiresStackParent() && "stack".equals(request.getType());
+        if ("dnsService".equals(descriptor.resourceType()) && "GET".equals(request.getMethod()) && request.getAction() == null
+                && request.getAttribute(ALIAS_REFERENCE) instanceof AliasReference reference
+                && Objects.equals(reference.type(), request.getType()) && (Objects.equals(reference.publicId(), request.getId())
+                        || Objects.equals(reference.nativeId(), request.getId()))) return true;
         if (!parent && !descriptor.resourceType().equals(request.getType())) return false;
         if ("GET".equals(request.getMethod()) && request.getAction() == null) return true;
         return !parent && descriptor.method().equals(request.getMethod()) && Objects.equals(descriptor.action(), request.getAction())
@@ -89,13 +95,15 @@ public class AiResourceChangeDomain extends AbstractJooqDao {
     }
 
     public Object parent(ApiRequest request, AiResourceChangeDescriptor descriptor, Map<String, Object> parameters) {
-        return descriptor.createsResource() && "service".equals(descriptor.resourceType())
+        return descriptor.requiresStackParent()
                 ? read(request, descriptor, "stack", (String) parameters.get("stackId"), true) : null;
     }
 
     private Object read(ApiRequest original, AiResourceChangeDescriptor descriptor, String type, String publicId, boolean parent) {
         ApiRequest request = domain(original, descriptor, type, publicId, "GET", null, new LinkedHashMap<>());
         if (parent) request.setAttribute(PARENT_READ, true);
+        if ("dnsService".equals(descriptor.resourceType()) && !"dnsService".equals(type))
+            request.setAttribute(ALIAS_REFERENCE, new AliasReference(type, publicId, Long.toString(internalId(type, publicId))));
         return authorized(original, request, () -> {
             Object row = manager(type).getById(type, request.getId(), new ListOptions(request));
             if (row == null || ObjectUtils.getRemoved(row) != null || !Objects.equals(ObjectUtils.getKind(row), type)
@@ -116,8 +124,74 @@ public class AiResourceChangeDomain extends AbstractJooqDao {
                 descriptor.method(), descriptor.action(), body);
         return authorized(original, request, () -> {
             if (boundPlan != null) keys.authorizeBoundDomain(boundPlan, request);
+            if ("dnsService".equals(descriptor.resourceType()) && Set.of("update_targets", "remove").contains(descriptor.operation())) {
+                Map<String, Object> references = aliasReferenceSnapshot(original, descriptor, publicId, parameters);
+                if ("update_targets".equals(descriptor.operation()) && publicId != null && aliasReferences(original, descriptor, parameters).stream()
+                        .anyMatch(ref -> number(ref.get("id")) == internalId("dnsService", publicId)))
+                    throw error(422, "ResourceChangeInputInvalid");
+                if (boundPlan != null && !references.equals(boundPlan.get("referenceSnapshot"))) throw error(409, "ResourceChangePlanStale");
+            }
             return copyMap(request.getRequestObject());
         });
+    }
+
+    public List<Map<String, Object>> aliasReferences(ApiRequest original, AiResourceChangeDescriptor descriptor, Map<String, Object> parameters) {
+        if (!"dnsService".equals(descriptor.resourceType()) || !"update_targets".equals(descriptor.operation())) return List.of();
+        if (!(parameters.get("serviceIds") instanceof List<?> selected) || selected.size() > AiAliasServiceChange.MAX_TARGETS)
+            throw error(422, "ResourceChangeUnsupported");
+        List<Map<String, Object>> result = new ArrayList<>(); Set<Long> ids = new java.util.LinkedHashSet<>();
+        for (Object id : (List<?>) parameters.get("serviceIds")) {
+            long internal = internalId("service", (String) id); Service candidate = objects.loadResource(Service.class, internal);
+            if (candidate == null || !Set.of("service", "dnsService", "externalService", "loadBalancerService").contains(candidate.getKind()))
+                throw error(404, "NotFound");
+            Service visible = (Service) read(original, descriptor, candidate.getKind(), publicId(candidate.getKind(), internal), false);
+            if (visible.getStackId() == null || visible.getUuid() == null || !ids.add(internal)) throw error(422, "ResourceChangeInputInvalid");
+            var stack = (io.cattle.platform.core.model.Stack) read(original, descriptor, "stack", publicId("stack", visible.getStackId()), true);
+            if (stack.getUuid() == null) throw error(404, "NotFound");
+            Map<String, Object> snapshot = new LinkedHashMap<>();
+            snapshot.put("id", internal); snapshot.put("uuid", visible.getUuid()); snapshot.put("accountId", visible.getAccountId());
+            snapshot.put("stackId", visible.getStackId()); snapshot.put("stackUuid", stack.getUuid()); snapshot.put("kind", visible.getKind());
+            snapshot.put("path", Objects.toString(stack.getName(), "") + " / " + Objects.toString(visible.getName(), "")); result.add(snapshot);
+        }
+        return (List<Map<String, Object>>) (List<?>) copyMap(Map.of("references", result)).get("references");
+    }
+
+    public Map<String, Object> aliasReferenceSnapshot(ApiRequest original, AiResourceChangeDescriptor descriptor,
+            String publicId, Map<String, Object> parameters) {
+        if (!"dnsService".equals(descriptor.resourceType()) || !Set.of("update_targets", "remove").contains(descriptor.operation())) return Map.of();
+        Service service = objects.loadResource(Service.class, internalId("dnsService", publicId));
+        if (service == null || !"dnsService".equals(service.getKind()) || !Objects.equals(service.getAccountId(), actor(original).getAccountId()))
+            throw error(404, "NotFound");
+        List<String> ids = new ArrayList<>();
+        for (ServiceConsumeMap link : objects.find(ServiceConsumeMap.class, "serviceId", service.getId(), "removed", null)) {
+            if (!AiAliasServiceChange.simpleLink(link) || !Objects.equals(link.getAccountId(), service.getAccountId()))
+                throw error(422, "ResourceChangeUnsupported");
+            ids.add(publicId("service", link.getConsumedServiceId()));
+        }
+        var reference = AiResourceChangeDescriptor.require("dnsService", "update_targets");
+        return copyMap(Map.of("before", aliasReferences(original, reference, Map.of("serviceIds", ids)),
+                "after", "update_targets".equals(descriptor.operation()) ? aliasReferences(original, reference, parameters) : List.of()));
+    }
+
+    /** Scalar metadata only. Hidden targets never contribute a display name or an identifier. */
+    public Map<String, Object> aliasViewTargets(ApiRequest request, String id, boolean detail) {
+        Service service = objects.loadResource(Service.class, internalId("dnsService", id));
+        if (service == null || !"dnsService".equals(service.getKind()) || !Objects.equals(service.getAccountId(), actor(request).getAccountId()))
+            throw error(404, "NotFound");
+        int count = objects.find(ServiceConsumeMap.class, "serviceId", service.getId(), "removed", null).size();
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("linkedServiceCount", count); result.put("unresolvedTargetCount", count); result.put("targetServices", "[]");
+        if (!detail || count > AiAliasServiceChange.MAX_TARGETS) return result;
+        try {
+            Map<String, Object> references = aliasReferenceSnapshot(request, AiResourceChangeDescriptor.require("dnsService", "update_targets"),
+                    id, Map.of("serviceIds", List.of()));
+            List<String> names = new ArrayList<>();
+            for (Object value : (List<?>) references.get("before")) names.add((String) ((Map<?, ?>) value).get("path"));
+            result.put("targetServices", displayed("targetServices", names)); result.put("unresolvedTargetCount", 0);
+        } catch (ClientVisibleException denied) {
+            if (!Set.of(403, 404, 422).contains(denied.getStatus())) throw denied;
+        }
+        return result;
     }
 
     public Object dispatch(ApiRequest original, AiResourceChangeDescriptor descriptor, String publicId,
@@ -159,6 +233,15 @@ public class AiResourceChangeDomain extends AbstractJooqDao {
         request.setSchemaFactory(current.schemas());
         Schema schema = current.schemas().getSchema(request.getType());
         if (schema == null) throw error(403, "PermissionDenied");
+        if (request.getAttribute(DOMAIN) instanceof AiResourceChangeDescriptor descriptor && "dnsService".equals(descriptor.resourceType())) {
+            if (request.getAction() != null) {
+                var actions = request.getId() == null ? schema.getCollectionActions() : schema.getResourceActions();
+                if (actions == null || !actions.containsKey(request.getAction())) throw error(403, "PermissionDenied");
+            } else {
+                List<String> methods = request.getId() == null ? schema.getCollectionMethods() : schema.getResourceMethods();
+                if (methods == null || !methods.contains(request.getMethod())) throw error(403, "PermissionDenied");
+            }
+        }
         boolean create = "POST".equals(request.getMethod()) && request.getAction() == null;
         boolean update = "PUT".equals(request.getMethod());
         if (create || update) {
@@ -194,7 +277,7 @@ public class AiResourceChangeDomain extends AbstractJooqDao {
         });
         return switch (type) {
         case "stack" -> create().selectFrom(STACK).where(STACK.ID.eq(id)).forUpdate().fetchOne();
-        case "service" -> create().selectFrom(SERVICE).where(SERVICE.ID.eq(id)).forUpdate().fetchOne();
+        case "service", "externalService", "dnsService" -> create().selectFrom(SERVICE).where(SERVICE.ID.eq(id)).forUpdate().fetchOne();
         case "container" -> create().selectFrom(INSTANCE).where(INSTANCE.ID.eq(id)).forUpdate().fetchOne();
         default -> throw error(422, "ResourceChangeUnsupported");
         };
@@ -207,12 +290,24 @@ public class AiResourceChangeDomain extends AbstractJooqDao {
         if (target instanceof Service service) {
             List<Map<String, Object>> instances = new ArrayList<>();
             for (ServiceExposeMap link : objects.find(ServiceExposeMap.class, "serviceId", service.getId(), "removed", null)) {
-                if (!Boolean.TRUE.equals(link.getManaged())) continue;
+                if (!Boolean.TRUE.equals(link.getManaged()) || link.getInstanceId() == null) continue;
                 Instance instance = objects.loadResource(Instance.class, link.getInstanceId());
                 if (instance != null) instances.add(Map.of("id", instance.getId(), "startCount", number(instance.getStartCount())));
             }
             instances.sort(java.util.Comparator.comparingLong(row -> number(row.get("id"))));
             result.put("managedInstances", instances);
+            if ("dnsService".equals(service.getKind())) {
+                List<Map<String, Object>> links = new ArrayList<>();
+                for (ServiceConsumeMap link : objects.find(ServiceConsumeMap.class, "serviceId", service.getId(), "removed", null)) {
+                    Map<String, Object> edge = new LinkedHashMap<>();
+                    for (String field : List.of("id", "uuid", "accountId", "serviceId", "consumedServiceId", "name", "consumedService", "state", "data"))
+                        edge.put(field, ObjectUtils.getPropertyIgnoreErrors(link, field));
+                    Service consumed = objects.loadResource(Service.class, link.getConsumedServiceId());
+                    edge.put("consumedUuid", consumed == null ? null : consumed.getUuid());
+                    links.add(edge);
+                }
+                links.sort(java.util.Comparator.comparingLong(edge -> number(edge.get("id")))); result.put("aliasLinks", links);
+            }
         }
         if (target instanceof io.cattle.platform.core.model.Stack stack) {
             List<Map<String, Object>> services = new ArrayList<>();
@@ -231,13 +326,22 @@ public class AiResourceChangeDomain extends AbstractJooqDao {
         if (!Set.of("active", "inactive", "running", "stopped").contains(state == null ? "" : state))
             throw error(409, "ResourceChangeTargetBusy");
         if (!descriptor.createsResource() && !"stack".equals(descriptor.resourceType())) {
-            if ("start".equals(descriptor.operation()) && !("service".equals(descriptor.resourceType()) ? "inactive" : "stopped").equals(state)
+            if ("start".equals(descriptor.operation()) && !(descriptor.serviceResource() ? "inactive" : "stopped").equals(state)
                     || Set.of("stop", "restart", "scale").contains(descriptor.operation())
-                    && !("service".equals(descriptor.resourceType()) ? "active" : "running").equals(state))
+                    && !(descriptor.serviceResource() ? "active" : "running").equals(state))
                 throw error(409, "ResourceChangeTargetBusy");
         }
         if ("scale".equals(descriptor.operation()) && !deploymentReadiness.supportsManualScale((Service) target))
             throw error(422, "ResourceChangeUnsupported");
+        if ("dnsService".equals(descriptor.resourceType()) && target instanceof Service service) {
+            List<? extends ServiceConsumeMap> links = objects.find(ServiceConsumeMap.class, "serviceId", service.getId(), "removed", null);
+            if (links.size() > AiAliasServiceChange.MAX_TARGETS) throw error(422, "ResourceChangeUnsupported");
+            for (ServiceConsumeMap link : links)
+                if (!AiAliasServiceChange.simpleLink(link) || Objects.equals(link.getConsumedServiceId(), service.getId()))
+                    throw error(422, "ResourceChangeUnsupported");
+            if ("remove".equals(descriptor.operation()) && !objects.find(ServiceConsumeMap.class,
+                    "consumedServiceId", service.getId(), "removed", null).isEmpty()) throw error(422, "ResourceChangeUnsupported");
+        }
     }
 
     public String publicId(String type, Object id) {
@@ -245,6 +349,8 @@ public class AiResourceChangeDomain extends AbstractJooqDao {
     }
 
     public String targetPath(ApiRequest request, Object target, Object parent, Map<String, Object> parameters) {
+        if (target instanceof Service service && "dnsService".equals(service.getKind()) && parent == null && service.getStackId() != null)
+            parent = read(request, AiResourceChangeDescriptor.require("dnsService", "update_targets"), "stack", publicId("stack", service.getStackId()), true);
         Policy actor = actor(request); Account project = objects.loadResource(Account.class, actor.getAccountId());
         String name = target == null ? String.valueOf(parameters.get("name")) : String.valueOf(ObjectUtils.getPropertyIgnoreErrors(target, "name"));
         return Objects.toString(project.getName(), "") + " / "
@@ -273,8 +379,17 @@ public class AiResourceChangeDomain extends AbstractJooqDao {
     public boolean complete(AiResourceChangeDescriptor descriptor, Object target, Map<String, Object> parameters,
             Map<String, Object> before) {
         if (target == null) return false;
+        if ("dnsService".equals(descriptor.resourceType())) {
+            Set<Long> expected = new java.util.LinkedHashSet<>();
+            if (parameters.get("serviceIds") instanceof List<?> ids) for (Object id : ids) expected.add(internalId("service", (String) id));
+            return target instanceof Service service && AiAliasServiceChange.complete(descriptor.operation(), service, parameters,
+                    expected, objects.find(ServiceConsumeMap.class, "serviceId", service.getId()));
+        }
         if (descriptor.changesArchive()) return ObjectUtils.getRemoved(target) == null
                 && Boolean.TRUE.equals(DataAccessor.field(target, "archived", Object.class)) == "archive".equals(descriptor.operation());
+        if ("externalService".equals(descriptor.resourceType())) return target instanceof Service service
+                && AiExternalServiceChange.complete(descriptor.operation(), service, parameters,
+                        objects.find(ServiceExposeMap.class, "serviceId", service.getId()));
         String state = ObjectUtils.getState(target);
         if ("remove".equals(descriptor.operation())) return ObjectUtils.getRemoved(target) != null
                 && Set.of("removed", "purged").contains(state) && removalSettled(descriptor.resourceType(), target)
@@ -351,7 +466,7 @@ public class AiResourceChangeDomain extends AbstractJooqDao {
     private boolean serviceReady(Service service, boolean running) {
         if (running) return deploymentReadiness.isReady(service);
         for (ServiceExposeMap link : objects.find(ServiceExposeMap.class, "serviceId", service.getId(), "removed", null)) {
-            if (!Boolean.TRUE.equals(link.getManaged())) continue;
+            if (!Boolean.TRUE.equals(link.getManaged()) || link.getInstanceId() == null) continue;
             Instance instance = objects.loadResource(Instance.class, link.getInstanceId());
             if (instance == null || !Objects.equals(instance.getAccountId(), service.getAccountId())) return false;
             if (instance.getRemoved() == null && !"stopped".equals(instance.getState())) return false;
@@ -412,6 +527,22 @@ public class AiResourceChangeDomain extends AbstractJooqDao {
         List<Map<String, Object>> result = new ArrayList<>();
         if (descriptor.changesArchive()) return List.of(change("archived",
                 Boolean.TRUE.equals(DataAccessor.field(target, "archived", Object.class)), "archive".equals(descriptor.operation())));
+        if ("dnsService".equals(descriptor.resourceType()) && "update_targets".equals(descriptor.operation())) {
+            List<String> beforeIds = new ArrayList<>();
+            for (ServiceConsumeMap link : objects.find(ServiceConsumeMap.class, "serviceId", ObjectUtils.getId(target), "removed", null)) {
+                if (!AiAliasServiceChange.simpleLink(link) || !Objects.equals(link.getAccountId(), ObjectUtils.getAccountId(target)))
+                    throw error(422, "ResourceChangeUnsupported");
+                beforeIds.add(publicId("service", link.getConsumedServiceId()));
+            }
+            ApiRequest request = ApiContext.getContext().getApiRequest();
+            List<String> beforePaths = aliasReferences(request, descriptor, Map.of("serviceIds", beforeIds)).stream()
+                    .map(reference -> (String) reference.get("path")).toList();
+            List<String> afterPaths = aliasReferences(request, descriptor, parameters).stream()
+                    .map(reference -> (String) reference.get("path")).toList();
+            return List.of(change("targetServices", displayed("targetServices", beforePaths), displayed("targetServices", afterPaths)));
+        }
+        if ("dnsService".equals(descriptor.resourceType()) && descriptor.createsResource())
+            result.add(change("targetServices", null, displayed("targetServices", List.of())));
         if (parameters.isEmpty()) {
             if ("restart".equals(descriptor.operation())) result.add(change("operation", null, "restart"));
             else if ("stack".equals(descriptor.resourceType()) && Set.of("start", "stop").contains(descriptor.operation())) {
@@ -438,21 +569,38 @@ public class AiResourceChangeDomain extends AbstractJooqDao {
             Set<Long> instances = new java.util.HashSet<>();
             if (target instanceof Instance instance) instances.add(instance.getId());
             for (Service service : services) for (ServiceExposeMap link : objects.find(ServiceExposeMap.class, "serviceId", service.getId(), "removed", null))
-                if (Boolean.TRUE.equals(link.getManaged())) instances.add(link.getInstanceId());
+                if (Boolean.TRUE.equals(link.getManaged()) && link.getInstanceId() != null) instances.add(link.getInstanceId());
             int mounts = 0; for (Long id : instances) mounts += objects.find(Mount.class, "instanceId", id, "removed", null).size();
             result.add(change("affectedServiceCount", services.size(), 0));
             result.add(change("affectedInstanceCount", instances.size(), 0)); result.add(change("affectedMountCount", mounts, null));
             result.add(change("mountedDataRule", null, "EXISTING_DOMAIN_RETENTION_NO_ADDITIONAL_PURGE"));
         }
-        for (var entry : parameters.entrySet()) result.add(change(entry.getKey(), target == null ? null
+        if ("externalService".equals(descriptor.resourceType()) && Set.of("create", "update_targets").contains(descriptor.operation())) {
+            String cleared = parameters.containsKey("hostname") ? "externalIpAddresses" : "hostname";
+            result.add(change(cleared, target == null ? null : displayed(cleared,
+                    ObjectUtils.getPropertyIgnoreErrors(target, cleared)), null));
+        }
+        for (var entry : parameters.entrySet()) {
+            if (Set.of("externalService", "dnsService").contains(descriptor.resourceType()) && "stackId".equals(entry.getKey())) continue;
+            result.add(change(entry.getKey(), target == null ? null
                 : "scale".equals(entry.getKey()) ? DataAccessor.fieldInteger(target, "scale")
-                : ObjectUtils.getPropertyIgnoreErrors(target, entry.getKey()), displayed(entry.getKey(), entry.getValue())));
+                : Set.of("hostname", "externalIpAddresses").contains(entry.getKey())
+                    ? displayed(entry.getKey(), ObjectUtils.getPropertyIgnoreErrors(target, entry.getKey()))
+                    : ObjectUtils.getPropertyIgnoreErrors(target, entry.getKey()), displayed(entry.getKey(), entry.getValue())));
+        }
         if (descriptor.createsResource() && !"stack".equals(descriptor.resourceType())) result.add(change("startOnCreate", null, false));
         return result;
     }
 
     private Object displayed(String field, Object value) {
-        if (!Set.of("command", "entryPoint").contains(field)) return value;
+        if ("hostname".equals(field) && (value == null || !(value instanceof String hostname)
+                || !AiExternalServiceChange.hostname(hostname))) return null;
+        if ("externalIpAddresses".equals(field)) {
+            if (value == null) return null;
+            try { value = AiExternalServiceChange.addresses(value); }
+            catch (ClientVisibleException unsafe) { return null; }
+        }
+        if (!Set.of("command", "entryPoint", "externalIpAddresses", "targetServices").contains(field)) return value;
         try { return json.writeValueAsString(value); }
         catch (IOException failure) { throw new IllegalStateException("Resource-change summary unavailable", failure); }
     }

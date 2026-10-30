@@ -1,35 +1,21 @@
 # Compatibility Contract
 
-## Engine 0.183.359 release
+## Engine 0.183.360 candidate
 
-Public Engine proxy routes reject the private `/v1-catalog/ai/` namespace,
-including redirect targets. The typed gateway authorizes the real caller and
-uses its fixed loopback transport and validated project; loopback alone is not
-an external caller's authority. Use the matching Catalog 0.20.17, Compose 0.14.40
-and Web Console 1.6.200/bridge 0.2.2 contracts together. An older Engine without
-this private proxy boundary is not a compatible launch gateway.
-Typed launch retains live read/create/update destination checks and delegates
-business mutations to native owners. Archive/restore reuses the existing stopped
-eligibility and Stack lock; it never changes running state or mounted data.
+Use the matching Web Console 1.6.201 / bridge 0.2.3 and broker typed audit owner.
+Ordinary Full/legacy paths retain their existing permissions. AI typed operations
+remain bounded by current actor/role/Key authority; the private source-page read
+path does not open raw accounts, credentials or audit routes to delegated Keys.
+External endpoints and DNS ServiceConsumeMaps use native owners. DNS targets need
+a separate approval after creation. Incoming-consumer/cross-source Alias cleanup
+and advanced links remain unsupported, rather than borrowing an Instance grant.
+The existing four AI opt-ins keep their false defaults. Catalog still needs the
+matching Catalog 0.20.17 / Compose 0.14.40 private ingress contracts.
 
-Exact native Service/SEM forward completion keeps valid queued cleanup while
-retaining UUID/owner/Stack/Key/revision/role and explicit-DENY boundaries.
-Background authorization failure uses private exact process bindings and a
-monotonic scalar failure marker; stale document saves cannot clear it. Own-plan
-reads still require current authorization. No secret or raw process payload is
-projected. Database additions preserve existing rows and plan receipts.
-The existing removed-resource receipt is a bound safe plan result, not a removed
-object GET. It checks current actor/project/role/object policy and the original
-live Key identity/revision; it does not rerun every target selector after removal.
-Required component CI/CodeQL passed. The original CI artifact and twelve public
-assets were verified without rebuilding; the signed tag and producer remain
-immutable. Combined Server559, browser, role/cross-ID and weak-model acceptance
-remain pending, and coverage of all 243 frontend business groups is incomplete.
-The four AI opt-ins each default to false: `api.ai.bridge.enabled`,
-`api.ai.service.upgrade.enabled`, `api.ai.resource.change.enabled` and
-`api.ai.catalog.launch.enabled`. Receipt reads retain their current caller and
-Key checks, including the separate bridge route guard.
-See the [published release note](docs/releases/orchestration-engine-0.183.359.md).
+Audit queries use bounded fixed-process IPC to the installed broker. Only the
+complete owner result produces canonical audit outcome evidence. Payloads remain
+human-only in the ordinary audit UI. CI/CodeQL and runtime acceptance are pending.
+See the [candidate release note](docs/releases/orchestration-engine-0.183.360.md).
 
 ## Engine 0.183.358 release
 

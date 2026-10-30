@@ -66,7 +66,8 @@ public class AiResourceChangeProcessObserver implements ProcessAuthorizationHook
             }
             if (rootId == null) return Map.of();
             Object root = objects.loadResource(nativeType, rootId);
-            if (!ownedRow(root, number(binding.get("accountId"))) || !Objects.equals(ObjectUtils.getId(root), rootId)
+            if (!ownedRow(root, number(binding.get("accountId"))) || !resourceKind(binding, root)
+                    || !Objects.equals(ObjectUtils.getId(root), rootId)
                     || number(config.getAccountId()) != number(binding.get("accountId"))
                     || "create".equals(binding.get("operation")) && !"requested".equals(ObjectUtils.getState(root))) return Map.of();
             Object initial = objects.loadResource(config.getResourceType(), config.getResourceId());
@@ -76,6 +77,11 @@ public class AiResourceChangeProcessObserver implements ProcessAuthorizationHook
             if (binding.get("rootUuid") != null && !Objects.equals(binding.get("rootUuid"), uuid(root))) return Map.of();
             after.put("rootId", rootId); after.put("rootUuid", uuid(root));
             after.put("rootStackId", ObjectUtils.getPropertyIgnoreErrors(root, "stackId"));
+            if ("dnsService".equals(binding.get("resourceType"))) {
+                var stack = objects.loadResource(io.cattle.platform.core.model.Stack.class, number(after.get("rootStackId")));
+                if (!ownedRow(stack, number(binding.get("accountId")))) return Map.of();
+                after.put("rootStackUuid", uuid(stack));
+            }
             if (!binding.containsKey("managed")) {
                 List<Map<String, Object>> services = new ArrayList<>();
                 after.put("managed", pinManaged(binding, root, services)); after.put("servicePins", services);
@@ -111,13 +117,19 @@ public class AiResourceChangeProcessObserver implements ProcessAuthorizationHook
         long accountId = number(binding.get("accountId"));
         Object root = objects.loadResource(nativeType((String) binding.get("resourceType")), number(binding.get("rootId")));
         Object child = objects.loadResource(config.getResourceType(), config.getResourceId());
-        if (!ownedRow(root, accountId) || number(binding.get("rootId")) != number(ObjectUtils.getId(root))
+        if (!ownedRow(root, accountId) || !resourceKind(binding, root)
+                || number(binding.get("rootId")) != number(ObjectUtils.getId(root))
                 || child == null || !Objects.equals(String.valueOf(ObjectUtils.getId(child)), config.getResourceId())
                 || !Objects.equals(uuid(root), binding.get("rootUuid"))
                 || !Objects.equals(ObjectUtils.getPropertyIgnoreErrors(root, "stackId"), binding.get("rootStackId") instanceof Number stack
                         ? stack.longValue() : null)) return false;
+        if ("dnsService".equals(binding.get("resourceType"))) {
+            var stack = objects.loadResource(io.cattle.platform.core.model.Stack.class, number(binding.get("rootStackId")));
+            if (!ownedRow(stack, accountId) || !Objects.equals(uuid(stack), binding.get("rootStackUuid"))) return false;
+        }
         if (list(binding.get("initial")).contains(initialIdentity(config, child)))
-            return ownedRow(child, accountId) && initialEdge(binding, number(binding.get("rootId")), config, child);
+            return ownedRow(child, accountId) && initialEdge(binding, number(binding.get("rootId")), config, child)
+                    && (!(child instanceof io.cattle.platform.core.model.ServiceConsumeMap) || ProcessAuthorization.executionBound(config));
         // StackRemove's direct ServiceRemove edge is scheduled by that exact
         // owner. Freeze the original child IDs and recheck their persisted parent.
         if (root instanceof io.cattle.platform.core.model.Stack && child instanceof Service service
@@ -148,6 +160,16 @@ public class AiResourceChangeProcessObserver implements ProcessAuthorizationHook
         for (Service service : services) {
             servicePins.add(Map.of("id", service.getId(), "uuid", service.getUuid()));
             for (var map : objects.find(io.cattle.platform.core.model.ServiceExposeMap.class, "serviceId", service.getId(), "removed", null)) {
+                if (map.getInstanceId() == null) {
+                    if ("externalService".equals(service.getKind()) && endpointMap(map, service, number(binding.get("accountId")))
+                            && "active".equals(map.getState()) && map.getRemoved() == null) {
+                        Map<String, Object> pin = new LinkedHashMap<>();
+                        pin.put("serviceId", service.getId()); pin.put("serviceUuid", service.getUuid()); pin.put("stackId", service.getStackId());
+                        pin.put("mapId", map.getId()); pin.put("mapUuid", map.getUuid()); pin.put("endpoint", AiExternalServiceChange.endpoint(map));
+                        result.add(pin);
+                    }
+                    continue;
+                }
                 var instance = objects.loadResource(io.cattle.platform.core.model.Instance.class, map.getInstanceId());
                 if (!ownedRow(map, number(binding.get("accountId"))) || !ownedRow(instance, number(binding.get("accountId")))
                         || !Objects.equals(map.getServiceId(), service.getId()) || !Boolean.TRUE.equals(map.getManaged())
@@ -187,7 +209,16 @@ public class AiResourceChangeProcessObserver implements ProcessAuthorizationHook
 
     private boolean provenParent(Map<String, Object> binding, Object child, LaunchConfiguration config, ProcessAuthorization.VerifiedChild proof) {
         Long parent = numeric(proof.parentId()); if (parent == null) return false;
-        if (!proof.references().isEmpty() && !(child instanceof io.cattle.platform.core.model.VolumeStoragePoolMap)) return false;
+        if (!proof.references().isEmpty() && !(child instanceof io.cattle.platform.core.model.VolumeStoragePoolMap)
+                && !(child instanceof io.cattle.platform.core.model.ServiceConsumeMap)) return false;
+        if ("service".equals(proof.parentType()) && child instanceof io.cattle.platform.core.model.ServiceExposeMap map)
+            return externalEndpoint(binding, map, config, parent);
+        if ("service".equals(proof.parentType()) && child instanceof io.cattle.platform.core.model.ServiceConsumeMap map)
+            return parent == number(binding.get("rootId")) && "remove".equals(binding.get("operation"))
+                    && aliasMap(binding, map, config)
+                    // A live denial may occur before references can be bound. The private
+                    // plan's original map/target pins still attest this failure only.
+                    && (proof.references().isEmpty() || aliasIdentity(binding, map).equals(proof.references()));
         if ("service".equals(proof.parentType()) && child instanceof io.cattle.platform.core.model.Instance instance) {
             boolean service = "service".equals(binding.get("resourceType")) ? parent == number(binding.get("rootId")) : services(binding).contains(parent);
             return service && pinnedInstance(binding, instance.getId()) && ("instance.stop".equals(config.getProcessName())
@@ -222,6 +253,86 @@ public class AiResourceChangeProcessObserver implements ProcessAuthorizationHook
         return false;
     }
 
+    /** Observation only: no endpoint identity here grants permission to execute it. */
+    private boolean externalEndpoint(Map<String, Object> binding, io.cattle.platform.core.model.ServiceExposeMap map,
+            LaunchConfiguration config, Long parent) {
+        if (!"externalService".equals(binding.get("resourceType")) || parent != number(binding.get("rootId"))
+                || !"serviceExposeMap".equals(config.getResourceType())) return false;
+        Service service = objects.loadResource(Service.class, parent);
+        if (!ownedRow(service, number(binding.get("accountId"))) || !Objects.equals(service.getUuid(), binding.get("rootUuid"))
+                || !"externalService".equals(service.getKind()) || !endpointMap(map, service, number(binding.get("accountId")))) return false;
+        if ("serviceexposemap.create".equals(config.getProcessName()))
+            return map.getRemoved() == null && Set.of("requested", "activating", "active").contains(String.valueOf(map.getState()))
+                    && AiExternalServiceChange.matchesTarget(service, map);
+        if (!"serviceexposemap.remove".equals(config.getProcessName())
+                || !Set.of("active", "removing", "removed").contains(String.valueOf(map.getState()))) return false;
+        for (Object value : list(binding.get("managed"))) if (value instanceof Map<?, ?> pin
+                && number(pin.get("mapId")) == map.getId() && Objects.equals(pin.get("mapUuid"), map.getUuid())
+                && number(pin.get("serviceId")) == service.getId() && Objects.equals(pin.get("serviceUuid"), service.getUuid())
+                && number(pin.get("stackId")) == number(service.getStackId())
+                && Objects.equals(pin.get("endpoint"), AiExternalServiceChange.endpoint(map))) return true;
+        return false;
+    }
+
+    private static boolean endpointMap(io.cattle.platform.core.model.ServiceExposeMap map, Service service, long account) {
+        return ownedRow(map, account) && Objects.equals(map.getServiceId(), service.getId())
+                && map.getInstanceId() == null && Boolean.TRUE.equals(map.getManaged()) && !Boolean.TRUE.equals(map.getUpgrade())
+                && AiExternalServiceChange.endpoint(map) != null;
+    }
+
+    private static boolean resourceKind(Map<String, Object> binding, Object root) {
+        return !Set.of("externalService", "dnsService").contains(String.valueOf(binding.get("resourceType")))
+                || root instanceof Service service && Objects.equals(binding.get("resourceType"), service.getKind());
+    }
+
+    private boolean aliasMap(Map<String, Object> binding, io.cattle.platform.core.model.ServiceConsumeMap map, LaunchConfiguration config) {
+        if (!"dnsService".equals(binding.get("resourceType")) || !"serviceConsumeMap".equals(config.getResourceType())
+                || !ownedRow(map, number(binding.get("accountId"))) || number(map.getServiceId()) != number(binding.get("rootId"))
+                || !AiAliasServiceChange.simpleLink(map)) return false;
+        Service consumed = objects.loadResource(Service.class, map.getConsumedServiceId());
+        if (!ownedRow(consumed, number(binding.get("accountId"))) || aliasIdentity(binding, map).isEmpty()) return false;
+        String references = "serviceconsumemap.create".equals(config.getProcessName()) ? "aliasReferences" : "aliasBeforeReferences";
+        boolean pinned = false;
+        for (Object value : list(binding.get(references))) if (value instanceof Map<?, ?> pin
+                && number(pin.get("id")) == number(consumed.getId()) && Objects.equals(pin.get("uuid"), consumed.getUuid())
+                && number(pin.get("accountId")) == number(consumed.getAccountId())
+                && number(pin.get("stackId")) == number(consumed.getStackId()) && Objects.equals(pin.get("kind"), consumed.getKind())
+                && Objects.equals(pin.get("stackUuid"), aliasIdentity(binding, map).get("aliasConsumedStackUuid"))) pinned = true;
+        if (!pinned) return false;
+        if ("serviceconsumemap.create".equals(config.getProcessName()) && "update_targets".equals(binding.get("operation"))) {
+            if (map.getRemoved() != null || !Set.of("requested", "activating", "active").contains(String.valueOf(map.getState()))) return false;
+            for (Object value : list(binding.get("aliasReferences"))) if (value instanceof Map<?, ?> pin
+                    && number(pin.get("id")) == number(consumed.getId()) && Objects.equals(pin.get("uuid"), consumed.getUuid())
+                    && number(pin.get("stackId")) == number(consumed.getStackId())) return true;
+            return false;
+        }
+        if (!"serviceconsumemap.remove".equals(config.getProcessName())
+                || !Set.of("update_targets", "remove").contains(String.valueOf(binding.get("operation")))
+                || !Set.of("active", "removing", "removed").contains(String.valueOf(map.getState()))) return false;
+        for (Object value : list(binding.get("aliasLinks"))) if (value instanceof Map<?, ?> pin
+                && number(pin.get("id")) == number(map.getId()) && Objects.equals(pin.get("uuid"), map.getUuid())
+                && number(pin.get("serviceId")) == number(map.getServiceId())
+                && number(pin.get("consumedServiceId")) == number(consumed.getId())
+                && Objects.equals(pin.get("consumedUuid"), consumed.getUuid())) return true;
+        return false;
+    }
+
+    /** Persisted identity comparison only; these pins never authorize execution. */
+    private Map<String, String> aliasIdentity(Map<String, Object> binding, io.cattle.platform.core.model.ServiceConsumeMap map) {
+        Service root = objects.loadResource(Service.class, number(binding.get("rootId")));
+        Service consumed = objects.loadResource(Service.class, map.getConsumedServiceId());
+        if (!ownedRow(root, number(binding.get("accountId"))) || !"dnsService".equals(root.getKind())
+                || !ownedRow(consumed, number(binding.get("accountId"))) || Objects.equals(root.getId(), consumed.getId())
+                || root.getStackId() == null || consumed.getStackId() == null
+                || !Set.of("service", "dnsService", "externalService", "loadBalancerService").contains(String.valueOf(consumed.getKind()))) return Map.of();
+        var stack = objects.loadResource(io.cattle.platform.core.model.Stack.class, root.getStackId());
+        var consumedStack = objects.loadResource(io.cattle.platform.core.model.Stack.class, consumed.getStackId());
+        if (!ownedRow(stack, number(binding.get("accountId"))) || !ownedRow(consumedStack, number(binding.get("accountId")))) return Map.of();
+        return Map.of("aliasServiceUuid", root.getUuid(), "aliasMapUuid", map.getUuid(), "aliasConsumedServiceId", consumed.getId().toString(),
+                "aliasConsumedServiceUuid", consumed.getUuid(), "aliasStackId", stack.getId().toString(), "aliasStackUuid", stack.getUuid(),
+                "aliasConsumedStackId", consumedStack.getId().toString(), "aliasConsumedStackUuid", consumedStack.getUuid());
+    }
+
     private boolean metadataMatches(Map<String, Object> binding, Map<String, Object> metadata) {
         try {
             if (targets.parseScopeId("credential", (String) metadata.get("keyId")) != number(binding.get("credentialId"))) return false;
@@ -247,6 +358,9 @@ public class AiResourceChangeProcessObserver implements ProcessAuthorizationHook
     }
 
     private boolean initialEdge(Map<String, Object> binding, long rootId, LaunchConfiguration config, Object initial) {
+        if ("dnsService".equals(binding.get("resourceType")) && "POST".equals(binding.get("method"))
+                && "setservicelinks".equals(binding.get("action")) && initial instanceof io.cattle.platform.core.model.ServiceConsumeMap map)
+            return aliasMap(binding, map, config);
         if (nativeType((String) binding.get("resourceType")).equals(config.getResourceType())
                 && Long.toString(rootId).equals(config.getResourceId()) && initialProcess(binding).equals(config.getProcessName())) return true;
         if (!"stack".equals(binding.get("resourceType")) || !(initial instanceof Service service)
@@ -265,7 +379,9 @@ public class AiResourceChangeProcessObserver implements ProcessAuthorizationHook
         return nativeType((String) binding.get("resourceType")) + "." + suffix;
     }
 
-    private static String nativeType(String type) { return "container".equals(type) ? "instance" : type; }
+    private static String nativeType(String type) {
+        return "container".equals(type) ? "instance" : Set.of("externalService", "dnsService").contains(type) ? "service" : type;
+    }
     private static boolean ownedRow(Object row, long account) {
         if (row == null || !Objects.equals(ObjectUtils.getAccountId(row), account) || uuid(row) == null) return false;
         Object state = ObjectUtils.getState(row); Object removed = ObjectUtils.getRemoved(row);
@@ -276,7 +392,12 @@ public class AiResourceChangeProcessObserver implements ProcessAuthorizationHook
     }
     private static Map<String, Object> initialIdentity(LaunchConfiguration config, Object row) {
         Map<String, Object> result = new LinkedHashMap<>(); result.put("type", config.getResourceType()); result.put("id", config.getResourceId());
-        result.put("process", config.getProcessName()); result.put("uuid", uuid(row)); return result;
+        result.put("process", config.getProcessName()); result.put("uuid", uuid(row));
+        if (row instanceof io.cattle.platform.core.model.ServiceConsumeMap map) {
+            result.put("serviceId", Objects.toString(map.getServiceId(), ""));
+            result.put("consumedServiceId", Objects.toString(map.getConsumedServiceId(), ""));
+        }
+        return result;
     }
     private static List<?> list(Object value) { return value instanceof List<?> values ? values : List.of(); }
     private static List<Long> services(Map<String, Object> binding) {

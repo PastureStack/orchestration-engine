@@ -8,29 +8,26 @@ Rancher 1.6 ecosystem. It is not affiliated with Rancher Labs or SUSE.
 This fork of [`rancher/cattle`](https://github.com/rancher/cattle) preserves
 upstream history, authorship, licenses, and dependency notices.
 
-## Current release: Engine 0.183.359
+## Current source: Engine 0.183.360 candidate
 
 Use the [Server installation guide](https://github.com/PastureStack/server#quick-start)
-for an assembled platform; `cattle.jar` alone is not a Server installation.
-The [published release](https://github.com/PastureStack/orchestration-engine/releases/tag/v0.183.359)
-adds bounded Catalog Compose Stack plans through the native
-Catalog/Compose owners, stopped-only Archive/restore and accurate asynchronous
-authorization-failure receipts. Normal Full and legacy paths remain unchanged.
-Managed lifecycle cleanup retains exact native identity, current Key/role and
-explicit child-DENY checks. Restore never starts workloads.
+for deployment. The latest published artifact is still
+[0.183.359](https://github.com/PastureStack/orchestration-engine/releases/tag/v0.183.359);
+this source candidate has not been published or accepted on a running Server.
 
-Catalog launch requires the matching Catalog 0.20.17, Compose 0.14.40 and
-Web Console 1.6.200/bridge 0.2.2 contracts. Safe metadata reads and launch are
-separate; `api.ai.catalog.launch.enabled=false` is the default. Private inputs
-and plan approval remain human console actions. Unsupported templates, external
-volumes, advanced forms and remaining frontend workflows are explicitly pending.
+This candidate adds bounded External Service and DNS Alias plans through native
+owners, plus typed audit metadata queries through the installed broker owner.
+Aliases are created stopped and empty; selecting authorized service targets is a
+separate reviewed change. Audit payloads and credentials remain outside tool
+results. Live actor, role, Key revision, explicit DENY and exact resource identity
+checks remain in force. Normal Full and legacy API behavior is preserved.
 
-Required component CI/CodeQL passed, and the original CI artifact and twelve
-public assets were verified without rebuilding. Assembled Server559 and its
-designated browser, role, cross-ID and weak-model acceptance remain pending.
-The [release note](docs/releases/orchestration-engine-0.183.359.md) records the
-immutable artifact and these boundaries; this is not complete coverage of the
-243 frontend business groups.
+The matching clients are Web Console 1.6.201 / bridge 0.2.3. Existing Catalog,
+Archive and session protections remain. Required CI/CodeQL, immutable artifact
+verification, assembled Server and browser/role/weak-model acceptance are pending.
+See the [candidate release note](docs/releases/orchestration-engine-0.183.360.md)
+for supported operations and explicit remaining gaps. This is not completion of
+all 243 frontend business groups.
 
 ## Optional AI resource workflows
 

@@ -128,15 +128,18 @@ public class AiKeyAuthorizationTest {
         when(guard.targets.stackLifecycleTargets(domain, owner)).thenThrow(new ClientVisibleException(403, "OwnerPermissionDenied"));
         assertEquals("OwnerPermissionDenied", denied(() -> guard.authorizeBoundDomain(plan, domain)));
     }
-    @Test public void dispatchCapturesDomainRequestAndRestoresAfterFailure() {
+    @Test public void dispatchCapturesDomainRequestAndRestoresAfterFailure() throws Exception {
         request.setAttribute("apiKey.audit.decision", "ALLOW"); request.setAttribute("apiKey.audit.requestId", "request-1");
         ApiRequest domain = new ApiRequest(request); domain.setType("service"); domain.setId("10"); domain.setMethod("POST"); domain.setAction("upgrade");
+        ApiKeyProcessAuthorization captureAuthorization = new ApiKeyProcessAuthorization();
+        var targets = ApiKeyProcessAuthorization.class.getDeclaredField("targets");
+        targets.setAccessible(true); targets.set(captureAuthorization, guard.targets);
         assertThrows(IllegalStateException.class, () -> AiKeyAuthorization.dispatch(request, domain, () -> {
             assertSame(domain, ApiContext.getContext().getApiRequest());
             assertEquals(7L, ApiKeyCredentialContext.get(domain).credentialId());
             assertEquals("upgrade", domain.getAttribute("apiKey.audit.operation"));
             assertEquals("ALLOW", domain.getAttribute("apiKey.audit.decision"));
-            Map<String,Object> captured = new ApiKeyProcessAuthorization().capture(mock(io.cattle.platform.engine.process.LaunchConfiguration.class));
+            Map<String, Object> captured = captureAuthorization.capture(mock(io.cattle.platform.engine.process.LaunchConfiguration.class));
             assertEquals("service", captured.get("targetType")); assertEquals("10", captured.get("targetId"));
             assertEquals("upgrade", captured.get("operation")); assertEquals(3L, captured.get("policyRevision"));
             throw new IllegalStateException("fixture");
