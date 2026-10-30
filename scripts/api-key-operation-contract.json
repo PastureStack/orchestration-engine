@@ -10,7 +10,7 @@
   "sourceInputs": {
     "algorithm": "c03-source-inputs-v1",
     "count": 431,
-    "sha256": "ef3f2b2d2fd8b8ec62e6231d8318a7bc9d69dfe6d6949588ca397373d8bb9308",
+    "sha256": "28e69f831778a7355fbcdbcb66a6af18467a15404861492fb4baa57ca64c5048",
     "anchors": [
       "AbstractSchemaFactory.java",
       "AiAliasServiceChange.java",
@@ -232,36 +232,122 @@
   "tupleCount": 1396,
   "tupleSha256": "8f1c0fb378663b0b3d272efba2f211cb210eb6f17cb8035aefa33b56feeaf36a",
   "extensionReview": {
-    "version": "unreleased-361-runtime-workflows",
+    "version": "unreleased-362-service-index-cleanup",
     "status": "SOURCE_ONLY_NOT_RUNTIME_ACCEPTANCE",
-    "scope": "Certificate metadata uses the existing typed plan and native PUT. Durable typed decision audit admits exactly the reviewed native domains. The fixed audit CLI receives only a validated local operator upstream reconstructed from fixed HTTP(S)/loopback literals and a bounded numeric port; no credential environment or caller URL is admitted. Standalone Instance DELETE retains only its verified native remove -> retired NIC remove -> exact IP deactivate ownership graph, current actor/Key ceilings and explicit child DENY. Typed child AUTHORIZATION_DENIED remains terminal instead of UNKNOWN retries. No HTTP declaration or operation classification is added or changed; historical producer identity is unchanged.",
+    "scope": "The native Service planner and remove owner may schedule only exact serviceindex.remove cleanup under their original update/delete operation. Current actor/role/Key/revision/expiry/revocation, precise Index/Service/Stack UUID/account/FK pins and explicit child DENY remain required. First trusted scheduling binds private references; detached workers cannot invent them. No HTTP declaration, public ServiceIndex scope grant, method or operation classification is added or changed. Historical producer identity is unchanged.",
     "previous": {
-      "version": "unreleased-360-domains",
+      "version": "unreleased-361-runtime-workflows",
       "status": "SOURCE_ONLY_NOT_RUNTIME_ACCEPTANCE",
-      "scope": "ExternalService and DNS Alias typed owner workflows add no raw HTTP route; exact dnsservice.setservicelinks is update, service factory/ownership checks remain native. One fixed audit-query read POST; existing safe-view source input expands to four closed native read sources. Complete baseline/current schema-handler-process unions are re-extracted. Exactly one existing dnsService.setservicelinks classification changes to update; all other existing tuples remain unchanged and producer history remains unchanged. No audit raw payload, management operation, serviceFull identity, SQL reader or arbitrary proxy is added.",
+      "scope": "Certificate metadata uses the existing typed plan and native PUT. Durable typed decision audit admits exactly the reviewed native domains. The fixed audit CLI receives only a validated local operator upstream reconstructed from fixed HTTP(S)/loopback literals and a bounded numeric port; no credential environment or caller URL is admitted. Standalone Instance DELETE retains only its verified native remove -> retired NIC remove -> exact IP deactivate ownership graph, current actor/Key ceilings and explicit child DENY. Typed child AUTHORIZATION_DENIED remains terminal instead of UNKNOWN retries. No HTTP declaration or operation classification is added or changed; historical producer identity is unchanged.",
       "previous": {
-        "version": "0.183.359",
-        "scope": "Source-only Catalog launch plus stopped-resource Archive/restore extension; Archive adds no HTTP declaration: full immutable 358 schema/handler/process union re-extracted. Historical producer unchanged. Fixed metadata/options reads and durable create-plan routes are new; only exact Service.setservicelinks changes to update. Typed launch still requires original live role and Key read/create/update at the destination, references, source CAS, Cookie-human-only completion/approval, normal managers and per-child exact-graph authorization. Neither classification nor local tests prove runtime acceptance.",
+        "version": "unreleased-360-domains",
+        "status": "SOURCE_ONLY_NOT_RUNTIME_ACCEPTANCE",
+        "scope": "ExternalService and DNS Alias typed owner workflows add no raw HTTP route; exact dnsservice.setservicelinks is update, service factory/ownership checks remain native. One fixed audit-query read POST; existing safe-view source input expands to four closed native read sources. Complete baseline/current schema-handler-process unions are re-extracted. Exactly one existing dnsService.setservicelinks classification changes to update; all other existing tuples remain unchanged and producer history remains unchanged. No audit raw payload, management operation, serviceFull identity, SQL reader or arbitrary proxy is added.",
         "previous": {
-          "version": "0.183.358",
-          "scope": "Source-only managed lifecycle and native-name-query fixes. All 1386 HTTP declarations and semantic tuples are unchanged. Original producer identity is unchanged. Not runtime acceptance.",
+          "version": "0.183.359",
+          "scope": "Source-only Catalog launch plus stopped-resource Archive/restore extension; Archive adds no HTTP declaration: full immutable 358 schema/handler/process union re-extracted. Historical producer unchanged. Fixed metadata/options reads and durable create-plan routes are new; only exact Service.setservicelinks changes to update. Typed launch still requires original live role and Key read/create/update at the destination, references, source CAS, Cookie-human-only completion/approval, normal managers and per-child exact-graph authorization. Neither classification nor local tests prove runtime acceptance.",
           "previous": {
-            "version": "0.183.357",
-            "scope": "Source-only B1/B2 runtime read fixes. All 1386 HTTP declarations and semantic tuples are unchanged. Original producer identity is unchanged. Not runtime acceptance.",
+            "version": "0.183.358",
+            "scope": "Source-only managed lifecycle and native-name-query fixes. All 1386 HTTP declarations and semantic tuples are unchanged. Original producer identity is unchanged. Not runtime acceptance.",
             "previous": {
-              "version": "0.183.356",
-              "scope": "Source-only B1/B2 extension: re-extracted the complete baseline and current schema/handler/process union. Original producer identity is unchanged. Seven typed API tuples are added; only the two exact stack service actions change classification. Classification does not grant admission or prove asynchronous completion.",
+              "version": "0.183.357",
+              "scope": "Source-only B1/B2 runtime read fixes. All 1386 HTTP declarations and semantic tuples are unchanged. Original producer identity is unchanged. Not runtime acceptance.",
               "previous": {
-                "version": "0.183.355",
-                "scope": "The original 1371 operation tuples are unchanged. Eight declarations were re-extracted from the three explicit AI resource schemas and reviewed against ApiKeyOperations. Classification does not imply Key admission: plan collection GET is human-only, and confirm/cancel reject every API Key.",
+                "version": "0.183.356",
+                "scope": "Source-only B1/B2 extension: re-extracted the complete baseline and current schema/handler/process union. Original producer identity is unchanged. Seven typed API tuples are added; only the two exact stack service actions change classification. Classification does not grant admission or prove asynchronous completion.",
+                "previous": {
+                  "version": "0.183.355",
+                  "scope": "The original 1371 operation tuples are unchanged. Eight declarations were re-extracted from the three explicit AI resource schemas and reviewed against ApiKeyOperations. Classification does not imply Key admission: plan collection GET is human-only, and confirm/cancel reject every API Key.",
+                  "schemas": [
+                    "resources/content/schema/base/aiServiceDescriptionUpdate.json",
+                    "resources/content/schema/base/aiServiceUpgradePlan.json",
+                    "resources/content/schema/base/aiToolCallEvent.json"
+                  ],
+                  "addedTuples": [
+                    [
+                      "aiServiceDescriptionUpdate",
+                      "collection",
+                      "POST",
+                      "",
+                      "",
+                      "update"
+                    ],
+                    [
+                      "aiServiceUpgradePlan",
+                      "collection",
+                      "GET",
+                      "",
+                      "",
+                      "read"
+                    ],
+                    [
+                      "aiServiceUpgradePlan",
+                      "collection",
+                      "POST",
+                      "",
+                      "",
+                      "upgrade"
+                    ],
+                    [
+                      "aiServiceUpgradePlan",
+                      "resource",
+                      "GET",
+                      "",
+                      "",
+                      "read"
+                    ],
+                    [
+                      "aiServiceUpgradePlan",
+                      "resource",
+                      "POST",
+                      "confirm",
+                      "",
+                      "ai-plan:confirm"
+                    ],
+                    [
+                      "aiServiceUpgradePlan",
+                      "resource",
+                      "POST",
+                      "apply",
+                      "",
+                      "upgrade"
+                    ],
+                    [
+                      "aiServiceUpgradePlan",
+                      "resource",
+                      "POST",
+                      "cancel",
+                      "",
+                      "ai-plan:cancel"
+                    ],
+                    [
+                      "aiToolCallEvent",
+                      "collection",
+                      "POST",
+                      "",
+                      "",
+                      "create"
+                    ]
+                  ]
+                },
                 "schemas": [
                   "resources/content/schema/base/aiServiceDescriptionUpdate.json",
                   "resources/content/schema/base/aiServiceUpgradePlan.json",
-                  "resources/content/schema/base/aiToolCallEvent.json"
+                  "resources/content/schema/base/aiToolCallEvent.json",
+                  "resources/content/schema/base/aiResourceView.json",
+                  "resources/content/schema/base/aiResourceChangePlan.json"
                 ],
                 "addedTuples": [
                   [
-                    "aiServiceDescriptionUpdate",
+                    "aiResourceChangePlan",
+                    "collection",
+                    "GET",
+                    "",
+                    "",
+                    "read"
+                  ],
+                  [
+                    "aiResourceChangePlan",
                     "collection",
                     "POST",
                     "",
@@ -269,23 +355,7 @@
                     "update"
                   ],
                   [
-                    "aiServiceUpgradePlan",
-                    "collection",
-                    "GET",
-                    "",
-                    "",
-                    "read"
-                  ],
-                  [
-                    "aiServiceUpgradePlan",
-                    "collection",
-                    "POST",
-                    "",
-                    "",
-                    "upgrade"
-                  ],
-                  [
-                    "aiServiceUpgradePlan",
+                    "aiResourceChangePlan",
                     "resource",
                     "GET",
                     "",
@@ -293,37 +363,134 @@
                     "read"
                   ],
                   [
-                    "aiServiceUpgradePlan",
-                    "resource",
-                    "POST",
-                    "confirm",
-                    "",
-                    "ai-plan:confirm"
-                  ],
-                  [
-                    "aiServiceUpgradePlan",
+                    "aiResourceChangePlan",
                     "resource",
                     "POST",
                     "apply",
                     "",
-                    "upgrade"
+                    "update"
                   ],
                   [
-                    "aiServiceUpgradePlan",
+                    "aiResourceChangePlan",
                     "resource",
                     "POST",
                     "cancel",
                     "",
-                    "ai-plan:cancel"
+                    "ai-change:cancel"
                   ],
                   [
-                    "aiToolCallEvent",
+                    "aiResourceChangePlan",
+                    "resource",
+                    "POST",
+                    "confirm",
+                    "",
+                    "ai-change:confirm"
+                  ],
+                  [
+                    "aiResourceView",
                     "collection",
                     "POST",
                     "",
                     "",
-                    "create"
+                    "read"
                   ]
+                ],
+                "changedTuples": [
+                  {
+                    "before": [
+                      "stack",
+                      "resource",
+                      "POST",
+                      "activateservices",
+                      "",
+                      "action:activateservices"
+                    ],
+                    "after": [
+                      "stack",
+                      "resource",
+                      "POST",
+                      "activateservices",
+                      "",
+                      "update"
+                    ],
+                    "rationale": "Existing Stack child-service lifecycle handler; fixed typed pair, live child authorization remains required."
+                  },
+                  {
+                    "before": [
+                      "stack",
+                      "resource",
+                      "POST",
+                      "deactivateservices",
+                      "",
+                      "action:deactivateservices"
+                    ],
+                    "after": [
+                      "stack",
+                      "resource",
+                      "POST",
+                      "deactivateservices",
+                      "",
+                      "update"
+                    ],
+                    "rationale": "Existing Stack child-service lifecycle handler; fixed typed pair, live child authorization remains required."
+                  }
+                ],
+                "authorizationRationale": {
+                  "aiResourceView": "Read semantic POST. Synthetic admission is followed by authorized domain reads and safe projection, never raw GET expansion.",
+                  "aiResourceChangePlan": "Preview/apply are classified update admission only. Fixed domain adapter rechecks the actual create/update/delete operation and Key references. Collection GET and confirm/cancel are human-only; every Key is denied confirmation/cancellation.",
+                  "stackServiceActions": "The two exact Stack batch actions preflight every persisted child with current owner and same-project/Stack checks. An authorized root grant is inherited only for dependency evaluation; explicit child DENY still wins before manager dispatch. The same recheck applies to human approval of bound-Key plans, and queued execution retains its independent live child checks. General Full and legacy admission paths are unchanged."
+                },
+                "sourceInputChanges": [
+                  {
+                    "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/apikey/ApiKeyAuthorizationService.java",
+                    "before": "8062f242159f18d5c21fc14ab65ce42c6cbb8a3bd6cb30dc0cb461bc9a282fbb",
+                    "after": "9ceda0f5118d38fc45fc83bd4a16eb92717a20f7837bcabb804975600c59d2c5"
+                  },
+                  {
+                    "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/apikey/ApiKeyOperations.java",
+                    "before": "5b13ab34ee167596cc7f4b664dcc6afc6ab18f12442ed6d44a35b58ad08b40b9",
+                    "after": "494a57d48564da85f14de564a82906444fa732f1adb201fe27d8c0ca88ea65e5"
+                  },
+                  {
+                    "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/apikey/ApiKeyTargetResolver.java",
+                    "before": "391918c715b70d8fd9a607da01ac9acc85a1e3e04901c12cc21feb6ba1d98c2e",
+                    "after": "b31333ffc5de2ec8fbee9d38daacd83b91578525d1fe1b61a73abac6355aa009"
+                  },
+                  {
+                    "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiResourceChangePlanResourceManager.java",
+                    "before": null,
+                    "after": "37da81bdccdb528c1d7f1b18217d3896cabd0ad601e6a3809fd50913b6613050"
+                  },
+                  {
+                    "path": "resources/content/schema/admin/admin-auth.json",
+                    "before": "be3f0ba2a4fa51a1c42fbf4fc7abe457b65420e8664301fa462474e015a6796f",
+                    "after": "79a757118dd66055c6e7e4c03ded4b0dd8ef1965887c50a4c106e15836d4938f"
+                  },
+                  {
+                    "path": "resources/content/schema/base/aiResourceChangePlan.json",
+                    "before": null,
+                    "after": "ec4b5ceb31e42dceb71c2fb0f475daf868a19a08ad9644dcf17ee8c06c769786"
+                  },
+                  {
+                    "path": "resources/content/schema/base/aiResourceView.json",
+                    "before": null,
+                    "after": "024fb697f3d5e1ed511544ff6922f3b78c351f01e74df1a36faeee3e7f3dba95"
+                  },
+                  {
+                    "path": "resources/content/schema/base/aiToolCallEvent.json",
+                    "before": "58333f82f8842bf13ed0780251a21000a0f59a56a1ef1bc4354dd03aca4cd7e8",
+                    "after": "6d4cfccd6f4901d71e7ba8ec0818de0f769f3bd8e41794dc4ca9616a3794bfbf"
+                  },
+                  {
+                    "path": "resources/content/schema/project/project-auth.json",
+                    "before": "c939bcf67064be956929820f561a5dde9512facf16eb18dc4f7910ab16e852c3",
+                    "after": "96dcb3b12d6ba0a15e5532df71c68683b2fe87a8946ecb71c10109dea4f17585"
+                  },
+                  {
+                    "path": "resources/content/schema/user/user-auth.json",
+                    "before": "9080a03720c6c9a9bdc84d3d9fb82ed5e2d0cbbcf16d5774a2a842d8677731f7",
+                    "after": "91c44ff87f288c967d38cfe0c6c1dd04e4ac09919cd6c6ba8407806a61168a2f"
+                  }
                 ]
               },
               "schemas": [
@@ -331,161 +498,24 @@
                 "resources/content/schema/base/aiServiceUpgradePlan.json",
                 "resources/content/schema/base/aiToolCallEvent.json",
                 "resources/content/schema/base/aiResourceView.json",
-                "resources/content/schema/base/aiResourceChangePlan.json"
+                "resources/content/schema/base/aiResourceChangePlan.json",
+                "resources/content/schema/base/processPool.json"
               ],
-              "addedTuples": [
-                [
-                  "aiResourceChangePlan",
-                  "collection",
-                  "GET",
-                  "",
-                  "",
-                  "read"
-                ],
-                [
-                  "aiResourceChangePlan",
-                  "collection",
-                  "POST",
-                  "",
-                  "",
-                  "update"
-                ],
-                [
-                  "aiResourceChangePlan",
-                  "resource",
-                  "GET",
-                  "",
-                  "",
-                  "read"
-                ],
-                [
-                  "aiResourceChangePlan",
-                  "resource",
-                  "POST",
-                  "apply",
-                  "",
-                  "update"
-                ],
-                [
-                  "aiResourceChangePlan",
-                  "resource",
-                  "POST",
-                  "cancel",
-                  "",
-                  "ai-change:cancel"
-                ],
-                [
-                  "aiResourceChangePlan",
-                  "resource",
-                  "POST",
-                  "confirm",
-                  "",
-                  "ai-change:confirm"
-                ],
-                [
-                  "aiResourceView",
-                  "collection",
-                  "POST",
-                  "",
-                  "",
-                  "read"
-                ]
-              ],
-              "changedTuples": [
-                {
-                  "before": [
-                    "stack",
-                    "resource",
-                    "POST",
-                    "activateservices",
-                    "",
-                    "action:activateservices"
-                  ],
-                  "after": [
-                    "stack",
-                    "resource",
-                    "POST",
-                    "activateservices",
-                    "",
-                    "update"
-                  ],
-                  "rationale": "Existing Stack child-service lifecycle handler; fixed typed pair, live child authorization remains required."
-                },
-                {
-                  "before": [
-                    "stack",
-                    "resource",
-                    "POST",
-                    "deactivateservices",
-                    "",
-                    "action:deactivateservices"
-                  ],
-                  "after": [
-                    "stack",
-                    "resource",
-                    "POST",
-                    "deactivateservices",
-                    "",
-                    "update"
-                  ],
-                  "rationale": "Existing Stack child-service lifecycle handler; fixed typed pair, live child authorization remains required."
-                }
-              ],
+              "addedTuples": [],
+              "changedTuples": [],
               "authorizationRationale": {
-                "aiResourceView": "Read semantic POST. Synthetic admission is followed by authorized domain reads and safe projection, never raw GET expansion.",
-                "aiResourceChangePlan": "Preview/apply are classified update admission only. Fixed domain adapter rechecks the actual create/update/delete operation and Key references. Collection GET and confirm/cancel are human-only; every Key is denied confirmation/cancellation.",
-                "stackServiceActions": "The two exact Stack batch actions preflight every persisted child with current owner and same-project/Stack checks. An authorized root grant is inherited only for dependency evaluation; explicit child DENY still wins before manager dispatch. The same recheck applies to human approval of bound-Key plans, and queued execution retains its independent live child checks. General Full and legacy admission paths are unchanged."
+                "runtimeReadFixes": "ProcessPool owner supplies stable executor bean identity, distinct from native null database IDs and nonunique display names; the opted-in metadata field is read-only and adds no methods. AI projects only its opaque digest. activeSetting is not a list-capable AI type; native schemas are unchanged. Existing domain validator-decoded decimal IDs are consumed directly as internal row IDs, while public parseScopeId retains strict wire round-trip and normal owner/Key grants/denials remain authoritative."
               },
               "sourceInputChanges": [
                 {
-                  "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/apikey/ApiKeyAuthorizationService.java",
-                  "before": "8062f242159f18d5c21fc14ab65ce42c6cbb8a3bd6cb30dc0cb461bc9a282fbb",
-                  "after": "9ceda0f5118d38fc45fc83bd4a16eb92717a20f7837bcabb804975600c59d2c5"
-                },
-                {
-                  "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/apikey/ApiKeyOperations.java",
-                  "before": "5b13ab34ee167596cc7f4b664dcc6afc6ab18f12442ed6d44a35b58ad08b40b9",
-                  "after": "494a57d48564da85f14de564a82906444fa732f1adb201fe27d8c0ca88ea65e5"
-                },
-                {
                   "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/apikey/ApiKeyTargetResolver.java",
-                  "before": "391918c715b70d8fd9a607da01ac9acc85a1e3e04901c12cc21feb6ba1d98c2e",
-                  "after": "b31333ffc5de2ec8fbee9d38daacd83b91578525d1fe1b61a73abac6355aa009"
+                  "before": "b31333ffc5de2ec8fbee9d38daacd83b91578525d1fe1b61a73abac6355aa009",
+                  "after": "fcd8d3724c1a37b2b77cab3e60ee3e973b349462833c1bf0bcc8f099d6f3567c"
                 },
                 {
-                  "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiResourceChangePlanResourceManager.java",
+                  "path": "resources/content/schema/base/processPool.json",
                   "before": null,
-                  "after": "37da81bdccdb528c1d7f1b18217d3896cabd0ad601e6a3809fd50913b6613050"
-                },
-                {
-                  "path": "resources/content/schema/admin/admin-auth.json",
-                  "before": "be3f0ba2a4fa51a1c42fbf4fc7abe457b65420e8664301fa462474e015a6796f",
-                  "after": "79a757118dd66055c6e7e4c03ded4b0dd8ef1965887c50a4c106e15836d4938f"
-                },
-                {
-                  "path": "resources/content/schema/base/aiResourceChangePlan.json",
-                  "before": null,
-                  "after": "ec4b5ceb31e42dceb71c2fb0f475daf868a19a08ad9644dcf17ee8c06c769786"
-                },
-                {
-                  "path": "resources/content/schema/base/aiResourceView.json",
-                  "before": null,
-                  "after": "024fb697f3d5e1ed511544ff6922f3b78c351f01e74df1a36faeee3e7f3dba95"
-                },
-                {
-                  "path": "resources/content/schema/base/aiToolCallEvent.json",
-                  "before": "58333f82f8842bf13ed0780251a21000a0f59a56a1ef1bc4354dd03aca4cd7e8",
-                  "after": "6d4cfccd6f4901d71e7ba8ec0818de0f769f3bd8e41794dc4ca9616a3794bfbf"
-                },
-                {
-                  "path": "resources/content/schema/project/project-auth.json",
-                  "before": "c939bcf67064be956929820f561a5dde9512facf16eb18dc4f7910ab16e852c3",
-                  "after": "96dcb3b12d6ba0a15e5532df71c68683b2fe87a8946ecb71c10109dea4f17585"
-                },
-                {
-                  "path": "resources/content/schema/user/user-auth.json",
-                  "before": "9080a03720c6c9a9bdc84d3d9fb82ed5e2d0cbbcf16d5774a2a842d8677731f7",
-                  "after": "91c44ff87f288c967d38cfe0c6c1dd04e4ac09919cd6c6ba8407806a61168a2f"
+                  "after": "d055fc0e3bc30ffeb9567ca6a2c8cee7b7382200fe410c2e6154353305134b1b"
                 }
               ]
             },
@@ -500,18 +530,14 @@
             "addedTuples": [],
             "changedTuples": [],
             "authorizationRationale": {
-              "runtimeReadFixes": "ProcessPool owner supplies stable executor bean identity, distinct from native null database IDs and nonunique display names; the opted-in metadata field is read-only and adds no methods. AI projects only its opaque digest. activeSetting is not a list-capable AI type; native schemas are unchanged. Existing domain validator-decoded decimal IDs are consumed directly as internal row IDs, while public parseScopeId retains strict wire round-trip and normal owner/Key grants/denials remain authoritative."
+              "managedLifecycle": "Closed engine-captured scheduling edges preserve exact managed retirement ancestry while live owner/Key/revision/explicit-DENY remains authoritative; ordinary ancestry is not broadened and named/file storage does not inherit destructive removal.",
+              "nativeNameSearch": "Closed native name conditions narrow the already-authorized owner query before its bounded page; literal query and cursor/parent restrictions are retained. Memory projections filter before taking a page."
             },
             "sourceInputChanges": [
               {
                 "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/apikey/ApiKeyTargetResolver.java",
-                "before": "b31333ffc5de2ec8fbee9d38daacd83b91578525d1fe1b61a73abac6355aa009",
-                "after": "fcd8d3724c1a37b2b77cab3e60ee3e973b349462833c1bf0bcc8f099d6f3567c"
-              },
-              {
-                "path": "resources/content/schema/base/processPool.json",
-                "before": null,
-                "after": "d055fc0e3bc30ffeb9567ca6a2c8cee7b7382200fe410c2e6154353305134b1b"
+                "before": "fcd8d3724c1a37b2b77cab3e60ee3e973b349462833c1bf0bcc8f099d6f3567c",
+                "after": "645652a1352b74cf6ad4c2b1a9bbdfee1d168cef9df7c59e459d84c17d547c17"
               }
             ]
           },
@@ -521,19 +547,319 @@
             "resources/content/schema/base/aiToolCallEvent.json",
             "resources/content/schema/base/aiResourceView.json",
             "resources/content/schema/base/aiResourceChangePlan.json",
-            "resources/content/schema/base/processPool.json"
+            "resources/content/schema/base/processPool.json",
+            "resources/content/schema/base/aiCatalogMetadataView.json",
+            "resources/content/schema/base/aiCatalogStackLaunchOptions.json",
+            "resources/content/schema/base/aiCatalogStackLaunchPlan.json",
+            "resources/content/schema/base/aiCatalogStackLaunchInputs.json"
           ],
-          "addedTuples": [],
-          "changedTuples": [],
+          "addedTuples": [
+            [
+              "aiCatalogMetadataView",
+              "collection",
+              "POST",
+              "",
+              "",
+              "read"
+            ],
+            [
+              "aiCatalogStackLaunchOptions",
+              "collection",
+              "POST",
+              "",
+              "",
+              "read"
+            ],
+            [
+              "aiCatalogStackLaunchPlan",
+              "collection",
+              "GET",
+              "",
+              "",
+              "read"
+            ],
+            [
+              "aiCatalogStackLaunchPlan",
+              "collection",
+              "POST",
+              "",
+              "",
+              "create"
+            ],
+            [
+              "aiCatalogStackLaunchPlan",
+              "resource",
+              "GET",
+              "",
+              "",
+              "read"
+            ],
+            [
+              "aiCatalogStackLaunchPlan",
+              "resource",
+              "POST",
+              "apply",
+              "",
+              "create"
+            ],
+            [
+              "aiCatalogStackLaunchPlan",
+              "resource",
+              "POST",
+              "cancel",
+              "",
+              "ai-catalog-launch:cancel"
+            ],
+            [
+              "aiCatalogStackLaunchPlan",
+              "resource",
+              "POST",
+              "completeInputs",
+              "",
+              "ai-catalog-launch:completeInputs"
+            ],
+            [
+              "aiCatalogStackLaunchPlan",
+              "resource",
+              "POST",
+              "confirm",
+              "",
+              "ai-catalog-launch:confirm"
+            ]
+          ],
+          "changedTuples": [
+            {
+              "before": [
+                "service",
+                "resource",
+                "POST",
+                "setservicelinks",
+                "",
+                "action:setservicelinks"
+              ],
+              "after": [
+                "service",
+                "resource",
+                "POST",
+                "setservicelinks",
+                "",
+                "update"
+              ],
+              "rationale": "Only the existing Service.setservicelinks owner is update. The typed launch preflights original live destination update and each delegated exact action; create does not imply update. Unknown plugin roots remain denied."
+            }
+          ],
           "authorizationRationale": {
-            "managedLifecycle": "Closed engine-captured scheduling edges preserve exact managed retirement ancestry while live owner/Key/revision/explicit-DENY remains authoritative; ordinary ancestry is not broadened and named/file storage does not inherit destructive removal.",
-            "nativeNameSearch": "Closed native name conditions narrow the already-authorized owner query before its bounded page; literal query and cursor/parent restrictions are retained. Memory projections filter before taking a page."
+            "aiCatalogStackLaunchOptions": "Read-only fixed owner projection; no create grant or secret defaults.",
+            "aiCatalogStackLaunchPlan": "Dedicated durable plan. Preview/confirm/apply recheck original live destination read/create/update and references; completeInputs/confirm/cancel are verified Cookie-only, including for GENERAL FULL Keys. Apply claims once and normal Stack/Compose owners execute an exact per-event graph, with per-request actor/Key/source revalidation; private answers and proof never enter public DTO or audit payload.",
+            "serviceSetServiceLinks": "Exact Service action classified update; role schema, original live Key target scope and explicit DENY still apply. No plugin or create-to-update grant.",
+            "privateOwnerChannel": "Public Catalog/raw proxy initial and redirect targets reject canonical v1-catalog/ai namespace before body/upstream; fixed typed owner loopback calls retain their independent live authorization.",
+            "aiCatalogMetadataView": "Fixed metadata read POST. Fresh active owner/current-project membership plus live Key PLATFORM catalogTemplate read precede a fixed loopback Catalog projection. No raw proxy/accounts grant, project ancestry inference, forwarded credentials or new JWT. Fine-grained selectors fail closed; template/version logical identities are not cache row IDs."
           },
           "sourceInputChanges": [
             {
+              "path": "code/framework/api/src/main/java/io/cattle/platform/api/auth/ApiAuditPayload.java",
+              "before": null,
+              "after": "697bb6f57b26354f336e14f905bc2a87f8a41acfdf725500652100e90d4e4381"
+            },
+            {
+              "path": "code/framework/api/src/main/java/io/cattle/platform/api/auth/ApiCookieAuthentication.java",
+              "before": null,
+              "after": "b49fe3b141ac1689e49a583bab05caf7a449dc2b3495b0ba391534bc5812d3c4"
+            },
+            {
+              "path": "code/framework/api/src/main/java/io/cattle/platform/api/auth/CatalogLaunchTransformAuthorization.java",
+              "before": null,
+              "after": "b104bb0aed1ae18dc7485aa1f7c7eddf3b6eb9176b7e7209cb2b89534600e4c6"
+            },
+            {
+              "path": "code/framework/auditing/src/main/java/io/cattle/platform/iaas/api/auditing/AuditServiceImpl.java",
+              "before": null,
+              "after": "1f834204996aabfd6e6d3d5bb520d35b80547c5e77b8edea8f25d8d6010cfd4e"
+            },
+            {
+              "path": "code/framework/eventing/src/main/java/io/cattle/platform/eventing/model/EventDiagnostics.java",
+              "before": null,
+              "after": "affeccbf8445e1d61b525df683504de7c084642a52cec8e6fb9371ca935c3034"
+            },
+            {
+              "path": "code/iaas/api-logic/src/main/java/io/cattle/platform/iaas/api/request/handler/GenericWhitelistedProxy.java",
+              "before": null,
+              "after": "9606a7e0f76cb4c7eba033afc897d6d9e5d61045262d582ee94604169817608a"
+            },
+            {
+              "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/ai/catalog/AiCatalogLaunchAccess.java",
+              "before": null,
+              "after": "639ceb2151b6668af77ff2f71ead2cd7699d76d45c17521e46a90af624286b52"
+            },
+            {
+              "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/ai/catalog/AiCatalogLaunchBinding.java",
+              "before": null,
+              "after": "9f75784fa67b7341439d3ffecf8bada16ef0e55a7db3bbb41d6eceed4db90e8d"
+            },
+            {
+              "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/ai/catalog/AiCatalogLaunchDelegation.java",
+              "before": null,
+              "after": "e75f911701471e63f85b70df645040a4142704f8da94f3008ed2187c43b35a1d"
+            },
+            {
+              "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/ai/catalog/AiCatalogLaunchGateway.java",
+              "before": null,
+              "after": "9a12293de31831d7dda5f2e787b809351c347bf95e7b95f6798bb7e18d5ae12c"
+            },
+            {
+              "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/ai/catalog/AiCatalogLaunchGraph.java",
+              "before": null,
+              "after": "26618418c19bd7eef3dc7e5e4cd526072f3a614535a04b914e0559a20f12d875"
+            },
+            {
+              "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/ai/catalog/AiCatalogLaunchInput.java",
+              "before": null,
+              "after": "3db05d510e3e057ae5d10340e0e313111de0a5a7e5558a477e91395f1f4280de"
+            },
+            {
+              "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/ai/catalog/AiCatalogLaunchMaterializer.java",
+              "before": null,
+              "after": "00945aae0ccd8091f6835168bd0d0ff7615be2f00cc86c27f48218520d680f50"
+            },
+            {
+              "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/ai/catalog/AiCatalogLaunchObservation.java",
+              "before": null,
+              "after": "e3ecb29c1585002c61a4c3a6e14e94868c4e9de6da94e5098eb5d2f14b93d82d"
+            },
+            {
+              "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/ai/catalog/AiCatalogLaunchOptionsResourceManager.java",
+              "before": null,
+              "after": "fb2977ff6cbd4819f5ecaa75afdcd5c3d9a3c43add3b5c2d4614379349e74552"
+            },
+            {
+              "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/ai/catalog/AiCatalogLaunchOptionsService.java",
+              "before": null,
+              "after": "318bb0e18d8a7292ff57a0b281d53eb5040e7c4a5fef388baea4aac4acf30d5d"
+            },
+            {
+              "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/ai/catalog/AiCatalogLaunchOptionsStore.java",
+              "before": null,
+              "after": "b4dbbfffcb333ce11c559e10eee78ce2ae9dc1fa5d4a958c475f5a893b270c2b"
+            },
+            {
+              "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/ai/catalog/AiCatalogLaunchPlanResourceManager.java",
+              "before": null,
+              "after": "ef70bb6e029fdb446358ad81e9f791f14e892c28bda754b8ce479077fb85ff98"
+            },
+            {
+              "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/ai/catalog/AiCatalogLaunchPlanService.java",
+              "before": null,
+              "after": "77b8f8b2b4ade110064ba0a874db04c1d5adbfe9df68655b8760c395270a05e3"
+            },
+            {
+              "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/ai/catalog/AiCatalogLaunchPlanStore.java",
+              "before": null,
+              "after": "8716e8f4038bad48098f16c9009446c4e77f379cba50d3049897aa2442fd7b22"
+            },
+            {
+              "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/ai/catalog/AiCatalogLaunchPrivate.java",
+              "before": null,
+              "after": "df91328e28fca5f15aceda4faaf57be47c8165dfc5cbf36894abd12935c8d3b2"
+            },
+            {
+              "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/ai/catalog/AiCatalogLaunchResponseFilter.java",
+              "before": null,
+              "after": "0e35935d8e3ce19a843d3770b9a574b0c2d501612a8f6211f077834f7975bb60"
+            },
+            {
+              "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/ai/catalog/AiCatalogLaunchRunner.java",
+              "before": null,
+              "after": "e6e530a39cc6ca2d270038f0084ed6c104f45d69ebfe7a307391e90918c0f6c9"
+            },
+            {
+              "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/apikey/ApiKeyAuthorizationService.java",
+              "before": "9ceda0f5118d38fc45fc83bd4a16eb92717a20f7837bcabb804975600c59d2c5",
+              "after": "d3cac29f7b6f61be0bda38f643115d08877d59e99b9312575f064290e73ede27"
+            },
+            {
+              "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/apikey/ApiKeyOperations.java",
+              "before": "494a57d48564da85f14de564a82906444fa732f1adb201fe27d8c0ca88ea65e5",
+              "after": "28847a8d6873d8e8fe1644a19813e8f8f9d1917a5c1b369dab8abcb882e6a9b6"
+            },
+            {
               "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/apikey/ApiKeyTargetResolver.java",
-              "before": "fcd8d3724c1a37b2b77cab3e60ee3e973b349462833c1bf0bcc8f099d6f3567c",
-              "after": "645652a1352b74cf6ad4c2b1a9bbdfee1d168cef9df7c59e459d84c17d547c17"
+              "before": "645652a1352b74cf6ad4c2b1a9bbdfee1d168cef9df7c59e459d84c17d547c17",
+              "after": "95e9c38861b984e995770e5ddf6d7af21c96d1bff1d8848d1ad2e3a54722efd2"
+            },
+            {
+              "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/impl/ApiAuthenticator.java",
+              "before": "7a3e331dc9e23ae1689495b6ce4066a9decb8293def66fbffa6e0e404697db12",
+              "after": "d412d32cf7032b4bb0dde546a9e22193fc29ecae71b5c1efcbb052bd4590945d"
+            },
+            {
+              "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/integration/internal/rancher/TokenAuthLookup.java",
+              "before": null,
+              "after": "11c66db998415be5deab8a34df362dcb299a7b1a8df938ef1afb6f6602b71c91"
+            },
+            {
+              "path": "code/iaas/logic-common/src/main/java/io/cattle/platform/process/common/handler/EventBasedProcessHandler.java",
+              "before": null,
+              "after": "d784906d3bd0e0399dc38cd38ddc5ee38c49850e7a51ea07d2a4a158dcb068de"
+            },
+            {
+              "path": "code/iaas/logic-common/src/main/java/io/cattle/platform/process/common/handler/ProcessEventDecorator.java",
+              "before": null,
+              "after": "b0dc3d894c3ae0345e374cda8af588ac2e6c17c74f25501e6689a28d4ef934e5"
+            },
+            {
+              "path": "code/iaas/service-discovery/api/src/main/java/io/cattle/platform/servicediscovery/api/filter/ArchiveValidationFilter.java",
+              "before": "63fbdcc3d0ac73186b181afc55d0e0aae4424a347a367724348802246cad823c",
+              "after": "908e6e0bf0d665d2392481f6d6e59d27c3cd89b4b35471fe587d6ed14e591890"
+            },
+            {
+              "path": "code/implementation/docker/api/src/main/java/io/cattle/platform/docker/api/transform/TransformInspect.java",
+              "before": null,
+              "after": "c67974b0abbb3b7c7801b51ca95a649e95e0853fba9c1500da6b4b5977a0afb2"
+            },
+            {
+              "path": "code/packaging/app-config/src/main/java/io/cattle/platform/app/IaasApiConfig.java",
+              "before": null,
+              "after": "02184dc6ae781547e850c80cf51ddb4f33cbc7b2f799aba3ca1e59c8eb9cf34f"
+            },
+            {
+              "path": "resources/content/schema/admin/admin-auth.json",
+              "before": "79a757118dd66055c6e7e4c03ded4b0dd8ef1965887c50a4c106e15836d4938f",
+              "after": "6ea49e1130a2b9218e6c060038c73c89be5b9e05b039d3a0b81475e892d21504"
+            },
+            {
+              "path": "resources/content/schema/base/aiCatalogMetadataView.json",
+              "before": null,
+              "after": "5581897314b1cfe9135783fb8846db50ff6f9d62289b5ab35e60ab7ca8b36515"
+            },
+            {
+              "path": "resources/content/schema/base/aiCatalogStackLaunchInputs.json",
+              "before": null,
+              "after": "05aa9a7b459a82efcf0331b3d6c8262e1b5c879643aef6384c67e3a12980bf4c"
+            },
+            {
+              "path": "resources/content/schema/base/aiCatalogStackLaunchOptions.json",
+              "before": null,
+              "after": "30137b75ac50b6b04adec688ca56359fd7d49843f8342c423a906b998da5c12a"
+            },
+            {
+              "path": "resources/content/schema/base/aiCatalogStackLaunchPlan.json",
+              "before": null,
+              "after": "5886387a8b25893d4afc5bb127dd8305646748e08a86b65002d8e0d8e05b328d"
+            },
+            {
+              "path": "resources/content/schema/base/aiResourceChangePlan.json",
+              "before": "ec4b5ceb31e42dceb71c2fb0f475daf868a19a08ad9644dcf17ee8c06c769786",
+              "after": "21b4acfd55e2aa64b725bacd520655daf7f707141e4226343c16a5b6fae47d8c"
+            },
+            {
+              "path": "resources/content/schema/project/project-auth.json",
+              "before": "96dcb3b12d6ba0a15e5532df71c68683b2fe87a8946ecb71c10109dea4f17585",
+              "after": "a924ebe3e6ea7a39374d7d162fd020807cb94900c849c82d286df121db27ee6c"
+            },
+            {
+              "path": "resources/content/schema/user/user-auth.json",
+              "before": "91c44ff87f288c967d38cfe0c6c1dd04e4ac09919cd6c6ba8407806a61168a2f",
+              "after": "0f977be3a4e6718753ba8a248e73f1014886afbee1d5387249e762b4146b7b73"
             }
           ]
         },
@@ -547,315 +873,229 @@
           "resources/content/schema/base/aiCatalogMetadataView.json",
           "resources/content/schema/base/aiCatalogStackLaunchOptions.json",
           "resources/content/schema/base/aiCatalogStackLaunchPlan.json",
-          "resources/content/schema/base/aiCatalogStackLaunchInputs.json"
+          "resources/content/schema/base/aiCatalogStackLaunchInputs.json",
+          "resources/content/schema/base/aiAuditQuery.json",
+          "resources/content/schema/base/aiAuditSourcePageInput.json"
         ],
         "addedTuples": [
           [
-            "aiCatalogMetadataView",
+            "aiAuditQuery",
             "collection",
             "POST",
             "",
             "",
             "read"
-          ],
-          [
-            "aiCatalogStackLaunchOptions",
-            "collection",
-            "POST",
-            "",
-            "",
-            "read"
-          ],
-          [
-            "aiCatalogStackLaunchPlan",
-            "collection",
-            "GET",
-            "",
-            "",
-            "read"
-          ],
-          [
-            "aiCatalogStackLaunchPlan",
-            "collection",
-            "POST",
-            "",
-            "",
-            "create"
-          ],
-          [
-            "aiCatalogStackLaunchPlan",
-            "resource",
-            "GET",
-            "",
-            "",
-            "read"
-          ],
-          [
-            "aiCatalogStackLaunchPlan",
-            "resource",
-            "POST",
-            "apply",
-            "",
-            "create"
-          ],
-          [
-            "aiCatalogStackLaunchPlan",
-            "resource",
-            "POST",
-            "cancel",
-            "",
-            "ai-catalog-launch:cancel"
-          ],
-          [
-            "aiCatalogStackLaunchPlan",
-            "resource",
-            "POST",
-            "completeInputs",
-            "",
-            "ai-catalog-launch:completeInputs"
-          ],
-          [
-            "aiCatalogStackLaunchPlan",
-            "resource",
-            "POST",
-            "confirm",
-            "",
-            "ai-catalog-launch:confirm"
           ]
         ],
         "changedTuples": [
-          {
-            "before": [
-              "service",
+          [
+            [
+              "dnsService",
               "resource",
               "POST",
               "setservicelinks",
               "",
               "action:setservicelinks"
             ],
-            "after": [
-              "service",
+            [
+              "dnsService",
               "resource",
               "POST",
               "setservicelinks",
               "",
               "update"
-            ],
-            "rationale": "Only the existing Service.setservicelinks owner is update. The typed launch preflights original live destination update and each delegated exact action; create does not imply update. Unknown plugin roots remain denied."
-          }
+            ]
+          ]
         ],
         "authorizationRationale": {
-          "aiCatalogStackLaunchOptions": "Read-only fixed owner projection; no create grant or secret defaults.",
-          "aiCatalogStackLaunchPlan": "Dedicated durable plan. Preview/confirm/apply recheck original live destination read/create/update and references; completeInputs/confirm/cancel are verified Cookie-only, including for GENERAL FULL Keys. Apply claims once and normal Stack/Compose owners execute an exact per-event graph, with per-request actor/Key/source revalidation; private answers and proof never enter public DTO or audit payload.",
-          "serviceSetServiceLinks": "Exact Service action classified update; role schema, original live Key target scope and explicit DENY still apply. No plugin or create-to-update grant.",
-          "privateOwnerChannel": "Public Catalog/raw proxy initial and redirect targets reject canonical v1-catalog/ai namespace before body/upstream; fixed typed owner loopback calls retain their independent live authorization.",
-          "aiCatalogMetadataView": "Fixed metadata read POST. Fresh active owner/current-project membership plus live Key PLATFORM catalogTemplate read precede a fixed loopback Catalog projection. No raw proxy/accounts grant, project ancestry inference, forwarded credentials or new JWT. Fine-grained selectors fail closed; template/version logical identities are not cache row IDs."
+          "aiAuditQuery": "Read-semantic metadata admission only. Original native role/schema/current Key and SQL/row filters authorize each source page. Fixed installed broker read-only CLI aggregates using private original credentials; Engine observes complete owner output and persists canonical ALLOW/DENY/error through existing ApiKeyAuditSink. No client-reported result is authoritative.",
+          "aiAuditSourcePages": "Exactly project/account/apiKey/auditLog with bounded typed ID/time/page input; no independent input route. Original account/project selection, current membership and each native GET apply. Restricted Keys cannot mutate/export credentials; target-Key query requires original actual Key metadata read. Every Key source page pins revision; native API direct/raw routes retain their prior purpose guard and Full/legacy behavior."
         },
         "sourceInputChanges": [
           {
             "path": "code/framework/api/src/main/java/io/cattle/platform/api/auth/ApiAuditPayload.java",
-            "before": null,
-            "after": "697bb6f57b26354f336e14f905bc2a87f8a41acfdf725500652100e90d4e4381"
+            "before": "697bb6f57b26354f336e14f905bc2a87f8a41acfdf725500652100e90d4e4381",
+            "after": "16122e192f490b7866d3b0af3ed4981184c938d8446ec9b7d4c892d68cf2d67d"
           },
           {
-            "path": "code/framework/api/src/main/java/io/cattle/platform/api/auth/ApiCookieAuthentication.java",
+            "path": "code/framework/api/src/main/java/io/cattle/platform/api/auth/ApiKeyAuditSink.java",
             "before": null,
-            "after": "b49fe3b141ac1689e49a583bab05caf7a449dc2b3495b0ba391534bc5812d3c4"
+            "after": "c04eec56c774f68254c832cc8916b57ec000d5fce3bd07e5cafb65260a48fe9b"
           },
           {
-            "path": "code/framework/api/src/main/java/io/cattle/platform/api/auth/CatalogLaunchTransformAuthorization.java",
+            "path": "code/framework/auditing/src/main/java/io/cattle/platform/iaas/api/auditing/AuditLogOutPutFilter.java",
             "before": null,
-            "after": "b104bb0aed1ae18dc7485aa1f7c7eddf3b6eb9176b7e7209cb2b89534600e4c6"
+            "after": "368c21b043bdfc149f3d5a8663cf12b6ad93f0efdec0df6b7e065d62200f4ac7"
           },
           {
             "path": "code/framework/auditing/src/main/java/io/cattle/platform/iaas/api/auditing/AuditServiceImpl.java",
-            "before": null,
-            "after": "1f834204996aabfd6e6d3d5bb520d35b80547c5e77b8edea8f25d8d6010cfd4e"
+            "before": "1f834204996aabfd6e6d3d5bb520d35b80547c5e77b8edea8f25d8d6010cfd4e",
+            "after": "a10a5d8e7ca754601ea2c5a876c318069b6639c073e616d283ae71694bc95179"
           },
           {
-            "path": "code/framework/eventing/src/main/java/io/cattle/platform/eventing/model/EventDiagnostics.java",
+            "path": "code/framework/engine/src/main/java/io/cattle/platform/engine/process/ProcessAuthorization.java",
             "before": null,
-            "after": "affeccbf8445e1d61b525df683504de7c084642a52cec8e6fb9371ca935c3034"
+            "after": "a717b03de1ec528f7047161679be436535d68fb416b573c3aaf5b09a2e44b520"
           },
           {
-            "path": "code/iaas/api-logic/src/main/java/io/cattle/platform/iaas/api/request/handler/GenericWhitelistedProxy.java",
-            "before": null,
-            "after": "9606a7e0f76cb4c7eba033afc897d6d9e5d61045262d582ee94604169817608a"
+            "path": "code/framework/java-server/src/main/java/io/github/ibuildthecloud/gdapi/request/resource/ResourceManager.java",
+            "before": "8f5f72c17541e73cab9f59ad8d36c06593baef517628a923967bc4c18f82b999",
+            "after": "ef08c305584fe79e2218d360dbc2ce6f3b29b64f4123ac325c8473430bc0a1f1"
           },
           {
-            "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/ai/catalog/AiCatalogLaunchAccess.java",
-            "before": null,
-            "after": "639ceb2151b6668af77ff2f71ead2cd7699d76d45c17521e46a90af624286b52"
+            "path": "code/framework/java-server/src/main/java/io/github/ibuildthecloud/gdapi/request/resource/impl/FilteredResourceManager.java",
+            "before": "a140040f0be95fd7872eb7f7e78f5824329725a109d7bc0c79d960dbc0709e77",
+            "after": "d2c6a28809df4912b2b22ce22e9f4e48304b91c993144867d05fa5d65f07ae76"
           },
           {
-            "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/ai/catalog/AiCatalogLaunchBinding.java",
+            "path": "code/framework/schema/src/main/java/io/cattle/platform/schema/processor/NotWritablePostProcessor.java",
             "before": null,
-            "after": "9f75784fa67b7341439d3ffecf8bada16ef0e55a7db3bbb41d6eceed4db90e8d"
+            "after": "c42a2b1aea75d4daae5671c702e3242c9cd1e7d32e7a5280fc3a0f6415ca829a"
           },
           {
-            "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/ai/catalog/AiCatalogLaunchDelegation.java",
+            "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/ai/audit/AiAuditQuery.java",
             "before": null,
-            "after": "e75f911701471e63f85b70df645040a4142704f8da94f3008ed2187c43b35a1d"
+            "after": "6ef0559fdec19c2fe76742587dd5b5c88b5ec904ee3544f70dd6937fffe1e455"
           },
           {
-            "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/ai/catalog/AiCatalogLaunchGateway.java",
+            "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/ai/audit/AiAuditQueryResourceManager.java",
             "before": null,
-            "after": "9a12293de31831d7dda5f2e787b809351c347bf95e7b95f6798bb7e18d5ae12c"
+            "after": "bdeaebe2fbc3f84be1c9bc19b0bcc7d534a5d43888cc3a95ec446d300458c8c2"
           },
           {
-            "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/ai/catalog/AiCatalogLaunchGraph.java",
+            "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/ai/audit/AiAuditQueryRunner.java",
             "before": null,
-            "after": "26618418c19bd7eef3dc7e5e4cd526072f3a614535a04b914e0559a20f12d875"
+            "after": "608fa5f5b412dccdf154290094ff1d67204c092cfb60b850d8d7a3124f53c812"
           },
           {
-            "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/ai/catalog/AiCatalogLaunchInput.java",
+            "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/ai/audit/AiAuditQueryService.java",
             "before": null,
-            "after": "3db05d510e3e057ae5d10340e0e313111de0a5a7e5558a477e91395f1f4280de"
-          },
-          {
-            "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/ai/catalog/AiCatalogLaunchMaterializer.java",
-            "before": null,
-            "after": "00945aae0ccd8091f6835168bd0d0ff7615be2f00cc86c27f48218520d680f50"
-          },
-          {
-            "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/ai/catalog/AiCatalogLaunchObservation.java",
-            "before": null,
-            "after": "e3ecb29c1585002c61a4c3a6e14e94868c4e9de6da94e5098eb5d2f14b93d82d"
-          },
-          {
-            "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/ai/catalog/AiCatalogLaunchOptionsResourceManager.java",
-            "before": null,
-            "after": "fb2977ff6cbd4819f5ecaa75afdcd5c3d9a3c43add3b5c2d4614379349e74552"
-          },
-          {
-            "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/ai/catalog/AiCatalogLaunchOptionsService.java",
-            "before": null,
-            "after": "318bb0e18d8a7292ff57a0b281d53eb5040e7c4a5fef388baea4aac4acf30d5d"
-          },
-          {
-            "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/ai/catalog/AiCatalogLaunchOptionsStore.java",
-            "before": null,
-            "after": "b4dbbfffcb333ce11c559e10eee78ce2ae9dc1fa5d4a958c475f5a893b270c2b"
-          },
-          {
-            "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/ai/catalog/AiCatalogLaunchPlanResourceManager.java",
-            "before": null,
-            "after": "ef70bb6e029fdb446358ad81e9f791f14e892c28bda754b8ce479077fb85ff98"
-          },
-          {
-            "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/ai/catalog/AiCatalogLaunchPlanService.java",
-            "before": null,
-            "after": "77b8f8b2b4ade110064ba0a874db04c1d5adbfe9df68655b8760c395270a05e3"
-          },
-          {
-            "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/ai/catalog/AiCatalogLaunchPlanStore.java",
-            "before": null,
-            "after": "8716e8f4038bad48098f16c9009446c4e77f379cba50d3049897aa2442fd7b22"
-          },
-          {
-            "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/ai/catalog/AiCatalogLaunchPrivate.java",
-            "before": null,
-            "after": "df91328e28fca5f15aceda4faaf57be47c8165dfc5cbf36894abd12935c8d3b2"
+            "after": "4067cc8685399b2b2bfb9e7b5eaddd10b906f63fccf286ef7e118622e4e80ea6"
           },
           {
             "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/ai/catalog/AiCatalogLaunchResponseFilter.java",
-            "before": null,
-            "after": "0e35935d8e3ce19a843d3770b9a574b0c2d501612a8f6211f077834f7975bb60"
+            "before": "0e35935d8e3ce19a843d3770b9a574b0c2d501612a8f6211f077834f7975bb60",
+            "after": "9884cc5bc272d0a872ab7b48f5365863dfc8154b0e6c291fe418bdc14541be73"
           },
           {
-            "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/ai/catalog/AiCatalogLaunchRunner.java",
+            "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/ai/view/AiAuditSourcePage.java",
             "before": null,
-            "after": "e6e530a39cc6ca2d270038f0084ed6c104f45d69ebfe7a307391e90918c0f6c9"
+            "after": "4e47ab9f1fef9108e68a0471b633d3d99f5f5069591e7dcecfe57018f09b6b78"
+          },
+          {
+            "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/ai/view/AiAuditSourcePageInput.java",
+            "before": null,
+            "after": "771bdb99ca900a268c900c957d476f3f8d96b31ce45d56583e7c572f3abe73c5"
+          },
+          {
+            "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/ai/view/AiResourceViewResourceManager.java",
+            "before": null,
+            "after": "ea08a26aee7cfa32df3485dd9c4e2e7bd63ca5d2e680cdbabdfcdc5f3c63b8dd"
+          },
+          {
+            "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/ai/view/AiResourceViewService.java",
+            "before": null,
+            "after": "54f9aeaeecbf135e34210417f5cf7ec128a90e05b1971fc351ed4bdd76bf8585"
           },
           {
             "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/apikey/ApiKeyAuthorizationService.java",
-            "before": "9ceda0f5118d38fc45fc83bd4a16eb92717a20f7837bcabb804975600c59d2c5",
-            "after": "d3cac29f7b6f61be0bda38f643115d08877d59e99b9312575f064290e73ede27"
+            "before": "d3cac29f7b6f61be0bda38f643115d08877d59e99b9312575f064290e73ede27",
+            "after": "85a065246a8f40e1d9a64d984f49368d488e5d9b712029b5e3e306ca37aeab47"
           },
           {
             "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/apikey/ApiKeyOperations.java",
-            "before": "494a57d48564da85f14de564a82906444fa732f1adb201fe27d8c0ca88ea65e5",
-            "after": "28847a8d6873d8e8fe1644a19813e8f8f9d1917a5c1b369dab8abcb882e6a9b6"
+            "before": "28847a8d6873d8e8fe1644a19813e8f8f9d1917a5c1b369dab8abcb882e6a9b6",
+            "after": "662bbef806ecf3b266699bb00809fe62b712c9610b36788cfb76e244de37940a"
+          },
+          {
+            "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/apikey/ApiKeyProcessAuthorization.java",
+            "before": "65052468195ad36213f68dc585d63d1cebc13409f7a92704d53297e2efcb482e",
+            "after": "1bf968d28d977725fa426fe7f32b00d5bc322979c0bfe1e0501fc2c34c03100e"
           },
           {
             "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/apikey/ApiKeyTargetResolver.java",
-            "before": "645652a1352b74cf6ad4c2b1a9bbdfee1d168cef9df7c59e459d84c17d547c17",
-            "after": "95e9c38861b984e995770e5ddf6d7af21c96d1bff1d8848d1ad2e3a54722efd2"
+            "before": "95e9c38861b984e995770e5ddf6d7af21c96d1bff1d8848d1ad2e3a54722efd2",
+            "after": "3c299d683055c0301f93b4bc8d23252215d1d9c0746d0aaafa0b52447d3eb26b"
           },
           {
-            "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/impl/ApiAuthenticator.java",
-            "before": "7a3e331dc9e23ae1689495b6ce4066a9decb8293def66fbffa6e0e404697db12",
-            "after": "d412d32cf7032b4bb0dde546a9e22193fc29ecae71b5c1efcbb052bd4590945d"
-          },
-          {
-            "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/integration/internal/rancher/TokenAuthLookup.java",
+            "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiAliasServiceChange.java",
             "before": null,
-            "after": "11c66db998415be5deab8a34df362dcb299a7b1a8df938ef1afb6f6602b71c91"
+            "after": "fa69385c6ffee09261466e995e59474b632302225088729de3242ccaf2b2118b"
           },
           {
-            "path": "code/iaas/logic-common/src/main/java/io/cattle/platform/process/common/handler/EventBasedProcessHandler.java",
+            "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiExternalServiceChange.java",
             "before": null,
-            "after": "d784906d3bd0e0399dc38cd38ddc5ee38c49850e7a51ea07d2a4a158dcb068de"
+            "after": "d9497a9c37842c09e833d434e5f361585f721a72eff9976c5b66902181f392e5"
           },
           {
-            "path": "code/iaas/logic-common/src/main/java/io/cattle/platform/process/common/handler/ProcessEventDecorator.java",
+            "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiResourceChangeDescriptor.java",
             "before": null,
-            "after": "b0dc3d894c3ae0345e374cda8af588ac2e6c17c74f25501e6689a28d4ef934e5"
+            "after": "2ef7555c7864a2ce91a7c28951e895da412f68849b6cc3ec04350a75b35186f8"
           },
           {
-            "path": "code/iaas/service-discovery/api/src/main/java/io/cattle/platform/servicediscovery/api/filter/ArchiveValidationFilter.java",
-            "before": "63fbdcc3d0ac73186b181afc55d0e0aae4424a347a367724348802246cad823c",
-            "after": "908e6e0bf0d665d2392481f6d6e59d27c3cd89b4b35471fe587d6ed14e591890"
-          },
-          {
-            "path": "code/implementation/docker/api/src/main/java/io/cattle/platform/docker/api/transform/TransformInspect.java",
+            "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiResourceChangeDomain.java",
             "before": null,
-            "after": "c67974b0abbb3b7c7801b51ca95a649e95e0853fba9c1500da6b4b5977a0afb2"
+            "after": "aafe0ea7a5f60f7e9dc926067318cb2d470ec066cc1e5986b76b2c79122570a4"
+          },
+          {
+            "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiResourceChangePlanService.java",
+            "before": null,
+            "after": "d0605f3e94757996e699e4083b1cd314d6d68acf623358a92f9841bc75384fb9"
+          },
+          {
+            "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiResourceChangePlanStore.java",
+            "before": null,
+            "after": "9862ed000b4b40a6a7643968313c250fad9b1e718a684dccbab8f35c3a29cd5f"
+          },
+          {
+            "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiResourceChangeProcessObserver.java",
+            "before": null,
+            "after": "6f7898590bb64e55cb815c9b1a51f4ce00540a6268e8fa4914ef1b6b445f5a70"
+          },
+          {
+            "path": "code/iaas/service-discovery/server/src/main/java/io/cattle/platform/servicediscovery/dao/impl/ServiceConsumeMapDaoImpl.java",
+            "before": null,
+            "after": "a127711511a3f1271d441235f9889d63e06a5c2d457974e4a45bd04f1e7e5747"
           },
           {
             "path": "code/packaging/app-config/src/main/java/io/cattle/platform/app/IaasApiConfig.java",
-            "before": null,
-            "after": "02184dc6ae781547e850c80cf51ddb4f33cbc7b2f799aba3ca1e59c8eb9cf34f"
+            "before": "02184dc6ae781547e850c80cf51ddb4f33cbc7b2f799aba3ca1e59c8eb9cf34f",
+            "after": "59b633a3f6614f811b5f14b0eeeeb1f99683d319a2c28bea2093f48a33a53130"
           },
           {
             "path": "resources/content/schema/admin/admin-auth.json",
-            "before": "79a757118dd66055c6e7e4c03ded4b0dd8ef1965887c50a4c106e15836d4938f",
-            "after": "6ea49e1130a2b9218e6c060038c73c89be5b9e05b039d3a0b81475e892d21504"
+            "before": "6ea49e1130a2b9218e6c060038c73c89be5b9e05b039d3a0b81475e892d21504",
+            "after": "27630fdb4d5cf7a1dcd7e693b84d0b31513d627a64a5d2365119075aca6d4f85"
           },
           {
-            "path": "resources/content/schema/base/aiCatalogMetadataView.json",
+            "path": "resources/content/schema/base/aiAuditQuery.json",
             "before": null,
-            "after": "5581897314b1cfe9135783fb8846db50ff6f9d62289b5ab35e60ab7ca8b36515"
+            "after": "c12e694997a08c3e9849413f45b96d7d9cf2471289d35be54a60903d22e609eb"
           },
           {
-            "path": "resources/content/schema/base/aiCatalogStackLaunchInputs.json",
+            "path": "resources/content/schema/base/aiAuditSourcePageInput.json",
             "before": null,
-            "after": "05aa9a7b459a82efcf0331b3d6c8262e1b5c879643aef6384c67e3a12980bf4c"
-          },
-          {
-            "path": "resources/content/schema/base/aiCatalogStackLaunchOptions.json",
-            "before": null,
-            "after": "30137b75ac50b6b04adec688ca56359fd7d49843f8342c423a906b998da5c12a"
-          },
-          {
-            "path": "resources/content/schema/base/aiCatalogStackLaunchPlan.json",
-            "before": null,
-            "after": "5886387a8b25893d4afc5bb127dd8305646748e08a86b65002d8e0d8e05b328d"
+            "after": "2aca5cba9323daae33a7171ac5f3bec2591cbdbffbdc32cf263ac8398a75e444"
           },
           {
             "path": "resources/content/schema/base/aiResourceChangePlan.json",
-            "before": "ec4b5ceb31e42dceb71c2fb0f475daf868a19a08ad9644dcf17ee8c06c769786",
-            "after": "21b4acfd55e2aa64b725bacd520655daf7f707141e4226343c16a5b6fae47d8c"
+            "before": "21b4acfd55e2aa64b725bacd520655daf7f707141e4226343c16a5b6fae47d8c",
+            "after": "90db2324422f25129edf155127da8e29303b74fe2467797d4459b1df451e9439"
+          },
+          {
+            "path": "resources/content/schema/base/aiResourceView.json",
+            "before": "024fb697f3d5e1ed511544ff6922f3b78c351f01e74df1a36faeee3e7f3dba95",
+            "after": "5bd8e7f91b44165d8f57ebb5b17689c40b2c236d1d6a80af0ade78dba552cc73"
           },
           {
             "path": "resources/content/schema/project/project-auth.json",
-            "before": "96dcb3b12d6ba0a15e5532df71c68683b2fe87a8946ecb71c10109dea4f17585",
-            "after": "a924ebe3e6ea7a39374d7d162fd020807cb94900c849c82d286df121db27ee6c"
+            "before": "a924ebe3e6ea7a39374d7d162fd020807cb94900c849c82d286df121db27ee6c",
+            "after": "c752d35a5b2b2bdc65af5914d89071948e5b10e41772736ade7f89dfd2554a59"
           },
           {
             "path": "resources/content/schema/user/user-auth.json",
-            "before": "91c44ff87f288c967d38cfe0c6c1dd04e4ac09919cd6c6ba8407806a61168a2f",
-            "after": "0f977be3a4e6718753ba8a248e73f1014886afbee1d5387249e762b4146b7b73"
+            "before": "0f977be3a4e6718753ba8a248e73f1014886afbee1d5387249e762b4146b7b73",
+            "after": "0f96a7e195647b967d4f83cab74d6a0fc5c442a896baa54384937af765bc2d9e"
           }
         ]
       },
@@ -873,225 +1113,60 @@
         "resources/content/schema/base/aiAuditQuery.json",
         "resources/content/schema/base/aiAuditSourcePageInput.json"
       ],
-      "addedTuples": [
-        [
-          "aiAuditQuery",
-          "collection",
-          "POST",
-          "",
-          "",
-          "read"
-        ]
-      ],
-      "changedTuples": [
-        [
-          [
-            "dnsService",
-            "resource",
-            "POST",
-            "setservicelinks",
-            "",
-            "action:setservicelinks"
-          ],
-          [
-            "dnsService",
-            "resource",
-            "POST",
-            "setservicelinks",
-            "",
-            "update"
-          ]
-        ]
-      ],
+      "addedTuples": [],
+      "changedTuples": [],
       "authorizationRationale": {
-        "aiAuditQuery": "Read-semantic metadata admission only. Original native role/schema/current Key and SQL/row filters authorize each source page. Fixed installed broker read-only CLI aggregates using private original credentials; Engine observes complete owner output and persists canonical ALLOW/DENY/error through existing ApiKeyAuditSink. No client-reported result is authoritative.",
-        "aiAuditSourcePages": "Exactly project/account/apiKey/auditLog with bounded typed ID/time/page input; no independent input route. Original account/project selection, current membership and each native GET apply. Restricted Keys cannot mutate/export credentials; target-Key query requires original actual Key metadata read. Every Key source page pins revision; native API direct/raw routes retain their prior purpose guard and Full/legacy behavior."
+        "certificate": "Only name/description; current native method/field schema, row lock, safe UUID/public fingerprint CAS, Cookie-human approval and original Key revision remain required. No PEM/key/chain field or raw proxy is admitted.",
+        "nativeNetworkRemoval": "Actual immutable Java execution frames include native processName. Only Instance DELETE/delete, exact persisted owner/UUID/FK and all IP maps qualify for native nic.remove reentry. Missing/stop frames, foreign/shared/reassigned children and explicit NIC/IP/map/service DENY remain denied. Live paths and Full/legacy retain their original owner behavior.",
+        "terminalDenial": "Only the structured synchronous child AUTHORIZATION_DENIED terminates its parent. Other exit/retry semantics and durable completion-audit replay are unchanged.",
+        "auditOwnerTopology": "The fixed private CLI shares the configured broker upstream. Java reconstructs only HTTP(S) loopback origins and bounded ports from its exact nonsecret operator setting after clearing all other environment; credentials stay private stdin. No HTTP or tool-specified URL is accepted.",
+        "audit": "Existing durable metadata-only decision owner includes the explicitly reviewed certificate/externalService/dnsService domains. It does not authorize their operation or log private material."
       },
       "sourceInputChanges": [
         {
-          "path": "code/framework/api/src/main/java/io/cattle/platform/api/auth/ApiAuditPayload.java",
-          "before": "697bb6f57b26354f336e14f905bc2a87f8a41acfdf725500652100e90d4e4381",
-          "after": "16122e192f490b7866d3b0af3ed4981184c938d8446ec9b7d4c892d68cf2d67d"
-        },
-        {
-          "path": "code/framework/api/src/main/java/io/cattle/platform/api/auth/ApiKeyAuditSink.java",
-          "before": null,
-          "after": "c04eec56c774f68254c832cc8916b57ec000d5fce3bd07e5cafb65260a48fe9b"
-        },
-        {
-          "path": "code/framework/auditing/src/main/java/io/cattle/platform/iaas/api/auditing/AuditLogOutPutFilter.java",
-          "before": null,
-          "after": "368c21b043bdfc149f3d5a8663cf12b6ad93f0efdec0df6b7e065d62200f4ac7"
-        },
-        {
           "path": "code/framework/auditing/src/main/java/io/cattle/platform/iaas/api/auditing/AuditServiceImpl.java",
-          "before": "1f834204996aabfd6e6d3d5bb520d35b80547c5e77b8edea8f25d8d6010cfd4e",
-          "after": "a10a5d8e7ca754601ea2c5a876c318069b6639c073e616d283ae71694bc95179"
+          "before": "a10a5d8e7ca754601ea2c5a876c318069b6639c073e616d283ae71694bc95179",
+          "after": "cb6bb0a8ed3dda48bedd3ae89ed78a490f644c1040c5aa16463e1e701250988e"
         },
         {
-          "path": "code/framework/engine/src/main/java/io/cattle/platform/engine/process/ProcessAuthorization.java",
+          "path": "code/framework/engine/src/main/java/io/cattle/platform/engine/context/EngineContext.java",
           "before": null,
-          "after": "a717b03de1ec528f7047161679be436535d68fb416b573c3aaf5b09a2e44b520"
+          "after": "ba91b4da42d1f2ea5a2b9709818c2a8f4b967c2c730d5681b53d9dbe94ce8968"
         },
         {
-          "path": "code/framework/java-server/src/main/java/io/github/ibuildthecloud/gdapi/request/resource/ResourceManager.java",
-          "before": "8f5f72c17541e73cab9f59ad8d36c06593baef517628a923967bc4c18f82b999",
-          "after": "ef08c305584fe79e2218d360dbc2ce6f3b29b64f4123ac325c8473430bc0a1f1"
-        },
-        {
-          "path": "code/framework/java-server/src/main/java/io/github/ibuildthecloud/gdapi/request/resource/impl/FilteredResourceManager.java",
-          "before": "a140040f0be95fd7872eb7f7e78f5824329725a109d7bc0c79d960dbc0709e77",
-          "after": "d2c6a28809df4912b2b22ce22e9f4e48304b91c993144867d05fa5d65f07ae76"
-        },
-        {
-          "path": "code/framework/schema/src/main/java/io/cattle/platform/schema/processor/NotWritablePostProcessor.java",
+          "path": "code/framework/engine/src/main/java/io/cattle/platform/engine/process/impl/DefaultProcessInstanceImpl.java",
           "before": null,
-          "after": "c42a2b1aea75d4daae5671c702e3242c9cd1e7d32e7a5280fc3a0f6415ca829a"
-        },
-        {
-          "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/ai/audit/AiAuditQuery.java",
-          "before": null,
-          "after": "6ef0559fdec19c2fe76742587dd5b5c88b5ec904ee3544f70dd6937fffe1e455"
-        },
-        {
-          "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/ai/audit/AiAuditQueryResourceManager.java",
-          "before": null,
-          "after": "bdeaebe2fbc3f84be1c9bc19b0bcc7d534a5d43888cc3a95ec446d300458c8c2"
+          "after": "986e14156ce42ac72033fad21289db4e3732469378cb6c9b0ae1d0a4c36376b0"
         },
         {
           "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/ai/audit/AiAuditQueryRunner.java",
-          "before": null,
-          "after": "608fa5f5b412dccdf154290094ff1d67204c092cfb60b850d8d7a3124f53c812"
-        },
-        {
-          "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/ai/audit/AiAuditQueryService.java",
-          "before": null,
-          "after": "4067cc8685399b2b2bfb9e7b5eaddd10b906f63fccf286ef7e118622e4e80ea6"
-        },
-        {
-          "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/ai/catalog/AiCatalogLaunchResponseFilter.java",
-          "before": "0e35935d8e3ce19a843d3770b9a574b0c2d501612a8f6211f077834f7975bb60",
-          "after": "9884cc5bc272d0a872ab7b48f5365863dfc8154b0e6c291fe418bdc14541be73"
-        },
-        {
-          "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/ai/view/AiAuditSourcePage.java",
-          "before": null,
-          "after": "4e47ab9f1fef9108e68a0471b633d3d99f5f5069591e7dcecfe57018f09b6b78"
-        },
-        {
-          "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/ai/view/AiAuditSourcePageInput.java",
-          "before": null,
-          "after": "771bdb99ca900a268c900c957d476f3f8d96b31ce45d56583e7c572f3abe73c5"
-        },
-        {
-          "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/ai/view/AiResourceViewResourceManager.java",
-          "before": null,
-          "after": "ea08a26aee7cfa32df3485dd9c4e2e7bd63ca5d2e680cdbabdfcdc5f3c63b8dd"
-        },
-        {
-          "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/ai/view/AiResourceViewService.java",
-          "before": null,
-          "after": "54f9aeaeecbf135e34210417f5cf7ec128a90e05b1971fc351ed4bdd76bf8585"
-        },
-        {
-          "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/apikey/ApiKeyAuthorizationService.java",
-          "before": "d3cac29f7b6f61be0bda38f643115d08877d59e99b9312575f064290e73ede27",
-          "after": "85a065246a8f40e1d9a64d984f49368d488e5d9b712029b5e3e306ca37aeab47"
-        },
-        {
-          "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/apikey/ApiKeyOperations.java",
-          "before": "28847a8d6873d8e8fe1644a19813e8f8f9d1917a5c1b369dab8abcb882e6a9b6",
-          "after": "662bbef806ecf3b266699bb00809fe62b712c9610b36788cfb76e244de37940a"
+          "before": "608fa5f5b412dccdf154290094ff1d67204c092cfb60b850d8d7a3124f53c812",
+          "after": "684fa84a259118a13d5a1ef20f76e05592ef867492e3fc54c1dcb94c06bb5758"
         },
         {
           "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/apikey/ApiKeyProcessAuthorization.java",
-          "before": "65052468195ad36213f68dc585d63d1cebc13409f7a92704d53297e2efcb482e",
-          "after": "1bf968d28d977725fa426fe7f32b00d5bc322979c0bfe1e0501fc2c34c03100e"
+          "before": "1bf968d28d977725fa426fe7f32b00d5bc322979c0bfe1e0501fc2c34c03100e",
+          "after": "39ac76abfff5b7a8d95f722f72a4869443ec9c4e99cac754b2690f7ab5be382d"
         },
         {
           "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/apikey/ApiKeyTargetResolver.java",
-          "before": "95e9c38861b984e995770e5ddf6d7af21c96d1bff1d8848d1ad2e3a54722efd2",
-          "after": "3c299d683055c0301f93b4bc8d23252215d1d9c0746d0aaafa0b52447d3eb26b"
-        },
-        {
-          "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiAliasServiceChange.java",
-          "before": null,
-          "after": "fa69385c6ffee09261466e995e59474b632302225088729de3242ccaf2b2118b"
-        },
-        {
-          "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiExternalServiceChange.java",
-          "before": null,
-          "after": "d9497a9c37842c09e833d434e5f361585f721a72eff9976c5b66902181f392e5"
+          "before": "3c299d683055c0301f93b4bc8d23252215d1d9c0746d0aaafa0b52447d3eb26b",
+          "after": "e755cdf32b48df5392cc6700e0d86890393828da25f957cdfc60c9e6ce157968"
         },
         {
           "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiResourceChangeDescriptor.java",
-          "before": null,
-          "after": "2ef7555c7864a2ce91a7c28951e895da412f68849b6cc3ec04350a75b35186f8"
+          "before": "2ef7555c7864a2ce91a7c28951e895da412f68849b6cc3ec04350a75b35186f8",
+          "after": "542f4d8b53b7360a4b72570466f63f027469d5bf2f0e3ce66ea3d6b6ceb6f417"
         },
         {
           "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiResourceChangeDomain.java",
-          "before": null,
-          "after": "aafe0ea7a5f60f7e9dc926067318cb2d470ec066cc1e5986b76b2c79122570a4"
-        },
-        {
-          "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiResourceChangePlanService.java",
-          "before": null,
-          "after": "d0605f3e94757996e699e4083b1cd314d6d68acf623358a92f9841bc75384fb9"
-        },
-        {
-          "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiResourceChangePlanStore.java",
-          "before": null,
-          "after": "9862ed000b4b40a6a7643968313c250fad9b1e718a684dccbab8f35c3a29cd5f"
-        },
-        {
-          "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiResourceChangeProcessObserver.java",
-          "before": null,
-          "after": "6f7898590bb64e55cb815c9b1a51f4ce00540a6268e8fa4914ef1b6b445f5a70"
-        },
-        {
-          "path": "code/iaas/service-discovery/server/src/main/java/io/cattle/platform/servicediscovery/dao/impl/ServiceConsumeMapDaoImpl.java",
-          "before": null,
-          "after": "a127711511a3f1271d441235f9889d63e06a5c2d457974e4a45bd04f1e7e5747"
-        },
-        {
-          "path": "code/packaging/app-config/src/main/java/io/cattle/platform/app/IaasApiConfig.java",
-          "before": "02184dc6ae781547e850c80cf51ddb4f33cbc7b2f799aba3ca1e59c8eb9cf34f",
-          "after": "59b633a3f6614f811b5f14b0eeeeb1f99683d319a2c28bea2093f48a33a53130"
-        },
-        {
-          "path": "resources/content/schema/admin/admin-auth.json",
-          "before": "6ea49e1130a2b9218e6c060038c73c89be5b9e05b039d3a0b81475e892d21504",
-          "after": "27630fdb4d5cf7a1dcd7e693b84d0b31513d627a64a5d2365119075aca6d4f85"
-        },
-        {
-          "path": "resources/content/schema/base/aiAuditQuery.json",
-          "before": null,
-          "after": "c12e694997a08c3e9849413f45b96d7d9cf2471289d35be54a60903d22e609eb"
-        },
-        {
-          "path": "resources/content/schema/base/aiAuditSourcePageInput.json",
-          "before": null,
-          "after": "2aca5cba9323daae33a7171ac5f3bec2591cbdbffbdc32cf263ac8398a75e444"
+          "before": "aafe0ea7a5f60f7e9dc926067318cb2d470ec066cc1e5986b76b2c79122570a4",
+          "after": "2fc7645b2ce573ae02ebc2ec7e20548dda2e0a738d8e65d056650a6c85883c3e"
         },
         {
           "path": "resources/content/schema/base/aiResourceChangePlan.json",
-          "before": "21b4acfd55e2aa64b725bacd520655daf7f707141e4226343c16a5b6fae47d8c",
-          "after": "90db2324422f25129edf155127da8e29303b74fe2467797d4459b1df451e9439"
-        },
-        {
-          "path": "resources/content/schema/base/aiResourceView.json",
-          "before": "024fb697f3d5e1ed511544ff6922f3b78c351f01e74df1a36faeee3e7f3dba95",
-          "after": "5bd8e7f91b44165d8f57ebb5b17689c40b2c236d1d6a80af0ade78dba552cc73"
-        },
-        {
-          "path": "resources/content/schema/project/project-auth.json",
-          "before": "a924ebe3e6ea7a39374d7d162fd020807cb94900c849c82d286df121db27ee6c",
-          "after": "c752d35a5b2b2bdc65af5914d89071948e5b10e41772736ade7f89dfd2554a59"
-        },
-        {
-          "path": "resources/content/schema/user/user-auth.json",
-          "before": "0f977be3a4e6718753ba8a248e73f1014886afbee1d5387249e762b4146b7b73",
-          "after": "0f96a7e195647b967d4f83cab74d6a0fc5c442a896baa54384937af765bc2d9e"
+          "before": "90db2324422f25129edf155127da8e29303b74fe2467797d4459b1df451e9439",
+          "after": "7acb469f2ffbd0454e7e4e071aa672d3c444140583f41798a6d3cb02a632ba5e"
         }
       ]
     },
@@ -1112,57 +1187,25 @@
     "addedTuples": [],
     "changedTuples": [],
     "authorizationRationale": {
-      "certificate": "Only name/description; current native method/field schema, row lock, safe UUID/public fingerprint CAS, Cookie-human approval and original Key revision remain required. No PEM/key/chain field or raw proxy is admitted.",
-      "nativeNetworkRemoval": "Actual immutable Java execution frames include native processName. Only Instance DELETE/delete, exact persisted owner/UUID/FK and all IP maps qualify for native nic.remove reentry. Missing/stop frames, foreign/shared/reassigned children and explicit NIC/IP/map/service DENY remain denied. Live paths and Full/legacy retain their original owner behavior.",
-      "terminalDenial": "Only the structured synchronous child AUTHORIZATION_DENIED terminates its parent. Other exit/retry semantics and durable completion-audit replay are unchanged.",
-      "auditOwnerTopology": "The fixed private CLI shares the configured broker upstream. Java reconstructs only HTTP(S) loopback origins and bounded ports from its exact nonsecret operator setting after clearing all other environment; credentials stay private stdin. No HTTP or tool-specified URL is accepted.",
-      "audit": "Existing durable metadata-only decision owner includes the explicitly reviewed certificate/externalService/dnsService domains. It does not authorize their operation or log private material."
+      "serviceIndexRemoval": "Only actual verified service.activate/service.update/service.remove native owners can capture the serviceindex.remove edge. Fresh persisted Index/Service/Stack identities and exact ownership relations must match the original Key-bound root; queued work matches all private identity pins. Missing/wrong parent, foreign/rebound UUID/FK/account, changed Key revision or revoked/expired authority and explicit Index/Service/Stack DENY remain rejected. Full/legacy/no-Key owner behavior is unchanged.",
+      "operation": "The child retains the original root update/delete operation, rather than obtaining a new independent delete or project-wide resource grant. ServiceIndex is not added to the generic resolver or PROJECT_ONLY.",
+      "owner": "Planner and Service/Stack remove use the existing native owner. ServiceSuffixRemove keeps its normal pool-only IP allocation release; no new NIC/IP/network or HTTP proxy permission is admitted."
     },
     "sourceInputChanges": [
       {
-        "path": "code/framework/auditing/src/main/java/io/cattle/platform/iaas/api/auditing/AuditServiceImpl.java",
-        "before": "a10a5d8e7ca754601ea2c5a876c318069b6639c073e616d283ae71694bc95179",
-        "after": "cb6bb0a8ed3dda48bedd3ae89ed78a490f644c1040c5aa16463e1e701250988e"
-      },
-      {
-        "path": "code/framework/engine/src/main/java/io/cattle/platform/engine/context/EngineContext.java",
-        "before": null,
-        "after": "ba91b4da42d1f2ea5a2b9709818c2a8f4b967c2c730d5681b53d9dbe94ce8968"
-      },
-      {
-        "path": "code/framework/engine/src/main/java/io/cattle/platform/engine/process/impl/DefaultProcessInstanceImpl.java",
-        "before": null,
-        "after": "986e14156ce42ac72033fad21289db4e3732469378cb6c9b0ae1d0a4c36376b0"
-      },
-      {
-        "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/ai/audit/AiAuditQueryRunner.java",
-        "before": "608fa5f5b412dccdf154290094ff1d67204c092cfb60b850d8d7a3124f53c812",
-        "after": "684fa84a259118a13d5a1ef20f76e05592ef867492e3fc54c1dcb94c06bb5758"
+        "path": "code/framework/engine/src/main/java/io/cattle/platform/engine/process/ProcessAuthorization.java",
+        "before": "a717b03de1ec528f7047161679be436535d68fb416b573c3aaf5b09a2e44b520",
+        "after": "ae96df57002f8102f1bf5eb3c813574a3563ec9ef52133f3499299037fb29ed3"
       },
       {
         "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/apikey/ApiKeyProcessAuthorization.java",
-        "before": "1bf968d28d977725fa426fe7f32b00d5bc322979c0bfe1e0501fc2c34c03100e",
-        "after": "39ac76abfff5b7a8d95f722f72a4869443ec9c4e99cac754b2690f7ab5be382d"
+        "before": "39ac76abfff5b7a8d95f722f72a4869443ec9c4e99cac754b2690f7ab5be382d",
+        "after": "b2bf0a5939e030de833957f634622fccea75bb8f00f86e454b83f910f695682d"
       },
       {
         "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/apikey/ApiKeyTargetResolver.java",
-        "before": "3c299d683055c0301f93b4bc8d23252215d1d9c0746d0aaafa0b52447d3eb26b",
-        "after": "e755cdf32b48df5392cc6700e0d86890393828da25f957cdfc60c9e6ce157968"
-      },
-      {
-        "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiResourceChangeDescriptor.java",
-        "before": "2ef7555c7864a2ce91a7c28951e895da412f68849b6cc3ec04350a75b35186f8",
-        "after": "542f4d8b53b7360a4b72570466f63f027469d5bf2f0e3ce66ea3d6b6ceb6f417"
-      },
-      {
-        "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiResourceChangeDomain.java",
-        "before": "aafe0ea7a5f60f7e9dc926067318cb2d470ec066cc1e5986b76b2c79122570a4",
-        "after": "2fc7645b2ce573ae02ebc2ec7e20548dda2e0a738d8e65d056650a6c85883c3e"
-      },
-      {
-        "path": "resources/content/schema/base/aiResourceChangePlan.json",
-        "before": "90db2324422f25129edf155127da8e29303b74fe2467797d4459b1df451e9439",
-        "after": "7acb469f2ffbd0454e7e4e071aa672d3c444140583f41798a6d3cb02a632ba5e"
+        "before": "e755cdf32b48df5392cc6700e0d86890393828da25f957cdfc60c9e6ce157968",
+        "after": "51b21c88e5ec55dbf2a8708b4890127b9ab9668b3b1659d09a71942f11d25403"
       }
     ]
   },

@@ -91,6 +91,8 @@ public final class ProcessAuthorization {
                     || projectNetworkCreationEdge(parent.resourceType(), parent.resourceId(), config, metadata)
                     || upgradeUnmountEdge(parent.resourceType(), config, metadata)
                     || serviceRetirementEdge(parent.resourceType(), parent.resourceId(), config, metadata)
+                    || serviceIndexRemovalEdge(parent.resourceType(), parent.resourceId(), config, metadata)
+                        && serviceIndexRemovalOwner(parent.processName(), metadata)
                     || externalServiceEdge(parent.resourceType(), parent.resourceId(), config, metadata)
                     || aliasRemovalEdge(parent.resourceType(), parent.resourceId(), config, metadata))
                     && parent.resourceId() != null && parent.resourceId().matches("[0-9]+")
@@ -165,6 +167,7 @@ public final class ProcessAuthorization {
         if (binding.isEmpty() || !binding.equals(rawBinding) || !binding.equals(metadata(config))) return null;
         boolean creationEdge = projectNetworkCreationEdge(parentType, parentId, config, binding);
         boolean retirementEdge = serviceRetirementEdge(parentType, parentId, config, binding)
+                || serviceIndexRemovalEdge(parentType, parentId, config, binding)
                 || externalServiceEdge(parentType, parentId, config, binding) || aliasRemovalEdge(parentType, parentId, config, binding);
         if (!Set.of("volume", "instance").contains(parentType) && !creationEdge
                 && !retirementEdge && !upgradeUnmountEdge(parentType, config, binding)) return null;
@@ -230,6 +233,22 @@ public final class ProcessAuthorization {
                 && ("stack".equals(binding.get("targetType")) || Objects.equals(parentId, binding.get("targetId")))
                 && "instance".equals(config.getResourceType())
                 && Set.of("instance.stop", "instance.remove").contains(config.getProcessName());
+    }
+
+    private static boolean serviceIndexRemovalEdge(String parentType, String parentId,
+            LaunchConfiguration config, Map<String, Object> binding) {
+        return "service".equals(parentType) && serviceRetirementRequest(binding)
+                && ("stack".equals(binding.get("targetType")) || Objects.equals(parentId, binding.get("targetId")))
+                && "serviceIndex".equals(config.getResourceType()) && "serviceindex.remove".equals(config.getProcessName());
+    }
+
+    /** Only these native owners clean unused indexes. This predicate captures
+     * provenance; the Key hook still checks the exact persisted parent graph. */
+    public static boolean serviceIndexRemovalOwner(String processName, Map<String, Object> binding) {
+        if (!serviceRetirementRequest(binding)) return false;
+        return "service.remove".equals(processName) ? "delete".equals(binding.get("operation"))
+                : Set.of("service.activate", "service.update").contains(Objects.toString(processName, ""))
+                    && "update".equals(binding.get("operation"));
     }
 
     /** Closed normal service owners. Keep each request's original operation;
