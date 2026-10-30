@@ -1,10 +1,11 @@
 # API Key policy and audit contract
 
-This describes Engine `0.183.357` source. Use the current Server release and its
-component manifest for the actual immutable platform pairing. Component source,
-publication and assembled-Server native qualification are separate gates;
-typed all-actions C-03 and complete UI/API or role/resource acceptance are not
-established by the focused source tests.
+This describes published Engine `0.183.360`. Its required component CI/CodeQL and
+twelve public asset checksums passed; those results are separate from the
+matching Server560 and new live workflow acceptance, which remain pending.
+The designated QA deployment still runs Server559 / Web200. Use the current
+Server release and its component manifest for the actual immutable platform
+pairing. This contract does not establish all 243 frontend business groups.
 
 ## Optional AI bridge purpose
 
@@ -36,8 +37,32 @@ Applying a Key-bound plan requires the same Key and revision. Queued lifecycle
 work rechecks current authority and preserves explicit child DENY rules.
 
 Tool-event reports retain client-report labels and cannot prove that a business
-operation succeeded. The [356 release note](releases/orchestration-engine-0.183.356.md)
-describes resource plans, migration and the separate native-acceptance boundary.
+operation succeeded. The [360 release note](releases/orchestration-engine-0.183.360.md)
+records the published component and separate live-acceptance boundary; the
+[356 note](releases/orchestration-engine-0.183.356.md) retains the resource-plan
+migration contract.
+
+### Typed audit metadata queries
+
+Matching Web Console 1.6.201 / bridge 0.2.3 clients use the typed broker endpoint
+`POST /v2-beta/pasturestack/ai-audit-queries`. Native Cookie and stdio API Key
+queries require the matching Engine and installed broker query owner. The
+Engine invokes only `/usr/bin/pasturestack-console-broker --ai-audit-query`, with
+bounded private stdin and the original caller's authorization. It does not lend
+a service account or turn the endpoint into an arbitrary HTTP or SQL reader.
+
+The existing broker owns Key/environment/time/decision filtering, bounded pages
+and its 20,000-row scan cap. Each source page retains the current role, original
+Key scope/revision, row filters and exact-ID checks. A scan-limit result asks the
+caller to narrow the query; it is not a complete empty result. Engine records
+the final observed aggregation ALLOW, DENY or error through its canonical audit
+sink. A source-page 200 or client tool report cannot establish that outcome.
+
+Only allowlisted metadata is returned. Credentials, raw request/response objects
+and private payloads remain withheld; authorized people can use the ordinary
+audit UI for its existing payload controls. An older component's unsupported
+query diagnostic requires a matching Engine/broker, not a different credential
+or a Cookie route around the Key's policy.
 
 ## Authorization and updates
 
@@ -206,6 +231,17 @@ is presented as durable completion. No request, token or writer is retained by
 the retry object.
 
 ### Audit storage
+
+Events admitted inside an actual Core/Spring transaction are forced to the
+durable spool without synchronous database delivery. This applies to both new
+events and replay of older pending events. An outer request rollback therefore
+leaves its authorization decision available for independent delivery. The
+existing replayer runs on a separate scheduler every five seconds and deletes
+an event only after database delivery outside the caller's transaction returns.
+The cadence is not a hard completion deadline when the database is unavailable
+or the bounded queue has a backlog. Durable admission acknowledges the spool,
+not a database commit or business success; event phases and outcomes are not
+rewritten to disguise a failed request.
 
 The default spool is `data/api-key-audit-outbox` relative to the Engine working
 directory. The official Server runs the Engine from `/var/lib/cattle`, so this

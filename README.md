@@ -8,14 +8,14 @@ Rancher 1.6 ecosystem. It is not affiliated with Rancher Labs or SUSE.
 This fork of [`rancher/cattle`](https://github.com/rancher/cattle) preserves
 upstream history, authorship, licenses, and dependency notices.
 
-## Current source: Engine 0.183.360 candidate
+## Current release: Engine 0.183.360
 
-Use the [Server installation guide](https://github.com/PastureStack/server#quick-start)
-for deployment. The latest published artifact is still
-[0.183.359](https://github.com/PastureStack/orchestration-engine/releases/tag/v0.183.359);
-this source candidate has not been published or accepted on a running Server.
+The [0.183.360 release](https://github.com/PastureStack/orchestration-engine/releases/tag/v0.183.360)
+publishes the original qualified CI bytes. Use the
+[Server installation guide](https://github.com/PastureStack/server#quick-start)
+for deployment; an Engine JAR alone is not a Server installation.
 
-This candidate adds bounded External Service and DNS Alias plans through native
+This release adds bounded External Service and DNS Alias plans through native
 owners, plus typed audit metadata queries through the installed broker owner.
 Aliases are created stopped and empty; selecting authorized service targets is a
 separate reviewed change. Audit payloads and credentials remain outside tool
@@ -23,11 +23,17 @@ results. Live actor, role, Key revision, explicit DENY and exact resource identi
 checks remain in force. Normal Full and legacy API behavior is preserved.
 
 The matching clients are Web Console 1.6.201 / bridge 0.2.3. Existing Catalog,
-Archive and session protections remain. Required CI/CodeQL, immutable artifact
-verification, assembled Server and browser/role/weak-model acceptance are pending.
-See the [candidate release note](docs/releases/orchestration-engine-0.183.360.md)
-for supported operations and explicit remaining gaps. This is not completion of
-all 243 frontend business groups.
+Archive and session protections remain.
+
+| Qualification | Current evidence |
+|---|---|
+| Engine component | Required CI and CodeQL passed: 3,822 tests in 408 suites, zero failures/errors, one existing skip. |
+| Publication | Twelve original CI assets passed anonymous checksum verification; no publication rebuild or native SLSA attestation is claimed. |
+| Assembled Server and live workflows | Server560 pairing and new browser/role/cross-ID/weak-model acceptance remain pending. The designated QA deployment is still Server559 / Web200. |
+
+See the [release note](docs/releases/orchestration-engine-0.183.360.md) for the
+immutable producer, artifact hashes, supported operations and remaining gaps.
+This is not completion of all 243 frontend business groups.
 
 ## Optional AI resource workflows
 
@@ -150,7 +156,7 @@ evidence are maintained in the
 Acceptance is limited to the documented affected paths, not every resource and
 role combination.
 Versioned evidence and upgrade boundaries are in the
-[359 release note](docs/releases/orchestration-engine-0.183.359.md);
+[360 release note](docs/releases/orchestration-engine-0.183.360.md);
 older changes remain in [release notes](docs/releases).
 
 ## Build and validation
@@ -165,7 +171,7 @@ Before publishing an Engine artifact, run the complete package gate:
 
 ```sh
 bash scripts/check-cattle-jdk25-full-package
-ENGINE_VERSION=0.183.359 bash scripts/build --release
+ENGINE_VERSION=0.183.360 bash scripts/build --release
 bash scripts/check-release-artifact dist/artifacts/cattle.jar
 ```
 

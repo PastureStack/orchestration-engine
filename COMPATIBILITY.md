@@ -1,6 +1,6 @@
 # Compatibility Contract
 
-## Engine 0.183.360 candidate
+## Engine 0.183.360 release
 
 Use the matching Web Console 1.6.201 / bridge 0.2.3 and broker typed audit owner.
 Ordinary Full/legacy paths retain their existing permissions. AI typed operations
@@ -12,10 +12,22 @@ and advanced links remain unsupported, rather than borrowing an Instance grant.
 The existing four AI opt-ins keep their false defaults. Catalog still needs the
 matching Catalog 0.20.17 / Compose 0.14.40 private ingress contracts.
 
-Audit queries use bounded fixed-process IPC to the installed broker. Only the
-complete owner result produces canonical audit outcome evidence. Payloads remain
-human-only in the ordinary audit UI. CI/CodeQL and runtime acceptance are pending.
-See the [candidate release note](docs/releases/orchestration-engine-0.183.360.md).
+Audit queries use bounded fixed-process IPC to the installed matching broker.
+Only the complete owner result produces canonical audit outcome evidence.
+Payloads remain human-only in the ordinary audit UI. A Key does not gain the
+actor's broader audit visibility through this adapter. API Key audit delivery
+inside a Core transaction is deferred to the independent durable-spool replayer,
+so an outer rollback cannot discard the inner authorization decision.
+
+| Boundary | Qualification |
+|---|---|
+| Component source and original artifact | Required CI/CodeQL passed; 3,822 tests in 408 suites, zero failures/errors and one existing skip. |
+| Public bytes | Twelve assets passed anonymous checksum readback. Producer `72230c8b471312377bae968c0c17d63e8ad97ffb` and merged/tag source `d6845eedd1df5ae8e69cc075d80b166bc8d26731` share the tested tree. |
+| Matching assembled Server and live workflows | Server560 and the new domain workflows remain pending; designated QA still runs Server559 / Web200. |
+
+The [release note](docs/releases/orchestration-engine-0.183.360.md) records the
+published hashes and rollback boundary. No native SLSA attestation is claimed;
+documentation changes do not replace the original artifact producer or tag.
 
 ## Engine 0.183.358 release
 
