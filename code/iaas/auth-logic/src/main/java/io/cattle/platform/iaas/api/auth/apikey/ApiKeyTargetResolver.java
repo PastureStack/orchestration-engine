@@ -30,6 +30,7 @@ import static io.cattle.platform.core.model.tables.InstanceTable.INSTANCE;
 import static io.cattle.platform.core.model.tables.MountTable.MOUNT;
 import static io.cattle.platform.core.model.tables.IpAddressNicMapTable.IP_ADDRESS_NIC_MAP;
 import io.cattle.platform.core.model.Service;
+import io.cattle.platform.core.model.ServiceIndex;
 import io.cattle.platform.core.model.ServiceExposeMap;
 import io.cattle.platform.core.model.ServiceConsumeMap;
 import static io.cattle.platform.core.model.tables.ServiceExposeMapTable.SERVICE_EXPOSE_MAP;
@@ -817,6 +818,47 @@ public class ApiKeyTargetResolver {
             return new LifecycleDependency(target, List.copyOf(resources));
         }
         return new LifecycleDependency(container, List.copyOf(resources));
+    }
+
+    /** Index retirement is a native Service owner dependency, never a public
+     * project-wide grant. Freeze identity before scheduling; detached workers
+     * may only revalidate the exact graph captured by that live owner. */
+    public LifecycleDependency resolveServiceIndexRemovalDependency(Object root, Object resource, Policy owner,
+            LaunchConfiguration config, EngineContext.VerifiedExecutionFrame frame, Map<String, Object> binding) {
+        if (!(resource instanceof ServiceIndex index) || !"serviceIndex".equals(config.getResourceType())
+                || !"serviceindex.remove".equals(config.getProcessName())
+                || !(root instanceof Service || root instanceof Stack) || !managedRetirementBinding(binding)) return null;
+        var proof = ProcessAuthorization.verifiedChild(config);
+        if (proof == null || !"service".equals(proof.parentType()) || !binding.equals(proof.rootAuthorization())
+                || !Objects.equals(index.getId(), executionResourceId("serviceIndex", config.getResourceId()))) denied("KeyScopeDenied");
+        ServiceIndex stored = cleanupProjection(ServiceIndex.class, index, owner, "uuid", "accountId", "serviceId");
+        if (stored.getUuid() == null || stored.getServiceId() == null
+                || !Objects.equals(stored.getServiceId(), executionResourceId("service", proof.parentId()))) denied("KeyScopeDenied");
+        Service service = root instanceof Service supplied ? managedRetirementService(supplied, owner, binding, true)
+                : cleanupResource(Service.class, stored.getServiceId(), owner);
+        if (service.getUuid() == null || service.getAccountId() == null || !Objects.equals(service.getId(), stored.getServiceId())
+                || !Objects.equals(service.getAccountId(), stored.getAccountId())) denied("KeyScopeDenied");
+        Stack stack = service.getStackId() == null ? null : cleanupResource(Stack.class, service.getStackId(), owner);
+        if (stack != null && (stack.getUuid() == null || !Objects.equals(stack.getAccountId(), service.getAccountId()))) denied("KeyScopeDenied");
+        if (root instanceof Stack supplied && (stack == null || !Objects.equals(supplied.getId(), stack.getId())
+                || !Objects.equals(supplied.getUuid(), stack.getUuid())
+                || !Objects.equals(supplied.getAccountId(), stack.getAccountId())
+                || !Objects.equals(supplied.getId(), executionResourceId("stack", Objects.toString(binding.get("targetId"), "")))))
+            denied("KeyScopeDenied");
+        if (root instanceof Service && !Objects.equals(service.getId(),
+                executionResourceId("service", Objects.toString(binding.get("targetId"), "")))) denied("KeyScopeDenied");
+        String parentProcess = frame == null ? proof.references().get("parentProcess") : frame.processName();
+        if (!ProcessAuthorization.serviceIndexRemovalOwner(parentProcess, binding)
+                || frame != null && !verified(frame, "service", service.getId(), binding)) denied("KeyScopeDenied");
+        Map<String, String> references = Map.of("indexUuid", stored.getUuid(), "serviceId", service.getId().toString(),
+                "serviceUuid", service.getUuid(), "accountId", service.getAccountId().toString(), "parentProcess", parentProcess,
+                "stackId", stack == null ? "none" : stack.getId().toString(), "stackUuid", stack == null ? "none" : stack.getUuid());
+        if (proof.references().isEmpty()) {
+            if (frame == null) denied("KeyScopeDenied");
+            ProcessAuthorization.bindVerifiedChildReferences(config, references);
+        } else if (!proof.references().equals(references)) denied("KeyScopeDenied");
+        var scope = child("serviceIndex", format("serviceIndex", stored.getId()), service.getAccountId(), service.getStackId(), owner);
+        return new LifecycleDependency(scope, List.of(scope, resolveObject("service", service, owner)));
     }
 
     /** InstanceRemove enumerates all owned NICs, including remove tombstones.
