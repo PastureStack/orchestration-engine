@@ -75,6 +75,11 @@ public class EngineContext {
         return verifiedExecutions.size() < 2 ? null : verifiedExecutions.get(verifiedExecutions.size() - 2);
     }
 
+    /** The exact caller above a nested Volume deallocation, never payload data. */
+    public VerifiedExecutionFrame grandparentVerifiedExecution() {
+        return verifiedExecutions.size() < 3 ? null : verifiedExecutions.get(verifiedExecutions.size() - 3);
+    }
+
     public void pushAuthorization(Map<String, Object> metadata) { currentAuthorization.push(metadata); }
 
     public void popAuthorization() { currentAuthorization.pop(); }

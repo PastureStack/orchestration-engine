@@ -59,6 +59,12 @@ jobs:
           import xml.etree.ElementTree as ET
 
           required = {
+              'io.cattle.platform.iaas.api.auth.ai.catalog.AiCatalogLaunchPrivateWireTest': {
+                  'nativeCryptoHttpRoundTripOpensExactlyOneGoBase64JsonLayer',
+                  'nativeCryptoEnvelopeRejectsEveryPlanActorProjectAndOriginalKeyRebinding',
+                  'strictWireRejectsMalformedNoncanonicalNestedRawJsonAndUnknownEnvelope',
+                  'decodedJsonLimitAllowsLargeNativeWireAndRejectsOneByteOverflow',
+              },
               'io.github.ibuildthecloud.gdapi.model.impl.CreateOnlyWrappedResourceTest': {
                   'trueCreationRetainsTheFirstSecretInBothApiVersions',
                   'postActionsCannotRevealCreateOnlyValues',
@@ -167,6 +173,27 @@ jobs:
                   'missingDesiredMapIsNotStartedAndStopDoesNotScheduleANullResource',
                   'existingTargetRetainsActiveErrorRemovedAndStopSemantics',
                   'aliasNoopPlannerDoesNotCollectOrWriteExternalTargetMaps',
+              },
+              'io.cattle.platform.iaas.api.auth.apikey.StandaloneVolumePoolCleanupTest': {
+                  'scheduledOsAllocationRemovalSurvivesItsExactParentCompletion',
+                  'nestedVolumeDeallocationPinsTheSameExactNativeCleanup',
+                  'pinnedDirectCleanupSurvivesPurgingAndPurgedAncestors',
+                  'pinnedNestedCleanupSurvivesPurgingAndPurgedAncestors',
+                  'historicalAncestorsCannotReviveUnpinnedForgedOrUnboundJobs',
+                  'unpinnedLiveAncillaryVolumesRetainTheirExistingLifecycleAuthorization',
+                  'detachedMetadataCannotInventOrReplaceTheSchedulingProof',
+                  'delayedExecutionRejectsEveryReboundUuidForeignKeyAndOwner',
+                  'namedSharedManagedOrInconsistentStorageDoesNotGainCleanupAuthority',
+                  'onlyTheActualRemoveFramesMayPinTheFutureCleanup',
+                  'publicNonDeleteOrDifferentParentCannotBorrowTheNativeCleanupEdge',
+                  'actualRootVolumeMapAndPoolExplicitDenialsAlwaysWin',
+                  'delayedCleanupRechecksCredentialRevisionExpiryRoleSchemaAndRootGrant',
+              },
+              'io.cattle.platform.iaas.api.auth.change.AiResourceChangeDomainTest': {
+                  'aliasNonemptyTargetsUseTheRealNativeValidationBeforeProjectBinding',
+              },
+              'io.cattle.platform.iaas.api.auth.change.AiResourceChangePlanServiceTest': {
+                  'nativeAndDirectDenialsKeepOnlyTheirStatusAndCodeBeforeAnyPlanIsStored',
               },
           }
           suites = []

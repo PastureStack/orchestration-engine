@@ -43,6 +43,31 @@ public class AiResourceChangePlanServiceTest {
         assertEquals(0, f.claims); assertEquals(0, f.dispatched);
     }
 
+    @Test public void nativeAndDirectDenialsKeepOnlyTheirStatusAndCodeBeforeAnyPlanIsStored() {
+        List<ClientVisibleException> failures = List.of(
+                new ClientVisibleException(new io.github.ibuildthecloud.gdapi.model.impl.ValidationErrorImpl(
+                        "InvalidReference", "serviceId", "PRIVATE native message", "PRIVATE native detail")),
+                new ClientVisibleException(new io.github.ibuildthecloud.gdapi.model.impl.ErrorImpl(
+                        403, "OwnerPermissionDenied", "PRIVATE native message", "PRIVATE native detail")),
+                new ClientVisibleException(new io.github.ibuildthecloud.gdapi.model.impl.ErrorImpl(
+                        500, "ResourceChangeInternalFailure", "PRIVATE native message", "PRIVATE native detail")),
+                new ClientVisibleException(403, "KeyPolicyDenied", "PRIVATE direct message", "PRIVATE direct detail"),
+                new ClientVisibleException(500, "ResourceChangeInternalFailure", "PRIVATE direct message", "PRIVATE direct detail"));
+        for (ClientVisibleException failure : failures) {
+            Fixture f = new Fixture();
+            when(f.domain.prepare(any(), any(), nullable(String.class), anyMap())).thenThrow(failure);
+            var denied = assertThrows(ClientVisibleException.class, () -> f.preview(true));
+            int status = failure.getApiError() == null ? failure.getStatus() : failure.getApiError().getStatus();
+            String code = failure.getApiError() == null ? failure.getCode() : failure.getApiError().getCode();
+            assertEquals(status, denied.getStatus()); assertEquals(code, denied.getCode());
+            assertEquals(code, denied.getMessage()); assertNull(denied.getDetail()); assertNull(denied.getApiError());
+            assertEquals(List.of("preview:aiResourceChangePlan:false:" + code), f.audits);
+            assertFalse(f.audits.toString().contains("PRIVATE"));
+            assertTrue(f.documents.isEmpty()); assertEquals(0, f.claims); assertEquals(0, f.dispatched);
+            verify(f.domain, never()).dispatch(any(), any(), nullable(String.class), anyMap(), anyString());
+        }
+    }
+
     @Test public void sameActorAndProjectAreCheckedForEveryReadAndApply() {
         Fixture f = new Fixture(); f.preview(false);
         when(f.policy.getAccountId()).thenReturn(88L);
