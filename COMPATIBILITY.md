@@ -1,19 +1,41 @@
 # Compatibility Contract
 
-## Engine 0.183.366 candidate
+## Engine 0.183.366 release
 
-This candidate adds bounded `ports` and `healthCheck` parameters only to typed
-Service creation. Compatible clients must keep read-only
-`executionResult.assignedPorts` separate from the approved change summary.
-Services are still created inactive, and private human entry of environment
-values remains pending. Current role/Key checks, Full/legacy behavior, runtime
-dependency coordinates and database schemas are unchanged.
+The [published release](https://github.com/PastureStack/orchestration-engine/releases/tag/v0.183.366)
+adds bounded `ports` and `healthCheck` parameters
+only to typed Service creation. Compatible clients keep read-only
+`executionResult.assignedPorts` separate from the approved summary. Services
+are created inactive; private human entry of environment values in these
+parameters remains unimplemented. Catalog's native dynamic-field projection
+now preserves business values under the same role schema, formatter and
+non-create-response rules. Full/legacy Key behavior, current role/Key checks,
+runtime dependency coordinates and database schemas remain unchanged.
 
-Native IPv6 port formatting now retains brackets for roundtrip parsing;
-existing database values are not rewritten. Formatter coverage does not prove
-host IPv6 binding or routing. Required CI/CodeQL, artifact qualification and
-matching Server/native acceptance remain pending; see the
-[candidate release note](docs/releases/orchestration-engine-0.183.366.md).
+Original CI/CodeQL and artifact qualification passed: 420 suites / 3,912 tests /
+zero failures/errors / one existing skip. Relative to published Engine 0.183.365,
+the 62-case focus contains 21 new methods (19 Service creation and two Materializer) and 41
+inherited methods. Full affected classes contain 63 methods, including one
+additional existing Materializer method. All 97 required methods passed, retaining
+the prior 95 requirements. All 1,396 operation tuples plus the source/unknown-action
+row passed; the 441-input fingerprint and tuple/admission classifications were
+verified. Three new role entries expose only the server-produced result as read;
+there are no new mutation grants.
+
+All 12 original assets passed anonymous checksum readback. The
+[release note](docs/releases/orchestration-engine-0.183.366.md) records the signed
+producer, normal merge/tag, tested tree and original JAR SHA256. All 16 packaged
+frozen `.ser` files match Engine 0.183.365 source bytes; five published role-schema
+hashes match that baseline. Four packaged native JSON schemas bind the bounded
+result projection.
+The 89 POMs and four build scripts are version-only updates. No publication
+rebuild or native SLSA attestation is claimed.
+
+Native IPv6 formatting preserves brackets for roundtrip parsing without rewriting
+existing data. Host IPv6 binding/routing and matching Server/native business,
+role/Key/cross-ID workflows remain pending. Component qualification and publication
+are separate from runtime QA. Older sections below retain release-time evidence,
+not current whole-platform acceptance.
 
 ## Engine 0.183.364 release
 

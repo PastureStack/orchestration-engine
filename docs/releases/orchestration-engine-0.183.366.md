@@ -1,8 +1,9 @@
-# Engine 0.183.366 candidate
+# Engine 0.183.366
 
-This candidate is not published. Required original component CI/CodeQL,
-complete artifact qualification and matching Web Console/Server native
-acceptance remain pending. The published baseline is Engine 0.183.365.
+[Engine 0.183.366](https://github.com/PastureStack/orchestration-engine/releases/tag/v0.183.366)
+is published. Required original component CI/CodeQL,
+artifact qualification and anonymous readback of all 12 original assets passed.
+Matching assembled Server/native business acceptance remains pending.
 
 ## Service creation
 
@@ -61,7 +62,8 @@ mapping, log driver/configuration and bean-backed name. Narrowed schemas,
 read-on-create-only fields and unlisted dynamic fields still restrict output,
 and the source dynamic map retains its business values. This corrects the
 existing Catalog projection; it adds no permission or new environment-input
-channel. Matching artifact and native workflow acceptance remain pending.
+channel. Artifact qualification passed; matching native workflow acceptance
+remains pending.
 
 ## Verified results and compatibility
 
@@ -89,17 +91,57 @@ runtime dependency coordinates and database schemas are unchanged. Clients
 must understand these typed fields and the read-only execution result.
 Consume a qualified component through a matching published Server release.
 
-## Focused evidence
+## Qualified component evidence
 
-60 unique focused cases passed with JDK 25 and Maven 3.9.16. They cover the
-native parser/preflight path, post-preview conflicts and revocation before
-claim, bounded input, actual readback, UUID rebinding, uncertain operations,
-execution-result separation and IPv6 formatting. Three test-fixture setup
-corrections were rerun alone; unaffected PASS evidence was retained. These
-source results do not establish full CI, published artifact or native workflow
-acceptance, and no final CI total or artifact digest is claimed.
+Original [Security CI 41328904546](https://github.com/PastureStack/orchestration-engine/actions/runs/41328904546),
+[custom CodeQL 41328904462](https://github.com/PastureStack/orchestration-engine/actions/runs/41328904462) and
+[organization CodeQL 41328907700](https://github.com/PastureStack/orchestration-engine/actions/runs/41328907700)
+passed, with zero CodeQL aggregator annotations and no new alerts. The original
+structured Surefire report contains **420 suites / 3,912 tests / zero failures /
+zero errors / one existing skip**.
 
-The Catalog projection correction passed two new real-schema regression
-methods and one directly affected existing Materializer method. Its C03
-source review independently re-extracts all 1396 operation tuples and their
-semantic/admission dispositions; those classifications remain unchanged.
+The reviewed 62-case focus comprises **21 new source methods relative to Engine 0.183.365**
+(19 Service creation and two Materializer) and 41 inherited methods. Full affected
+classes add one existing Materializer method, giving 63 observed methods. These
+are not 62 new tests. All 97 required method identities passed; the prior 95
+requirements were retained and two Materializer regressions were added. The
+Materializer cases use the real transformer and native role schemas.
+
+All 1,396 operation tuples plus the source/unknown-action row passed (1,397 rows).
+Independent source re-extraction preserved every tuple, semantic and admission
+disposition. The 441 production inputs have fingerprint
+`7ce17c8b05ccfba961414808148d8638bf54a9ad3bbc7de00facfcba4b26ac39`.
+Three explicit new role entries provide read-only access to the server-produced
+execution result; no mutation grant is added. Historical producer355 and review
+chains remain intact.
+
+Eight changed production classes have original-artifact class/module hashes and
+reviewed disassembly. All 16 packaged frozen `.ser` files match Engine 0.183.365
+source bytes, and five frozen role-schema hashes match that published baseline.
+Four packaged native JSON schemas bind the bounded result projection. The 89 POMs and four build scripts
+are version-only changes. The packaged official MariaDB JDBC3.5.11, CycloneDX
+SBOM and original product/raw/effective Dapper scan evidence passed the existing
+security gates without an exception. No new scan is claimed during qualification.
+
+## Published identities
+
+| Identity | Published value |
+|---|---|
+| Signed producer | `3ce114486954403cead091379916c2d69c052336` |
+| Normal merge and tag source | `bbba0e5a3e40ed58c98643610943586d0e521328` |
+| Tested whole tree | `f9482dd3c8c0a1e24763c23009ea50ddccc2e66e` |
+| Original cattle.jar SHA256 | `0fd51b38c22c495d5f245527213807fa486e3bba571756b410ef6292f424db81` |
+| Original cattle.jar size | 88,245,511 bytes |
+
+The [release metadata](https://github.com/PastureStack/orchestration-engine/releases/download/v0.183.366/engine366-release-metadata.json)
+records the complete original-CI and packaged evidence. All 12 original release
+assets passed anonymous SHA256 readback. The JAR was streamed from the retained
+original CI ZIP; no publication rebuild or second full JAR was produced. The
+workflow provides original artifact/source/tree/lock provenance and does not
+provide native SLSA attestation; none is inferred.
+
+Matching Server565 / Engine366 / Web205 / Bridge027 / Compose14.41 assembly and
+designated native, Catalog private human input, role/Key/cross-ID, IPv6 and
+weak-model workflows remain separate pending QA. Existing failures and unaffected
+PASS evidence remain separate. Component CI and publication do not establish
+complete frontend or all 243 business workflows.
