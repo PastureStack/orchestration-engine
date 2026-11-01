@@ -1,5 +1,22 @@
 # Compatibility Contract
 
+## Engine 0.183.362 release
+
+Keeps the Engine361 typed contract, including ordinary and restricted API Key
+metadata. Native ServiceIndex retirement is limited to verified
+service.activate/update/remove owners and exact persisted identities, with
+current role/Key/revision and explicit denials rechecked. It grants no generic
+Index API access. Full/legacy and default-off AI flags remain unchanged.
+
+Component CI/CodeQL passed: 413 suites / 3,851 tests / zero failures/errors / one
+existing skip, including all eight new cleanup regressions. Twelve original
+assets passed anonymous readback. Producer `e80e9535eb9c42e33c62a9d5559466201c6659da`
+and tag `2159de277da7cf8acc15ff3d779b1b90883cd0b5` share tested tree
+`e7929b56242f172a6b9f8bf619d84a84849b0017`.
+
+Matching Server publication and designated live workflow acceptance are pending.
+Older sections below preserve their release-time evidence, not current QA PASS.
+
 ## Engine 0.183.361 release
 
 Use Web Console 1.6.202 / bridge 0.2.4 and the matching Server561 broker. The
