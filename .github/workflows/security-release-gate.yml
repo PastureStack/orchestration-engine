@@ -150,6 +150,24 @@ jobs:
                   'objectConverterCborRoundTripsNormalValuesAndBinaryData',
                   'credentialDataStorageRoundTripPreservesPublicKeyAndCredentialId',
               },
+              'io.cattle.platform.iaas.api.auth.apikey.StandaloneImageCleanupTest': {
+                  'customNativeDeleteCleansOnlyItsPrivateRootImageAndCache',
+                  'exactRemoveFramesAreRequiredAndPublicImageDoesNotGainAuthority',
+                  'nonDeleteOrForgedChildMetadataCannotBorrowTheNativeFrames',
+                  'nonOsForeignSharedOrReboundGraphStillFailsClosed',
+                  'everyActualDependencyExplicitDenyStillWinsOverTheContainerGrant',
+                  'freshKeyRevisionExpiryOwnerSchemaAndRootGrantAreNeverBypassed',
+              },
+              'io.cattle.platform.servicediscovery.deployment.impl.unit.ExternalDeploymentUnitInstanceLifecycleTest': {
+                  'hostnameToIpClassifiesTheOldMapForCleanupAndRetainsTheDesiredIp',
+                  'ipToHostnameClassifiesTheOldMapForCleanupAndRetainsTheDesiredHostname',
+                  'hostnameReplacementRequiresAnExactTargetMatch',
+                  'ipReplacementCleansOnlyTheNoLongerDesiredAddress',
+                  'absentAndEmptyTargetsRetireExistingMapsInsteadOfDefaultingHealthy',
+                  'missingDesiredMapIsNotStartedAndStopDoesNotScheduleANullResource',
+                  'existingTargetRetainsActiveErrorRemovedAndStopSemantics',
+                  'aliasNoopPlannerDoesNotCollectOrWriteExternalTargetMaps',
+              },
           }
           suites = []
           observed = {}

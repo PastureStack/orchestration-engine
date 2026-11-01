@@ -1,5 +1,16 @@
 # Compatibility Contract
 
+## Engine 0.183.364 source candidate
+
+Not yet published. Native standalone CUSTOM-Key Image cleanup and External
+Service stale-target reconciliation are corrected without changing public HTTP
+operation classifications, Full/legacy behavior or dependency pins. The private
+cleanup authorization behavior changes only under exact proven native ownership;
+current role/Key ceilings and explicit DENY remain enforced. Local focused tests
+and Checkstyle pass; original CI/publication and matching runtime workflows are
+still pending. See [candidate details](docs/releases/orchestration-engine-0.183.364.md).
+
+
 ## Engine 0.183.363 release
 
 The [published release](https://github.com/PastureStack/orchestration-engine/releases/tag/v0.183.363)
