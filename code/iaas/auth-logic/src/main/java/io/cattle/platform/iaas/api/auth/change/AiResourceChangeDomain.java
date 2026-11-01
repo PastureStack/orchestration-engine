@@ -591,14 +591,14 @@ public class AiResourceChangeDomain extends AbstractJooqDao {
         if ("externalService".equals(descriptor.resourceType()) && Set.of("create", "update_targets").contains(descriptor.operation())) {
             String cleared = parameters.containsKey("hostname") ? "externalIpAddresses" : "hostname";
             result.add(change(cleared, target == null ? null : displayed(cleared,
-                    ObjectUtils.getPropertyIgnoreErrors(target, cleared)), null));
+                    DataAccessor.field(target, cleared, Object.class)), null));
         }
         for (var entry : parameters.entrySet()) {
             if (Set.of("externalService", "dnsService").contains(descriptor.resourceType()) && "stackId".equals(entry.getKey())) continue;
             result.add(change(entry.getKey(), target == null ? null
                 : "scale".equals(entry.getKey()) ? DataAccessor.fieldInteger(target, "scale")
                 : Set.of("hostname", "externalIpAddresses").contains(entry.getKey())
-                    ? displayed(entry.getKey(), ObjectUtils.getPropertyIgnoreErrors(target, entry.getKey()))
+                    ? displayed(entry.getKey(), DataAccessor.field(target, entry.getKey(), Object.class))
                     : ObjectUtils.getPropertyIgnoreErrors(target, entry.getKey()), displayed(entry.getKey(), entry.getValue())));
         }
         if (descriptor.createsResource() && !"stack".equals(descriptor.resourceType())) result.add(change("startOnCreate", null, false));

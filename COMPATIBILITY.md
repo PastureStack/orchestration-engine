@@ -1,5 +1,14 @@
 # Compatibility Contract
 
+## Engine 0.183.363 candidate
+
+Retains the ServiceIndex, role, Key and session contracts of 0.183.362. External
+Service previews read current native hostname/IP values without changing CAS or
+authorization. MariaDB Connector/J moves from 3.5.10 to official 3.5.11; the
+existing connection configuration and 3.5 line are retained. Original release
+checks, new artifact qualification and matching Server QA must pass before this
+candidate is reported as published or accepted.
+
 ## Engine 0.183.362 release
 
 Keeps the Engine361 typed contract, including ordinary and restricted API Key

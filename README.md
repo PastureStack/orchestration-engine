@@ -10,6 +10,11 @@ upstream history, authorship, licenses, and dependency notices.
 
 ## Current release: Engine 0.183.362
 
+The next [0.183.363 candidate](docs/releases/orchestration-engine-0.183.363.md)
+corrects External Service preview values and updates MariaDB Connector/J to
+official 3.5.11 on the existing 3.5 line. Its release checks and matching Server
+acceptance remain pending; it is not yet a published runtime update.
+
 The [0.183.362 release](https://github.com/PastureStack/orchestration-engine/releases/tag/v0.183.362)
 publishes the original qualified CI bytes. Use the
 [Server installation guide](https://github.com/PastureStack/server#quick-start)
