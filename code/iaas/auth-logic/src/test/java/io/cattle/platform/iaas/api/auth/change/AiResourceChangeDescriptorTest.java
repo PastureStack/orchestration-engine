@@ -96,6 +96,64 @@ public class AiResourceChangeDescriptorTest {
         assertEquals(command, http.readValue(((String) wireCommand.get("after")).getBytes(java.nio.charset.StandardCharsets.UTF_8), ArrayList.class));
     }
 
+    @Test public void serviceCreatePortsAndHealthCheckUseOnlyTheReviewedNativeLaunchFields() throws Exception {
+        var descriptor = AiResourceChangeDescriptor.require("service", "create");
+        var input = new LinkedHashMap<String, Object>(Map.of("name", "probe", "image", "busybox", "stackId", "1st3",
+                "ports", List.of("18080:80/tcp", "15353:53/udp"), "healthCheck", Map.of("port", 80, "requestLine", "GET / HTTP/1.0",
+                        "interval", 2000, "healthyThreshold", 2)));
+        var parameters = descriptor.parameters(input); var body = descriptor.body(parameters);
+        Map<?, ?> launch = (Map<?, ?>) body.get("launchConfig");
+        assertEquals(input.get("ports"), launch.get("ports"));
+        assertEquals(Map.of("port", 80, "requestLine", "GET / HTTP/1.0", "interval", 2000, "healthyThreshold", 2,
+                "strategy", "recreate"), launch.get("healthCheck"));
+        assertFalse(body.containsKey("ports")); assertFalse(body.containsKey("healthCheck"));
+        assertEquals(false, body.get("startOnCreate")); assertEquals("bridge", launch.get("networkMode"));
+        var domain = new AiResourceChangeDomain(); domain.json = new JacksonJsonMapper();
+        var changes = domain.changes(descriptor, null, parameters);
+        for (String field : List.of("ports", "healthCheck")) {
+            Object summary = changes.stream().filter(change -> field.equals(change.get("field"))).findFirst().orElseThrow().get("after");
+            Object decoded = new JacksonJsonMapper().readValue((String) summary, Object.class);
+            assertEquals(parameters.get(field), decoded);
+        }
+        for (String type : List.of("container", "stack", "externalService", "dnsService"))
+            for (String field : List.of("ports", "healthCheck")) {
+                var unrelated = new LinkedHashMap<String, Object>(Map.of("name", "probe", "image", "busybox", "stackId", "1st3"));
+                unrelated.put(field, input.get(field));
+                assertCode("ResourceChangeInputInvalid", () -> AiResourceChangeDescriptor.require(type, "create").parameters(unrelated));
+            }
+        for (String field : List.of("environment", "launchConfig", "startOnCreate", "ports", "healthCheck"))
+            assertCode("ResourceChangeInputInvalid", () -> AiResourceChangeDescriptor.require("service", "update_metadata")
+                    .parameters(Map.of(field, "forbidden")));
+        input.put("environment", Map.of("TOKEN", "must-never-enter-plan"));
+        assertCode("ResourceChangeInputInvalid", () -> descriptor.parameters(input));
+    }
+
+    @Test public void servicePortAndHealthInputsRejectUnknownTypesAndExcessiveValuesAndKeepNativePortCodes() {
+        for (Object invalid : List.of("80:80", List.of(80), List.of(""), java.util.Collections.nCopies(65, "18080:80"),
+                List.of("1".repeat(129)))) assertCode("ResourceChangeInputInvalid", () -> AiServiceCreateChange.ports(invalid));
+        assertCode("PortInvalidPrivatePort", () -> AiServiceCreateChange.ports(List.of("18080:65536")));
+        assertCode("PortInvalidPublicPort", () -> AiServiceCreateChange.ports(List.of("65536:80")));
+        assertCode("PortInvalidProtocol", () -> AiServiceCreateChange.ports(List.of("18080:80/sctp")));
+        assertCode("PortWrongFormat", () -> AiServiceCreateChange.ports(List.of("9999999999999999999999:80")));
+        for (Object invalid : List.of("80", Map.of(), Map.of("port", "80"), Map.of("port", 1.5), Map.of("port", 0),
+                Map.of("port", 65536), Map.of("port", 80, "unknown", true), Map.of("port", 80, "strategy", "recreateOnQuorum"),
+                Map.of("port", 80, "requestLine", "GET /\r\nX: injected"), Map.of("port", 80, "requestLine", "x".repeat(1025))))
+            assertCode("ResourceChangeInputInvalid", () -> AiServiceCreateChange.healthCheck(invalid));
+        for (String field : List.of("interval", "responseTimeout", "healthyThreshold", "unhealthyThreshold")) {
+            assertCode("ResourceChangeInputInvalid", () -> AiServiceCreateChange.healthCheck(Map.of("port", 80, field, 0)));
+            assertEquals(1, AiServiceCreateChange.healthCheck(Map.of("port", 80, field, 1)).get(field));
+        }
+        for (String field : List.of("interval", "responseTimeout", "healthyThreshold", "unhealthyThreshold", "initializingTimeout", "reinitializingTimeout")) {
+            assertCode("ResourceChangeInputInvalid", () -> AiServiceCreateChange.healthCheck(Map.of("port", 80, field, -1)));
+            assertCode("ResourceChangeInputInvalid", () -> AiServiceCreateChange.healthCheck(Map.of("port", 80, field, 2147483648L)));
+            assertEquals(Integer.MAX_VALUE, AiServiceCreateChange.healthCheck(Map.of("port", 65535, field, 2147483647L)).get(field));
+        }
+        for (String field : List.of("initializingTimeout", "reinitializingTimeout"))
+            assertEquals(0, AiServiceCreateChange.healthCheck(Map.of("port", 1, field, 0)).get(field));
+        var nullable = new LinkedHashMap<String, Object>(); nullable.put("port", 80); nullable.put("strategy", null);
+        assertCode("ResourceChangeInputInvalid", () -> AiServiceCreateChange.healthCheck(nullable));
+    }
+
     private static void assertCode(String code, Runnable action) {
         assertEquals(code, assertThrows(ClientVisibleException.class, action::run).getCode());
     }

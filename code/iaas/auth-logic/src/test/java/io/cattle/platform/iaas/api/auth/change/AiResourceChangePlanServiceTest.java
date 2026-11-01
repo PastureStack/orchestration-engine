@@ -185,6 +185,68 @@ public class AiResourceChangePlanServiceTest {
         f.complete = true; assertEquals(true, f.service.get(f.id, f.request(null, false)).get("verifiedResult"));
     }
 
+    @Test public void serviceExecutionEvidenceIsPublishedOnlyAfterActualReadbackAndNeverChangesTheApprovedDiff() {
+        Fixture f = new Fixture(); f.previewServiceCreate(false); f.confirm();
+        f.target.setUuid("created-service"); f.target.setStackId(3L); f.target.setState("inactive");
+        Map<String, Object> launch = new LinkedHashMap<>(Map.of("imageUuid", "docker:busybox:1.37.0", "networkMode", "bridge",
+                "ports", List.of("31001:80/tcp"), "healthCheck", Map.of("port", 80, "strategy", "recreate")));
+        f.target.setDescription(null); f.target.setData(Map.of("fields", Map.of("launchConfig", launch, "scale", 1L, "startOnCreate", false)));
+        doAnswer(call -> { f.dispatched++; return f.target; }).when(f.domain).dispatch(any(), any(), isNull(), anyMap(), anyString());
+        when(f.domain.complete(any(), any(), anyMap(), anyMap())).thenAnswer(call -> AiServiceCreateChange.complete(f.target,
+                ((AiResourceChangeDescriptor) call.getArgument(0)).body(call.getArgument(2)), 3L, "docker:busybox:1.37.0"));
+        when(f.domain.serviceCreateResult(any())).thenCallRealMethod();
+        Object approvedChanges = f.documents.get(f.id).get("changes");
+        assertNull(f.apply(false).get("executionResult"));
+        assertEquals("created-service", f.documents.get(f.id).get("createdResourceUuid"));
+        launch.put("ports", List.of("31001:81/tcp"));
+        var running = f.service.get(f.id, f.request(null, false));
+        assertEquals("running", running.get("status")); assertNull(running.get("executionResult"));
+        launch.put("ports", List.of("31001:80/tcp"));
+        var completed = f.service.get(f.id, f.request(null, false));
+        assertEquals("succeeded", completed.get("status")); assertEquals(true, completed.get("verifiedResult"));
+        assertEquals(Map.of("assignedPorts", List.of("31001:80/tcp")), completed.get("executionResult"));
+        assertEquals(approvedChanges, completed.get("changes")); assertEquals(1, f.claims); assertEquals(1, f.dispatched);
+        f.apply(false); assertEquals(1, f.dispatched);
+        f.documents.get(f.id).put(AiResourceChangePlanStore.PRIVATE_FAILURE, AiResourceChangePlanStore.AUTHORIZATION_DENIED);
+        var failed = f.service.get(f.id, f.request(null, false));
+        assertEquals("failed", failed.get("status")); assertEquals(false, failed.get("verifiedResult")); assertNull(failed.get("executionResult"));
+    }
+
+    @Test public void serviceLostCreateResponseOrMissingUuidRetainsOneUnknownClaimAndNoExecutionEvidence() {
+        for (boolean missingUuid : List.of(false, true)) {
+            Fixture f = new Fixture(); f.previewServiceCreate(false); f.confirm();
+            doAnswer(call -> {
+                f.dispatched++;
+                if (!missingUuid) throw new IllegalStateException("native create succeeded but response was lost");
+                return f.target;
+            }).when(f.domain).dispatch(any(), any(), isNull(), anyMap(), anyString());
+            var unknown = f.apply(false); assertEquals("unknown", unknown.get("status"));
+            assertNull(unknown.get("executionResult"));
+            assertNull(f.documents.get(f.id).get("internalResourceId"));
+            assertEquals("unknown", f.apply(false).get("status"));
+            assertEquals("unknown", f.service.get(f.id, f.request(null, false)).get("status"));
+            assertEquals(1, f.claims); assertEquals(1, f.dispatched);
+            verify(f.domain, never()).complete(any(), any(), anyMap(), anyMap());
+        }
+    }
+
+    @Test public void successfulServiceDispatchWithLostReceiptSaveKeepsTheDurableClaimUnknownAndCannotReplay() {
+        Fixture f = new Fixture(); f.previewServiceCreate(false); f.confirm(); f.target.setUuid("created-service");
+        doAnswer(call -> { f.dispatched++; return f.target; }).when(f.domain).dispatch(any(), any(), isNull(), anyMap(), anyString());
+        var writes = spy(f.service.store); f.service.store = writes;
+        doAnswer(call -> {
+            Map<String, Object> plan = call.getArgument(0);
+            if ("accepted".equals(plan.get("status"))) throw new IllegalStateException("receipt write disconnected");
+            return call.callRealMethod();
+        }).when(writes).save(anyMap());
+        assertThrows(IllegalStateException.class, () -> f.apply(false));
+        assertEquals("dispatching", f.documents.get(f.id).get("status"));
+        assertEquals("unknown", f.apply(false).get("status"));
+        assertEquals("unknown", f.service.get(f.id, f.request(null, false)).get("status"));
+        assertNull(f.documents.get(f.id).get("executionResult")); assertEquals(1, f.claims); assertEquals(1, f.dispatched);
+        verify(f.domain, never()).complete(any(), any(), anyMap(), anyMap());
+    }
+
     @Test public void featureDisabledIsRejectedBeforeAnyPersistenceOrDomainRead() {
         Object previous = io.cattle.platform.archaius.util.ArchaiusUtil.getConfiguration().getProperty("api.ai.resource.change.enabled");
         try {
@@ -327,6 +389,16 @@ public class AiResourceChangePlanServiceTest {
             Map<String, Object> result = service.preview(request); id = (String) result.get("id"); return result;
         }
         void confirm() { service.action(id, request("confirm", false)); }
+        void previewServiceCreate(boolean key) { previewServiceCreate(key, List.of("80")); }
+        void previewServiceCreate(boolean key, List<String> ports) {
+            ServiceRecord parent = new ServiceRecord(); parent.setId(3L); parent.setKind("stack"); parent.setName("Default"); parent.setState("active");
+            when(domain.parent(any(), any(), anyMap())).thenReturn(parent);
+            when(domain.lock(eq("stack"), anyLong())).thenReturn(parent);
+            ApiRequest preview = request(null, key); preview.setId(null);
+            preview.setRequestObject(Map.of("resourceType", "service", "operation", "create", "parameters",
+                    Map.of("name", "probe", "image", "busybox:1.37.0", "stackId", "1st3", "ports", ports, "healthCheck", Map.of("port", 80))));
+            id = (String) service.preview(preview).get("id");
+        }
         Map<String, Object> previewArchive(String operation) {
             ApiRequest preview = request(null, false); preview.setId(null);
             preview.setRequestObject(Map.of("resourceType", "service", "operation", operation, "resourceId", "1s7", "parameters", Map.of()));
