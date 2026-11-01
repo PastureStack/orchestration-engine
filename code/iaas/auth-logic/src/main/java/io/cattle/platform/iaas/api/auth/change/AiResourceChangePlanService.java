@@ -235,9 +235,12 @@ public class AiResourceChangePlanService {
     private Map<String, Object> audited(ApiRequest request, String action, String id, Supplier<Map<String, Object>> operation) {
         try { return operation.get(); }
         catch (ClientVisibleException denied) {
+            var nativeError = denied.getApiError();
+            int status = nativeError == null ? denied.getStatus() : nativeError.getStatus();
+            String code = nativeError == null ? denied.getCode() : nativeError.getCode();
             Map<String, Object> receipt = new LinkedHashMap<>(); receipt.put("id", id);
-            audit(request, Objects.toString(action, "unknown"), receipt, false, denied.getCode());
-            throw error(denied.getStatus(), denied.getCode());
+            audit(request, Objects.toString(action, "unknown"), receipt, false, code);
+            throw error(status, code);
         }
     }
 

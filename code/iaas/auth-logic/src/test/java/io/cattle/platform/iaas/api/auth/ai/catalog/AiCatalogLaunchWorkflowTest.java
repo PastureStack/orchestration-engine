@@ -196,7 +196,9 @@ public class AiCatalogLaunchWorkflowTest {
             service.privateData = new AiCatalogLaunchPrivate(); service.privateData.json = json; service.privateData.secrets = mock(SecretsService.class);
             Map<String, String> encrypted = new LinkedHashMap<>();
             when(service.privateData.secrets.encrypt(anyLong(), anyString())).thenAnswer(call -> {
-                String key = "encrypted-" + UUID.randomUUID(); encrypted.put(key, call.getArgument(1)); return key;
+                String key = "encrypted-" + UUID.randomUUID();
+                encrypted.put(key, java.util.Base64.getEncoder().encodeToString(
+                        ((String) call.getArgument(1)).getBytes(java.nio.charset.StandardCharsets.UTF_8))); return key;
             });
             when(service.privateData.secrets.decrypt(anyLong(), anyString())).thenAnswer(call -> encrypted.get(call.getArgument(1)));
             questions = human ? List.of(Map.of("name", "password", "type", "human", "required", false, "requiresHuman", true,

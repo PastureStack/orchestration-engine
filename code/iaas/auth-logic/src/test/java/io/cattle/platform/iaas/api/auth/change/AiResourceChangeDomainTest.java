@@ -446,6 +446,67 @@ public class AiResourceChangeDomainTest {
         }
     }
 
+    @Test public void aliasNonemptyTargetsUseTheRealNativeValidationBeforeProjectBinding() throws Exception {
+        Fixture f = aliasFixture();
+        var input = mock(Schema.class);
+        var link = mock(Schema.class);
+        var linksField = new FieldImpl(); linksField.setType("array[serviceLink]"); linksField.setCreate(true); linksField.setNullable(true);
+        var idField = new FieldImpl(); idField.setType("reference[service]"); idField.setCreate(true);
+        when(input.getResourceFields()).thenReturn(Map.of("serviceLinks", linksField));
+        when(link.getResourceFields()).thenReturn(Map.of("serviceId", idField));
+        when(f.schemas.getSchema("setServiceLinksInput")).thenReturn(input);
+        when(f.schemas.getSchema("serviceLink")).thenReturn(link);
+        var action = mock(io.github.ibuildthecloud.gdapi.model.Action.class);
+        when(action.getInput()).thenReturn("setServiceLinksInput");
+        when(f.schema.getResourceActions()).thenReturn(Map.of("setservicelinks", action));
+        var manager = f.domain.managers.getResourceManagerByType("dnsService");
+        Service alias = f.domain.objects.loadResource(Service.class, 7L);
+        ServiceRecord target = (ServiceRecord) f.domain.objects.loadResource(Service.class, 9L);
+        when(manager.getById(eq("dnsService"), eq("7"), any())).thenReturn(alias);
+        when(manager.getById(eq("service"), eq("9"), any())).thenReturn(target);
+        var stack = f.domain.objects.loadResource(io.cattle.platform.core.model.Stack.class, 3L);
+        when(manager.getById(eq("stack"), eq("3"), any())).thenReturn(stack);
+        var converted = mock(io.github.ibuildthecloud.gdapi.model.Resource.class);
+        when(converted.getActions()).thenReturn(Map.of("setservicelinks", java.net.URI.create("https://example.invalid/action").toURL()));
+        when(manager.convertResponse(eq(alias), isNull())).thenReturn(converted);
+        var references = new io.github.ibuildthecloud.gdapi.validation.ResourceManagerReferenceValidator();
+        references.setLocator(f.domain.managers);
+        var validation = new ValidationHandler(); validation.init(); validation.setReferenceValidator(references);
+        f.domain.validation = validation;
+        Object before = ArchaiusUtil.getConfiguration().getProperty("api.ai.bridge.enabled");
+        try {
+            ArchaiusUtil.getConfiguration().setProperty("api.ai.bridge.enabled", true);
+            var descriptor = AiResourceChangeDescriptor.require("dnsService", "update_targets");
+            var parameters = Map.<String, Object>of("serviceIds", List.of("1s9"));
+            assertEquals(Map.of("serviceLinks", List.of(Map.of("serviceId", 9))), f.domain.prepare(f.request, descriptor, "1s7", parameters));
+            target.setAccountId(88L);
+            assertEquals(404, assertThrows(ClientVisibleException.class,
+                    () -> f.domain.prepare(f.request, descriptor, "1s7", parameters)).getStatus());
+
+            // The native reference manager hides an unreadable target before the domain's explicit project check.
+            when(manager.getById(eq("service"), eq("9"), any())).thenReturn(null);
+            var nativeDenied = assertThrows(ClientVisibleException.class,
+                    () -> f.domain.prepare(f.request, descriptor, "1s7", parameters));
+            assertEquals(422, nativeDenied.getApiError().getStatus());
+            assertEquals("InvalidReference", nativeDenied.getApiError().getCode());
+            var service = new AiResourceChangePlanService() { @Override protected void requireEnabled() { } };
+            service.domain = spy(f.domain); doReturn(alias).when(service.domain).lock("dnsService", 7L);
+            service.store = mock(AiResourceChangePlanStore.class);
+            var audit = mock(io.cattle.platform.api.auth.ApiKeyAuditSink.class); service.auditSinks = List.of(audit);
+            f.request.setRequestObject(Map.of("resourceType", "dnsService", "operation", "update_targets", "resourceId", "1s7", "parameters", parameters));
+            var denied = assertThrows(ClientVisibleException.class, () -> service.preview(f.request));
+            assertEquals(422, denied.getStatus()); assertEquals("InvalidReference", denied.getCode());
+            verify(audit).recordResourceChangeDecision(eq(f.request), eq(f.policy), eq("preview"), startsWith("aichange-"),
+                    eq("aiResourceChangePlan"), isNull(), eq(false), eq("InvalidReference"));
+            verify(service.store, never()).insert(anyMap());
+            verify(manager, never()).resourceAction(anyString(), any());
+            assertSame(f.request, ApiContext.getContext().getApiRequest());
+        } finally {
+            if (before == null) ArchaiusUtil.getConfiguration().clearProperty("api.ai.bridge.enabled");
+            else ArchaiusUtil.getConfiguration().setProperty("api.ai.bridge.enabled", before);
+        }
+    }
+
     @Test public void aliasSelfAdvancedLinksAndIncomingConsumersStopBeforeAnyRemovalDispatch() {
         Fixture f = aliasFixture(); ServiceRecord alias = (ServiceRecord) f.domain.objects.loadResource(Service.class, 7L);
         var descriptor = AiResourceChangeDescriptor.require("dnsService", "remove");

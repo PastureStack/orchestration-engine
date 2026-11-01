@@ -6,6 +6,7 @@ import io.cattle.platform.framework.secret.SecretsService;
 import io.cattle.platform.json.JsonMapper;
 import jakarta.inject.Inject;
 import java.nio.charset.StandardCharsets;
+import java.util.Base64;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -15,6 +16,7 @@ import java.util.Objects;
 public class AiCatalogLaunchPrivate {
     private static final List<String> BINDING = List.of("id", "actorId", "accountId", "credentialId", "credentialRevision", "credentialKind");
     private static final int MAX_CLEAR_BYTES = 512 * 1024;
+    private static final int MAX_WIRE_CHARS = 4 * ((MAX_CLEAR_BYTES + 2) / 3);
     @Inject SecretsService secrets;
     @Inject JsonMapper json;
 
@@ -35,8 +37,13 @@ public class AiCatalogLaunchPrivate {
     public Map<String, Object> open(Map<String, Object> plan) {
         try {
             String encrypted = text(plan.get("privateEnvelope"), 1, 1048576);
-            String clear = secrets.decrypt(((Number) plan.get("accountId")).longValue(), encrypted);
-            if (clear == null || clear.getBytes(StandardCharsets.UTF_8).length > MAX_CLEAR_BYTES) throw error(503, "CatalogLaunchUnavailable");
+            // Native SecretsService returns the Go create/rewrap Base64 wire.
+            // Decode exactly once here; legacy decrypt consumers keep that wire.
+            String wire = secrets.decrypt(((Number) plan.get("accountId")).longValue(), encrypted);
+            if (wire == null || wire.length() > MAX_WIRE_CHARS) throw error(503, "CatalogLaunchUnavailable");
+            byte[] clear = Base64.getDecoder().decode(wire);
+            if (clear.length > MAX_CLEAR_BYTES || !Base64.getEncoder().encodeToString(clear).equals(wire))
+                throw error(503, "CatalogLaunchUnavailable");
             Map<String, Object> envelope = json.readValue(clear);
             if (!(envelope.get("version") instanceof Number version) || version.intValue() != 1) throw error(503, "CatalogLaunchUnavailable");
             Map<String, Object> actual = map(envelope.get("binding")), expected = binding(plan);

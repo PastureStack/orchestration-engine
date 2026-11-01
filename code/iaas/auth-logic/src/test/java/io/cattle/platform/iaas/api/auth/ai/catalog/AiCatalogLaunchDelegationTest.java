@@ -255,7 +255,8 @@ public class AiCatalogLaunchDelegationTest {
             AiCatalogLaunchPrivate privateData = new AiCatalogLaunchPrivate(); privateData.json = json; privateData.secrets = mock(SecretsService.class);
             Map<String, String> encrypted = new LinkedHashMap<>();
             when(privateData.secrets.encrypt(anyLong(), anyString())).thenAnswer(call -> { String ref = "cipher-" + UUID.randomUUID();
-                    encrypted.put(ref, call.getArgument(1)); return ref; });
+                    encrypted.put(ref, java.util.Base64.getEncoder().encodeToString(
+                            ((String) call.getArgument(1)).getBytes(java.nio.charset.StandardCharsets.UTF_8))); return ref; });
             when(privateData.secrets.decrypt(anyLong(), anyString())).thenAnswer(call -> encrypted.get(call.getArgument(1)));
             plan.put("privateEnvelope", privateData.seal(plan, values)); store.plan = plan;
             AiCatalogLaunchAccess access = new AiCatalogLaunchAccess() {
