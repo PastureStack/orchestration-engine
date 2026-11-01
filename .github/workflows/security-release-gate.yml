@@ -59,6 +59,12 @@ jobs:
           import xml.etree.ElementTree as ET
 
           required = {
+              'io.cattle.platform.iaas.api.auth.ai.catalog.AiCatalogLaunchPrivateWireTest': {
+                  'nativeCryptoHttpRoundTripOpensExactlyOneGoBase64JsonLayer',
+                  'nativeCryptoEnvelopeRejectsEveryPlanActorProjectAndOriginalKeyRebinding',
+                  'strictWireRejectsMalformedNoncanonicalNestedRawJsonAndUnknownEnvelope',
+                  'decodedJsonLimitAllowsLargeNativeWireAndRejectsOneByteOverflow',
+              },
               'io.github.ibuildthecloud.gdapi.model.impl.CreateOnlyWrappedResourceTest': {
                   'trueCreationRetainsTheFirstSecretInBothApiVersions',
                   'postActionsCannotRevealCreateOnlyValues',

@@ -30,6 +30,14 @@ object remain private. Existing 403 and 500 responses keep their status.
 Archive operations share this corrected wrapper. The Catalog validator already
 handles its native errors and is unchanged.
 
+A Catalog plan could be created but its next read or action returned 503 before
+dispatch. Native Secret delivery retains a single standard Base64 layer after
+authenticated decryption; this new JSON consumer previously parsed that layer
+directly. Only the Catalog private-envelope consumer now decodes exactly once,
+checks canonical Base64 and separate wire/decoded-size bounds, then validates
+the original six binding fields. Global Secret decryption, legacy consumers,
+algorithms, confirmation and authorization remain unchanged.
+
 ## Evidence and acceptance boundary
 
 Thirteen focused standalone OS-allocation cleanup methods passed against the
@@ -48,8 +56,18 @@ The independently checked cleanup and validation changes passed the repository
 Checkstyle rules for four and three complete Java files respectively. These are
 source-focused results, not the final integrated producer's CI or runtime PASS.
 The executed-case gate retains all 76 existing required methods and additionally
-requires the 13 cleanup methods and two new validation methods in fresh reports.
+requires the 13 cleanup methods, two new validation methods and four Catalog
+wire methods in fresh reports (95 required methods total).
 No final CI test total or artifact digest is claimed before qualification.
+
+The Catalog correction passed 22 directly affected tests. Its four new methods
+include three real Java Secret HTTP/RSA/AES roundtrips and a malformed-wire
+test. Traditional Chinese/non-ASCII values, near-limit decoded JSON, one-byte
+overflow, malformed/noncanonical/nested Base64, JSON and all six rebinding
+denials are covered. The final fixture fails on the original consumer and
+passes after the correction; five complete Java files passed Checkstyle.
+Matching Server Catalog launch, human confirmation and archive/restore remain
+required runtime acceptance, not inferred from these focused tests.
 
 All dependency coordinates and security decisions remain unchanged. The four
 AI opt-ins remain independently default-off. The failed runtime reports remain

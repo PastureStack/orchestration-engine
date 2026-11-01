@@ -17,7 +17,9 @@ public class AiCatalogLaunchPrivateTest {
         AiCatalogLaunchPrivate vault = new AiCatalogLaunchPrivate(); vault.secrets = mock(SecretsService.class); vault.json = new JacksonJsonMapper();
         Map<String, String> backend = new LinkedHashMap<>();
         when(vault.secrets.encrypt(eq(5L), anyString())).thenAnswer(call -> {
-            String cipher = "encrypted-" + UUID.randomUUID(); backend.put(cipher, call.getArgument(1)); return cipher;
+            String cipher = "encrypted-" + UUID.randomUUID();
+            backend.put(cipher, java.util.Base64.getEncoder().encodeToString(
+                    ((String) call.getArgument(1)).getBytes(java.nio.charset.StandardCharsets.UTF_8))); return cipher;
         });
         when(vault.secrets.decrypt(eq(5L), anyString())).thenAnswer(call -> backend.get(call.getArgument(1)));
         Map<String, Object> plan = plan(); String password = "synthetic-private-human-answer";
