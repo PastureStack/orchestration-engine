@@ -1,13 +1,36 @@
 # Compatibility Contract
 
-## Engine 0.183.363 candidate
+## Engine 0.183.363 release
 
-Retains the ServiceIndex, role, Key and session contracts of 0.183.362. External
-Service previews read current native hostname/IP values without changing CAS or
-authorization. MariaDB Connector/J moves from 3.5.10 to official 3.5.11; the
-existing connection configuration and 3.5 line are retained. Original release
-checks, new artifact qualification and matching Server QA must pass before this
-candidate is reported as published or accepted.
+The [published release](https://github.com/PastureStack/orchestration-engine/releases/tag/v0.183.363)
+retains the ServiceIndex, role, Key and session contracts of 0.183.362. External
+Service previews read current native hostname/IP values with the existing safe
+projection, owner checks and CAS snapshot. MariaDB Connector/J moves from
+3.5.10 to official 3.5.11 on the same 3.5 line; connection configuration and
+all other runtime dependencies remain unchanged. The four reported JDBC CVEs
+are absent from the qualified product and raw/effective Dapper scans; no
+vulnerability exception was added.
+
+Required component CI/CodeQL passed: 414 suites / 3,858 tests / zero
+failures/errors / one existing skip. The seven new External Service preview
+methods and eight inherited ServiceIndex cleanup methods passed separately;
+inherited methods are not counted as new. All 1,396 operation tuples plus the
+source/unknown-action case passed. The contract covers 431 source inputs, with
+zero tuple or semantic delta from Engine362, retaining producer355 and the
+previous-review chain.
+
+Twelve original assets passed anonymous SHA256 readback. Producer
+`6b23ada41c0324d708739433b68f5ff00d2209c3` and merge/tag source
+`0173d171053fd9d232d59ebe2adbf4c91f132ccf` share tested tree
+`4a0f382ec4371e0343060cc567103e5611fe5430`. The
+[release note](docs/releases/orchestration-engine-0.183.363.md) records exact
+artifact identities. No publication rebuild or native SLSA attestation is claimed.
+
+Full/legacy capabilities, native role and current Key/revision checks,
+human-only plan confirmation and all four default-off AI flags remain unchanged.
+Matching assembled Server publication, JDBC database compatibility and
+designated native/browser, role, cross-ID and weak-model QA remain pending.
+Component publication does not establish complete runtime or frontend acceptance.
 
 ## Engine 0.183.362 release
 
