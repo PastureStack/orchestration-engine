@@ -1,15 +1,37 @@
 # Compatibility Contract
 
-## Engine 0.183.364 source candidate
+## Engine 0.183.364 release
 
-Not yet published. Native standalone CUSTOM-Key Image cleanup and External
-Service stale-target reconciliation are corrected without changing public HTTP
-operation classifications, Full/legacy behavior or dependency pins. The private
-cleanup authorization behavior changes only under exact proven native ownership;
-current role/Key ceilings and explicit DENY remain enforced. Local focused tests
-and Checkstyle pass; original CI/publication and matching runtime workflows are
-still pending. See [candidate details](docs/releases/orchestration-engine-0.183.364.md).
+The [published release](https://github.com/PastureStack/orchestration-engine/releases/tag/v0.183.364)
+corrects the derived cleanup authorization for native standalone CUSTOM-Key
+container DELETE and External stale-target reconciliation. The cleanup path
+requires the exact private OS-image/cache graph, verified execution frames,
+current owner/role/Key revision/expiry and root grant; every explicit dependency
+DENY remains authoritative. Full/legacy capabilities, public resource grants,
+human confirmation and four independent default-off AI flags are retained.
 
+Required CI/CodeQL passed: 416 suites / 3,872 tests / zero failures/errors / one
+existing skip. Six new private cleanup methods and eight new External lifecycle
+methods passed. Seven preview and eight Index cleanup methods also passed in
+the original report and are inherited, not new Engine364 work. All 1,396 HTTP
+tuples plus the source/unknown-action case passed; 432 source inputs have
+fingerprint `169fe350bed9358c2d9cbdac24f75c8636258325f2a92305507ad06e79c993e1`.
+HTTP tuples/classifications remain unchanged; the derived cleanup authorization
+has a substantive behavior correction. Producer355 and both review chains remain.
+
+Twelve original assets passed anonymous SHA256 readback. Producer
+`e780d1613ab2a14112ba9e14fa55754b4e16ed0b` and merge/tag source
+`04f5db394efd1ad9bc39b0193be94ac8b7746fd6` share tested tree
+`5c73690c54218d3537a06a641a0e38bb944a4689`. The
+[release note](docs/releases/orchestration-engine-0.183.364.md) records original
+CI, artifact and publication identities. No rebuild or native SLSA claim is made.
+
+The five packaged frozen role schemas match Engine363. Its before-value preview,
+ServiceIndex cleanup and JDBC3.5.11 security fixes remain; runtime dependencies
+are unchanged and the four JDBC CVEs remain absent from original current scans.
+Matching Server publication and designated native/browser, role/Key/cross-ID,
+cleanup and business acceptance remain pending. These component results do not
+establish complete runtime or frontend acceptance.
 
 ## Engine 0.183.363 release
 

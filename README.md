@@ -8,31 +8,36 @@ Rancher 1.6 ecosystem. It is not affiliated with Rancher Labs or SUSE.
 This fork of [`rancher/cattle`](https://github.com/rancher/cattle) preserves
 upstream history, authorship, licenses, and dependency notices.
 
-## Current release: Engine 0.183.363
+## Current release: Engine 0.183.364
 
-The [0.183.363 release](https://github.com/PastureStack/orchestration-engine/releases/tag/v0.183.363)
+The [0.183.364 release](https://github.com/PastureStack/orchestration-engine/releases/tag/v0.183.364)
 publishes the original qualified CI bytes. Use the
 [Server installation guide](https://github.com/PastureStack/server#quick-start)
 for deployment; an Engine JAR alone is not a Server installation.
 
-External Service previews now show the actual current hostname and IP values
-before a change, preserving safe display, native ownership and CAS checks.
-The ServiceIndex cleanup fix is retained, including current actor, role, Key
-revision and explicit DENY checks. MariaDB Connector/J is updated to official
-3.5.11 on the existing 3.5 line; the four reported JDBC CVEs are absent from the
-qualified scans. Existing database configuration and Full/legacy behavior remain.
+A CUSTOM Key authorized to delete its standalone container can now finish the
+exact native private OS-image/cache cleanup. Current owner, role, Key revision,
+expiry, root grant and every explicit dependency DENY still apply. Shared or
+foreign resources and public Image/Volume/Pool operations receive no new grant.
+External target replacement also retires an obsolete hostname map when the
+new hostname is absent or different, allowing normal reconciliation to finish.
+
+The External before-value preview, ServiceIndex cleanup authority and official
+MariaDB JDBC3.5.11 fixes are retained. Full/legacy behavior and runtime dependency
+coordinates remain unchanged; the four reported JDBC CVEs remain absent from
+the qualified original product and raw/effective Dapper scans.
 
 | Qualification | Current evidence |
 |---|---|
-| Component | Required CI/CodeQL passed: 3,858 tests in 414 suites, zero failures/errors, one existing skip; seven new preview methods and eight inherited cleanup methods passed. |
-| Publication | Twelve original assets passed anonymous SHA256 readback; producer and merge/tag have the same tested tree. No publication rebuild or native SLSA attestation is claimed. |
-| Assembled Server and live workflows | Matching Server publication, External Service review, JDBC compatibility and designated role/cross-ID QA remain pending. Publication is not whole-workflow acceptance. |
+| Component | Required CI/CodeQL passed: 3,872 tests in 416 suites, zero failures/errors, one existing skip. All 14 new cleanup/lifecycle methods passed; seven preview and eight Index methods are inherited. |
+| Publication | Twelve original assets passed anonymous SHA256 readback; producer and merge/tag share the tested tree. No publication rebuild or native SLSA attestation is claimed. |
+| Assembled Server and live workflows | Matching Server publication, native cleanup/External replacement and designated role/Key/cross-ID business QA remain pending. Component publication does not establish workflow acceptance. |
 
-Use the compatible Web Console typed contract and the matching Server broker.
+Use the compatible Web Console typed contract and matching Server broker.
 Four independent AI opt-ins remain default-off. The
-[release note](docs/releases/orchestration-engine-0.183.363.md) records immutable
-artifact identity and remaining boundaries. This does not complete all 243
-frontend business groups.
+[release note](docs/releases/orchestration-engine-0.183.364.md) records artifact
+identity and remaining boundaries. This does not complete all 243 frontend
+business groups.
 
 ## Optional AI resource workflows
 
