@@ -679,7 +679,7 @@ from pathlib import Path
 
 NS = {"m": "http://maven.apache.org/POM/4.0.0"}
 FLOORS = {
-    ("org.mariadb.jdbc", "mariadb-java-client"): ((3, 5, 10), "3.5.10", (3, 5), "MariaDB Connector/J"),
+    ("org.mariadb.jdbc", "mariadb-java-client"): ((3, 5, 11), "3.5.11", (3, 5), "MariaDB Connector/J"),
     ("com.h2database", "h2"): ((2, 4, 240), "2.4.240", (2, 4), "H2"),
     ("org.hsqldb", "hsqldb"): ((2, 7, 4), "2.7.4", (2, 7), "HSQLDB"),
 }
@@ -745,7 +745,7 @@ sys.exit(0)
 PY
 )
 if [ -n "$db_runtime_security_floor_dependencies" ]; then
-    echo "Blocked database runtime dependency outside reviewed stable lines found in Maven POMs; keep MariaDB Connector/J 3.5.10+ on 3.5.x, H2 2.4.240+ on 2.4.x, and HSQLDB 2.7.4+ on 2.7.x" >&2
+    echo "Blocked database runtime dependency outside reviewed stable lines found in Maven POMs; keep MariaDB Connector/J 3.5.11+ on 3.5.x, H2 2.4.240+ on 2.4.x, and HSQLDB 2.7.4+ on 2.7.x" >&2
     echo "$db_runtime_security_floor_dependencies" >&2
     fail=1
 fi
@@ -4441,7 +4441,7 @@ import sys
 from pathlib import Path
 
 FLOORS = {
-    "mariadb-java-client": ((3, 5, 10), "3.5.10", (3, 5)),
+    "mariadb-java-client": ((3, 5, 11), "3.5.11", (3, 5)),
     "h2": ((2, 4, 240), "2.4.240", (2, 4)),
     "hsqldb": ((2, 7, 4), "2.7.4", (2, 7)),
 }
@@ -4484,7 +4484,7 @@ sys.exit(0)
 PY
 )
 if [ -n "$db_runtime_security_floor_jars" ]; then
-    echo "Blocked database runtime jar outside reviewed stable lines packaged in app; keep MariaDB Connector/J 3.5.10+ on 3.5.x, H2 2.4.240+ on 2.4.x, and HSQLDB 2.7.4+ on 2.7.x" >&2
+    echo "Blocked database runtime jar outside reviewed stable lines packaged in app; keep MariaDB Connector/J 3.5.11+ on 3.5.x, H2 2.4.240+ on 2.4.x, and HSQLDB 2.7.4+ on 2.7.x" >&2
     echo "$db_runtime_security_floor_jars" >&2
     fail=1
 fi
@@ -6996,7 +6996,7 @@ echo "- GenericMapDaoImpl keeps generic map list queries record-backed and block
 echo "- Bouncy Castle jdk18on artifacts stay on reviewed stable BC-JAVA 1.x at their latest published floors: bcprov 1.85.2 and bcpkix/bcutil 1.85."
 echo "- Liquibase Core stays on reviewed stable 5.x at 5.0.4+; current security fixes own schema migration runtime."
 echo "- Liquibase SLF4J bridge stays on reviewed stable 5.x at 5.1.0+; unreviewed qualifiers and line jumps require explicit schema-migration logging review."
-echo "- MariaDB Connector/J, H2, and HSQLDB stay on reviewed stable DB runtime lines at MariaDB 3.5.10+ on 3.5.x, H2 2.4.240+ on 2.4.x, and HSQLDB 2.7.4+ on 2.7.x."
+echo "- MariaDB Connector/J, H2, and HSQLDB stay on reviewed stable DB runtime lines at MariaDB 3.5.11+ on 3.5.x, H2 2.4.240+ on 2.4.x, and HSQLDB 2.7.4+ on 2.7.x."
 echo "- AbstractObjectManager.toObjectsToWrite converts nested reference maps through CollectionUtils.castMap without local unchecked/raw suppression."
 echo "- JooqObjectManager record factory methods instantiate records through Class.cast without local unchecked/raw suppression."
 echo "- JooqObjectManager query result methods cast through the caller-provided Class without local unchecked/raw suppression."
