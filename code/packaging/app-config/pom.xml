@@ -4,11 +4,17 @@
     <parent>
         <groupId>io.cattle</groupId>
         <artifactId>cattle-parent</artifactId>
-        <version>0.183.361</version>
+        <version>0.183.362</version>
         <relativePath>../../parent/pom.xml</relativePath>
     </parent>
     <packaging>jar</packaging>
     <dependencies>
+        <dependency>
+            <groupId>org.mockito</groupId>
+            <artifactId>mockito-core</artifactId>
+            <version>5.23.0</version>
+            <scope>test</scope>
+        </dependency>
         <dependency>
             <groupId>com.h2database</groupId>
             <artifactId>h2</artifactId>

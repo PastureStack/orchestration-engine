@@ -158,6 +158,8 @@ public class ApiKeyProcessAuthorization implements ProcessAuthorizationHook {
                 cleanup = alias.lifecycle();
             }
             if (cleanup == null) cleanup = targets.resolveExternalServiceDependency(root, child, current.policy(), config, metadata);
+            if (cleanup == null) cleanup = targets.resolveServiceIndexRemovalDependency(root, child, current.policy(), config,
+                    EngineContext.getEngineContext().currentVerifiedExecution(), metadata);
             if (cleanup == null) cleanup = targets.resolveInstanceNetworkRemovalDependency(root, child, current.policy(), config,
                     EngineContext.getEngineContext().currentVerifiedExecution(), EngineContext.getEngineContext().parentVerifiedExecution(), metadata);
             if (cleanup == null) cleanup = targets.resolveUpgradeCleanupDependency(root, child, current.policy(), config,
