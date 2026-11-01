@@ -1,0 +1,278 @@
+{
+  "schemaVersion": 1,
+  "version": "0.183.366",
+  "scope": "Source-only C03 re-extraction, bounded Service-create/result-field review and native Catalog dynamic-field projection correction; no CI/artifact/runtime acceptance promotion.",
+  "reviewedBaseCommit": "259ef59e8110fab71488d5dbd8c9affda4279217",
+  "frozenFailedCandidate": "9efe87becb752287072e2257c949680fed75282d",
+  "retainedFailedCiRun": "41321815966",
+  "sourceInputs": {
+    "algorithm": "c03-source-inputs-v1",
+    "baseline": {
+      "count": 432,
+      "sha256": "fdf53022efdab0e56edb292da037216be051643770565c090424124be8b115ea"
+    },
+    "failedCandidateWithPriorSelector": {
+      "count": 432,
+      "sha256": "61ee8d703f9ebe3d86bfe542f36043bc4520bb074843f358404d39c81dd7178a"
+    },
+    "reviewed": {
+      "count": 441,
+      "sha256": "7ce17c8b05ccfba961414808148d8638bf54a9ad3bbc7de00facfcba4b26ac39"
+    },
+    "addedAnchors": [
+      "AiServiceCreateChange.java",
+      "PortBindingAddress.java",
+      "PortPreflightInputs.java",
+      "PortPreflightService.java",
+      "PortSpec.java",
+      "ServiceCreate.java",
+      "ServiceCreateValidation.java",
+      "ServiceDiscoveryServiceImpl.java",
+      "ServiceValidationFilter.java"
+    ],
+    "priorUnpublishedReview": {
+      "count": 441,
+      "sha256": "e6a4aa91585e4460577c7f0e40f7bbd60d97fcdccaa33d524533ffe2b0105b7d",
+      "reviewManifestSha256": "9e57f32ef41c57564641a39feb039a44529246e68f30e628a8883a0801ac1a0c"
+    }
+  },
+  "tupleReview": {
+    "baseline": 1396,
+    "candidate": 1396,
+    "added": 0,
+    "removed": 0,
+    "semanticChanges": 0,
+    "dispositionChanges": 0,
+    "sha256": "8f1c0fb378663b0b3d272efba2f211cb210eb6f17cb8035aefa33b56feeaf36a",
+    "perTupleSemanticDispositionReviewSha256": "d00eaff4a7b136e9058fdaaf5d693ae0a23386bac796943c2617fc04b1997eae"
+  },
+  "delta": {
+    "sourceInputs": [
+      {
+        "path": "code/iaas/api-logic/src/main/java/io/cattle/platform/iaas/api/port/PortPreflightInputs.java",
+        "before": null,
+        "after": "237060330f0ae0c092b11018159b6bf9fa214e1e2564d57f6b139dee34c38e13",
+        "baselineSourceSha256": "237060330f0ae0c092b11018159b6bf9fa214e1e2564d57f6b139dee34c38e13",
+        "newlyBound": true,
+        "sourceBytesChanged": false
+      },
+      {
+        "path": "code/iaas/api-logic/src/main/java/io/cattle/platform/iaas/api/port/PortPreflightService.java",
+        "before": null,
+        "after": "6a64ad664eee2f5817e6157b5564f72ac3381cb7f0881e2ef73bab6b80c3a110",
+        "baselineSourceSha256": "6a64ad664eee2f5817e6157b5564f72ac3381cb7f0881e2ef73bab6b80c3a110",
+        "newlyBound": true,
+        "sourceBytesChanged": false
+      },
+      {
+        "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/ai/catalog/AiCatalogLaunchMaterializer.java",
+        "before": "00945aae0ccd8091f6835168bd0d0ff7615be2f00cc86c27f48218520d680f50",
+        "after": "26aa70893a8182f191f9b4d02d0f68a04ec4da6017b83e1d4726a8327ee93781",
+        "baselineSourceSha256": "00945aae0ccd8091f6835168bd0d0ff7615be2f00cc86c27f48218520d680f50",
+        "newlyBound": false,
+        "sourceBytesChanged": true
+      },
+      {
+        "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiResourceChangeDescriptor.java",
+        "before": "542f4d8b53b7360a4b72570466f63f027469d5bf2f0e3ce66ea3d6b6ceb6f417",
+        "after": "c60650a74476af5faadd8cc76bcab4d073fd294dfac28d8dc176c07daeb7d4dc",
+        "baselineSourceSha256": "542f4d8b53b7360a4b72570466f63f027469d5bf2f0e3ce66ea3d6b6ceb6f417",
+        "newlyBound": false,
+        "sourceBytesChanged": true
+      },
+      {
+        "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiResourceChangeDomain.java",
+        "before": "141fa3773edceec3c7f489d10964ebc4db4c8ff4271976f6ee58ac0f342e96a8",
+        "after": "fc2245d42e31f3426fef91d68bbe8039f67f50b0a47b9e60cd003c83d1776ad0",
+        "baselineSourceSha256": "141fa3773edceec3c7f489d10964ebc4db4c8ff4271976f6ee58ac0f342e96a8",
+        "newlyBound": false,
+        "sourceBytesChanged": true
+      },
+      {
+        "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiResourceChangePlanService.java",
+        "before": "bfeb2e89f4a3049ec70292e14e29b2a74b4302f8756e80954edb2fdbe6497f0d",
+        "after": "1d52b18a6b3efc5f86b30e52cb1ab57bb27f788e28703a4e7864d473dd7aa071",
+        "baselineSourceSha256": "bfeb2e89f4a3049ec70292e14e29b2a74b4302f8756e80954edb2fdbe6497f0d",
+        "newlyBound": false,
+        "sourceBytesChanged": true
+      },
+      {
+        "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiServiceCreateChange.java",
+        "before": null,
+        "after": "ac42a7cf1108ae29791ba3198c7602f5fdc4f786e5eb9cd278581fe23831be4f",
+        "baselineSourceSha256": null,
+        "newlyBound": true,
+        "sourceBytesChanged": true
+      },
+      {
+        "path": "code/iaas/model/src/main/java/io/cattle/platform/core/util/PortBindingAddress.java",
+        "before": null,
+        "after": "e263eaaaeacc6bad7d09a9e21b48cafa098ced410857b8ab55dc1bab21ffccd4",
+        "baselineSourceSha256": "e263eaaaeacc6bad7d09a9e21b48cafa098ced410857b8ab55dc1bab21ffccd4",
+        "newlyBound": true,
+        "sourceBytesChanged": false
+      },
+      {
+        "path": "code/iaas/model/src/main/java/io/cattle/platform/core/util/PortSpec.java",
+        "before": null,
+        "after": "66d88b6af51001ce9a49d0b47d9031c2fb0c076ff60b75b4f6b30473da64bd9e",
+        "baselineSourceSha256": "19c50738b291e64f425a05e58d781389cba151933d9741e9ab7f0b5a11a0d734",
+        "newlyBound": true,
+        "sourceBytesChanged": true
+      },
+      {
+        "path": "code/iaas/service-discovery/api/src/main/java/io/cattle/platform/servicediscovery/api/filter/ServiceValidationFilter.java",
+        "before": null,
+        "after": "39d55237e452e7dbec7122eed74bee22d01f4db79e0f5c70ea26c28509f83107",
+        "baselineSourceSha256": "57e69c59889ca0d9cb5956659755625f923e0f67af57d428471f0247b2683575",
+        "newlyBound": true,
+        "sourceBytesChanged": true
+      },
+      {
+        "path": "code/iaas/service-discovery/api/src/main/java/io/cattle/platform/servicediscovery/api/service/ServiceCreateValidation.java",
+        "before": null,
+        "after": "663e4a276a68636e4d5284cfb7b4fd80301d733f4a410775e4f6d7ae34e9a143",
+        "baselineSourceSha256": null,
+        "newlyBound": true,
+        "sourceBytesChanged": true
+      },
+      {
+        "path": "code/iaas/service-discovery/server/src/main/java/io/cattle/platform/servicediscovery/process/ServiceCreate.java",
+        "before": null,
+        "after": "4c04eed9b5cc6cab4cf46b3c165021c9d15c3feecaf418f44377261d4e415157",
+        "baselineSourceSha256": "4c04eed9b5cc6cab4cf46b3c165021c9d15c3feecaf418f44377261d4e415157",
+        "newlyBound": true,
+        "sourceBytesChanged": false
+      },
+      {
+        "path": "code/iaas/service-discovery/server/src/main/java/io/cattle/platform/servicediscovery/service/impl/ServiceDiscoveryServiceImpl.java",
+        "before": null,
+        "after": "0300fb72cd8f5a1a06c3d26509a9d74c79c644d1aab0c1ce16fa46357a8b1039",
+        "baselineSourceSha256": "0300fb72cd8f5a1a06c3d26509a9d74c79c644d1aab0c1ce16fa46357a8b1039",
+        "newlyBound": true,
+        "sourceBytesChanged": false
+      },
+      {
+        "path": "resources/content/schema/admin/admin-auth.json",
+        "before": "27630fdb4d5cf7a1dcd7e693b84d0b31513d627a64a5d2365119075aca6d4f85",
+        "after": "f713ba64c53fb498b2cbe7f96b5c794ed35d093a74a78cafcffe3f19b59ef5df",
+        "baselineSourceSha256": "27630fdb4d5cf7a1dcd7e693b84d0b31513d627a64a5d2365119075aca6d4f85",
+        "newlyBound": false,
+        "sourceBytesChanged": true
+      },
+      {
+        "path": "resources/content/schema/base/aiResourceChangePlan.json",
+        "before": "7acb469f2ffbd0454e7e4e071aa672d3c444140583f41798a6d3cb02a632ba5e",
+        "after": "113f44df62f09f822b7f97f4cfdcab96de2f0f70995c821632f801c20134110c",
+        "baselineSourceSha256": "7acb469f2ffbd0454e7e4e071aa672d3c444140583f41798a6d3cb02a632ba5e",
+        "newlyBound": false,
+        "sourceBytesChanged": true
+      },
+      {
+        "path": "resources/content/schema/project/project-auth.json",
+        "before": "c752d35a5b2b2bdc65af5914d89071948e5b10e41772736ade7f89dfd2554a59",
+        "after": "ce1ebde019bfd57d6ddd5c2b77d119a76e1df38bf887371e765478c3d96388cf",
+        "baselineSourceSha256": "c752d35a5b2b2bdc65af5914d89071948e5b10e41772736ade7f89dfd2554a59",
+        "newlyBound": false,
+        "sourceBytesChanged": true
+      },
+      {
+        "path": "resources/content/schema/user/user-auth.json",
+        "before": "0f96a7e195647b967d4f83cab74d6a0fc5c442a896baa54384937af765bc2d9e",
+        "after": "66a82fa448806fb826ecd7a11bc9dc6cc9598e7a221d63191113457fd3376091",
+        "baselineSourceSha256": "0f96a7e195647b967d4f83cab74d6a0fc5c442a896baa54384937af765bc2d9e",
+        "newlyBound": false,
+        "sourceBytesChanged": true
+      }
+    ],
+    "schemaFields": [
+      {
+        "path": "resources/content/schema/base/aiResourceChangePlan.json",
+        "field": "executionResult",
+        "before": null,
+        "after": {
+          "type": "json",
+          "create": false,
+          "update": false,
+          "nullable": true
+        }
+      }
+    ],
+    "newReadOnlyRoleProjectionEntries": [
+      {
+        "path": "resources/content/schema/admin/admin-auth.json",
+        "pointer": "/authorize/aiResourceChangePlan.executionResult",
+        "before": null,
+        "after": "r"
+      },
+      {
+        "path": "resources/content/schema/project/project-auth.json",
+        "pointer": "/authorize/aiResourceChangePlan.executionResult",
+        "before": null,
+        "after": "r"
+      },
+      {
+        "path": "resources/content/schema/user/user-auth.json",
+        "pointer": "/authorize/aiResourceChangePlan.executionResult",
+        "before": null,
+        "after": "r"
+      }
+    ],
+    "addedTuples": [],
+    "removedTuples": [],
+    "changedSemanticTuples": [],
+    "changedAdmissionDispositions": [],
+    "fromPreviousUnpublishedReview": [
+      {
+        "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/ai/catalog/AiCatalogLaunchMaterializer.java",
+        "before": "00945aae0ccd8091f6835168bd0d0ff7615be2f00cc86c27f48218520d680f50",
+        "after": "26aa70893a8182f191f9b4d02d0f68a04ec4da6017b83e1d4726a8327ee93781"
+      }
+    ]
+  },
+  "authorizationBoundary": {
+    "changedExistingRolePermissions": 0,
+    "newReadOnlyRoleProjectionEntries": 3,
+    "mutationGrantDelta": 0,
+    "review": "The only role-schema additions expose executionResult as r for admin/project/user. No prior permission changes, new action/CRUD grant, Key authority or raw transport is added. Existing receipt owner/current authorization and successful ID/UUID readback guard this server-produced field. ports/healthCheck expand the closed typed Service-create parameters within the existing native create authorization; environment remains rejected. Catalog Materializer now copies native InstanceRecord data.fields into its existing current-role schema projection. Existing fields retain their exact values; hidden/read-on-create-only/unlisted fields remain excluded. Schema/formatter/POST and createResponse=false are unchanged; no role, Key, operation or raw-input authority is added."
+  },
+  "frozenV1SchemaFilesUnchanged": 16,
+  "extractor": {
+    "constructionSha256": "078ffe48881469fe5eb3cb43a15fa41b480fe70e11bd5f63102ded6b35a6d076",
+    "parserSha256": "7cc8e70d9f3ea391eb74fef2490f4407aa47833c585b6729c62b3d9e5829ac2b",
+    "extractorSha256": "112d2ff723d88acbe7bb45ff48c9c9018feb93b08031a3e86f867030871477fc"
+  },
+  "historicalProducerAndReviewChainsPreserved": true,
+  "artifactQualificationClaimed": false,
+  "runtimeAcceptanceClaimed": false,
+  "catalogMaterializerDynamicProjection": {
+    "source": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/ai/catalog/AiCatalogLaunchMaterializer.java",
+    "rootCause": "DockerTransformer stores imageUuid/environment/ports/logConfig in InstanceRecord data.fields; the five-argument WrappedResource constructor did not receive that dynamic value map, so the real role-schema projection omitted required business values.",
+    "fix": "Pass a fresh LinkedHashMap copy of DataUtils.getFields(instance) to the seven-argument WrappedResource constructor. Keep the existing current-role SchemaFactory, ID formatter, POST and createResponse=false behavior.",
+    "preservedBusinessValues": [
+      "native docker imageUuid",
+      "environment exact scalar including embedded equals",
+      "fixed native ports",
+      "logConfig driver/config",
+      "bean-backed service name"
+    ],
+    "visibilityBoundary": "Current native role schema remains authoritative. Hidden environment, read-on-create-only ports/logConfig and unlisted dynamic fields remain absent; no role or Key authority expansion, raw bypass or new environment-input channel.",
+    "focusedTests": {
+      "newMethods": [
+        "dynamicProjectionKeepsRestrictedSchemaAndNonCreateResponseRules",
+        "realTransformerDynamicFieldsReachNativeRoleSchemaProjection"
+      ],
+      "existingAffectedMethods": [
+        "preparedGraphSeparatesNativeMutationFromAuthorizedPublicReferenceIds"
+      ],
+      "tests": 3,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "evidenceFile": "engine366-materializer-dynamic-fields-focused-20261102.json",
+      "evidenceSha256": "24ea39c3caf6f6664735e67308246db34a07c59f384cccea48d9e2b171cbd35a",
+      "usesRealDockerTransformerAndNativeSchemas": true
+    },
+    "runtimeAcceptance": "PENDING_MATCHING_ARTIFACT_AND_NATIVE_QA; no live pass claimed"
+  }
+}

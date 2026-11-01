@@ -126,7 +126,11 @@ public class PortSpec {
         String publicPort = this.publicPort != null ? this.publicPort.toString() + ":" : "";
         String bindIP = "";
         if (StringUtils.isNotBlank(this.ipAddress)) {
-            bindIP = this.ipAddress + ":";
+            String address = this.ipAddress;
+            if (address.contains(":") && !(address.startsWith("[") && address.endsWith("]"))) {
+                address = "[" + address + "]";
+            }
+            bindIP = address + ":";
         }
         return bindIP + publicPort + privatePortProto;
     }

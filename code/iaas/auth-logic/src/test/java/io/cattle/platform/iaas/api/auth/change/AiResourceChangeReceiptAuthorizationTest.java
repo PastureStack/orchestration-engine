@@ -109,6 +109,26 @@ public class AiResourceChangeReceiptAuthorizationTest {
         verifyNoInteractions(f.manager);
     }
 
+    @Test public void createdServiceReceiptsBindTheActualIdUuidKindAndOwnerBeforeReadback() throws Exception {
+        Fixture f = new Fixture(); var descriptor = AiResourceChangeDescriptor.require("service", "create");
+        ServiceRecord service = (ServiceRecord) f.objects.loadResource("service", 890L);
+        service.setUuid("created-service"); service.setState("inactive");
+        Map<String, Object> plan = new LinkedHashMap<>(Map.of("internalResourceId", 890L, "resourceId", "1s890",
+                "createdResourceUuid", "created-service"));
+        assertSame(service, f.domain.receiptTarget(f.request, descriptor, plan));
+        plan.remove("createdResourceUuid");
+        assertEquals("PermissionDenied", rejected(() -> f.domain.receiptTarget(f.request, descriptor, plan)));
+        plan.put("createdResourceUuid", "created-service"); service.setUuid("replacement-service");
+        assertEquals("PermissionDenied", rejected(() -> f.domain.receiptTarget(f.request, descriptor, plan)));
+        service.setUuid(null); assertEquals("PermissionDenied", rejected(() -> f.domain.receiptTarget(f.request, descriptor, plan)));
+        service.setUuid("created-service"); service.setId(891L);
+        assertEquals("PermissionDenied", rejected(() -> f.domain.receiptTarget(f.request, descriptor, plan)));
+        service.setId(890L); service.setAccountId(99L);
+        assertEquals("PermissionDenied", rejected(() -> f.domain.receiptTarget(f.request, descriptor, plan)));
+        service.setAccountId(5L); service.setKind("externalService");
+        assertEquals("PermissionDenied", rejected(() -> f.domain.receiptTarget(f.request, descriptor, plan)));
+    }
+
     private static String rejected(Runnable action) { return assertThrows(ClientVisibleException.class, action::run).getCode(); }
     @Test public void terminalFailureProjectionStillRequiresTheActualLiveReceiptGuards() throws Exception {
         Fixture f = new Fixture(); String id = "aichange-11111111-1111-1111-1111-111111111111";
