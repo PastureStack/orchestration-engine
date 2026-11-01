@@ -1,5 +1,20 @@
 # Compatibility Contract
 
+## Engine 0.183.366 candidate
+
+This candidate adds bounded `ports` and `healthCheck` parameters only to typed
+Service creation. Compatible clients must keep read-only
+`executionResult.assignedPorts` separate from the approved change summary.
+Services are still created inactive, and private human entry of environment
+values remains pending. Current role/Key checks, Full/legacy behavior, runtime
+dependency coordinates and database schemas are unchanged.
+
+Native IPv6 port formatting now retains brackets for roundtrip parsing;
+existing database values are not rewritten. Formatter coverage does not prove
+host IPv6 binding or routing. Required CI/CodeQL, artifact qualification and
+matching Server/native acceptance remain pending; see the
+[candidate release note](docs/releases/orchestration-engine-0.183.366.md).
+
 ## Engine 0.183.364 release
 
 The [published release](https://github.com/PastureStack/orchestration-engine/releases/tag/v0.183.364)

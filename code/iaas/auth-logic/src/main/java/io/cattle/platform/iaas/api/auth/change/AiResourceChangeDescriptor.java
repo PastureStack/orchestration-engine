@@ -23,7 +23,7 @@ public record AiResourceChangeDescriptor(String resourceType, String operation, 
             add(result, type, "remove", "DELETE", null, "delete", Set.of());
             add(result, type, "update_metadata", "PUT", null, "update", Set.of("name", "description"));
             add(result, type, "create", "POST", null, "create", "stack".equals(type) ? Set.of("name", "description")
-                    : "service".equals(type) ? Set.of("name", "description", "image", "scale", "stackId", "command", "entryPoint")
+                    : "service".equals(type) ? Set.of("name", "description", "image", "scale", "stackId", "command", "entryPoint", "ports", "healthCheck")
                     : Set.of("name", "description", "image", "command", "entryPoint"));
         }
         add(result, "service", "scale", "PUT", null, "update", Set.of("scale"));
@@ -90,6 +90,8 @@ public record AiResourceChangeDescriptor(String resourceType, String operation, 
                         || image.contains("@") && !image.matches(".+@sha256:[0-9a-fA-F]{64}")) throw error("ResourceChangeInputInvalid");
             }
             case "stackId" -> string(content, 1, 128, false);
+            case "ports" -> content = AiServiceCreateChange.ports(content);
+            case "healthCheck" -> content = AiServiceCreateChange.healthCheck(content);
             case "command", "entryPoint" -> {
                 if (!(content instanceof List<?> values) || values.size() > 64) throw error("ResourceChangeInputInvalid");
                 List<String> arguments = new ArrayList<>(); int length = 0;
@@ -136,7 +138,8 @@ public record AiResourceChangeDescriptor(String resourceType, String operation, 
                 if ("service".equals(resourceType)) {
                     body.putIfAbsent("scale", 1);
                     Map<String, Object> launch = new LinkedHashMap<>(Map.of("imageUuid", image, "networkMode", "bridge"));
-                    for (String field : List.of("command", "entryPoint")) if (body.containsKey(field)) launch.put(field, body.remove(field));
+                    for (String field : List.of("command", "entryPoint", "ports", "healthCheck"))
+                        if (body.containsKey(field)) launch.put(field, body.remove(field));
                     body.put("launchConfig", launch);
                 } else {
                     body.put("imageUuid", image); body.put("networkMode", "bridge");

@@ -8,35 +8,35 @@ Rancher 1.6 ecosystem. It is not affiliated with Rancher Labs or SUSE.
 This fork of [`rancher/cattle`](https://github.com/rancher/cattle) preserves
 upstream history, authorship, licenses, and dependency notices.
 
-## Current release: Engine 0.183.364
+## Engine 0.183.366 candidate
 
-The [0.183.364 release](https://github.com/PastureStack/orchestration-engine/releases/tag/v0.183.364)
-publishes the original qualified CI bytes. Use the
+This source tree prepares Engine 0.183.366; the candidate is not published.
+The published baseline is
+[Engine 0.183.365](https://github.com/PastureStack/orchestration-engine/releases/tag/v0.183.365).
+Use the
 [Server installation guide](https://github.com/PastureStack/server#quick-start)
 for deployment; an Engine JAR alone is not a Server installation.
 
-A CUSTOM Key authorized to delete its standalone container can now finish the
-exact native private OS-image/cache cleanup. Current owner, role, Key revision,
-expiry, root grant and every explicit dependency DENY still apply. Shared or
-foreign resources and public Image/Volume/Pool operations receive no new grant.
-External target replacement also retires an obsolete hostname map when the
-new hostname is absent or different, allowing normal reconciliation to finish.
-
-The External before-value preview, ServiceIndex cleanup authority and official
-MariaDB JDBC3.5.11 fixes are retained. Full/legacy behavior and runtime dependency
-coordinates remain unchanged; the four reported JDBC CVEs remain absent from
-the qualified original product and raw/effective Dapper scans.
+The candidate extends human-reviewed Service creation with bounded native
+`ports` and `healthCheck` fields. Preview, confirmation and apply recheck the
+existing native port preflight. Created Services remain inactive; starting
+one requires a separate approved plan. A successful receipt exposes the actual
+assigned ports through read-only `executionResult.assignedPorts`, while the
+approved change summary remains unchanged. Native IPv6 port formatting now
+preserves the brackets needed to read a mapping back through `PortSpec`.
+Private human input for environment-variable values is not implemented in this
+candidate; `environment` remains outside resource-change parameters.
 
 | Qualification | Current evidence |
 |---|---|
-| Component | Required CI/CodeQL passed: 3,872 tests in 416 suites, zero failures/errors, one existing skip. All 14 new cleanup/lifecycle methods passed; seven preview and eight Index methods are inherited. |
-| Publication | Twelve original assets passed anonymous SHA256 readback; producer and merge/tag share the tested tree. No publication rebuild or native SLSA attestation is claimed. |
-| Assembled Server and live workflows | Matching Server publication, native cleanup/External replacement and designated role/Key/cross-ID business QA remain pending. Component publication does not establish workflow acceptance. |
+| Focused source checks | 60 unique unit cases passed on JDK 25 and Maven 3.9.16. Three test-fixture setup corrections were rerun alone; unaffected PASS evidence was retained. |
+| Candidate qualification and publication | Required original component CI/CodeQL, complete package qualification and publication remain pending. No candidate artifact digest or release asset is claimed. |
+| Assembled Server and live workflows | Matching Web Console/Server integration and native role/Key workflows remain pending. IPv6 formatter tests do not establish host IPv6 binding or routing acceptance. |
 
 Use the compatible Web Console typed contract and matching Server broker.
 Four independent AI opt-ins remain default-off. The
-[release note](docs/releases/orchestration-engine-0.183.364.md) records artifact
-identity and remaining boundaries. This does not complete all 243 frontend
+[candidate release note](docs/releases/orchestration-engine-0.183.366.md) records
+the exact supported fields and remaining boundaries. This does not complete all 243 frontend
 business groups.
 
 ## Optional AI resource workflows
@@ -51,9 +51,12 @@ private keys, raw process logs or full launch configurations. Queries and opaque
 pagination remain subject to the underlying domain manager's authorization.
 
 `aiResourceChangePlan` supports Stack, Service and Container creation, metadata
-editing and the explicitly registered lifecycle operations. Creation currently
-covers the named basic fields and creates stopped workloads; it does not claim
-all advanced UI form fields. A short-lived plan captures the target state and
+editing and the explicitly registered lifecycle operations. In this candidate,
+Service creation additionally accepts native port-specification strings and a
+closed health-check object. Fixed host ports must match the actual result;
+omitted host ports use native allocation and are reported only after verified
+readback. It does not cover every advanced UI field or private environment-value
+entry. A short-lived plan captures the target state and
 Key revision. A human cookie session reviews and approves it; a Key cannot
 approve or cancel its own plan. Apply claims one durable operation before
 dispatch; an uncertain dispatch is never automatically replayed.
@@ -175,7 +178,7 @@ Before publishing an Engine artifact, run the complete package gate:
 
 ```sh
 bash scripts/check-cattle-jdk25-full-package
-ENGINE_VERSION=0.183.361 bash scripts/build --release
+ENGINE_VERSION=0.183.366 bash scripts/build --release
 bash scripts/check-release-artifact dist/artifacts/cattle.jar
 ```
 

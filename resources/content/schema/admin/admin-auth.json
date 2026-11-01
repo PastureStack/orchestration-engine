@@ -39,6 +39,7 @@
         "aiResourceChangePlan.parameters": "cr",
         "aiResourceChangePlan.targetPath": "r",
         "aiResourceChangePlan.changes": "r",
+        "aiResourceChangePlan.executionResult": "r",
         "aiResourceChangePlan.confirmationState": "r",
         "aiResourceChangePlan.status": "r",
         "aiResourceChangePlan.operationId": "r",

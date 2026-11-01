@@ -26,6 +26,7 @@ import io.cattle.platform.object.util.DataAccessor;
 import io.cattle.platform.object.util.DataUtils;
 import io.cattle.platform.object.util.ObjectUtils;
 import io.cattle.platform.servicediscovery.api.util.ServiceDiscoveryUtil;
+import io.cattle.platform.servicediscovery.api.service.ServiceCreateValidation;
 import io.cattle.platform.servicediscovery.api.util.selector.SelectorUtils;
 import io.cattle.platform.storage.api.filter.ExternalTemplateInstanceFilter;
 import io.cattle.platform.storage.service.StorageService;
@@ -52,7 +53,7 @@ import jakarta.inject.Named;
 import org.apache.commons.lang3.StringUtils;
 
 @Named
-public class ServiceValidationFilter extends AbstractDefaultResourceManagerFilter {
+public class ServiceValidationFilter extends AbstractDefaultResourceManagerFilter implements ServiceCreateValidation {
 
     @Inject
     ObjectManager objectManager;
@@ -198,10 +199,22 @@ public class ServiceValidationFilter extends AbstractDefaultResourceManagerFilte
 
     public void validatePorts(Service service, String type, ApiRequest request) {
         validateLBPortRules(type, request);
-        validatePorts(request);
+        validateLaunchConfigPorts(request);
     }
 
-    private void validatePorts(ApiRequest request) {
+    @Override
+    public String imageUuid(String image) {
+        return ExternalTemplateInstanceFilter.getImageUuid(image, storageService);
+    }
+
+    @Override
+    public void validatePorts(ApiRequest request) {
+        Service service = request.proxyRequestObject(Service.class);
+        validatePorts(service, request.getType(), request);
+        assertPortsAvailable(service, objectManager.loadResource(Stack.class, service.getStackId()), request);
+    }
+
+    private void validateLaunchConfigPorts(ApiRequest request) {
         Map<String, Object> data = CollectionUtils.toMap(request.getRequestObject());
         if (data.get(ServiceConstants.FIELD_LAUNCH_CONFIG) == null) {
             return;

@@ -29,6 +29,7 @@ import io.cattle.platform.object.ObjectManager;
 import io.cattle.platform.object.util.DataAccessor;
 import io.cattle.platform.object.util.ObjectUtils;
 import io.cattle.platform.servicediscovery.api.service.ServiceDeploymentReadiness;
+import io.cattle.platform.servicediscovery.api.service.ServiceCreateValidation;
 import io.cattle.platform.servicediscovery.api.service.ResourceArchiveChange;
 import io.github.ibuildthecloud.gdapi.context.ApiContext;
 import io.github.ibuildthecloud.gdapi.exception.ClientVisibleException;
@@ -64,6 +65,7 @@ public class AiResourceChangeDomain extends AbstractJooqDao {
     @Inject JsonMapper json;
     @Inject ApiKeyTargetResolver targets;
     @Inject ServiceDeploymentReadiness deploymentReadiness;
+    @Inject ServiceCreateValidation serviceCreateValidation;
     @Inject ResourceArchiveChange archiveChanges;
 
     /** This marker only exists on a fresh, server-created domain request. */
@@ -126,6 +128,14 @@ public class AiResourceChangeDomain extends AbstractJooqDao {
                 descriptor.method(), descriptor.action(), body);
         return authorized(original, request, () -> {
             if (boundPlan != null) keys.authorizeBoundDomain(boundPlan, request);
+            if (descriptor.createsResource() && "service".equals(descriptor.resourceType())) {
+                Map<String, Object> validated = copyMap(request.getRequestObject());
+                if (!(validated.get("launchConfig") instanceof Map<?, ?> launch)) throw error(403, "PermissionDenied");
+                for (String field : List.of("ports", "healthCheck"))
+                    if (parameters.containsKey(field) && !Objects.equals(parameters.get(field), launch.get(field)))
+                        throw error(403, "PermissionDenied");
+                serviceCreateValidation.validatePorts(request);
+            }
             if ("dnsService".equals(descriptor.resourceType()) && Set.of("update_targets", "remove").contains(descriptor.operation())) {
                 Map<String, Object> references = aliasReferenceSnapshot(original, descriptor, publicId, parameters);
                 if ("update_targets".equals(descriptor.operation()) && publicId != null && aliasReferences(original, descriptor, parameters).stream()
@@ -385,6 +395,10 @@ public class AiResourceChangeDomain extends AbstractJooqDao {
         if (target == null || !Objects.equals(ObjectUtils.getAccountId(target), actor.getAccountId())
                 || !Objects.equals(ObjectUtils.getKind(target), descriptor.resourceType()) || current.policy().authorizeObject(target) == null)
             throw error(403, "PermissionDenied");
+        if (descriptor.createsResource() && "service".equals(descriptor.resourceType())
+                && (number(ObjectUtils.getId(target)) != number(plan.get("internalResourceId"))
+                    || !(plan.get("createdResourceUuid") instanceof String uuid) || uuid.isBlank()
+                    || !uuid.equals(ObjectUtils.getPropertyIgnoreErrors(target, "uuid")))) throw error(403, "PermissionDenied");
         if (ObjectUtils.getRemoved(target) == null) visible(request, descriptor, (String) plan.get("resourceId"));
         return target;
     }
@@ -413,8 +427,16 @@ public class AiResourceChangeDomain extends AbstractJooqDao {
         if ("scale".equals(descriptor.operation())) return "active".equals(state)
                 && Objects.equals(parameters.get("scale"), DataAccessor.fieldInteger(target, "scale")) && serviceReady((Service) target, true)
                 && retiredInstancesSettled((Service) target, before);
-        if ("create".equals(descriptor.operation())) return "container".equals(descriptor.resourceType()) ? "stopped".equals(state)
-                : "stack".equals(descriptor.resourceType()) ? Set.of("active", "inactive").contains(state) : "inactive".equals(state);
+        if ("create".equals(descriptor.operation())) {
+            if ("service".equals(descriptor.resourceType())) {
+                Map<String, Object> expected = descriptor.body(parameters);
+                String image = (String) ((Map<?, ?>) expected.get("launchConfig")).get("imageUuid");
+                return target instanceof Service service && AiServiceCreateChange.complete(service, expected,
+                        internalId("stack", (String) parameters.get("stackId")), serviceCreateValidation.imageUuid(image));
+            }
+            return "container".equals(descriptor.resourceType()) ? "stopped".equals(state)
+                    : "stack".equals(descriptor.resourceType()) && Set.of("active", "inactive").contains(state);
+        }
         if ("container".equals(descriptor.resourceType())) return "stop".equals(descriptor.operation()) ? "stopped".equals(state)
                 : "running".equals(state) && (!"restart".equals(descriptor.operation())
                     || number(ObjectUtils.getPropertyIgnoreErrors(target, "startCount")) > number(before.get("startCount")));
@@ -613,13 +635,20 @@ public class AiResourceChangeDomain extends AbstractJooqDao {
             try { value = AiExternalServiceChange.addresses(value); }
             catch (ClientVisibleException unsafe) { return null; }
         }
-        if (!Set.of("command", "entryPoint", "externalIpAddresses", "targetServices").contains(field)) return value;
+        if (!Set.of("command", "entryPoint", "ports", "healthCheck", "externalIpAddresses", "targetServices").contains(field)) return value;
         try { return json.writeValueAsString(value); }
         catch (IOException failure) { throw new IllegalStateException("Resource-change summary unavailable", failure); }
     }
 
     public <T> T withArchiveChange(AiResourceChangeDescriptor descriptor, Object lockedTarget, Supplier<T> change) {
         return archiveChanges.withChange(lockedTarget, "archive".equals(descriptor.operation()), change);
+    }
+
+    /** Called only after complete() verified this created Service and its native port allocation. */
+    public Map<String, Object> serviceCreateResult(Object target) {
+        Object launch = DataAccessor.field(target, "launchConfig", Object.class);
+        Object ports = launch instanceof Map<?, ?> map ? map.get("ports") : null;
+        return Map.of("assignedPorts", ports == null ? List.of() : AiServiceCreateChange.ports(ports));
     }
 
     private Map<String, Object> change(String field, Object before, Object after) {
