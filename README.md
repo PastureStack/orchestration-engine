@@ -8,33 +8,30 @@ Rancher 1.6 ecosystem. It is not affiliated with Rancher Labs or SUSE.
 This fork of [`rancher/cattle`](https://github.com/rancher/cattle) preserves
 upstream history, authorship, licenses, and dependency notices.
 
-## Current release: Engine 0.183.361
+## Current release: Engine 0.183.362
 
-The [0.183.361 release](https://github.com/PastureStack/orchestration-engine/releases/tag/v0.183.361)
+The [0.183.362 release](https://github.com/PastureStack/orchestration-engine/releases/tag/v0.183.362)
 publishes the original qualified CI bytes. Use the
 [Server installation guide](https://github.com/PastureStack/server#quick-start)
 for deployment; an Engine JAR alone is not a Server installation.
 
-This release repairs verified native Container NIC/IP removal and terminal
-child authorization denials, typed-domain audit targets, and the fixed private
-audit owner's local upstream configuration. Certificate plans change only names
-and descriptions; PEM, private keys and chains remain in the human interface.
-Current actor, role, original Key/revision, explicit DENY and exact identity
-checks remain enforced. Normal Full and legacy API behavior is preserved.
-
-Use Web Console 1.6.202 / bridge 0.2.4 and the matching broker in Server 561.
-The four independent AI opt-ins retain their default-off behavior. Catalog,
-Archive and session protections remain.
+Native Service scale-down and Service/Stack deletion now retain the exact
+ServiceIndex cleanup owner. Saved workers recheck Index/Service/Stack/account
+identity and the original actor, current role, Key revision, expiry and explicit
+DENY. Full/legacy behavior is preserved; no generic ServiceIndex grant is added.
+The prior Certificate, audit, Container network and session protections remain.
 
 | Qualification | Current evidence |
 |---|---|
-| Engine component | Required CI and CodeQL passed: 3,843 tests in 412 suites, zero failures/errors, one existing skip. |
-| Publication | Twelve original CI assets passed anonymous checksum readback; no publication rebuild or native SLSA attestation is claimed. |
-| Assembled Server and live workflows | Server561 publication and designated browser/role/cross-ID/weak-model acceptance remain separate pending gates. Baseline health on the prior Server560 does not establish business acceptance. |
+| Component | Required CI/CodeQL passed: 3,851 tests in 413 suites, zero failures/errors, one existing skip; all eight new cleanup methods passed. |
+| Publication | Twelve original assets passed anonymous SHA256 readback; producer and merge/tag have the same tested tree. No publication rebuild or native SLSA attestation is claimed. |
+| Assembled Server and live workflows | Matching Server publication and designated QA lifecycle, role and cross-ID acceptance remain pending. Publication is not whole-workflow acceptance. |
 
-The [release note](docs/releases/orchestration-engine-0.183.361.md) records immutable
-producer and artifact identities and remaining boundaries. This does not complete
-all 243 frontend business groups.
+Use the compatible Web Console typed contract and the matching Server broker.
+Four independent AI opt-ins remain default-off. The
+[release note](docs/releases/orchestration-engine-0.183.362.md) records immutable
+artifact identity and remaining boundaries. This does not complete all 243
+frontend business groups.
 
 ## Optional AI resource workflows
 
