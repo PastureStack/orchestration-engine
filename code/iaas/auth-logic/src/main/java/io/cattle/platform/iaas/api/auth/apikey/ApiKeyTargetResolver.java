@@ -1166,6 +1166,55 @@ public class ApiKeyTargetResolver {
                 instance.getAccountId(), owner, owned.scope());
     }
 
+    /** The native standalone DELETE owns its one private OS image, not an Image
+     * API grant. Keep the custom root/child policy evaluation in the caller. */
+    public LifecycleDependency resolveInstanceImageRemovalDependency(Object root, Object resource, Policy owner,
+            LaunchConfiguration config, EngineContext.VerifiedExecutionFrame frame,
+            EngineContext.VerifiedExecutionFrame parent, Map<String, Object> binding) {
+        if (!(root instanceof Instance supplied) || !"delete".equals(binding.get("operation"))
+                || !"DELETE".equals(binding.get("requestMethod")) || !Boolean.FALSE.equals(binding.get("requestCollection"))
+                || !Boolean.FALSE.equals(binding.get("preview")) || binding.containsKey("requestAction") || binding.containsKey("requestLink")
+                || !(binding.get("targetType") instanceof String rootType) || !"container".equals(ApiKeyQueryScopes.canonical(rootType))
+                || !Objects.equals(supplied.getId(), executionResourceId(rootType, String.valueOf(binding.get("targetId"))))) return null;
+        boolean image = resource instanceof Image && "image".equals(config.getResourceType())
+                && Set.of("image.deactivate", "image.remove").contains(config.getProcessName());
+        boolean cache = resource instanceof ImageStoragePoolMap && "imageStoragePoolMap".equalsIgnoreCase(config.getResourceType())
+                && Set.of("imagestoragepoolmap.deactivate", "imagestoragepoolmap.remove").contains(config.getProcessName());
+        if (!(image || cache)) return null;
+        var volumeFrame = image ? frame : parent;
+        Long volumeId = volumeFrame == null ? null : executionResourceId("volume", volumeFrame.resourceId());
+        if (!verified(volumeFrame, "volume", volumeId, binding) || !"volume.remove".equals(volumeFrame.processName())) return null;
+        if (image && (!verified(parent, "instance", supplied.getId(), binding) || !"instance.remove".equals(parent.processName()))) return null;
+        if (!(config instanceof io.cattle.platform.engine.manager.impl.ProcessRecord)
+                || !ProcessAuthorization.metadata(config).equals(binding)) denied("KeyScopeDenied");
+        Instance instance = persisted(Instance.class, supplied, owner,
+                "uuid", "accountId", "stackId", "serviceId", "imageId", "registryCredentialId", "state");
+        if (instance.getUuid() == null || instance.getRemoved() != null || !"removing".equals(instance.getState())
+                || instance.getServiceId() != null || !instanceParents(instance, owner).serviceIds().isEmpty()) denied("KeyScopeDenied");
+        Volume volume = liveResource(Volume.class, volumeId, owner);
+        if (volume.getUuid() == null || !Integer.valueOf(0).equals(volume.getDeviceNumber())
+                || !Objects.equals(volume.getInstanceId(), instance.getId()) || !Objects.equals(volume.getAccountId(), instance.getAccountId())
+                || !Objects.equals(volume.getImageId(), instance.getImageId()) || !"removing".equals(volume.getState())) denied("KeyScopeDenied");
+        var table = io.cattle.platform.core.model.tables.VolumeTable.VOLUME;
+        List<Volume> roots = objectManager.find(Volume.class, table.INSTANCE_ID, instance.getId(), table.DEVICE_NUMBER, 0,
+                table.REMOVED, null);
+        if (roots == null || roots.size() != 1) denied("KeyScopeDenied");
+        Volume only = persisted(Volume.class, roots.getFirst(), owner, "uuid", "accountId", "instanceId", "imageId", "deviceNumber");
+        if (!Objects.equals(only.getId(), volume.getId()) || !Objects.equals(only.getUuid(), volume.getUuid())) denied("KeyScopeDenied");
+        Image stored = objectManager.loadResource(Image.class, volume.getImageId());
+        if (stored == null || stored.getUuid() == null || stored.getAccountId() != null) denied("KeyScopeDenied");
+        if (cache && (!verified(frame, "image", stored.getId(), binding) || !"image.remove".equals(frame.processName()))) return null;
+        // Reuse the complete private graph proof: only this instance/OS volume
+        // may reference the image; every mount, allocation, cache and pool is
+        // reloaded. This helper grants no policy and does not select FULL mode.
+        LifecycleDependency privateGraph = resolveOwnedImageCleanupDependency(root, resource, owner, config, frame, parent, binding);
+        if (privateGraph == null) return null;
+        var scope = resolveObject("container", instance, owner);
+        Set<ApiKeyPolicyEvaluator.Target> resources = new LinkedHashSet<>(privateGraph.resources());
+        resources.add(scope);
+        return new LifecycleDependency(scope, List.copyOf(resources));
+    }
+
     /** FULL/legacy already authorize the owned root. This only substitutes the
      * null-account ACL of its private Image rows, not a new scoped key grant. */
     public LifecycleDependency resolveOwnedImageCleanupDependency(Object root, Object resource, Policy owner,

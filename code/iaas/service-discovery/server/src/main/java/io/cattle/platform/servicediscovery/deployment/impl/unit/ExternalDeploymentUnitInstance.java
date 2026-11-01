@@ -44,7 +44,7 @@ public class ExternalDeploymentUnitInstance extends DeploymentUnitInstance {
         if (this.ipAddress != null) {
             return !serviceExternalIps.contains(this.ipAddress);
         } else {
-            return !serviceHostName.contains(this.hostName);
+            return serviceHostName == null || !serviceHostName.equals(this.hostName);
         }
     }
 

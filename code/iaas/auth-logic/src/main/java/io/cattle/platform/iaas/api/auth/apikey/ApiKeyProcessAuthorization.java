@@ -119,13 +119,20 @@ public class ApiKeyProcessAuthorization implements ProcessAuthorizationHook {
                 if (imageDependency) dependency = targets.resolveImageDependency(root, (Image) child, current.policy());
                 else if (imageEnsure) ensure = targets.resolveImageEnsureDependency(root, child, current.policy(),
                         EngineContext.getEngineContext().currentVerifiedExecution(), metadata);
-                else if (imageCleanup) cleanup = policy == null || policy.getMode() == ApiKeyPolicy.Mode.FULL
-                        ? targets.resolveOwnedImageCleanupDependency(root, child, current.policy(), config,
-                                EngineContext.getEngineContext().currentVerifiedExecution(),
-                                EngineContext.getEngineContext().parentVerifiedExecution(), metadata)
-                        : targets.resolveUpgradeCleanupDependency(root, child, current.policy(), config,
+                else if (imageCleanup) {
+                    if (policy == null || policy.getMode() == ApiKeyPolicy.Mode.FULL) {
+                        cleanup = targets.resolveOwnedImageCleanupDependency(root, child, current.policy(), config,
                                 EngineContext.getEngineContext().currentVerifiedExecution(),
                                 EngineContext.getEngineContext().parentVerifiedExecution(), metadata);
+                    } else {
+                        cleanup = targets.resolveInstanceImageRemovalDependency(root, child, current.policy(), config,
+                                EngineContext.getEngineContext().currentVerifiedExecution(),
+                                EngineContext.getEngineContext().parentVerifiedExecution(), metadata);
+                        if (cleanup == null) cleanup = targets.resolveUpgradeCleanupDependency(root, child, current.policy(), config,
+                                EngineContext.getEngineContext().currentVerifiedExecution(),
+                                EngineContext.getEngineContext().parentVerifiedExecution(), metadata);
+                    }
+                }
                 else denied("OwnerPermissionDenied");
                 if (imageCleanup && cleanup == null) denied("OwnerPermissionDenied");
             }
@@ -161,6 +168,8 @@ public class ApiKeyProcessAuthorization implements ProcessAuthorizationHook {
             if (cleanup == null) cleanup = targets.resolveServiceIndexRemovalDependency(root, child, current.policy(), config,
                     EngineContext.getEngineContext().currentVerifiedExecution(), metadata);
             if (cleanup == null) cleanup = targets.resolveInstanceNetworkRemovalDependency(root, child, current.policy(), config,
+                    EngineContext.getEngineContext().currentVerifiedExecution(), EngineContext.getEngineContext().parentVerifiedExecution(), metadata);
+            if (cleanup == null) cleanup = targets.resolveInstanceImageRemovalDependency(root, child, current.policy(), config,
                     EngineContext.getEngineContext().currentVerifiedExecution(), EngineContext.getEngineContext().parentVerifiedExecution(), metadata);
             if (cleanup == null) cleanup = targets.resolveUpgradeCleanupDependency(root, child, current.policy(), config,
                     EngineContext.getEngineContext().currentVerifiedExecution(), EngineContext.getEngineContext().parentVerifiedExecution(), metadata);
