@@ -36,6 +36,7 @@ import io.cattle.platform.core.model.ServiceConsumeMap;
 import static io.cattle.platform.core.model.tables.ServiceExposeMapTable.SERVICE_EXPOSE_MAP;
 import static io.cattle.platform.core.model.tables.ServiceTable.SERVICE;
 import static io.cattle.platform.core.model.tables.VolumeStoragePoolMapTable.VOLUME_STORAGE_POOL_MAP;
+import static io.cattle.platform.core.model.tables.VolumeTable.VOLUME;
 import io.cattle.platform.core.model.Stack;
 import io.cattle.platform.core.model.Volume;
 import io.cattle.platform.object.ObjectManager;
@@ -1213,6 +1214,104 @@ public class ApiKeyTargetResolver {
         Set<ApiKeyPolicyEvaluator.Target> resources = new LinkedHashSet<>(privateGraph.resources());
         resources.add(scope);
         return new LifecycleDependency(scope, List.copyOf(resources));
+    }
+
+    /** Standalone DELETE schedules its private OS allocation while volume.remove
+     * is verified. Only those pinned rows may outlive that exact parent frame. */
+    public LifecycleDependency resolveInstanceVolumePoolRemovalDependency(Object root, Object resource, Policy owner,
+            LaunchConfiguration config, EngineContext.VerifiedExecutionFrame frame,
+            EngineContext.VerifiedExecutionFrame parent, Map<String, Object> binding) {
+        if (!(root instanceof Instance supplied) || !(resource instanceof VolumeStoragePoolMap suppliedMap)
+                || !"volumeStoragePoolMap".equalsIgnoreCase(config.getResourceType())
+                || !"volumestoragepoolmap.remove".equals(config.getProcessName())
+                || !"delete".equals(binding.get("operation")) || !"DELETE".equals(binding.get("requestMethod"))
+                || !Boolean.FALSE.equals(binding.get("requestCollection")) || !Boolean.FALSE.equals(binding.get("preview"))
+                || binding.containsKey("requestAction") || binding.containsKey("requestLink")
+                || !(binding.get("targetType") instanceof String rootType) || !"container".equals(ApiKeyQueryScopes.canonical(rootType))
+                || !Objects.equals(supplied.getId(), executionResourceId(rootType, String.valueOf(binding.get("targetId"))))) return null;
+        var scheduled = ProcessAuthorization.verifiedChild(config);
+        Volume candidate = objectManager.loadResource(Volume.class, suppliedMap.getVolumeId());
+        if (candidate == null || !Integer.valueOf(0).equals(candidate.getDeviceNumber())
+                || !Objects.equals(candidate.getInstanceId(), supplied.getId()) || supplied.getServiceId() != null) {
+            if (scheduled != null && !scheduled.references().isEmpty()) denied("KeyScopeDenied");
+            return null; // Unpinned live ancillary volumes keep ordinary lifecycle authorization.
+        }
+        if (!(config instanceof io.cattle.platform.engine.manager.impl.ProcessRecord record) || record.getId() == null
+                || scheduled == null || !"volume".equals(scheduled.parentType())
+                || !binding.equals(scheduled.rootAuthorization()) || !ProcessAuthorization.metadata(config).equals(binding)) denied("KeyScopeDenied");
+        Map<String, String> pins = frame == null ? scheduled.references() : Map.of();
+        Instance instance = pins.isEmpty() ? cleanupProjection(Instance.class, supplied, owner, "uuid", "accountId", "stackId", "serviceId", "state")
+                : pinnedStandaloneAncestor(Instance.class, supplied.getId(), owner, pins);
+        for (String field : List.of("uuid", "accountId", "stackId", "serviceId"))
+            if (!Objects.equals(ObjectUtils.getPropertyIgnoreErrors(supplied, field),
+                    ObjectUtils.getPropertyIgnoreErrors(instance, field))) denied("KeyScopeDenied");
+        VolumeStoragePoolMap map = cleanupProjection(VolumeStoragePoolMap.class, resource, owner, "uuid", "volumeId", "storagePoolId", "state");
+        if (!Objects.equals(map.getId(), executionResourceId(config.getResourceType(), config.getResourceId()))
+                || !Objects.equals(map.getVolumeId(), executionResourceId("volume", scheduled.parentId()))) denied("KeyScopeDenied");
+        Volume volume = pins.isEmpty() ? cleanupResource(Volume.class, map.getVolumeId(), owner)
+                : pinnedStandaloneAncestor(Volume.class, map.getVolumeId(), owner, pins);
+        if (!"container".equals(instance.getKind()) || instance.getUuid() == null || volume.getUuid() == null || map.getUuid() == null
+                || instance.getAccountId() == null || !Objects.equals(instance.getAccountId(), volume.getAccountId())
+                || !Objects.equals(volume.getInstanceId(), instance.getId()) || !Integer.valueOf(0).equals(volume.getDeviceNumber())
+                || !Set.of("removing", "removed", "purging", "purged").contains(String.valueOf(instance.getState()))
+                || !Set.of("removing", "removed", "purging", "purged").contains(String.valueOf(volume.getState()))
+                || !Set.of("inactive", "removing").contains(String.valueOf(map.getState())) || map.getRemoved() != null) denied("KeyScopeDenied");
+        liveResource(Account.class, instance.getAccountId(), owner);
+        requireVolumeStack(volume, instance, owner);
+        List<Volume> roots = objectManager.find(Volume.class, VOLUME.INSTANCE_ID, instance.getId(), VOLUME.DEVICE_NUMBER, 0);
+        if (roots == null || roots.size() != 1 || !Objects.equals(roots.getFirst().getId(), volume.getId())
+                || !Objects.equals(roots.getFirst().getUuid(), volume.getUuid())) denied("KeyScopeDenied");
+        // A standalone OS volume has no named/shared/file Mount to borrow.
+        List<Mount> mounts = objectManager.find(Mount.class, MOUNT.VOLUME_ID, volume.getId());
+        if (mounts == null) denied("KeyScopeDenied");
+        if (!mounts.isEmpty() || !instanceParents(instance, owner).serviceIds().isEmpty()) {
+            if (!scheduled.references().isEmpty()) denied("KeyScopeDenied");
+            return null;
+        }
+        StoragePool pool = liveResource(StoragePool.class, map.getStoragePoolId(), owner);
+        if (pool.getUuid() == null || pool.getAccountId() != null && !Objects.equals(pool.getAccountId(), volume.getAccountId())) denied("KeyScopeDenied");
+        Map<String, String> references = Map.of("instanceId", instance.getId().toString(), "instanceUuid", instance.getUuid(),
+                "volumeId", volume.getId().toString(), "volumeUuid", volume.getUuid(), "childUuid", map.getUuid(),
+                "storagePoolId", pool.getId().toString(), "storagePoolUuid", pool.getUuid(), "accountId", instance.getAccountId().toString(),
+                "instanceStackId", Objects.toString(instance.getStackId(), "none"), "volumeStackId", Objects.toString(volume.getStackId(), "none"));
+        if (frame != null) {
+            var ancestor = EngineContext.getEngineContext().grandparentVerifiedExecution();
+            boolean direct = verified(frame, "volume", volume.getId(), binding) && "volume.remove".equals(frame.processName())
+                    && verified(parent, "instance", instance.getId(), binding) && "instance.remove".equals(parent.processName());
+            boolean deallocation = verified(frame, "volume", volume.getId(), binding) && "volume.deallocate".equals(frame.processName())
+                    && verified(parent, "volume", volume.getId(), binding) && "volume.remove".equals(parent.processName())
+                    && verified(ancestor, "instance", instance.getId(), binding) && "instance.remove".equals(ancestor.processName());
+            if (!(direct || deallocation)
+                    || instance.getRemoved() != null || volume.getRemoved() != null
+                    || !scheduled.references().isEmpty() && !references.equals(scheduled.references())) denied("KeyScopeDenied");
+            ProcessAuthorization.bindVerifiedChildReferences(config, references);
+        } else if (!references.equals(scheduled.references())) denied("KeyScopeDenied");
+        var scope = resolveObject("container", instance, owner);
+        var owned = new LifecycleDependency(scope, List.of(scope));
+        owned = cleanupChild(owned, "volume", volume.getId(), volume.getAccountId(), owner, scope);
+        return cleanupChild(owned, "volumeStoragePoolMap", map.getId(), volume.getAccountId(), owner, resolveObject("storagePool", pool, owner));
+    }
+
+    /** Historical ancestry is evidence only for this already pinned OS-map job.
+     * Ordinary resource resolvers and new/unbound jobs never enter this reader. */
+    private <T> T pinnedStandaloneAncestor(Class<T> model, Long id, Policy owner, Map<String, String> pins) {
+        if (!(model == Instance.class || model == Volume.class) || id == null || pins.size() != 10) denied("KeyScopeDenied");
+        String prefix = model == Instance.class ? "instance" : "volume";
+        T stored = objectManager.loadResource(model, id);
+        if (stored == null || !Objects.equals(id, ObjectUtils.getPropertyIgnoreErrors(stored, "id"))
+                || !id.toString().equals(pins.get(prefix + "Id"))
+                || !Objects.equals(ObjectUtils.getPropertyIgnoreErrors(stored, "uuid"), pins.get(prefix + "Uuid"))
+                || !Objects.toString(ObjectUtils.getPropertyIgnoreErrors(stored, "accountId"), "none").equals(pins.get("accountId"))
+                || !Objects.toString(ObjectUtils.getPropertyIgnoreErrors(stored, "stackId"), "none")
+                    .equals(pins.get(prefix + "StackId"))) denied("KeyScopeDenied");
+        String state = String.valueOf(ObjectUtils.getPropertyIgnoreErrors(stored, "state"));
+        Object removed = ObjectUtils.getPropertyIgnoreErrors(stored, "removed");
+        if (!Set.of("removing", "removed", "purging", "purged").contains(state)
+                || (removed != null) != !"removing".equals(state)
+                || stored instanceof Volume volume && !Objects.toString(volume.getInstanceId(), "none")
+                    .equals(pins.get("instanceId"))) denied("KeyScopeDenied");
+        if (!ownerAuthorizes(stored, owner)) denied("OwnerPermissionDenied");
+        return stored;
     }
 
     /** FULL/legacy already authorize the owned root. This only substitutes the
