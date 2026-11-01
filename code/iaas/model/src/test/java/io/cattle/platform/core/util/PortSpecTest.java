@@ -111,4 +111,29 @@ public class PortSpecTest {
             assertEquals(PortSpec.INVALID_PROTOCOL, e.getCode());
         }
     }
+
+    @Test
+    public void nativeFormattingKeepsExistingIpv4NoBindAndAllocatedPortOutputs() {
+        assertEquals("80/tcp", new PortSpec("80").toSpec());
+        assertEquals("81:80/tcp", new PortSpec("81:80").toSpec());
+        assertEquals("127.0.0.1:81:80/udp", new PortSpec("127.0.0.1:81:80/udp").toSpec());
+        PortSpec allocated = new PortSpec("127.0.0.1::80"); allocated.setPublicPort(31001);
+        assertEquals("127.0.0.1:31001:80/tcp", allocated.toSpec());
+        PortSpec unbound = new PortSpec("80/udp"); unbound.setPublicPort(31002);
+        assertEquals("31002:80/udp", unbound.toSpec());
+    }
+
+    @Test
+    public void ipv6FixedAndNativeAllocatedMappingsRoundTripThroughTheSameParser() {
+        for (String input : new String[] { "[::1]:81:80", "[2001:db8::1]:53/udp", "[::]:65535:65535/tcp" }) {
+            PortSpec expected = new PortSpec(input); PortSpec actual = new PortSpec(expected.toSpec());
+            assertEquals(expected.getIpAddress(), actual.getIpAddress()); assertEquals(expected.getPublicPort(), actual.getPublicPort());
+            assertEquals(expected.getPrivatePort(), actual.getPrivatePort()); assertEquals(expected.getProtocol(), actual.getProtocol());
+        }
+        PortSpec allocated = new PortSpec("[2001:db8::1]:53/udp"); allocated.setPublicPort(31001);
+        assertEquals("[2001:db8::1]:31001:53/udp", allocated.toSpec());
+        PortSpec read = new PortSpec(allocated.toSpec());
+        assertEquals("2001:db8::1", read.getIpAddress()); assertEquals(Integer.valueOf(31001), read.getPublicPort());
+        assertEquals(53, read.getPrivatePort()); assertEquals("udp", read.getProtocol());
+    }
 }

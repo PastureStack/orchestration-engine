@@ -157,6 +157,12 @@ public class AiResourceChangePlanService {
                         long numericId = createdId instanceof Number numeric ? numeric.longValue()
                                 : domain.internalId(descriptor.resourceType(), text(createdId));
                         if (numericId <= 0) throw new IllegalStateException("Created resource identity unavailable");
+                        if ("service".equals(descriptor.resourceType())) {
+                            Object uuid = ObjectUtils.getPropertyIgnoreErrors(result, "uuid");
+                            if (!(uuid instanceof String identity) || identity.isBlank())
+                                throw new IllegalStateException("Created Service identity unavailable");
+                            plan.put("createdResourceUuid", uuid);
+                        }
                         plan.put("internalResourceId", numericId); plan.put("resourceId", domain.publicId(descriptor.resourceType(), numericId));
                     }
                     plan.put("dispatchAcknowledged", true);
@@ -205,6 +211,9 @@ public class AiResourceChangePlanService {
         AiResourceChangeDescriptor descriptor = descriptor(plan);
         Object target = domain.receiptTarget(request, descriptor, plan);
         if (domain.complete(descriptor, target, map(plan.get("parameters")), map(plan.get("snapshot")))) {
+            if (descriptor.createsResource() && "service".equals(descriptor.resourceType()) && map(plan.get("parameters")).containsKey("ports")) {
+                plan.put("executionResult", domain.serviceCreateResult(target));
+            }
             plan.put("status", "succeeded"); plan.put("verifiedResult", true); plan.put("messageCode", "ResourceChangeCompleted"); eraseSnapshot(plan);
         } else if (Set.of("error", "erroring").contains(Objects.toString(ObjectUtils.getState(target), ""))) {
             plan.put("status", "failed"); plan.put("messageCode", "ResourceChangeProcessFailed"); eraseSnapshot(plan);
@@ -255,6 +264,8 @@ public class AiResourceChangePlanService {
         Map<String, Object> output = new LinkedHashMap<>();
         for (String field : List.of("id", "resourceType", "operation", "resourceId", "targetPath", "changes", "confirmationState",
                 "status", "operationId", "verifiedResult", "messageCode", "expiresAt")) output.put(field, plan.get(field));
+        output.put("executionResult", "succeeded".equals(plan.get("status")) && Boolean.TRUE.equals(plan.get("verifiedResult"))
+                ? plan.get("executionResult") : null);
         output.put("resourceTextIsUntrusted", true); return output;
     }
 

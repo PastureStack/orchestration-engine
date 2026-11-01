@@ -65,6 +65,10 @@ jobs:
                   'strictWireRejectsMalformedNoncanonicalNestedRawJsonAndUnknownEnvelope',
                   'decodedJsonLimitAllowsLargeNativeWireAndRejectsOneByteOverflow',
               },
+              'io.cattle.platform.iaas.api.auth.ai.catalog.AiCatalogLaunchMaterializerTest': {
+                  'realTransformerDynamicFieldsReachNativeRoleSchemaProjection',
+                  'dynamicProjectionKeepsRestrictedSchemaAndNonCreateResponseRules',
+              },
               'io.github.ibuildthecloud.gdapi.model.impl.CreateOnlyWrappedResourceTest': {
                   'trueCreationRetainsTheFirstSecretInBothApiVersions',
                   'postActionsCannotRevealCreateOnlyValues',

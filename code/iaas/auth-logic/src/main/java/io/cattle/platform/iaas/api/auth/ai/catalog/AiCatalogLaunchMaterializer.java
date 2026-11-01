@@ -6,6 +6,7 @@ import io.cattle.platform.core.model.Account;
 import io.cattle.platform.core.model.tables.records.InstanceRecord;
 import io.cattle.platform.docker.transform.DockerTransformer;
 import io.cattle.platform.object.util.ObjectUtils;
+import io.cattle.platform.object.util.DataUtils;
 import io.github.ibuildthecloud.gdapi.context.ApiContext;
 import io.github.ibuildthecloud.gdapi.model.ListOptions;
 import io.github.ibuildthecloud.gdapi.model.Pagination;
@@ -55,8 +56,10 @@ public class AiCatalogLaunchMaterializer {
             InstanceRecord instance = new InstanceRecord();
             try { transformer.transform(map(service.get("dockerInspect")), instance); }
             catch (RuntimeException invalid) { throw error(422, "CatalogLaunchUnsupported"); }
-            // Exactly the normal transform response's schema projection, under the original role.
-            WrappedResource resource = new WrappedResource(ApiContext.getContext().getIdFormatter(), schemas, container, instance, "POST");
+            // Match the native projection's data.fields source while retaining the
+            // original role and non-create-response handling of create-only fields.
+            WrappedResource resource = new WrappedResource(ApiContext.getContext().getIdFormatter(), schemas, container, instance,
+                    new LinkedHashMap<>(DataUtils.getFields(instance)), null, "POST");
             transformed.put(name, new LinkedHashMap<>(resource.getFields()));
         }
         Map<String, String> authorizedReferenceIds = new LinkedHashMap<>();
