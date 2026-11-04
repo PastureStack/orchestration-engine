@@ -13,10 +13,15 @@ import io.cattle.platform.json.JacksonJsonMapper;
 import io.github.ibuildthecloud.gdapi.context.ApiContext;
 import io.github.ibuildthecloud.gdapi.exception.ClientVisibleException;
 import io.github.ibuildthecloud.gdapi.factory.SchemaFactory;
+import io.github.ibuildthecloud.gdapi.model.impl.SchemaImpl;
+import io.github.ibuildthecloud.gdapi.request.handler.BodyParserRequestHandler;
+import io.github.ibuildthecloud.gdapi.validation.ValidationHandler;
 import io.github.ibuildthecloud.gdapi.request.ApiRequest;
 import io.github.ibuildthecloud.gdapi.server.model.ApiServletContext;
 import jakarta.servlet.http.HttpServletRequest;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -26,6 +31,52 @@ import org.junit.Test;
 
 public class AiAuditQueryServiceTest {
     @After public void clean() { ApiContext.remove(); }
+
+    @Test public void realParserAndSchemaCannotEraseOriginalUnknownFieldsBeforeCanonicalError() throws Exception {
+        for (String field : List.of("url", "method", "actorId", "authorization", "credentialId", "sourcePage", "data", "total")) {
+            Fixture f = new Fixture(); var ran = new java.util.concurrent.atomic.AtomicBoolean();
+            f.use(input -> { ran.set(true); return f.frame(200, f.result()); });
+            ApiRequest request = f.parsed("{\"lastMinutes\":10,\"limit\":1,\"" + field + "\":\"PRIVATE-IGNORED-INPUT\"}", Map.of());
+            assertFalse(((Map<?, ?>) request.getRequestObject()).containsKey(field)); // Real generic sanitization still operates.
+            assertEquals(Boolean.TRUE, request.getAttribute(AiAuditQueryService.ORIGINAL_FIELDS_REJECTED));
+            new AiAuditQueryInputHandler().handle(request); // Sanitized re-entry cannot erase the rejection.
+            var manager = new AiAuditQueryResourceManager(); manager.service = f.service;
+            var rejected = assertThrows(ClientVisibleException.class, () -> manager.createInternal("aiAuditQuery", request));
+            assertEquals(422, rejected.getStatus()); assertEquals("AuditQueryInputInvalid", rejected.getCode());
+            assertFalse(ran.get()); assertTrue(ApiAuditPayload.omitted(request));
+            verify(f.service.audit).recordAuditQueryOutcome(eq(request), eq(f.actor), startsWith("aiaudit-"),
+                    eq("ERROR"), eq("AuditQueryInputInvalid"), eq(0));
+        }
+    }
+
+    @Test public void originalQueryParametersAreClosedButValidTypedQueriesKeepTheirCanonicalSuccess() throws Exception {
+        Fixture f = new Fixture(); ApiRequest invalid = f.parsed("{\"lastMinutes\":10,\"limit\":1}", Map.of("url", new String[] {"PRIVATE"}));
+        assertEquals("AuditQueryInputInvalid", assertThrows(ClientVisibleException.class, () -> f.service.read(invalid)).getCode());
+        Fixture valid = new Fixture(); ApiRequest request = valid.parsed("{\"type\":\"aiAuditQuery\",\"lastMinutes\":10,\"limit\":1}", Map.of());
+        assertEquals(Boolean.FALSE, request.getAttribute(AiAuditQueryService.ORIGINAL_FIELDS_REJECTED));
+        assertEquals("auditLog", valid.service.read(request).get("resourceType"));
+        verify(valid.service.audit).recordAuditQueryOutcome(eq(request), eq(valid.actor), anyString(), eq("ALLOW"), eq("AuditQueryCompleted"), eq(1));
+    }
+
+    @Test public void originalFieldCaptureIsOnlyTheAuditCollectionOwnerAndPrecedesTheRealSchemaValidator() throws Exception {
+        Fixture f = new Fixture(); var handler = new AiAuditQueryInputHandler();
+        f.request.setMethod("POST"); f.request.setType("service"); f.request.setRequestObject(Map.of("url", "PRIVATE"));
+        handler.handle(f.request);
+        assertNull(f.request.getAttribute(AiAuditQueryService.ORIGINAL_FIELDS_REJECTED));
+        assertEquals(Map.of("url", "PRIVATE"), f.request.getRequestObject());
+        Path root = sourceRoot();
+        String order = Files.readString(root.resolve("code/packaging/app-config/src/main/resources/META-INF/cattle/iaas-api/defaults.properties"));
+        assertTrue(order.indexOf("BodyParserRequestHandler,") < order.indexOf("AiAuditQueryInputHandler,"));
+        assertTrue(order.indexOf("AiAuditQueryInputHandler,") < order.indexOf("ValidationHandler,"));
+        String beans = Files.readString(root.resolve("code/packaging/app-config/src/main/java/io/cattle/platform/app/IaasApiConfig.java"));
+        assertTrue(beans.contains("return EMUtils.add(em, ApiRequestHandler.class, new AiAuditQueryInputHandler());"));
+    }
+
+    private static Path sourceRoot() {
+        Path path = Path.of("").toAbsolutePath();
+        while (path != null && !Files.isRegularFile(path.resolve("resources/content/schema/base/aiAuditQuery.json"))) path = path.getParent();
+        assertNotNull("native source schema required", path); return path;
+    }
 
     @Test public void interruptedOwnerCancelsAndRecordsErrorWithoutPartialResult() {
         Fixture f = new Fixture(); f.use(input -> { throw new InterruptedException("PRIVATE"); });
@@ -131,6 +182,21 @@ public class AiAuditQueryServiceTest {
             use(input -> frame(200, result()));
         }
         void use(AiAuditQueryRunner.Executor executor) { service.runner = new AiAuditQueryRunner(executor); service.runner.json = json; }
+        ApiRequest parsed(String body, Map<String, Object> params) throws Exception {
+            var mapper = new io.github.ibuildthecloud.gdapi.json.JacksonMapper(); mapper.init();
+            SchemaImpl schema = mapper.readValue(Files.readAllBytes(sourceRoot().resolve("resources/content/schema/base/aiAuditQuery.json")), SchemaImpl.class);
+            schema.setId("aiAuditQuery");
+            SchemaFactory schemas = mock(SchemaFactory.class); when(schemas.getSchema("aiAuditQuery")).thenReturn(schema);
+            ApiRequest parsed = new ApiRequest(null, schemas) {
+                @Override public java.io.InputStream getInputStream() { return new java.io.ByteArrayInputStream(body.getBytes(java.nio.charset.StandardCharsets.UTF_8)); }
+            };
+            parsed.setMethod("POST"); parsed.setType("aiAuditQuery"); parsed.setRequestParams(params);
+            parsed.setRequestServletContext(request.getServletContext());
+            var parser = new BodyParserRequestHandler(); parser.setJsonMarshaller(mapper); parser.init(); parser.handle(parsed);
+            new AiAuditQueryInputHandler().handle(parsed);
+            var validation = new ValidationHandler(); validation.init(); validation.generate(parsed);
+            return parsed;
+        }
         byte[] frame(int status, Map<String, Object> body) throws IOException { return json.writeValueAsBytes(Map.of("status", status, "body", body)); }
         Map<String, Object> result() {
             Map<String, Object> result = new LinkedHashMap<>(Map.of("resourceType", "auditLog", "total", 1,

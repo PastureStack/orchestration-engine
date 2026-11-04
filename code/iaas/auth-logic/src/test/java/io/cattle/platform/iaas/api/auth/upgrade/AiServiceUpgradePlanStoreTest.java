@@ -30,7 +30,8 @@ public class AiServiceUpgradePlanStoreTest {
             connection.createStatement().execute("CREATE TABLE ai_service_upgrade_plan(id VARCHAR(64) PRIMARY KEY, state VARCHAR(32), document CLOB, actor_id BIGINT, expires_at BIGINT)");
             AiServiceUpgradePlanStore first = store(connection);
             Map<String, Object> plan = new LinkedHashMap<>(Map.of("id", "aiplan-11111111-1111-1111-1111-111111111111", "status", "preview", "actorId", 42, "expiresAt", "2026-10-29T00:05:00Z",
-                    "snapshot", Map.of("environment", Map.of("PRIVATE", "retained"))));
+                    "snapshot", Map.of("environment", Map.of("PRIVATE", "retained")),
+                    "upgradeStrategy", Map.of("startFirst", true, "batchSize", 9007199254740991L, "intervalMillis", 100)));
             first.insert(plan);
             assertEquals(1, first.pendingCount(42));
             AiServiceUpgradePlanStore restarted = store(connection);
@@ -39,6 +40,7 @@ public class AiServiceUpgradePlanStoreTest {
             plan.put("status", "dispatching"); staleCopy.put("status", "dispatching");
             assertTrue(restarted.claim(plan)); assertFalse(first.claim(staleCopy));
             assertEquals("dispatching", first.load((String) plan.get("id")).get("status"));
+            assertEquals(plan.get("upgradeStrategy"), first.load((String) plan.get("id")).get("upgradeStrategy"));
             Map<String, Object> expired = new LinkedHashMap<>(plan);
             expired.put("id", "aiplan-22222222-2222-2222-2222-222222222222"); expired.put("status", "preview");
             restarted.insert(expired); assertEquals(1, restarted.pendingCount(42));

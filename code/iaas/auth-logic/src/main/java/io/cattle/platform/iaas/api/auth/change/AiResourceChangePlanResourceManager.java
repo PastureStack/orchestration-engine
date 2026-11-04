@@ -16,7 +16,11 @@ public class AiResourceChangePlanResourceManager extends AbstractNoOpResourceMan
     @Override public Class<?>[] getTypeClasses() { return new Class<?>[] { AiResourceChangePlan.class }; }
     @Override protected Object createInternal(String type, ApiRequest request) { return resource(service.preview(request)); }
     @Override protected Object getByIdInternal(String type, String id, ListOptions options) {
-        return resource(service.get(id, ApiContext.getContext().getApiRequest()));
+        ApiRequest request = ApiContext.getContext().getApiRequest();
+        // An internal action operand must not persist observations in the outer API write transaction.
+        boolean actionTarget = request != null && "POST".equals(request.getMethod()) && request.getAction() != null
+                && options != null && options.getMutationTarget() != null && options.getMutationTarget().matches(request, type, id);
+        return resource(actionTarget ? service.actionTarget(id, request) : service.get(id, request));
     }
     @Override protected Object listInternal(SchemaFactory factory, String type, Map<Object, Object> criteria, ListOptions options) {
         return service.pending(ApiContext.getContext().getApiRequest()).stream().map(this::resource).toList();

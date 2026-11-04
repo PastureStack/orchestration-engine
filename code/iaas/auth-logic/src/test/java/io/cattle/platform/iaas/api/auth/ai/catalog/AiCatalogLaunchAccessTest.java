@@ -86,6 +86,25 @@ public class AiCatalogLaunchAccessTest {
         verify(f.access.objects, never()).loadResource(Credential.class, 7L);
     }
 
+    @Test public void operandSnapshotRechecksOriginalKeyWithoutRetainingCredentialRowLock() {
+        Fixture f = new Fixture(); CredentialRecord current = credential(); ApiKeyPolicyCodec codec = new ApiKeyPolicyCodec();
+        current.setData(codec.store(current, policy(Set.of("read", "create", "update"), false), 3));
+        var rows = DSL.using(SQLDialect.MARIADB);
+        f.access.setConfiguration(DSL.using(new MockConnection(context -> {
+            assertFalse(context.sql().toLowerCase().contains("for update")); assertArrayEquals(new Object[] { 7L }, context.bindings());
+            var result = rows.newResult(CREDENTIAL); result.add(current); return new MockResult[] { new MockResult(1, result) };
+        }), SQLDialect.MARIADB).configuration());
+        Map<String, Object> plan = Map.of("actorId", 42L, "accountId", 5L,
+                "credentialId", 7L, "credentialRevision", 3L, "credentialKind", "apiKeyRestricted");
+        assertEquals(3, f.access.snapshot(plan, new ApiRequest(null, f.schemas)).key().revision());
+        current.setData(codec.store(current, policy(Set.of("read", "create", "update"), false), 4));
+        assertEquals("ApiKeyPolicyChanged", assertThrows(ClientVisibleException.class,
+                () -> f.access.snapshot(plan, new ApiRequest(null, f.schemas))).getCode());
+        current.setState("inactive");
+        assertEquals("ApiKeyRevoked", assertThrows(ClientVisibleException.class,
+                () -> f.access.snapshot(plan, new ApiRequest(null, f.schemas))).getCode());
+    }
+
     private static CredentialRecord credential() {
         CredentialRecord key = new CredentialRecord(); key.setId(7L); key.setAccountId(42L); key.setKind("apiKeyRestricted");
                 key.setState("active"); return key;

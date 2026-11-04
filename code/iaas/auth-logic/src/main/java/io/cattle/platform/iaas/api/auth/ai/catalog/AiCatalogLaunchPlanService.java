@@ -101,6 +101,16 @@ public class AiCatalogLaunchPlanService {
         })));
     }
 
+    /** A non-mutating, authorized operand snapshot. action() reloads and rechecks under its lock. */
+    Map<String, Object> actionTarget(String id, ApiRequest request) {
+        return audited(request, "read", id, () -> {
+            Map<String, Object> plan = owned(id, request, false);
+            authority(access.snapshot(plan, request), request);
+            audit(request, "read", plan, true, "CatalogLaunchReadAllowed");
+            return output(plan);
+        });
+    }
+
     public List<Map<String, Object>> pending(ApiRequest request) {
         try {
             human(request); Policy actor = access.actor(request);
@@ -241,7 +251,11 @@ public class AiCatalogLaunchPlanService {
     }
 
     private AiCatalogLaunchAccess.Authorization authority(Map<String, Object> plan, ApiRequest request) {
-        var authority = access.bound(plan, request); access.catalog(authority);
+        return authority(access.bound(plan, request), request);
+    }
+
+    private AiCatalogLaunchAccess.Authorization authority(AiCatalogLaunchAccess.Authorization authority, ApiRequest request) {
+        access.catalog(authority);
         var schema = authority.current().schemas().getSchema(PLAN);
         String action = request.getAction();
         if (schema == null || "GET".equals(request.getMethod()) && (schema.getResourceMethods() == null || !schema.getResourceMethods().contains("GET"))
@@ -253,8 +267,12 @@ public class AiCatalogLaunchPlanService {
     }
 
     private Map<String, Object> owned(String id, ApiRequest request) {
+        return owned(id, request, true);
+    }
+
+    private Map<String, Object> owned(String id, ApiRequest request, boolean forUpdate) {
         if (id == null || !id.matches("aicataloglaunch-[0-9a-f-]{36}")) throw error(404, "NotFound");
-        Map<String, Object> plan = store.loadForUpdate(id); Policy actor = access.actor(request);
+        Map<String, Object> plan = forUpdate ? store.loadForUpdate(id) : store.load(id); Policy actor = access.actor(request);
         if (plan == null || !Objects.equals(((Number) plan.get("actorId")).longValue(), actor.getAuthenticatedAsAccountId())
                 || !Objects.equals(((Number) plan.get("accountId")).longValue(), actor.getAccountId())) throw error(404, "NotFound");
         ApiKeyCredentialContext key = ApiKeyCredentialContext.get(request);

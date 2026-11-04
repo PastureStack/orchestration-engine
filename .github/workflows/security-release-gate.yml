@@ -59,6 +59,48 @@ jobs:
           import xml.etree.ElementTree as ET
 
           required = {
+              'io.cattle.platform.iaas.api.auth.ai.catalog.AiCatalogLaunchLockOrderTest': {
+                  'nativeActionPrefetchAndConcurrentNativeGetCompleteWithApplicationBeforeRowLock',
+                  'onlyExactInternalActionOperandUsesSnapshotAndOrdinaryGetStillChecksSource',
+                  'snapshotRetainsOwnerProjectRoleKeyBindingAndDoesNotAuthorizeUnconfirmedApply',
+              },
+              'io.cattle.platform.iaas.api.auth.ai.catalog.AiCatalogLaunchAccessTest': {
+                  'operandSnapshotRechecksOriginalKeyWithoutRetainingCredentialRowLock',
+              },
+              'io.cattle.platform.iaas.api.auth.change.AiResourceChangeLockOrderTest': {
+                  'nativeActionReceiptPrefetchAndConcurrentGetDoNotInvertObservationWriteLocks',
+                  'exactSnapshotRetainsOwnerProjectKeyAndReceiptPermissionsWhileGetStillObservesAndApplyRequiresConfirmation',
+              },
+              'io.cattle.platform.iaas.api.auth.upgrade.AiServiceUpgradePlanLockOrderTest': {
+                  'acceptedUpgradeNativeActionPrefetchAndConcurrentGetKeepApplicationBeforeRowLock',
+                  'runningUpgradeNativeActionPrefetchAndConcurrentGetKeepApplicationBeforeRowLock',
+                  'onlyExactNativeUpgradeActionMarkerUsesReadSnapshotAndOrdinaryGetStillObserves',
+                  'upgradeActionSnapshotRetainsOwnerProjectRoleVisibilityAndBoundKeyChecks',
+                  'upgradeActionReloadsSnapshotRoleAndKeyAuthorityAfterOperandLookupAndClaimsOnlyOnce',
+                  'concurrentNativeUpgradeAppliesShareOneDurableClaimAndDispatch',
+              },
+              'io.cattle.platform.iaas.api.auth.ai.audit.AiAuditQueryServiceTest': {
+                  'realParserAndSchemaCannotEraseOriginalUnknownFieldsBeforeCanonicalError',
+                  'originalQueryParametersAreClosedButValidTypedQueriesKeepTheirCanonicalSuccess',
+                  'originalFieldCaptureIsOnlyTheAuditCollectionOwnerAndPrecedesTheRealSchemaValidator',
+              },
+              'io.cattle.platform.iaas.api.auth.upgrade.AiServiceUpgradePlanServiceTest': {
+                  'realPreviewPipelineRejectsUnknownAndCoercedStrategyWithoutPlanOrDispatch',
+                  'originalPreviewGuardLeavesOrdinaryUpgradeAndPlanActionsUntouchedAndRunsBeforeNativeValidation',
+                  'omittedAndLegacyStrategiesKeepTheOriginalEffectiveDispatchDefaults',
+                  'newCustomAndDefaultPlansFenceLegacySnapshotBeforeClaim',
+                  'legacySnapshotWithoutStrategyOrFenceStillConfirmsAndAppliesDefaults',
+                  'strategyAndSnapshotFenceDriftCannotClaimOrDispatch',
+                  'reloadedFencedStrategyRemainsImmutableAndDispatchesOnlyOnce',
+                  'approvedStrategyIsDetachedReviewedAndDispatchedOnceWithoutActionOverrides',
+                  'strategyUsesNativeMinimaAndExactJsonIntegerBoundaryWithoutClamping',
+                  'invalidOptionalStrategyRejectsBeforePlanOrDispatchAndNativePreflightIsRequired',
+              },
+              'io.cattle.platform.iaas.api.auth.upgrade.AiServiceUpgradeStrategyPreflightTest': {
+                  'nativeRetainIpStartFirstInvariantRejectsBeforeAnyPlanOrResourceMutation',
+                  'realStartFirstPortCapacityRejectsAtPreviewConfirmationAndBeforeClaim',
+                  'nativeVolumePreflightReceivesApprovedStartFirstAndNativeBatchNormalization',
+              },
               'io.cattle.platform.iaas.api.auth.ai.catalog.AiCatalogLaunchPrivateWireTest': {
                   'nativeCryptoHttpRoundTripOpensExactlyOneGoBase64JsonLayer',
                   'nativeCryptoEnvelopeRejectsEveryPlanActorProjectAndOriginalKeyRebinding',

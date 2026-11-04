@@ -141,17 +141,18 @@ public class AiCatalogLaunchWorkflowTest {
         assertNull(f.store.plan); assertEquals(0, f.store.claims); verifyNoInteractions(f.manager);
     }
 
-    private static final class Store extends AiCatalogLaunchPlanStore {
+    static final class Store extends AiCatalogLaunchPlanStore {
         Map<String, Object> plan; int claims;
         @Override public <T> T transaction(Supplier<T> action) { return action.get(); }
         @Override public void insert(Map<String, Object> value) { plan = value; }
         @Override public Map<String, Object> loadForUpdate(String id) { return plan != null && id.equals(plan.get("id")) ? plan : null; }
+        @Override public Map<String, Object> load(String id) { return loadForUpdate(id); }
         @Override public void save(Map<String, Object> value) { plan = value; }
         @Override public boolean claim(Map<String, Object> value) { if (claims != 0) return false; claims++; return true; }
         @Override public int pendingCount(long actor, long now) { return plan == null ? 0 : 1; }
     }
 
-    private static final class Fixture {
+    static final class Fixture {
         final JacksonJsonMapper json = new JacksonJsonMapper(); final Policy actor = mock(Policy.class);
         final SchemaFactory schemas = mock(SchemaFactory.class); final SchemaImpl serviceSchema = new SchemaImpl();
         final ResourceManager manager = mock(ResourceManager.class); final ApiRequest request; final Store store = new Store();
@@ -188,6 +189,7 @@ public class AiCatalogLaunchWorkflowTest {
             service.access = new AiCatalogLaunchAccess() {
                 @Override public Policy actor(ApiRequest request) { return actor; }
                 @Override public Authorization bound(Map<String, Object> plan, ApiRequest request) { return authority; }
+                @Override Authorization snapshot(Map<String, Object> plan, ApiRequest request) { return authority; }
             };
             service.access.idFormatter = formatter; service.access.keyAccess = mock(ApiKeyAuthorizationService.class);
             service.access.validation = new ValidationHandler(); service.access.validation.setSupportedMethods(Set.of("GET", "POST", "PUT", "DELETE"));

@@ -106,9 +106,29 @@ verified()
 download()
 {
     rm -f -- "$work/payload/package.deb" "$work/payload/package.deb.FAILED"
-    /usr/lib/apt/apt-helper -o Acquire::Retries=1 \
+    download_status=0
+    /usr/lib/apt/apt-helper -o Acquire::Retries=0 \
         -o Acquire::https::Timeout=15 -o Acquire::http::Timeout=15 \
-        download-file "$1" "$work/payload/package.deb" "SHA256:$hash" && verified "$work/payload/package.deb"
+        download-file "$1" "$work/payload/package.deb" "SHA256:$hash" || download_status=$?
+    # APT renames a hash-mismatched payload to .FAILED. Neither this nor our
+    # own size/hash rejection is a transport failure eligible for retry.
+    [ ! -e "$work/payload/package.deb.FAILED" ] || return 2
+    [ "$download_status" -eq 0 ] || return 1
+    verified "$work/payload/package.deb" || return 2
+}
+
+download_snapshot()
+{
+    attempt=1
+    while :; do
+        result=0
+        download "$1" || result=$?
+        [ "$result" -ne 0 ] || return 0
+        [ "$result" -eq 1 ] || return "$result"
+        [ "$attempt" -lt 4 ] || return 1
+        sleep "$attempt"
+        attempt=$((attempt + 1))
+    done
 }
 
 tab=$(printf '\t')
@@ -116,7 +136,7 @@ while IFS="$tab" read -r uri pool filename size hash; do
     destination=$archives/$filename
     if verified "$destination"; then continue; fi
     [ ! -d "$destination" ] || fail invalid_cache_destination
-    if download "https://archive.ubuntu.com/ubuntu/$pool" || download "$uri"; then
+    if download "https://archive.ubuntu.com/ubuntu/$pool" || download_snapshot "$uri"; then
         cache_copy=$(mktemp "$archives/.snapshot-package.XXXXXX")
         cp -- "$work/payload/package.deb" "$cache_copy"
         chmod 0644 "$cache_copy"

@@ -67,6 +67,8 @@ import io.cattle.platform.iaas.api.auth.ai.audit.AiAuditQuery;
 import io.cattle.platform.iaas.api.auth.ai.audit.AiAuditQueryService;
 import io.cattle.platform.iaas.api.auth.ai.audit.AiAuditQueryRunner;
 import io.cattle.platform.iaas.api.auth.ai.audit.AiAuditQueryResourceManager;
+import io.cattle.platform.iaas.api.auth.ai.audit.AiAuditQueryInputHandler;
+import io.cattle.platform.iaas.api.auth.upgrade.AiServiceUpgradePlanInputHandler;
 import io.cattle.platform.iaas.api.auth.ai.view.AiAuditSourcePageInput;
 import io.cattle.platform.iaas.api.auth.ai.catalog.AiCatalogMetadataView;
 import io.cattle.platform.iaas.api.auth.ai.catalog.AiCatalogLaunchAccess;
@@ -646,6 +648,16 @@ public class IaasApiConfig {
     @Bean
     ApiKeyPolicyInputHandler ApiKeyPolicyInputHandler(ExtensionManagerImpl em) {
         return EMUtils.add(em, ApiRequestHandler.class, new ApiKeyPolicyInputHandler());
+    }
+
+    @Bean
+    AiAuditQueryInputHandler AiAuditQueryInputHandler(ExtensionManagerImpl em) {
+        return EMUtils.add(em, ApiRequestHandler.class, new AiAuditQueryInputHandler());
+    }
+
+    @Bean
+    AiServiceUpgradePlanInputHandler AiServiceUpgradePlanInputHandler(ExtensionManagerImpl em) {
+        return EMUtils.add(em, ApiRequestHandler.class, new AiServiceUpgradePlanInputHandler());
     }
 
     @Bean

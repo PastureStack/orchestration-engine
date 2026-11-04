@@ -15,7 +15,12 @@ public class AiCatalogLaunchPlanResourceManager extends AbstractNoOpResourceMana
     @Override public Class<?>[] getTypeClasses() { return new Class<?>[] { AiCatalogStackLaunchPlan.class }; }
     @Override protected Object createInternal(String type, ApiRequest request) { return resource(service.preview(request)); }
     @Override protected Object getByIdInternal(String type, String id, ListOptions options) {
-        return resource(service.get(id, ApiContext.getContext().getApiRequest()));
+        ApiRequest request = ApiContext.getContext().getApiRequest();
+        // Native action validation/prefetch runs inside the outer API write transaction.
+        // Its operand lookup must not retain row locks before action() acquires the application lock.
+        boolean actionTarget = request != null && "POST".equals(request.getMethod()) && request.getAction() != null
+                && options != null && options.getMutationTarget() != null && options.getMutationTarget().matches(request, type, id);
+        return resource(actionTarget ? service.actionTarget(id, request) : service.get(id, request));
     }
     @Override protected Object listInternal(SchemaFactory factory, String type, Map<Object, Object> criteria, ListOptions options) {
         return service.pending(ApiContext.getContext().getApiRequest()).stream().map(this::resource).toList();

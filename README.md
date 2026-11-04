@@ -8,7 +8,24 @@ Rancher 1.6 ecosystem. It is not affiliated with Rancher Labs or SUSE.
 This fork of [`rancher/cattle`](https://github.com/rancher/cattle) preserves
 upstream history, authorship, licenses, and dependency notices.
 
-## Current release: Engine 0.183.366
+## Development candidate: Engine 0.183.367
+
+Image-upgrade previews accept optional `startFirst`, `batchSize` and
+`intervalMillis`. The immutable plan exposes the three effective values in
+`upgradeStrategy`, with the existing defaults `false`, `1` and `2000`.
+Preview, human confirmation and apply repeat the existing native port/volume
+preflight using that approved strategy. Native role/Key checks, snapshot staleness
+and exactly-once dispatch remain in effect. See the
+[candidate contract](docs/releases/orchestration-engine-0.183.367.md).
+This source candidate has not been published or accepted in runtime QA.
+Catalog-launch, resource-change and upgrade action lookups use authorized read
+snapshots to preserve application/row lock order during concurrent receipt reads.
+
+Typed Audit queries retain their closed-input check before generic schema
+sanitization. Unknown caller fields are rejected with a canonical error outcome
+instead of being discarded into an accepted query.
+
+## Latest published release: Engine 0.183.366
 
 [Engine 0.183.366](https://github.com/PastureStack/orchestration-engine/releases/tag/v0.183.366) is published with 12 original assets verified by
 anonymous SHA256 readback. Use the
@@ -177,7 +194,7 @@ Before publishing an Engine artifact, run the complete package gate:
 
 ```sh
 bash scripts/check-cattle-jdk25-full-package
-ENGINE_VERSION=0.183.366 bash scripts/build --release
+ENGINE_VERSION=0.183.367 bash scripts/build --release
 bash scripts/check-release-artifact dist/artifacts/cattle.jar
 ```
 
@@ -214,9 +231,11 @@ the credential identity and policy revision; that same Key must apply them.
 Using a browser's shared Cookie alone does not establish strict credential
 isolation. Ordinary UI/API authorization remains unchanged.
 
-* `POST /v2-beta/projects/{projectId}/aiServiceUpgradePlans` with `serviceId` and
-  `image` creates a five-minute actor/project-bound preview and, for Key callers,
-  a credential/revision binding. It does not upgrade a service.
+* `POST /v2-beta/projects/{projectId}/aiServiceUpgradePlans` with `serviceId`,
+  `image` and optional `startFirst` / `batchSize` / `intervalMillis` creates a
+  five-minute actor/project-bound preview and, for Key callers, a credential/revision
+  binding. The effective strategy is immutable and shown for human review.
+  It does not upgrade a service.
 * The confirmation UI separately calls `POST .../{planId}?action=confirm` with an
   empty body. The same owner's human session confirms through the console;
   API Keys cannot confirm, and a bound Key's current scope, expiry and revision

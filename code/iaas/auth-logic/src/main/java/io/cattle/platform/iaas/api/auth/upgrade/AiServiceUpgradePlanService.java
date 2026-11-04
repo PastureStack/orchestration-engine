@@ -7,6 +7,7 @@ import io.cattle.platform.api.auth.Policy;
 import io.cattle.platform.api.utils.ApiUtils;
 import io.cattle.platform.archaius.util.ArchaiusUtil;
 import io.cattle.platform.core.constants.ServiceConstants;
+import io.cattle.platform.core.addon.InServiceUpgradeStrategy;
 import io.cattle.platform.core.model.Account;
 import io.cattle.platform.core.model.Instance;
 import io.cattle.platform.core.model.Service;
@@ -28,6 +29,7 @@ import io.cattle.platform.object.ObjectManager;
 import io.cattle.platform.object.util.DataAccessor;
 import io.cattle.platform.storage.api.filter.ExternalTemplateInstanceFilter;
 import io.cattle.platform.storage.service.StorageService;
+import io.cattle.platform.servicediscovery.api.service.ServiceUpgradeValidation;
 import io.cattle.platform.util.type.CollectionUtils;
 import io.github.ibuildthecloud.gdapi.exception.ClientVisibleException;
 import io.github.ibuildthecloud.gdapi.context.ApiContext;
@@ -39,6 +41,7 @@ import io.github.ibuildthecloud.gdapi.request.resource.ResourceManagerLocator;
 import io.github.ibuildthecloud.gdapi.util.RequestUtils;
 import jakarta.inject.Inject;
 import java.io.IOException;
+import java.math.BigDecimal;
 import java.time.Clock;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -56,6 +59,10 @@ public class AiServiceUpgradePlanService extends AbstractJooqDao {
     private static final Logger log = LoggerFactory.getLogger(AiServiceUpgradePlanService.class);
     public static final String PLAN_ATTRIBUTE = "ai.service.upgrade.plan";
     public static final String SNAPSHOT_ATTRIBUTE = "ai.service.upgrade.snapshot";
+    static final String ORIGINAL_PREVIEW_REJECTED = AiServiceUpgradePlanService.class.getName() + ".originalPreviewRejected";
+    private static final Set<String> PREVIEW_INPUTS = Set.of("serviceId", "image", "type", "startFirst", "batchSize", "intervalMillis");
+    // JSON/JavaScript's exact integer boundary, not a native product maximum.
+    private static final long MAX_SAFE_INTEGER = 9007199254740991L;
     @Inject AiServiceUpgradePlanStore store;
     @Inject ObjectManager objects;
     @Inject JsonMapper json;
@@ -64,20 +71,23 @@ public class AiServiceUpgradePlanService extends AbstractJooqDao {
     @Inject StorageService storage;
     @Inject List<ApiKeyAuditSink> auditSinks;
     @Inject AiKeyAuthorization keyAuthorization;
+    @Inject ServiceUpgradeValidation upgradeValidation;
     Clock clock = Clock.systemUTC();
 
     public Map<String, Object> preview(ApiRequest request) {
         return audited(request, "preview", null, () -> {
             requireEnabled();
             Policy actor = actor(request);
+            if (Boolean.TRUE.equals(request.getAttribute(ORIGINAL_PREVIEW_REJECTED))) throw error(422, "UpgradeInputInvalid");
             return locked("preview-" + actor.getAuthenticatedAsAccountId(), () -> {
                 store.pruneExpiredPreviews(clock.millis());
                 if (store.pendingCount(actor.getAuthenticatedAsAccountId()) >= 20) throw error(429, "UpgradePendingPlanLimit");
-                Map<String, Object> input = input(request, Set.of("serviceId", "image", "type"));
+                Map<String, Object> input = input(request, PREVIEW_INPUTS);
                 String serviceId = text(input.get("serviceId"));
                 String image = text(input.get("image"));
                 if (serviceId == null || image == null || image.length() > 512 || image.matches(".*\\s.*")
                         || image.contains("://") || image.equals("docker:")) throw error(422, "UpgradeInputInvalid");
+                Map<String, Object> strategy = strategyValues(input);
                 Service target = target(serviceId, request, true);
                 requireReady(target);
                 Map<String, Object> snapshot = snapshot(target);
@@ -101,10 +111,13 @@ public class AiServiceUpgradePlanService extends AbstractJooqDao {
                 plan.put("serviceId", formattedServiceId(target)); plan.put("internalServiceId", target.getId());
                 plan.put("serviceName", target.getName()); plan.put("currentImage", primary.get("imageUuid"));
                 plan.put("displayPath", displayPath(target));
+                snapshot.put("approvedUpgradeStrategy", copy(strategy));
                 plan.put("requestedImage", requested); plan.put("snapshot", snapshot);
+                plan.put("upgradeStrategy", strategy);
                 plan.put("expiresAt", clock.instant().plusSeconds(300).toString());
                 plan.put("confirmationState", "pending"); plan.put("status", "preview");
                 plan.put("verifiedResult", false); plan.put("messageCode", "UpgradeNeedsConfirmation");
+                preflight(plan, target);
                 audit(request, "preview", id, target.getId(), true, "UpgradePreviewCreated");
                 store.insert(plan);
                 return output(plan);
@@ -119,6 +132,15 @@ public class AiServiceUpgradePlanService extends AbstractJooqDao {
             audit(request, "read", id, number(plan.get("internalServiceId")), true, "UpgradeRead");
             return output(plan);
         }));
+    }
+
+    /** Authorized operand only; action() reloads and rechecks under its application lock. */
+    Map<String, Object> actionTarget(String id, ApiRequest request) {
+        return audited(request, "read", id, () -> {
+            Map<String, Object> plan = owned(id, request, false);
+            audit(request, "read", id, number(plan.get("internalServiceId")), true, "UpgradeRead");
+            return output(plan);
+        });
     }
 
     /** Human inbox only; no Key can enumerate another plan by sharing its owner. */
@@ -189,15 +211,17 @@ public class AiServiceUpgradePlanService extends AbstractJooqDao {
             if (!clock.instant().isBefore(java.time.Instant.parse(text(plan.get("expiresAt"))))) throw error(409, "UpgradePlanExpired");
             if ("cancelled".equals(plan.get("confirmationState"))) throw error(409, "UpgradeCancelled");
             requireReady(target);
-            if (!snapshot(target).equals(plan.get("snapshot"))) throw error(409, "UpgradePlanStale");
+            if (!expectedSnapshot(target, plan).equals(plan.get("snapshot"))) throw error(409, "UpgradePlanStale");
             if ("confirm".equals(action)) {
                 if (plan.containsKey("credentialId")) keyAuthorization.authorizeBound(plan, target, "upgrade", request);
+                preflight(plan, target);
                 audit(request, action, id, target.getId(), true, "UpgradeConfirmed");
                 plan.put("confirmationState", "approved"); plan.put("messageCode", "UpgradeReady");
                 store.save(plan); return output(plan);
             }
             if (!"approved".equals(plan.get("confirmationState"))) throw error(409, "UpgradeNeedsConfirmation");
             if (plan.containsKey("credentialId")) keyAuthorization.authorizeBound(plan, target, "upgrade", request);
+            preflight(plan, target);
             audit(request, action, id, target.getId(), true, "UpgradeAccepted");
             plan.put("status", "dispatching"); plan.put("operationId", id);
             plan.put("acceptedAt", clock.millis());
@@ -244,13 +268,9 @@ public class AiServiceUpgradePlanService extends AbstractJooqDao {
     }
 
     protected void dispatch(Map<String, Object> plan, Service target, ApiRequest original) {
-        Map<String, Object> primary = map(map(plan.get("snapshot")).get("launchConfig"));
-        primary.put("imageUuid", plan.get("requestedImage"));
         // Only primary is submitted; the existing filter copies secondary configs and resolves
         // their dependency versions without dropping env/ports/volumes/hardware settings.
-        Map<String, Object> strategy = new LinkedHashMap<>();
-        strategy.put("launchConfig", primary); strategy.put("startFirst", false);
-        strategy.put("batchSize", 1); strategy.put("intervalMillis", 2000);
+        Map<String, Object> strategy = nativeStrategy(plan);
         ApiRequest action = new ApiRequest(original);
         action.setType(target.getKind()); action.setId(target.getId().toString());
         action.setMethod("POST"); action.setAction("upgrade");
@@ -260,6 +280,65 @@ public class AiServiceUpgradePlanService extends AbstractJooqDao {
         Object result = AiKeyAuthorization.dispatch(original, action,
                 () -> managers.getResourceManagerByType(target.getKind()).resourceAction(target.getKind(), action));
         if (result == null) throw error(409, "UpgradeDispatchUncertain");
+    }
+
+    private Map<String, Object> nativeStrategy(Map<String, Object> plan) {
+        Map<String, Object> primary = map(map(plan.get("snapshot")).get("launchConfig"));
+        primary.put("imageUuid", plan.get("requestedImage"));
+        Map<String, Object> strategy = effectiveStrategy(plan);
+        strategy.put("launchConfig", primary);
+        return strategy;
+    }
+
+    private void preflight(Map<String, Object> plan, Service target) {
+        if (upgradeValidation == null) throw error(503, "UpgradePreflightUnavailable");
+        InServiceUpgradeStrategy strategy = json.convertValue(nativeStrategy(plan), InServiceUpgradeStrategy.class);
+        Object secondaries = copy(map(plan.get("snapshot")).get("secondaryLaunchConfigs"));
+        if (secondaries instanceof List<?> list) strategy.setSecondaryLaunchConfigs(new ArrayList<>(list));
+        upgradeValidation.validate(target, strategy);
+    }
+
+    private static Map<String, Object> strategyValues(Map<?, ?> input) {
+        Object start = input.get("startFirst");
+        if (input.containsKey("startFirst") && !(start instanceof Boolean)) throw error(422, "UpgradeInputInvalid");
+        Map<String, Object> strategy = new LinkedHashMap<>();
+        strategy.put("startFirst", input.containsKey("startFirst") ? start : false);
+        strategy.put("batchSize", strategyInteger(input, "batchSize", 1, 1));
+        strategy.put("intervalMillis", strategyInteger(input, "intervalMillis", 2000, 100));
+        return strategy;
+    }
+
+    static void captureOriginalPreview(ApiRequest request) {
+        // Retain only a sticky rejection bit, never original keys or values.
+        // The existing strategy parser owns the three new fields' exact types
+        // and bounds; serviceId/image keep their ordinary native validation.
+        if (Boolean.TRUE.equals(request.getAttribute(ORIGINAL_PREVIEW_REJECTED))) return;
+        Object value = request.getRequestObject();
+        boolean rejected = !(value instanceof Map<?, ?> fields)
+                || fields.keySet().stream().anyMatch(key -> !(key instanceof String) || !PREVIEW_INPUTS.contains(key));
+        if (!rejected) {
+            try { strategyValues((Map<?, ?>) value); }
+            catch (ClientVisibleException invalid) { rejected = true; }
+        }
+        request.setAttribute(ORIGINAL_PREVIEW_REJECTED, rejected);
+    }
+
+    private static long strategyInteger(Map<?, ?> input, String field, long defaultValue, long minimum) {
+        if (!input.containsKey(field)) return defaultValue;
+        if (!(input.get(field) instanceof Number numeric)) throw error(422, "UpgradeInputInvalid");
+        try {
+            long value = new BigDecimal(numeric.toString()).longValueExact();
+            if (value >= minimum && value <= MAX_SAFE_INTEGER) return value;
+        } catch (NumberFormatException | ArithmeticException invalid) { /* No coercion or rounding. */ }
+        throw error(422, "UpgradeInputInvalid");
+    }
+
+    private static Map<String, Object> effectiveStrategy(Map<String, Object> plan) {
+        // Previously persisted image-only plans retain their original dispatch semantics.
+        if (!plan.containsKey("upgradeStrategy")) return strategyValues(Map.of());
+        if (!(plan.get("upgradeStrategy") instanceof Map<?, ?> strategy)
+                || !strategy.keySet().equals(Set.of("startFirst", "batchSize", "intervalMillis"))) throw error(422, "UpgradeInputInvalid");
+        return strategyValues(strategy);
     }
 
     protected Map<String, Object> owned(String id, ApiRequest request, boolean write) {
@@ -330,6 +409,14 @@ public class AiServiceUpgradePlanService extends AbstractJooqDao {
         snapshot.put("launchConfig", copy(DataAccessor.fieldMap(target, "launchConfig")));
         snapshot.put("secondaryLaunchConfigs", copy(secondaries(target)));
         return map(snapshot);
+    }
+
+    private Map<String, Object> expectedSnapshot(Service target, Map<String, Object> plan) {
+        Map<String, Object> snapshot = snapshot(target);
+        // Older engines compare the classic snapshot and reject this extra approved operand.
+        // Genuine image-only plans retain their classic snapshot and dispatch defaults.
+        if (plan.containsKey("upgradeStrategy")) snapshot.put("approvedUpgradeStrategy", copy(effectiveStrategy(plan)));
+        return snapshot;
     }
 
     protected long processBaseline(long serviceId) {
@@ -487,7 +574,8 @@ public class AiServiceUpgradePlanService extends AbstractJooqDao {
     private Map<String, Object> audited(ApiRequest request, String action, String id, Supplier<Map<String, Object>> operation) {
         try { return operation.get(); }
         catch (ClientVisibleException denied) {
-            audit(request, action, id, null, false, denied.getCode()); throw denied;
+            String reason = denied.getApiError() == null ? denied.getCode() : denied.getApiError().getCode();
+            audit(request, action, id, null, false, reason); throw denied;
         }
     }
     protected void audit(ApiRequest request, String action, String id, Long target, boolean allowed, String reason) {
@@ -521,6 +609,7 @@ public class AiServiceUpgradePlanService extends AbstractJooqDao {
             if (plan.containsKey(key)) result.put(key, plan.get(key));
         }
         if ("dispatching".equals(result.get("status"))) result.put("status", "unknown");
+        result.put("upgradeStrategy", effectiveStrategy(plan));
         return result;
     }
     protected String formattedServiceId(Service target) {

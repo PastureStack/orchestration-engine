@@ -21,7 +21,12 @@ public class AiServiceUpgradePlanResourceManager extends AbstractNoOpResourceMan
         return service.pending(ApiContext.getContext().getApiRequest()).stream().map(this::resource).toList();
     }
     @Override protected Object getByIdInternal(String type, String id, ListOptions options) {
-        return resource(service.get(id, ApiContext.getContext().getApiRequest()));
+        ApiRequest request = ApiContext.getContext().getApiRequest();
+        // Native action prefetch joins the outer write transaction. Observing here
+        // would retain a row lock before action() acquires the application lock.
+        boolean actionTarget = request != null && "POST".equals(request.getMethod()) && request.getAction() != null
+                && options != null && options.getMutationTarget() != null && options.getMutationTarget().matches(request, type, id);
+        return resource(actionTarget ? service.actionTarget(id, request) : service.get(id, request));
     }
     @Override protected Object resourceActionInternal(Object obj, ApiRequest request) {
         Map<String, Object> result = service.action(request.getId(), request);
