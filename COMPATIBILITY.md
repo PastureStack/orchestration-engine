@@ -1,8 +1,8 @@
 # Compatibility Contract
 
-## Engine 0.183.368 source candidate
+## Engine 0.183.368 release
 
-This candidate adds an optional TCP `healthCheck` to the existing typed External
+This release adds an optional TCP `healthCheck` to the existing typed External
 Service CREATE plan. Its closed caller object requires `port` from 1 through
 65535 and permits `interval`, `responseTimeout`, `healthyThreshold` and
 `unhealthyThreshold`. Optional timing values use the existing typed positive
@@ -18,12 +18,38 @@ checks remain unsupported; ordinary Service health checks are unchanged.
 
 The existing parent, owner, role, Key revision, approval and one-claim boundaries
 remain. Source re-extraction retains 447 inputs and all 1396 HTTP tuples with no
-operation, admission, native-schema or role-grant delta. Existing focused source
-evidence covers 48 unique methods: 7 new and 41 inherited. It is not a fresh full
-suite, original CI qualification, publication or Server runtime acceptance.
-The candidate is **not published**; README continues to describe released Engine
-0.183.367.
-See the [candidate note](docs/releases/orchestration-engine-0.183.368.md).
+operation, admission, native-schema or role-grant delta. All 16 packaged frozen
+serialized schemas retain their published bytes; the 175 packaged native schema
+JSON files match the committed source.
+
+Original Security/JDK25 and both independent CodeQL runs passed. The original
+Maven report contains 425 suites / 3,947 tests / zero failures/errors / one
+inherited skip. All 132 required identities passed, preserving the prior 125;
+48 affected methods contain seven new TCP methods and 41 inherited methods.
+Publication reused the qualified original CI artifact without rebuilding or
+rerunning tests or scans.
+
+The signed producer `1098514b65518d2cde4068884cf6f130576290f3` and normal PR156
+merge/tag commit `1cbce0e73821c5b59f221c36673026be328014c3` share tested tree
+`5f23ee46c56132bd90e4bbdd6a58ce13fc8f9615`. All 12 original assets passed
+anonymous checksum readback, and GitHub's cryptographic immutable-release
+attestation passed verification. The build workflow did **not** provide SLSA
+attestations; these are distinct publication guarantees. See the
+[published release](https://github.com/PastureStack/orchestration-engine/releases/tag/v0.183.368)
+and its [mirrored release note](docs/releases/orchestration-engine-0.183.368.md).
+
+The original raw Dapper scan contains 56 findings. Its unchanged, exact pip-vendor
+VEX accounts for five findings; the effective report retains 44 MEDIUM and seven
+LOW findings without fixes, with zero CRITICAL/HIGH or fixed-version findings.
+The application artifact scan reports no findings. Neither result implies a
+vulnerability-free deployed Server. Existing official PCRE2 security version
+`10.46-1ubuntu0.1` remains verified in the Dapper inventory and both scans.
+
+Server 1.6.566 still includes Engine 0.183.367. Engine 0.183.368 publication does
+not qualify a new deployment. Matching Web Console 1.6.207 and a new Server
+assembly, External TCP native roles/Key scopes, normal human review and live
+receipt acceptance remain pending. Full frontend coverage remains in progress;
+no whole-group or 243-group runtime completion is claimed.
 
 ## Engine 0.183.367 release
 

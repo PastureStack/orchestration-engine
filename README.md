@@ -8,32 +8,37 @@ Rancher 1.6 ecosystem. It is not affiliated with Rancher Labs or SUSE.
 This fork of [`rancher/cattle`](https://github.com/rancher/cattle) preserves
 upstream history, authorship, licenses, and dependency notices.
 
-## Latest published release: Engine 0.183.367
+## Latest published release: Engine 0.183.368
 
-[Engine 0.183.367](https://github.com/PastureStack/orchestration-engine/releases/tag/v0.183.367)
-is published with 12 original assets verified by anonymous SHA256 readback.
-Use the [Server installation guide](https://github.com/PastureStack/server#quick-start)
+[Engine 0.183.368](https://github.com/PastureStack/orchestration-engine/releases/tag/v0.183.368)
+is published with 12 original assets verified by anonymous SHA256 readback and
+GitHub's cryptographic immutable-release attestation. Use the
+[Server installation guide](https://github.com/PastureStack/server#quick-start)
 for deployment; an Engine JAR alone is not a Server installation.
 
-Human-reviewed Service image upgrades accept optional `startFirst`, `batchSize`
-and `intervalMillis`. Their effective values remain immutable through approval,
-native preflight and dispatch. New strategy snapshots make older Engines reject
-pending newer plans as stale; genuine legacy image-only plans keep their defaults.
-Typed Audit queries reject unknown caller fields before schema sanitization.
-Catalog-launch, resource-change and upgrade action lookups preserve application/row
-lock order while retaining ordinary receipt reads and current owner/role/Key checks.
+Typed External Service creation accepts an optional closed TCP health check:
+required `port` and four optional timing/threshold integers. Omitted values stay
+omitted. Human review retains the caller's exact fields, native authorization is
+rechecked before dispatch, and completion requires matching TCP readback.
+External Service HTTP health checks and health-check updates remain unsupported.
+
+Human-reviewed Service image upgrades retain immutable effective strategies,
+native preflight and the older-Engine snapshot fence. Typed Audit queries reject
+unknown caller fields before schema sanitization. Catalog-launch, resource-change
+and upgrade action lookups preserve application/row lock order and current
+owner/role/Key checks.
 
 | Qualification | Current evidence |
 |---|---|
-| Original component CI and artifact | Required CI/CodeQL and original artifact qualification passed: 424 suites / 3,940 tests / zero failures/errors / one inherited skip. The 13 affected classes contain 28 new and 76 inherited methods; all 125 required identities passed. |
-| Public bytes | All 12 original assets passed anonymous checksum readback; publication used the original CI bytes without rebuilding. |
-| Build environment | The original Dapper inventory and raw/effective scans verify both Ubuntu PCRE2 packages at official security version `10.46-1ubuntu0.1`. This qualifies the builder, not a deployed Server image. |
-| Assembled Server and live workflows | Matching Server/Web Console/Bridge and native business, role/Key, UI and weak-model acceptance remain pending. Component publication does not prove runtime acceptance. |
+| Original component CI and artifact | Required CI/CodeQL and original artifact qualification passed: 425 suites / 3,947 tests / zero failures/errors / one inherited skip. All 132 required identities passed, preserving the prior 125. The 48 affected methods contain seven new TCP methods and 41 inherited methods. |
+| Public bytes | All 12 original assets passed anonymous checksum readback. Publication reused the original CI bytes; GitHub's immutable-release attestation is verified separately. The build workflow did not provide SLSA attestations. |
+| Security scope | The original Dapper effective scan retains 44 MEDIUM and seven LOW findings without fixes. Raw reports and the exact existing VEX are retained; these findings are not claimed patched. Builder evidence does not qualify a deployed Server image. |
+| Assembled Server and live workflows | Server 1.6.566 still includes Engine 0.183.367. Matching Web Console 1.6.207, a new Server assembly and External TCP native role/Key, human-review and runtime acceptance remain pending. |
 
 Four independent AI opt-ins remain default-off. The
-[release note](docs/releases/orchestration-engine-0.183.367.md) records exact
-published identities and compatibility limits. These component results do not
-complete all 243 frontend business groups.
+[release note](docs/releases/orchestration-engine-0.183.368.md) mirrors the immutable
+public release body. These component results do not complete all 243 frontend
+business groups.
 
 ## Optional AI resource workflows
 
@@ -159,7 +164,7 @@ evidence are maintained in the
 Acceptance is limited to the documented affected paths, not every resource and
 role combination.
 Versioned evidence and upgrade boundaries are in the
-[367 release note](docs/releases/orchestration-engine-0.183.367.md);
+[368 release note](docs/releases/orchestration-engine-0.183.368.md);
 older changes remain in [release notes](docs/releases).
 
 ## Build and validation
@@ -174,7 +179,7 @@ Before publishing an Engine artifact, run the complete package gate:
 
 ```sh
 bash scripts/check-cattle-jdk25-full-package
-ENGINE_VERSION=0.183.367 bash scripts/build --release
+ENGINE_VERSION=0.183.368 bash scripts/build --release
 bash scripts/check-release-artifact dist/artifacts/cattle.jar
 ```
 
