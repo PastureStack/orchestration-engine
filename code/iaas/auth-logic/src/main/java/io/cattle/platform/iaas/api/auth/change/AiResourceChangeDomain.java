@@ -128,6 +128,7 @@ public class AiResourceChangeDomain extends AbstractJooqDao {
                 descriptor.method(), descriptor.action(), body);
         return authorized(original, request, () -> {
             if (boundPlan != null) keys.authorizeBoundDomain(boundPlan, request);
+            validateExternalHealthCheck(descriptor, parameters, request);
             if (descriptor.createsResource() && "service".equals(descriptor.resourceType())) {
                 Map<String, Object> validated = copyMap(request.getRequestObject());
                 if (!(validated.get("launchConfig") instanceof Map<?, ?> launch)) throw error(403, "PermissionDenied");
@@ -211,6 +212,7 @@ public class AiResourceChangeDomain extends AbstractJooqDao {
         ApiRequest request = domain(original, descriptor, descriptor.resourceType(), publicId,
                 descriptor.method(), descriptor.action(), descriptor.body(parameters));
         return authorized(original, request, () -> {
+            validateExternalHealthCheck(descriptor, parameters, request);
             request.setAttribute("apiKey.audit.requestId", planId);
             return processObserver.dispatch(request, planId, () -> {
                 ResourceManager manager = manager(descriptor.resourceType());
@@ -225,6 +227,12 @@ public class AiResourceChangeDomain extends AbstractJooqDao {
                 return result;
             });
         });
+    }
+
+    private void validateExternalHealthCheck(AiResourceChangeDescriptor descriptor, Map<String, Object> parameters, ApiRequest request) {
+        if (descriptor.createsResource() && "externalService".equals(descriptor.resourceType())
+                && !AiExternalServiceChange.healthCheckMatches(parameters.get("healthCheck"),
+                        copyMap(request.getRequestObject()).get("healthCheck"))) throw error(403, "PermissionDenied");
     }
 
     private ApiRequest domain(ApiRequest original, AiResourceChangeDescriptor descriptor, String type,

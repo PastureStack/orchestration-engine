@@ -5,6 +5,7 @@ import io.cattle.platform.core.model.tables.records.ServiceRecord;
 import io.cattle.platform.core.model.tables.records.ServiceExposeMapRecord;
 import io.cattle.platform.object.util.DataAccessor;
 import io.github.ibuildthecloud.gdapi.exception.ClientVisibleException;
+import java.util.Arrays;
 import java.util.Date;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -19,6 +20,7 @@ public class AiExternalServiceChangeTest {
         assertEquals("externalService", body.get("type")); assertEquals(false, body.get("startOnCreate"));
         assertEquals(Map.of(), body.get("launchConfig")); assertNull(body.get("externalIpAddresses"));
         assertFalse(body.containsKey("image")); assertFalse(body.containsKey("imageUuid"));
+        assertFalse(body.containsKey("healthCheck"));
         assertTrue(descriptor.requiresStackParent()); assertEquals("create", descriptor.keyOperation());
         assertEquals("update", AiResourceChangeDescriptor.require("externalService", "start").keyOperation());
         assertEquals("delete", AiResourceChangeDescriptor.require("externalService", "remove").keyOperation());
@@ -109,6 +111,74 @@ public class AiExternalServiceChangeTest {
                 withoutNulls(AiExternalServiceChange.summary(Map.of("externalIpAddresses", List.of("192.0.2.1", "::1"), "password", "PRIVATE"))));
         assertTrue(AiExternalServiceChange.summary(Map.of("hostname", "https://user:PRIVATE@db.test/path")).isEmpty());
         assertTrue(AiExternalServiceChange.summary(Map.of("externalIpAddresses", List.of("PRIVATE"))).isEmpty());
+    }
+
+    @Test public void tcpCreateCopiesOnlyTheApprovedFieldsAndKeepsNativeTcpMarkerPrivate() {
+        var descriptor = AiResourceChangeDescriptor.require("externalService", "create");
+        var health = new LinkedHashMap<String, Object>(Map.of("port", 65535L, "interval", Integer.MAX_VALUE,
+                "responseTimeout", 1, "healthyThreshold", 2, "unhealthyThreshold", 3));
+        var input = new LinkedHashMap<String, Object>(Map.of("name", "db", "stackId", "1st8", "hostname", "db.test", "healthCheck", health));
+        var parameters = descriptor.parameters(input); health.put("port", 1);
+        Map<?, ?> approved = (Map<?, ?>) parameters.get("healthCheck");
+        assertEquals(65535, approved.get("port")); assertEquals(5, approved.size());
+        Map<?, ?> nativeHealth = (Map<?, ?>) descriptor.body(parameters).get("healthCheck");
+        assertTrue(nativeHealth.containsKey("requestLine")); assertNull(nativeHealth.get("requestLine"));
+        assertFalse(approved.containsKey("requestLine")); assertFalse(nativeHealth.containsKey("strategy"));
+        assertEquals(Map.of("port", 1), descriptor.parameters(Map.of("name", "db", "stackId", "1st8", "hostname", "db.test",
+                "healthCheck", Map.of("port", 1))).get("healthCheck"));
+    }
+
+    @Test public void tcpHealthCheckIsClosedCreateOnlyAndRejectsInvalidNumbersWithoutDefaults() {
+        var descriptor = AiResourceChangeDescriptor.require("externalService", "create");
+        for (Object value : Arrays.asList(null, "80", List.of(80), Map.of(), Map.of("interval", 1)))
+            assertInvalidHealth(descriptor, value);
+        for (String field : List.of("port", "interval", "responseTimeout", "healthyThreshold", "unhealthyThreshold")) {
+            for (Object value : Arrays.asList(null, "1", true, 0, -1, 1.5, Double.NaN, Double.POSITIVE_INFINITY, 2147483648L)) {
+                var health = new LinkedHashMap<String, Object>(Map.of("port", 80)); health.put(field, value);
+                assertInvalidHealth(descriptor, health);
+            }
+        }
+        assertInvalidHealth(descriptor, Map.of("port", 65536));
+        for (String field : List.of("requestLine", "strategy", "url", "Host", "host", "headers", "unknown")) {
+            var health = new LinkedHashMap<String, Object>(Map.of("port", 80)); health.put(field, null);
+            assertInvalidHealth(descriptor, health);
+        }
+        for (String operation : List.of("update_metadata", "update_targets", "start", "stop", "remove"))
+            assertThrows(ClientVisibleException.class, () -> AiResourceChangeDescriptor.require("externalService", operation)
+                    .parameters(Map.of("healthCheck", Map.of("port", 80))));
+    }
+
+    @Test public void createReceiptRequiresExactTcpReadbackAndOmittedHealthCheckStaysNone() {
+        var service = service(); service.setState("inactive");
+        var parameters = Map.<String, Object>of("hostname", "db.test", "healthCheck", Map.of("port", 80, "interval", 2000));
+        assertFalse(AiExternalServiceChange.complete("create", service, parameters, List.of()));
+        var nativeHealth = new LinkedHashMap<String, Object>(Map.of("port", 80L, "interval", 2000L,
+                "strategy", "recreate", "type", "instanceHealthCheck"));
+        nativeHealth.put("requestLine", null); nativeHealth.put("responseTimeout", null);
+        DataAccessor.fields(service).withKey("healthCheck").set(nativeHealth);
+        assertTrue(AiExternalServiceChange.complete("create", service, parameters, List.of()));
+        assertFalse(AiExternalServiceChange.complete("create", service, Map.of("hostname", "db.test"), List.of()));
+        for (String drift : List.of("http", "port", "interval", "extraTiming", "strategy")) {
+            var changed = new LinkedHashMap<>(nativeHealth);
+            switch (drift) {
+            case "http" -> changed.put("requestLine", "GET / HTTP/1.0");
+            case "port" -> changed.put("port", 81);
+            case "interval" -> changed.remove("interval");
+            case "extraTiming" -> changed.put("healthyThreshold", 2);
+            case "strategy" -> changed.put("strategy", "none");
+            default -> fail();
+            }
+            DataAccessor.fields(service).withKey("healthCheck").set(changed);
+            assertFalse(drift, AiExternalServiceChange.complete("create", service, parameters, List.of()));
+        }
+        DataAccessor.fields(service).withKey("healthCheck").set(null);
+        assertTrue(AiExternalServiceChange.complete("create", service, Map.of("hostname", "db.test"), List.of()));
+    }
+
+    private static void assertInvalidHealth(AiResourceChangeDescriptor descriptor, Object health) {
+        var input = new LinkedHashMap<String, Object>(Map.of("name", "db", "stackId", "1st8", "hostname", "db.test"));
+        input.put("healthCheck", health);
+        assertEquals("ResourceChangeInputInvalid", assertThrows(ClientVisibleException.class, () -> descriptor.parameters(input)).getCode());
     }
 
     private static Map<String, Object> withoutNulls(Map<String, Object> source) {

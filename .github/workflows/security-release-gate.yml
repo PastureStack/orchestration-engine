@@ -241,6 +241,17 @@ jobs:
               'io.cattle.platform.iaas.api.auth.change.AiResourceChangePlanServiceTest': {
                   'nativeAndDirectDenialsKeepOnlyTheirStatusAndCodeBeforeAnyPlanIsStored',
               },
+              'io.cattle.platform.iaas.api.auth.change.AiExternalServiceChangeTest': {
+                  'tcpCreateCopiesOnlyTheApprovedFieldsAndKeepsNativeTcpMarkerPrivate',
+                  'tcpHealthCheckIsClosedCreateOnlyAndRejectsInvalidNumbersWithoutDefaults',
+                  'createReceiptRequiresExactTcpReadbackAndOmittedHealthCheckStaysNone',
+              },
+              'io.cattle.platform.iaas.api.auth.change.AiExternalServiceTcpHealthCheckTest': {
+                  'nativeSchemaKeepsTopLevelTcpFieldsAndNoneWithoutAddingTimingDefaults',
+                  'nativeRoleRemovalHttpFallbackAndBoundKeyRevocationFailBeforeMutation',
+                  'approvedTcpSurvivesJsonReloadHumanReviewNativeDispatchAndOneReceipt',
+                  'changedApprovedTcpBodyAndCurrentRoleCannotReachTheDurableClaim',
+              },
           }
           suites = []
           observed = {}

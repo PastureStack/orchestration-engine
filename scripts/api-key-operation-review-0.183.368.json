@@ -1,0 +1,82 @@
+{
+  "schemaVersion": 1,
+  "version": "0.183.368",
+  "scope": "SOURCE_ONLY_NOT_RUNTIME_ACCEPTANCE",
+  "reviewedBaseCommit": "8678dec7dd261c2f2b68f329f0722d8edc91ac1f",
+  "functionalSourceCommit": "2bd0ed5abffd3413422916b1df1aeaecb86fcb6a",
+  "sourceInputs": {
+    "algorithm": "c03-source-inputs-v1",
+    "baseline": {
+      "count": 447,
+      "sha256": "66a5ce2ee5f4277993c03de0f72a08dd828ec65e4c447430248c1b093583ab59"
+    },
+    "reviewed": {
+      "count": 447,
+      "sha256": "da122b39e8ffac069b78d60c7234ff62cbb1995028efa835a7f717f8d02dee4c"
+    },
+    "addedAnchors": []
+  },
+  "tupleReview": {
+    "baseline": 1396,
+    "candidate": 1396,
+    "added": 0,
+    "removed": 0,
+    "semanticChanges": 0,
+    "dispositionChanges": 0,
+    "sha256": "8f1c0fb378663b0b3d272efba2f211cb210eb6f17cb8035aefa33b56feeaf36a"
+  },
+  "delta": [
+    {
+      "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiExternalServiceChange.java",
+      "before": "d9497a9c37842c09e833d434e5f361585f721a72eff9976c5b66902181f392e5",
+      "after": "4475ebc7215960f69ebaf5c5c925a3c2f4b933975efb9205aba16f80d30eaf47"
+    },
+    {
+      "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiResourceChangeDescriptor.java",
+      "before": "c60650a74476af5faadd8cc76bcab4d073fd294dfac28d8dc176c07daeb7d4dc",
+      "after": "8b81eaa0446c07c786e588ae8299456bc3c25dca90cf31810c29d1ca5a838e35"
+    },
+    {
+      "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiResourceChangeDomain.java",
+      "before": "fc2245d42e31f3426fef91d68bbe8039f67f50b0a47b9e60cd003c83d1776ad0",
+      "after": "331c7fa5eae1f60d4f33e3f3767c546d684042be6156a756ab60c627feef443a"
+    }
+  ],
+  "schemaFieldDelta": {},
+  "roleFieldDelta": [],
+  "typedInputDelta": {
+    "resourceType": "externalService",
+    "operation": "create",
+    "field": "healthCheck",
+    "closedCallerFields": [
+      "port",
+      "interval",
+      "responseTimeout",
+      "healthyThreshold",
+      "unhealthyThreshold"
+    ],
+    "requiredPort": {
+      "minimum": 1,
+      "maximum": 65535
+    },
+    "optionalTimings": {
+      "minimum": 1,
+      "maximum": 2147483647,
+      "nativeMinimumMaximumDefault": null,
+      "meaning": "Existing typed positive-integer subset; not native metadata limits. No omitted default is inserted."
+    },
+    "nonePreservedOnOmission": true,
+    "httpAndUpdateUnsupported": true,
+    "internalRequestLineNullNotPublic": true
+  },
+  "authorizationBoundary": "External Service CREATE accepts an optional closed TCP healthCheck subset through its existing typed plan owner. Exactly the five caller fields are reviewed; port is required 1..65535 and four omitted timing fields are not filled. The positive integer timing subset matches existing typed Service validation; native metadata declares no timing minimum or defaults. HTTP controls and unknown, null, wrong-type or fractional values are rejected. The detached native body alone carries requestLine=null. Native schema/role projection is rechecked before preparation and dispatch; exact TCP readback is required for a verified receipt. No UPDATE healthCheck support, new HTTP route, operation semantics, role/Key grant, or approval bypass. Omitted healthCheck retains None and ordinary Service health checks are unchanged.",
+  "frozenV1SchemaFilesUnchanged": true,
+  "extractor": {
+    "constructionSha256": "078ffe48881469fe5eb3cb43a15fa41b480fe70e11bd5f63102ded6b35a6d076",
+    "parserSha256": "7cc8e70d9f3ea391eb74fef2490f4407aa47833c585b6729c62b3d9e5829ac2b",
+    "extractorSha256": "112d2ff723d88acbe7bb45ff48c9c9018feb93b08031a3e86f867030871477fc"
+  },
+  "historicalProducerAndReviewChainsPreserved": true,
+  "artifactQualificationClaimed": false,
+  "runtimeAcceptanceClaimed": false
+}

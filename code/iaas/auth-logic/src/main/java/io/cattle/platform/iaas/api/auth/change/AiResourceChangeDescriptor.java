@@ -36,7 +36,7 @@ public record AiResourceChangeDescriptor(String resourceType, String operation, 
                     : Set.of("update_metadata", "update_targets").contains(operation) ? "PUT" : "POST",
                     "start".equals(operation) ? "activate" : "stop".equals(operation) ? "deactivate" : null,
                     "remove".equals(operation) ? "delete" : "create".equals(operation) ? "create" : "update",
-                    "create".equals(operation) ? Set.of("name", "description", "stackId", "hostname", "externalIpAddresses")
+                    "create".equals(operation) ? Set.of("name", "description", "stackId", "hostname", "externalIpAddresses", "healthCheck")
                     : "update_metadata".equals(operation) ? Set.of("name", "description")
                     : "update_targets".equals(operation) ? Set.of("hostname", "externalIpAddresses") : Set.of());
         }
