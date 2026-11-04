@@ -8,38 +8,32 @@ Rancher 1.6 ecosystem. It is not affiliated with Rancher Labs or SUSE.
 This fork of [`rancher/cattle`](https://github.com/rancher/cattle) preserves
 upstream history, authorship, licenses, and dependency notices.
 
-## Next candidate: Engine 0.183.369
+## Latest published release: Engine 0.183.369
 
-[Volume usage safe reads](docs/releases/orchestration-engine-0.183.369.md) are under
-source/CI preparation with matching Web Console 1.6.208 / bridge 0.2.10. This
-candidate is not published or runtime-qualified.
-
-## Latest published release: Engine 0.183.368
-
-[Engine 0.183.368](https://github.com/PastureStack/orchestration-engine/releases/tag/v0.183.368)
-is published with 12 original assets verified by anonymous SHA256 readback and
-GitHub's cryptographic immutable-release attestation. Use the
+[Engine 0.183.369](https://github.com/PastureStack/orchestration-engine/releases/tag/v0.183.369)
+is published with twelve original assets verified by anonymous checksum readback
+and GitHub's cryptographic immutable-release attestation. Use the
 [Server installation guide](https://github.com/PastureStack/server#quick-start)
 for deployment; an Engine JAR alone is not a Server installation.
 
-Typed External Service creation accepts an optional closed TCP health check:
-required `port` and four optional timing/threshold integers. Omitted values stay
-omitted. Human review retains the caller's exact fields, native authorization is
-rechecked before dispatch, and completion requires matching TCP readback.
-External Service HTTP health checks and health-check updates remain unsupported.
+Volume detail adds at most fifty currently readable container references from
+native SQL bounded to fifty-one relationships. Names, states, container mount
+paths and read-only mode retain native role/Key visibility. Separately readable
+Stack names distinguish same-name containers. Hidden identities/counts, host
+source paths and secrets are excluded. Completeness stays unknown: empty or
+partial results never establish unused or safe-to-delete status.
 
-Human-reviewed Service image upgrades retain immutable effective strategies,
-native preflight and the older-Engine snapshot fence. Typed Audit queries reject
-unknown caller fields before schema sanitization. Catalog-launch, resource-change
-and upgrade action lookups preserve application/row lock order and current
-owner/role/Key checks.
+Typed changes retain their native owner, current Key revision, exact human
+approval and one-claim checks. No new tool, grant or deletion rule is added.
 
-| Qualification | Current evidence |
-|---|---|
-| Original component CI and artifact | Required CI/CodeQL and original artifact qualification passed: 425 suites / 3,947 tests / zero failures/errors / one inherited skip. All 132 required identities passed, preserving the prior 125. The 48 affected methods contain seven new TCP methods and 41 inherited methods. |
-| Public bytes | All 12 original assets passed anonymous checksum readback. Publication reused the original CI bytes; GitHub's immutable-release attestation is verified separately. The build workflow did not provide SLSA attestations. |
-| Security scope | The original Dapper effective scan retains 44 MEDIUM and seven LOW findings without fixes. Raw reports and the exact existing VEX are retained; these findings are not claimed patched. Builder evidence does not qualify a deployed Server image. |
-| Assembled Server and live workflows | Server 1.6.566 still includes Engine 0.183.367. Matching Web Console 1.6.207, a new Server assembly and External TCP native role/Key, human-review and runtime acceptance remain pending. |
+Original CI, source/artifact qualification, immutable release verification and
+public checksums are recorded in the
+[published release note](docs/releases/orchestration-engine-0.183.369.md).
+Existing lower security findings remain disclosed; publication is not a claim
+of zero vulnerabilities. Server 1.6.567 still includes Engine 0.183.368.
+Matching Web 1.6.208 / bridge0.2.10, a new Server assembly and designated native
+Volume/reference/role/Key/layout acceptance remain separate. Full frontend
+coverage is in progress.
 
 Four independent AI opt-ins remain default-off. The
 [release note](docs/releases/orchestration-engine-0.183.368.md) mirrors the immutable

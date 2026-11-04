@@ -1,17 +1,44 @@
 # Compatibility Contract
 
-## Engine 0.183.369 candidate — not published
+## Engine 0.183.369 published
 
-The existing typed Volume detail gains at most 50 freshly authorized container
-references from a native SQL snapshot bounded to 51 rows. Completeness remains
-unknown; missing results cannot establish unused or safe-to-delete status.
-Current role-schema scalar values, Key scopes and canonical read audit remain;
-no output-filter, operation grant or deletion-oracle change is introduced.
-Native parent names require a readable persisted Stack relation and fresh read.
-Matching Web Console 1.6.208 / bridge 0.2.10, original artifact qualification
-and native workflow acceptance remain pending. Required test identities are
-132 preserved plus ten new methods (142); see the
-[candidate note](docs/releases/orchestration-engine-0.183.369.md).
+Volume detail gains a read-only projection of at most fifty currently readable
+container references. The native query limits relationships to fifty-one before
+materialization. Current account/object authorization, exact attested Key query
+scope and role-schema scalar visibility remain authoritative. Safe persisted
+metadata keeps native wrapping precedence; transformed/create-only fields are
+excluded before access. Parent names require a readable persisted Stack relation
+and a fresh authorized Stack read. Ordinary output filters are unchanged.
+
+Hidden target identities/counts, host source paths, configuration and secrets
+are excluded. The selected Volume read retains canonical audit; direct denied
+requests retain DENY audit. Completeness is always unknown, and missing results
+cannot establish unused or safe-to-delete status. No tool, grant, write or
+native deletion-oracle change is introduced. C03 source binding has 449 inputs
+and the same 1396 tuples, with no semantic or grant delta.
+
+Original required CI and both independent CodeQL workflows passed. Actual Maven
+results are 427 suites / 3,957 tests / zero failures/errors / one inherited skip;
+all 142 required identities passed, preserving 132 prior identities. Ten new and
+sixteen inherited affected methods passed. Independent extended CodeQL retains
+the same four lower findings from published368 (three score4 insecure-cookie
+findings and one score5 unreleased-lock finding), with no new Volume sink and
+zero Critical/High or unresolved rules. Organization CodeQL has zero results.
+The original raw/effective Dapper reports retain 44 MEDIUM and seven LOW findings
+without fixes. This is not a zero-vulnerability claim.
+
+Producer `69eba9f0e7e60907334a0514f19c84bb48a22f4c` and normal PR158 squash
+merge/tag `bb77e0ae7da22a1c848d44edc0ef1cba7376369c` share tested tree
+`ba6ab5fd6e95fb3392a062b10dbee0778f84fe1f`. Publication reused the one original
+CI ZIP without rebuilding or rerunning tests/scans. All twelve public assets
+passed anonymous SHA256 readback and GitHub immutable-release cryptographic
+verification. The build workflow did not provide SLSA attestations.
+
+Server 1.6.567 still contains Engine 0.183.368. Matching Web 1.6.208 /
+bridge0.2.10, a new Server assembly and designated native role/Key/reference,
+audit and layout acceptance remain pending. No whole-family or 243-group runtime
+completion is claimed. See the
+[published release note](docs/releases/orchestration-engine-0.183.369.md).
 
 ## Engine 0.183.368 release
 
