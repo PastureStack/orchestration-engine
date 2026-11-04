@@ -1,5 +1,18 @@
 # Compatibility Contract
 
+## Engine 0.183.369 candidate — not published
+
+The existing typed Volume detail gains at most 50 freshly authorized container
+references from a native SQL snapshot bounded to 51 rows. Completeness remains
+unknown; missing results cannot establish unused or safe-to-delete status.
+Current role-schema scalar values, Key scopes and canonical read audit remain;
+no output-filter, operation grant or deletion-oracle change is introduced.
+Native parent names require a readable persisted Stack relation and fresh read.
+Matching Web Console 1.6.208 / bridge 0.2.10, original artifact qualification
+and native workflow acceptance remain pending. Required test identities are
+132 preserved plus ten new methods (142); see the
+[candidate note](docs/releases/orchestration-engine-0.183.369.md).
+
 ## Engine 0.183.368 release
 
 This release adds an optional TCP `healthCheck` to the existing typed External

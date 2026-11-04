@@ -252,6 +252,20 @@ jobs:
                   'approvedTcpSurvivesJsonReloadHumanReviewNativeDispatchAndOneReceipt',
                   'changedApprovedTcpBodyAndCurrentRoleCannotReachTheDurableClaim',
               },
+              'io.cattle.platform.iaas.api.auth.ai.view.AiVolumeUsageViewTest': {
+                  'activeAndStoppedSameNameReferencesUseFreshOwnersAndAuthorizedStackNames',
+                  'hiddenForeignRemovedOrUnreadableParentsNeverExposeIdentitiesOrCounts',
+                  'boundedSnapshotAndEmptyOrLegacyMetadataNeverClaimUnusedOrComplete',
+                  'realCustomKeyOwnerAuditsAllowAndDenyWithReadOnlyDispatchAndNoExtraGrant',
+                  'unattestedCustomKeyManagerReturnsUnknownWithoutTargetInspectionOrFallback',
+                  'laterTargetKeyRevisionRevocationAbortsTheWholeReadAndRestoresContext',
+                  'nativeCoreProjectionRetainsSchemaFieldVisibilityAndNeverInvokesDtoAugmentation',
+                  'volumeScalarsMatchOriginalNativeWrappingForJwtFullAndLegacyIncludingSchemaAliasesAndTransforms',
+              },
+              'io.cattle.platform.core.dao.impl.VolumeUsageDaoTest': {
+                  'nativeSqlBoundsRelationshipCandidatesBeforeMaterializationIncludingStoppedContainers',
+                  'nativeSqlExcludesEveryForeignRemovedAndNonContainerRelationshipWithoutWrites',
+              },
           }
           suites = []
           observed = {}
