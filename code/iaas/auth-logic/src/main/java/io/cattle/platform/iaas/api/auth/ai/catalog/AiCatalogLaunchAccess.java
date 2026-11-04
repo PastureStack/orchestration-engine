@@ -78,6 +78,15 @@ public class AiCatalogLaunchAccess extends io.cattle.platform.db.jooq.dao.impl.A
 
     /** Only persisted, already ownership-checked plans may supply the expected binding. */
     public Authorization bound(Map<String, Object> plan, ApiRequest request) {
+        return bound(plan, request, true);
+    }
+
+    /** Operand prefetch must not retain a credential row lock in the outer API transaction either. */
+    Authorization snapshot(Map<String, Object> plan, ApiRequest request) {
+        return bound(plan, request, false);
+    }
+
+    private Authorization bound(Map<String, Object> plan, ApiRequest request, boolean lockCredential) {
         long actor = positive(plan.get("actorId")), project = positive(plan.get("accountId"));
         var current = current(actor, project, request);
         if (plan.get("credentialId") == null) return new Authorization(current, null);
@@ -85,10 +94,11 @@ public class AiCatalogLaunchAccess extends io.cattle.platform.db.jooq.dao.impl.A
         if (!(plan.get("credentialRevision") instanceof Number expectedRevision) || expectedRevision.longValue() < 0
                 || expectedRevision.doubleValue() != expectedRevision.longValue()) throw error(403, "OwnerPermissionDenied");
         long revision = expectedRevision.longValue();
-        // Current locking read, not an older ordinary SELECT from an API's RR
-        // snapshot. Keep this credential stable until the surrounding write commits.
-        Credential credential = create().selectFrom(io.cattle.platform.core.model.tables.CredentialTable.CREDENTIAL)
-                .where(io.cattle.platform.core.model.tables.CredentialTable.CREDENTIAL.ID.eq(id)).forUpdate().fetchOne();
+        // Final get/action uses a current locking read and keeps the credential stable until commit.
+        // Operand snapshots are rechecked by action() before any claim, without retaining a row lock here.
+        var query = create().selectFrom(io.cattle.platform.core.model.tables.CredentialTable.CREDENTIAL)
+                .where(io.cattle.platform.core.model.tables.CredentialTable.CREDENTIAL.ID.eq(id));
+        Credential credential = lockCredential ? query.forUpdate().fetchOne() : query.fetchOne();
         if (credential == null || credential.getRemoved() != null || !"active".equals(credential.getState())
                 || !Set.of(CredentialConstants.KIND_API_KEY, CredentialConstants.KIND_API_KEY_RESTRICTED).contains(credential.getKind()))
             throw error(403, "ApiKeyRevoked");

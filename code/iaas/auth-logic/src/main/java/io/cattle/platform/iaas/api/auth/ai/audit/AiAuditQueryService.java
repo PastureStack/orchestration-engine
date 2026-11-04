@@ -19,6 +19,7 @@ import java.util.UUID;
 
 /** The Engine observes the complete Go-owner result before durably recording its canonical outcome. */
 public class AiAuditQueryService {
+    static final String ORIGINAL_FIELDS_REJECTED = AiAuditQueryService.class.getName() + ".originalFieldsRejected";
     static final Set<String> INPUTS = Set.of("keyId", "environmentId", "from", "to", "lastMinutes", "decision",
             "outcome", "operation", "targetType", "requestId", "httpStatus", "limit", "offset", "eventId");
     static final Set<String> ROW_FIELDS = Set.of("type", "id", "created", "accountId", "authenticatedAsAccountId", "keyId",
@@ -36,6 +37,7 @@ public class AiAuditQueryService {
         try {
             actor = keys.actor(request);
             if (actor == null || actor.getAuthenticatedAsAccountId() <= 0) throw error(403, "PermissionDenied");
+            if (Boolean.TRUE.equals(request.getAttribute(ORIGINAL_FIELDS_REJECTED))) throw error(422, "AuditQueryInputInvalid");
             Map<String, Object> query = input(request.getRequestObject());
             var servlet = request.getServletContext();
             if (servlet == null || servlet.getRequest() == null) throw error(403, "PermissionDenied");
@@ -86,6 +88,16 @@ public class AiAuditQueryService {
             try { audit.recordAuditQueryOutcome(request, actor, id, outcome, reason, count); }
             catch (RuntimeException unavailable) { throw error(503, "AuditQueryAuditUnavailable"); }
         }
+    }
+
+    static void captureOriginalFields(ApiRequest request) {
+        // Sticky across any repeated handler invocation. Retain no raw body,
+        // field values or caller-supplied field names in request attributes.
+        if (Boolean.TRUE.equals(request.getAttribute(ORIGINAL_FIELDS_REJECTED))) return;
+        Object value = request.getRequestObject();
+        boolean rejected = !(value instanceof Map<?, ?> fields)
+                || fields.keySet().stream().anyMatch(key -> !(key instanceof String) || !"type".equals(key) && !INPUTS.contains(key));
+        request.setAttribute(ORIGINAL_FIELDS_REJECTED, rejected);
     }
 
     static Map<String, Object> input(Object value) {

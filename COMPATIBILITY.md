@@ -1,5 +1,51 @@
 # Compatibility Contract
 
+## Engine 0.183.367 source candidate
+
+The existing image-upgrade plan accepts three optional strategy fields and
+returns a closed effective `upgradeStrategy`. Omitted fields and old persisted
+image-only plans keep `startFirst=false`, `batchSize=1`, `intervalMillis=2000`.
+Batch size retains the native minimum 1 and interval the native minimum 100ms.
+The JSON contract accepts exact integers through 9007199254740991; this is a
+client representation boundary, not a new native product maximum. The native
+preflight keeps its existing int-range batch normalization, while dispatch
+receives the approved Long values. Full/legacy keys, role/Key revision checks,
+port/volume rules and durable operation claims remain unchanged. No new mutation
+operation or global grant is introduced. Publication and runtime qualification
+remain pending; see the [candidate note](docs/releases/orchestration-engine-0.183.367.md).
+
+New plans bind the approved strategy into their private snapshot. An older
+Engine rejects these plans as stale before claiming an operation instead of
+applying its own defaults. Genuine legacy image-only plans remain compatible.
+After a downgrade, pending newer plans require a fresh preview and approval.
+
+Typed Audit queries now preserve a closed-field rejection through normal schema
+sanitization. The existing owner rejects unknown fields with422 and records its
+canonical ERROR outcome without starting the private query runner. Other API
+schema filtering and current actor/Key authorization remain unchanged.
+
+Catalog-launch, resource-change and upgrade action operands now use authorized,
+non-mutating read snapshots only for the framework's exact internal action marker.
+The native API write transaction previously retained a prefetch row lock after
+releasing its application lock, allowing a concurrent receipt GET to invert the
+next action's lock order. Ordinary GETs still refresh receipts; actions still
+reload under their application lock and repeat owner, role, Key, snapshot and
+durable-claim checks. No lock timeout, retry, database schema or grant changes.
+
+The lock-order tests declare managed Spring Context and AspectJ dependencies in
+test scope so they can load the shipped transaction advice and pointcut. Runtime
+dependency coordinates are unchanged.
+
+Frozen-package downloads retry transport failures only at the original signed
+snapshot URL, at most four attempts. Hash or size failures stop that origin
+immediately. Package selection, TLS verification and SHA256 checks are unchanged.
+
+Both Engine build recipes install Ubuntu's official PCRE2 security update
+`10.46-1ubuntu0.1` for the already installed `libpcre2-8-0` and `libpcre2-posix3`.
+The two archives are SHA256-pinned and their package, version, architecture and
+installed versions are checked. Other package locks and snapshot dates remain
+unchanged. See [USN-8974-1](https://ubuntu.com/security/notices/USN-8974-1).
+
 ## Engine 0.183.366 release
 
 The [published release](https://github.com/PastureStack/orchestration-engine/releases/tag/v0.183.366)

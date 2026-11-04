@@ -1,0 +1,312 @@
+{
+  "schemaVersion": 1,
+  "version": "0.183.367",
+  "scope": "SOURCE_ONLY_NOT_RUNTIME_ACCEPTANCE",
+  "reviewedBaseCommit": "c8cd1f8218d29e034c2569af1e0e8530c305ce50",
+  "sourceInputs": {
+    "algorithm": "c03-source-inputs-v1",
+    "baseline": {
+      "count": 441,
+      "sha256": "7ce17c8b05ccfba961414808148d8638bf54a9ad3bbc7de00facfcba4b26ac39"
+    },
+    "reviewed": {
+      "count": 447,
+      "sha256": "66a5ce2ee5f4277993c03de0f72a08dd828ec65e4c447430248c1b093583ab59"
+    },
+    "addedAnchors": [
+      "AiAuditQueryInputHandler.java",
+      "AiServiceUpgradePlanInputHandler.java",
+      "AiServiceUpgradePlanService.java",
+      "InServiceUpgradeStrategy.java",
+      "ServiceUpgradeStrategy.java",
+      "ServiceUpgradeValidation.java",
+      "ServiceUpgradeValidationFilter.java",
+      "VolumePreflightInputs.java",
+      "VolumePreflightService.java"
+    ]
+  },
+  "tupleReview": {
+    "baseline": 1396,
+    "candidate": 1396,
+    "added": 0,
+    "removed": 0,
+    "semanticChanges": 0,
+    "dispositionChanges": 0,
+    "sha256": "8f1c0fb378663b0b3d272efba2f211cb210eb6f17cb8035aefa33b56feeaf36a"
+  },
+  "delta": [
+    {
+      "path": "code/iaas/api-logic/src/main/java/io/cattle/platform/iaas/api/volume/VolumePreflightInputs.java",
+      "before": null,
+      "after": "dffdce7b133cf1bc16b410c32f365a6fee5ce807e79802a2b3d52a98da1dfc02",
+      "newlyBound": true,
+      "baselineSourceSha256": "dffdce7b133cf1bc16b410c32f365a6fee5ce807e79802a2b3d52a98da1dfc02"
+    },
+    {
+      "path": "code/iaas/api-logic/src/main/java/io/cattle/platform/iaas/api/volume/VolumePreflightService.java",
+      "before": null,
+      "after": "4f2a93e0e00abb68277d09351a0a85c7fa201bd8e1d07e2bbbd8bcaaa5ce18e2",
+      "newlyBound": true,
+      "baselineSourceSha256": "4f2a93e0e00abb68277d09351a0a85c7fa201bd8e1d07e2bbbd8bcaaa5ce18e2"
+    },
+    {
+      "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/ai/audit/AiAuditQueryInputHandler.java",
+      "before": null,
+      "after": "46abd6c96d543f84b3884d1dafd4f41db9f6111e0edf9f770a8289f5604390a1",
+      "newlyBound": true,
+      "baselineSourceSha256": null
+    },
+    {
+      "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/ai/audit/AiAuditQueryService.java",
+      "before": "4067cc8685399b2b2bfb9e7b5eaddd10b906f63fccf286ef7e118622e4e80ea6",
+      "after": "01f316fb38aefd1e43f81773dab71576ff53ef37c4b8a9e844ae6d2556df3aca",
+      "newlyBound": false,
+      "baselineSourceSha256": "4067cc8685399b2b2bfb9e7b5eaddd10b906f63fccf286ef7e118622e4e80ea6"
+    },
+    {
+      "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/ai/catalog/AiCatalogLaunchAccess.java",
+      "before": "639ceb2151b6668af77ff2f71ead2cd7699d76d45c17521e46a90af624286b52",
+      "after": "5f0e1de8995318226e0c8ae48acbd3a6e07b025e7fa068daa1bc5945e25c6d49",
+      "newlyBound": false,
+      "baselineSourceSha256": "639ceb2151b6668af77ff2f71ead2cd7699d76d45c17521e46a90af624286b52"
+    },
+    {
+      "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/ai/catalog/AiCatalogLaunchPlanResourceManager.java",
+      "before": "ef70bb6e029fdb446358ad81e9f791f14e892c28bda754b8ce479077fb85ff98",
+      "after": "b81b7e746d7557bd740b164123bd7584cf399b8b5a2bd57e258535392fe67b3d",
+      "newlyBound": false,
+      "baselineSourceSha256": "ef70bb6e029fdb446358ad81e9f791f14e892c28bda754b8ce479077fb85ff98"
+    },
+    {
+      "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/ai/catalog/AiCatalogLaunchPlanService.java",
+      "before": "77b8f8b2b4ade110064ba0a874db04c1d5adbfe9df68655b8760c395270a05e3",
+      "after": "119c0347b3e6b984a76e1250fb2d2fee79337b77b13ed9dd87d888518efa818a",
+      "newlyBound": false,
+      "baselineSourceSha256": "77b8f8b2b4ade110064ba0a874db04c1d5adbfe9df68655b8760c395270a05e3"
+    },
+    {
+      "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiResourceChangePlanResourceManager.java",
+      "before": "37da81bdccdb528c1d7f1b18217d3896cabd0ad601e6a3809fd50913b6613050",
+      "after": "17ba569ba4f5265d7d3a8e50cc3ce2d21d220232c354e169be511b74ce212b17",
+      "newlyBound": false,
+      "baselineSourceSha256": "37da81bdccdb528c1d7f1b18217d3896cabd0ad601e6a3809fd50913b6613050"
+    },
+    {
+      "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiResourceChangePlanService.java",
+      "before": "1d52b18a6b3efc5f86b30e52cb1ab57bb27f788e28703a4e7864d473dd7aa071",
+      "after": "1b920af86f0294b1c1e1ee44f4a9b7dc9bf7eac9e269298a1007c8ff235e6d45",
+      "newlyBound": false,
+      "baselineSourceSha256": "1d52b18a6b3efc5f86b30e52cb1ab57bb27f788e28703a4e7864d473dd7aa071"
+    },
+    {
+      "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/upgrade/AiServiceUpgradePlanInputHandler.java",
+      "before": null,
+      "after": "a38c9fece7444a5fd5385b48f9b9ca2997e8218c82c91096473115cc87ee69aa",
+      "newlyBound": true,
+      "baselineSourceSha256": null
+    },
+    {
+      "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/upgrade/AiServiceUpgradePlanResourceManager.java",
+      "before": "51ac797f47ba68e52d360c6c53bb3aa143e33a637286deca9636f5d55559f1a8",
+      "after": "30cb1cdae0766c0f0a6c7f3f4c27187ca0bd565002bda4e311368e420e88d9a7",
+      "newlyBound": false,
+      "baselineSourceSha256": "51ac797f47ba68e52d360c6c53bb3aa143e33a637286deca9636f5d55559f1a8"
+    },
+    {
+      "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/upgrade/AiServiceUpgradePlanService.java",
+      "before": null,
+      "after": "7398ac81e4287ee2e950d2b86b8ce55fd574d8af40831044553514e729d8204d",
+      "newlyBound": true,
+      "baselineSourceSha256": "12782760bbd8e600c06876006e39ff9e7f3de818ffb8e39a5e294f9484579a8a"
+    },
+    {
+      "path": "code/iaas/service-discovery/api/src/main/java/io/cattle/platform/servicediscovery/api/filter/ServiceUpgradeValidationFilter.java",
+      "before": "27cea9ff5e7efc030de24d0095669fa5812a7931d64bcdbf8dfefb8888d7db36",
+      "after": "1adcf76557b3392161a46393d795b67a0ccc781a49d544fa8672aafe49475a63",
+      "newlyBound": false,
+      "baselineSourceSha256": "27cea9ff5e7efc030de24d0095669fa5812a7931d64bcdbf8dfefb8888d7db36"
+    },
+    {
+      "path": "code/iaas/service-discovery/api/src/main/java/io/cattle/platform/servicediscovery/api/service/ServiceUpgradeValidation.java",
+      "before": null,
+      "after": "ffcf91e17f0aaffe821acf297d1e125768a5332c062c1bf5c435114035255cf1",
+      "newlyBound": true,
+      "baselineSourceSha256": null
+    },
+    {
+      "path": "code/packaging/app-config/src/main/java/io/cattle/platform/app/IaasApiConfig.java",
+      "before": "59b633a3f6614f811b5f14b0eeeeb1f99683d319a2c28bea2093f48a33a53130",
+      "after": "fa64b48420abe59930c464283a773d2dfcccbaeea152fdf1a997d8dcae184e9a",
+      "newlyBound": false,
+      "baselineSourceSha256": "59b633a3f6614f811b5f14b0eeeeb1f99683d319a2c28bea2093f48a33a53130"
+    },
+    {
+      "path": "resources/content/schema/admin/admin-auth.json",
+      "before": "f713ba64c53fb498b2cbe7f96b5c794ed35d093a74a78cafcffe3f19b59ef5df",
+      "after": "0282ac1900b37648214fc48dce394e00c1b22cc27340e08612d5e5e81ca66f64",
+      "newlyBound": false,
+      "baselineSourceSha256": "f713ba64c53fb498b2cbe7f96b5c794ed35d093a74a78cafcffe3f19b59ef5df"
+    },
+    {
+      "path": "resources/content/schema/base/aiServiceUpgradePlan.json",
+      "before": "025cd4a0b044cda9f2500a79a99b605c867f95e8f69d46997ed843b221d67cb6",
+      "after": "5285ad2caab0e05e28fed27299e5ad114e84c15820bba9a9cfbfc45a163b62d0",
+      "newlyBound": false,
+      "baselineSourceSha256": "025cd4a0b044cda9f2500a79a99b605c867f95e8f69d46997ed843b221d67cb6"
+    },
+    {
+      "path": "resources/content/schema/project/project-auth.json",
+      "before": "ce1ebde019bfd57d6ddd5c2b77d119a76e1df38bf887371e765478c3d96388cf",
+      "after": "8ba8e18dca27a9cc65208c49a5ab72f3ff3d4d4353ae6b8d6891a2f913a76f09",
+      "newlyBound": false,
+      "baselineSourceSha256": "ce1ebde019bfd57d6ddd5c2b77d119a76e1df38bf887371e765478c3d96388cf"
+    },
+    {
+      "path": "resources/content/schema/user/user-auth.json",
+      "before": "66a82fa448806fb826ecd7a11bc9dc6cc9598e7a221d63191113457fd3376091",
+      "after": "4f54ea9c4b8b2d7d7e849e17a73f33d7262f2519e8263e28842ee7eaec414835",
+      "newlyBound": false,
+      "baselineSourceSha256": "66a82fa448806fb826ecd7a11bc9dc6cc9598e7a221d63191113457fd3376091"
+    }
+  ],
+  "schemaFieldDelta": {
+    "startFirst": {
+      "type": "boolean",
+      "create": true,
+      "update": false,
+      "nullable": false
+    },
+    "batchSize": {
+      "type": "int",
+      "create": true,
+      "update": false,
+      "nullable": false,
+      "min": 1,
+      "max": 9007199254740991
+    },
+    "intervalMillis": {
+      "type": "int",
+      "create": true,
+      "update": false,
+      "nullable": false,
+      "min": 100,
+      "max": 9007199254740991
+    },
+    "upgradeStrategy": {
+      "type": "json",
+      "create": false,
+      "update": false
+    }
+  },
+  "roleFieldDelta": [
+    {
+      "path": "resources/content/schema/admin/admin-auth.json",
+      "pointer": "/authorize/aiServiceUpgradePlan.startFirst",
+      "before": null,
+      "after": "cr"
+    },
+    {
+      "path": "resources/content/schema/admin/admin-auth.json",
+      "pointer": "/authorize/aiServiceUpgradePlan.batchSize",
+      "before": null,
+      "after": "cr"
+    },
+    {
+      "path": "resources/content/schema/admin/admin-auth.json",
+      "pointer": "/authorize/aiServiceUpgradePlan.intervalMillis",
+      "before": null,
+      "after": "cr"
+    },
+    {
+      "path": "resources/content/schema/admin/admin-auth.json",
+      "pointer": "/authorize/aiServiceUpgradePlan.upgradeStrategy",
+      "before": null,
+      "after": "r"
+    },
+    {
+      "path": "resources/content/schema/project/project-auth.json",
+      "pointer": "/authorize/aiServiceUpgradePlan.startFirst",
+      "before": null,
+      "after": "cr"
+    },
+    {
+      "path": "resources/content/schema/project/project-auth.json",
+      "pointer": "/authorize/aiServiceUpgradePlan.batchSize",
+      "before": null,
+      "after": "cr"
+    },
+    {
+      "path": "resources/content/schema/project/project-auth.json",
+      "pointer": "/authorize/aiServiceUpgradePlan.intervalMillis",
+      "before": null,
+      "after": "cr"
+    },
+    {
+      "path": "resources/content/schema/project/project-auth.json",
+      "pointer": "/authorize/aiServiceUpgradePlan.upgradeStrategy",
+      "before": null,
+      "after": "r"
+    },
+    {
+      "path": "resources/content/schema/user/user-auth.json",
+      "pointer": "/authorize/aiServiceUpgradePlan.startFirst",
+      "before": null,
+      "after": "cr"
+    },
+    {
+      "path": "resources/content/schema/user/user-auth.json",
+      "pointer": "/authorize/aiServiceUpgradePlan.batchSize",
+      "before": null,
+      "after": "cr"
+    },
+    {
+      "path": "resources/content/schema/user/user-auth.json",
+      "pointer": "/authorize/aiServiceUpgradePlan.intervalMillis",
+      "before": null,
+      "after": "cr"
+    },
+    {
+      "path": "resources/content/schema/user/user-auth.json",
+      "pointer": "/authorize/aiServiceUpgradePlan.upgradeStrategy",
+      "before": null,
+      "after": "r"
+    }
+  ],
+  "authorizationBoundary": {
+    "existingRolePermissionsChanged": 0,
+    "newUpgradePlanOptionalInputEntries": 9,
+    "newReadOnlyRoleProjectionEntries": 3,
+    "newHttpMutationOperationGrants": 0,
+    "newGlobalMutationGrants": 0
+  },
+  "frozenV1SchemaFilesUnchanged": 16,
+  "extractor": {
+    "constructionSha256": "078ffe48881469fe5eb3cb43a15fa41b480fe70e11bd5f63102ded6b35a6d076",
+    "parserSha256": "7cc8e70d9f3ea391eb74fef2490f4407aa47833c585b6729c62b3d9e5829ac2b",
+    "extractorSha256": "112d2ff723d88acbe7bb45ff48c9c9018feb93b08031a3e86f867030871477fc"
+  },
+  "historicalProducerAndReviewChainsPreserved": true,
+  "artifactQualificationClaimed": false,
+  "runtimeAcceptanceClaimed": false,
+  "typedClosedInputHandlerOrder": {
+    "path": "code/packaging/app-config/src/main/resources/META-INF/cattle/iaas-api/defaults.properties",
+    "beforeSha256": "516e7d8652077c783bb6709c40078bba34637169753b5d0c922050ab67099773",
+    "afterSha256": "59598ecd0975fec7d74ec532f3455fab9dbe1512221c410b86dd815b1a458d8f",
+    "change": "AiAuditQueryInputHandler and preview-only AiServiceUpgradePlanInputHandler before ValidationHandler; other handler order unchanged."
+  },
+  "nativeActionOperandLockOrder": {
+    "owners": [
+      "aiCatalogStackLaunchPlan",
+      "aiResourceChangePlan",
+      "aiServiceUpgradePlan"
+    ],
+    "rootCause": "Outer native API write transaction retained a prefetch row lock after application-lock release; concurrent receipt GET inverted lock order.",
+    "fix": "Native Catalog-launch, resource-change and upgrade action operands use only exact framework request markers and authorized read snapshots. No prefetch observation writes or retained plan/credential row locks precede the action application lock. Ordinary GET observation and final action owner, role, Key revision, source/snapshot, CAS and one-claim checks remain; no timeout, retry, schema or grant expansion. New upgrade plans bind the complete strategy in their private target snapshot so older engines reject them before claim; genuine legacy image-only plans keep classic snapshots and original defaults.",
+    "lockTimeoutChanges": 0,
+    "retryChanges": 0,
+    "removedLocks": 0,
+    "databaseChanges": 0,
+    "uiPollingCausalityClaimed": false,
+    "runtimeAcceptanceClaimed": false
+  }
+}

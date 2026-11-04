@@ -19,6 +19,7 @@ import io.cattle.platform.object.ObjectManager;
 import io.cattle.platform.object.util.DataAccessor;
 import io.cattle.platform.process.common.util.ProcessUtils;
 import io.cattle.platform.servicediscovery.api.util.ServiceDiscoveryUtil;
+import io.cattle.platform.servicediscovery.api.service.ServiceUpgradeValidation;
 import io.cattle.platform.storage.api.filter.ExternalTemplateInstanceFilter;
 import io.cattle.platform.storage.service.StorageService;
 import io.cattle.platform.util.type.CollectionUtils;
@@ -40,7 +41,7 @@ import org.apache.commons.lang3.Strings;
 import org.apache.commons.lang3.tuple.Pair;
 
 @Named
-public class ServiceUpgradeValidationFilter extends AbstractDefaultResourceManagerFilter {
+public class ServiceUpgradeValidationFilter extends AbstractDefaultResourceManagerFilter implements ServiceUpgradeValidation {
 
     @Inject
     ObjectManager objectManager;
@@ -107,9 +108,7 @@ public class ServiceUpgradeValidationFilter extends AbstractDefaultResourceManag
                 }
             }
 
-            assertUpgradePortsAvailable(service, inServiceStrategy);
-
-            assertUpgradeVolumesAvailable(service, inServiceStrategy);
+            validate(service, inServiceStrategy);
 
             Object launchConfig = DataAccessor.field(service, ServiceConstants.FIELD_LAUNCH_CONFIG,
                     Object.class);
@@ -142,6 +141,13 @@ public class ServiceUpgradeValidationFilter extends AbstractDefaultResourceManag
         } else {
             objectManager.persist(service);
         }
+    }
+
+    @Override
+    public void validate(Service service, InServiceUpgradeStrategy strategy) {
+        assertUpgradeStrategyAllowed(service, strategy);
+        assertUpgradePortsAvailable(service, strategy);
+        assertUpgradeVolumesAvailable(service, strategy);
     }
 
     protected void assertUpgradePortsAvailable(Service service, InServiceUpgradeStrategy strategy) {
@@ -212,7 +218,7 @@ public class ServiceUpgradeValidationFilter extends AbstractDefaultResourceManag
         return CollectionUtils.toMap(launchConfigObj);
     }
 
-    protected InServiceUpgradeStrategy finalizeUpgradeStrategy(Service service, InServiceUpgradeStrategy strategy) {
+    protected void assertUpgradeStrategyAllowed(Service service, InServiceUpgradeStrategy strategy) {
         if (strategy.getLaunchConfig() == null && strategy.getSecondaryLaunchConfigs() == null) {
             ValidationErrorCodes.throwValidationError(ValidationErrorCodes.INVALID_OPTION,
                     "LaunchConfig/secondaryLaunchConfigs need to be specified for inService strategy");
@@ -231,6 +237,12 @@ public class ServiceUpgradeValidationFilter extends AbstractDefaultResourceManag
                 ValidationErrorCodes.throwValidationError(ValidationErrorCodes.INVALID_OPTION,
                         "LaunchConfig is required for load balancer service");
             }
+        }
+    }
+
+    protected InServiceUpgradeStrategy finalizeUpgradeStrategy(Service service, InServiceUpgradeStrategy strategy) {
+        assertUpgradeStrategyAllowed(service, strategy);
+        if (service.getKind().equalsIgnoreCase(ServiceConstants.KIND_LOAD_BALANCER_SERVICE)) {
             ServiceDiscoveryUtil.injectBalancerLabelsAndHealthcheck(launchConfigMap(strategy.getLaunchConfig()));
         }
 

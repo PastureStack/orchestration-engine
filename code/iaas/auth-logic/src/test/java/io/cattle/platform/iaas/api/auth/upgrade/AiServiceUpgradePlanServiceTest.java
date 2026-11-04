@@ -23,6 +23,7 @@ import io.cattle.platform.lock.LockCallback;
 import io.cattle.platform.lock.LockManager;
 import io.cattle.platform.object.ObjectManager;
 import io.cattle.platform.object.util.DataAccessor;
+import io.cattle.platform.servicediscovery.api.service.ServiceUpgradeValidation;
 import io.github.ibuildthecloud.gdapi.exception.ClientVisibleException;
 import io.github.ibuildthecloud.gdapi.context.ApiContext;
 import io.github.ibuildthecloud.gdapi.id.IdentityFormatter;
@@ -43,9 +44,215 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import org.junit.Test;
 
 public class AiServiceUpgradePlanServiceTest {
+    @Test public void realPreviewPipelineRejectsUnknownAndCoercedStrategyWithoutPlanOrDispatch() throws Exception {
+        for (String extra : List.of("\"url\":\"https://invalid.invalid/\"", "\"launchConfig\":{}", "\"upgradeStrategy\":{}",
+                "\"startFirst\":\"true\"", "\"batchSize\":\"2\"", "\"intervalMillis\":\"1000\"", "\"batchSize\":2.5",
+                "\"intervalMillis\":100.5")) {
+            Fixture f = new Fixture();
+            ApiRequest request = f.parsedPreview("{\"serviceId\":\"10\",\"image\":\"app:2\"," + extra + "}", Map.of());
+            assertEquals(Boolean.TRUE, request.getAttribute(AiServiceUpgradePlanService.ORIGINAL_PREVIEW_REJECTED));
+            new AiServiceUpgradePlanInputHandler().handle(request); // Sanitized re-entry cannot clear it.
+            var denied = assertThrows(ClientVisibleException.class, () -> f.service.preview(request));
+            assertEquals(422, denied.getStatus()); assertEquals("UpgradeInputInvalid", denied.getCode());
+            assertTrue(f.documents.isEmpty()); assertEquals(0, f.dispatched);
+            assertEquals(List.of("UpgradeInputInvalid"), f.deniedReasons);
+            verifyNoInteractions(f.service.upgradeValidation);
+        }
+        Fixture query = new Fixture();
+        ApiRequest unknownQuery = query.parsedPreview("{\"serviceId\":\"10\",\"image\":\"app:2\"}", Map.of("url", new String[]{"DUMMY"}));
+        assertEquals("UpgradeInputInvalid", rejected(() -> query.service.preview(unknownQuery))); assertTrue(query.documents.isEmpty());
+        for (String extra : List.of("", ",\"startFirst\":true,\"batchSize\":2,\"intervalMillis\":1000", ",\"batchSize\":9007199254740991")) {
+            Fixture valid = new Fixture();
+            ApiRequest request = valid.parsedPreview("{\"serviceId\":\"10\",\"image\":\"app:2\"" + extra + "}", Map.of());
+            assertEquals(Boolean.FALSE, request.getAttribute(AiServiceUpgradePlanService.ORIGINAL_PREVIEW_REJECTED));
+            assertEquals("preview", valid.service.preview(request).get("status"));
+            assertEquals(1, valid.documents.size()); assertEquals(0, valid.dispatched);
+        }
+        ApiContext.remove();
+    }
+
+    @Test public void originalPreviewGuardLeavesOrdinaryUpgradeAndPlanActionsUntouchedAndRunsBeforeNativeValidation() throws Exception {
+        Fixture f = new Fixture(); var handler = new AiServiceUpgradePlanInputHandler();
+        Map<String,Object> ordinary = Map.of("inServiceStrategy", Map.of("startFirst", "true", "batchSize", "2"));
+        ApiRequest nativeRequest = f.request(ordinary); nativeRequest.setMethod("POST"); nativeRequest.setType("service");
+        nativeRequest.setId("10"); nativeRequest.setAction("upgrade"); handler.handle(nativeRequest);
+        assertNull(nativeRequest.getAttribute(AiServiceUpgradePlanService.ORIGINAL_PREVIEW_REJECTED));
+        assertEquals(ordinary, nativeRequest.getRequestObject());
+        for (String action : List.of("confirm","apply","cancel")) {
+            ApiRequest request = f.request(action, Map.of("startFirst", "true")); request.setMethod("POST"); request.setType("aiServiceUpgradePlan"); request.setId("aiplan-dummy");
+            handler.handle(request); assertNull(request.getAttribute(AiServiceUpgradePlanService.ORIGINAL_PREVIEW_REJECTED));
+            assertEquals(Map.of("startFirst", "true"), request.getRequestObject());
+        }
+        String order = Files.readString(sourceRoot().resolve("code/packaging/app-config/src/main/resources/META-INF/cattle/iaas-api/defaults.properties"));
+        assertTrue(order.indexOf("BodyParserRequestHandler,") < order.indexOf("AiServiceUpgradePlanInputHandler,"));
+        assertTrue(order.indexOf("AiServiceUpgradePlanInputHandler,") < order.indexOf("ValidationHandler,"));
+        String beans = Files.readString(sourceRoot().resolve("code/packaging/app-config/src/main/java/io/cattle/platform/app/IaasApiConfig.java"));
+        assertTrue(beans.contains("return EMUtils.add(em, ApiRequestHandler.class, new AiServiceUpgradePlanInputHandler());"));
+    }
+
+    private static Path sourceRoot() {
+        Path root = Path.of("").toAbsolutePath();
+        while (root != null && !Files.isRegularFile(root.resolve("resources/content/schema/base/aiServiceUpgradePlan.json"))) root = root.getParent();
+        assertNotNull(root); return root;
+    }
+    @Test public void omittedAndLegacyStrategiesKeepTheOriginalEffectiveDispatchDefaults() {
+        Fixture f = new Fixture();
+        Map<String, Object> preview = f.preview();
+        assertEquals(Map.of("startFirst", false, "batchSize", 1L, "intervalMillis", 2000L), preview.get("upgradeStrategy"));
+        f.document().remove("upgradeStrategy"); // A durable image-only plan written before367.
+        ((Map<?, ?>) f.document().get("snapshot")).remove("approvedUpgradeStrategy");
+        assertEquals(preview.get("upgradeStrategy"), f.service.get(f.id, f.request(Map.of())).get("upgradeStrategy"));
+        f.action("confirm"); f.action("apply");
+        Map<?, ?> strategy = (Map<?, ?>) ((Map<?, ?>) f.dispatchedRequest.getRequestObject()).get("inServiceStrategy");
+        assertEquals(false, strategy.get("startFirst")); assertEquals(1L, strategy.get("batchSize"));
+        assertEquals(2000L, strategy.get("intervalMillis"));
+    }
+
+    @Test public void newCustomAndDefaultPlansFenceLegacySnapshotBeforeClaim() {
+        for (Map<String, Object> input : List.of(Map.<String, Object>of("serviceId", "10", "image", "app:2"),
+                Map.<String, Object>of("serviceId", "10", "image", "app:2", "startFirst", true, "batchSize", 3, "intervalMillis", 1500))) {
+            Fixture f = new Fixture(); Map<String, Object> preview = f.preview(input);
+            f.service.store = spy(f.service.store);
+            Map<String, Object> persisted = f.service.map(f.document().get("snapshot"));
+            Map<String, Object> classic = f.service.snapshot(f.target);
+            assertFalse(classic.containsKey("approvedUpgradeStrategy"));
+            assertEquals(f.service.map(preview.get("upgradeStrategy")), persisted.get("approvedUpgradeStrategy"));
+            // This is the exact full-map comparison used in366 before claim or dispatch.
+            assertNotEquals(classic, persisted);
+            persisted.remove("approvedUpgradeStrategy"); assertEquals(classic, persisted);
+            assertEquals("approved", f.action("confirm").get("confirmationState"));
+            verify(f.service.store, never()).claim(anyMap()); assertEquals(0, f.dispatched);
+        }
+    }
+
+    @Test public void legacySnapshotWithoutStrategyOrFenceStillConfirmsAndAppliesDefaults() {
+        Fixture f = new Fixture(); f.preview(Map.of("serviceId", "10", "image", "app:2", "startFirst", true,
+                "batchSize", 3, "intervalMillis", 1500));
+        f.document().remove("upgradeStrategy");
+        ((Map<?, ?>) f.document().get("snapshot")).remove("approvedUpgradeStrategy");
+        assertEquals(f.service.snapshot(f.target), f.document().get("snapshot"));
+        f.service.store = spy(f.service.store);
+        Map<String, Object> defaults = Map.of("startFirst", false, "batchSize", 1L, "intervalMillis", 2000L);
+        assertEquals(defaults, f.action("confirm").get("upgradeStrategy"));
+        assertEquals(defaults, f.action("apply").get("upgradeStrategy"));
+        Map<?, ?> actual = (Map<?, ?>) ((Map<?, ?>) f.dispatchedRequest.getRequestObject()).get("inServiceStrategy");
+        defaults.forEach((key, value) -> assertEquals(value, actual.get(key)));
+        verify(f.service.store, times(1)).claim(anyMap()); assertEquals(1, f.dispatched);
+    }
+
+    @Test public void strategyAndSnapshotFenceDriftCannotClaimOrDispatch() {
+        for (String action : List.of("confirm", "apply")) {
+            for (String drift : List.of("strategy", "fence", "missing-fence", "missing-strategy")) {
+                Fixture f = new Fixture(); f.preview(Map.of("serviceId", "10", "image", "app:2", "startFirst", true,
+                        "batchSize", 3, "intervalMillis", 1500));
+                if ("apply".equals(action)) f.action("confirm");
+                f.service.store = spy(f.service.store);
+                Map<String, Object> snapshot = (Map<String, Object>) f.document().get("snapshot");
+                if ("strategy".equals(drift)) ((Map<String, Object>) f.document().get("upgradeStrategy")).put("batchSize", 4L);
+                if ("fence".equals(drift)) ((Map<String, Object>) snapshot.get("approvedUpgradeStrategy")).put("batchSize", 4L);
+                if ("missing-fence".equals(drift)) snapshot.remove("approvedUpgradeStrategy"); // A pre-fix367 plan must be previewed again.
+                if ("missing-strategy".equals(drift)) f.document().remove("upgradeStrategy");
+                var denied = assertThrows(ClientVisibleException.class, () -> f.action(action));
+                assertEquals(drift, 409, denied.getStatus()); assertEquals("UpgradePlanStale", denied.getCode());
+                verify(f.service.store, never()).claim(anyMap()); assertEquals(0, f.dispatched);
+                assertEquals("preview", f.document().get("status")); assertNull(f.document().get("operationId"));
+            }
+        }
+    }
+
+    @Test public void reloadedFencedStrategyRemainsImmutableAndDispatchesOnlyOnce() throws Exception {
+        try (var connection = java.sql.DriverManager.getConnection("jdbc:h2:mem:upgrade-strategy-fence;DATABASE_TO_LOWER=TRUE")) {
+            connection.createStatement().execute("CREATE TABLE ai_service_upgrade_plan(id VARCHAR(64) PRIMARY KEY, state VARCHAR(32),"
+                    + " document CLOB, actor_id BIGINT, expires_at BIGINT)");
+            Fixture original = new Fixture(); original.service.store = durableStore(connection);
+            Map<String, Object> expected = Map.of("startFirst", true, "batchSize", 3L, "intervalMillis", 1500L);
+            original.preview(Map.of("serviceId", "10", "image", "app:2", "startFirst", true, "batchSize", 3, "intervalMillis", 1500));
+            original.action("confirm");
+            Fixture restarted = new Fixture(); restarted.id = original.id; restarted.service.store = spy(durableStore(connection));
+            Map<String, Object> restored = restarted.service.store.load(restarted.id);
+            Map<String, Object> persistedExpected = Map.of("startFirst", true, "batchSize", 3, "intervalMillis", 1500);
+            assertEquals(persistedExpected, restored.get("upgradeStrategy"));
+            assertEquals(persistedExpected, ((Map<?, ?>) restored.get("snapshot")).get("approvedUpgradeStrategy"));
+            ((Map<String, Object>) restored.get("upgradeStrategy")).put("batchSize", 99L);
+            assertEquals(persistedExpected, restarted.service.store.load(restarted.id).get("upgradeStrategy"));
+            assertEquals("accepted", restarted.action("apply").get("status"));
+            Fixture receipt = new Fixture(); receipt.id = original.id; receipt.service.store = spy(durableStore(connection));
+            assertEquals(expected, receipt.action("apply").get("upgradeStrategy"));
+            original.action("apply"); restarted.action("apply");
+            Map<?, ?> actual = (Map<?, ?>) ((Map<?, ?>) restarted.dispatchedRequest.getRequestObject()).get("inServiceStrategy");
+            expected.forEach((key, value) -> assertEquals(value, actual.get(key)));
+            assertEquals(0, original.dispatched); assertEquals(1, restarted.dispatched); assertEquals(0, receipt.dispatched);
+            verify(restarted.service.store, times(1)).claim(anyMap()); verify(receipt.service.store, never()).claim(anyMap());
+        }
+    }
+
+    private static AiServiceUpgradePlanStore durableStore(java.sql.Connection connection) {
+        AiServiceUpgradePlanStore store = new AiServiceUpgradePlanStore(); store.json = new JacksonJsonMapper();
+        store.setConfiguration(new org.jooq.impl.DefaultConfiguration().set(connection).set(org.jooq.SQLDialect.H2));
+        return store;
+    }
+
+    @Test public void approvedStrategyIsDetachedReviewedAndDispatchedOnceWithoutActionOverrides() {
+        Fixture f = new Fixture();
+        Map<String, Object> input = new LinkedHashMap<>(Map.of("serviceId", "10", "image", "app:2",
+                "startFirst", true, "batchSize", 3, "intervalMillis", 1500));
+        Map<String, Object> preview = f.preview(input);
+        Map<String, Object> expected = Map.of("startFirst", true, "batchSize", 3L, "intervalMillis", 1500L);
+        assertEquals(expected, preview.get("upgradeStrategy"));
+        input.put("batchSize", 99);
+        ((Map<String, Object>) preview.get("upgradeStrategy")).put("batchSize", 88);
+        assertEquals(expected, f.service.pending(f.request(Map.of())).get(0).get("upgradeStrategy"));
+        for (String action : List.of("confirm", "apply")) {
+            for (String field : List.of("startFirst", "batchSize", "intervalMillis", "upgradeStrategy")) {
+                assertEquals("UpgradeInputInvalid", rejected(() -> f.service.action(f.id, f.request(action, Map.of(field, true)))));
+            }
+        }
+        assertEquals(expected, f.action("confirm").get("upgradeStrategy"));
+        assertEquals(expected, f.action("apply").get("upgradeStrategy"));
+        f.action("apply"); assertEquals(1, f.dispatched);
+        Map<?, ?> actual = (Map<?, ?>) ((Map<?, ?>) f.dispatchedRequest.getRequestObject()).get("inServiceStrategy");
+        expected.forEach((key, value) -> assertEquals(value, actual.get(key)));
+        verify(f.service.upgradeValidation, times(3)).validate(eq(f.target), any());
+    }
+
+    @Test public void strategyUsesNativeMinimaAndExactJsonIntegerBoundaryWithoutClamping() {
+        Fixture f = new Fixture();
+        Map<String, Object> result = f.preview(Map.of("serviceId", "10", "image", "app:2", "startFirst", false,
+                "batchSize", 9007199254740991L, "intervalMillis", 100.0));
+        assertEquals(Map.of("startFirst", false, "batchSize", 9007199254740991L, "intervalMillis", 100L), result.get("upgradeStrategy"));
+        f.action("confirm"); f.action("apply");
+        Map<?, ?> strategy = (Map<?, ?>) ((Map<?, ?>) f.dispatchedRequest.getRequestObject()).get("inServiceStrategy");
+        assertEquals(9007199254740991L, strategy.get("batchSize")); assertEquals(100L, strategy.get("intervalMillis"));
+    }
+
+    @Test public void invalidOptionalStrategyRejectsBeforePlanOrDispatchAndNativePreflightIsRequired() {
+        for (String field : List.of("batchSize", "intervalMillis")) {
+            for (Object value : java.util.Arrays.asList(null, "2", true, 0, -1, 1.5, Double.NaN, Double.POSITIVE_INFINITY,
+                    9007199254740992L, Long.MAX_VALUE)) {
+                Fixture f = new Fixture(); var input = new LinkedHashMap<String, Object>(Map.of("serviceId", "10", "image", "app:2"));
+                input.put(field, value);
+                assertEquals(field + "=" + value, "UpgradeInputInvalid", rejected(() -> f.preview(input)));
+                assertTrue(f.documents.isEmpty()); assertEquals(0, f.dispatched); verifyNoInteractions(f.service.upgradeValidation);
+            }
+        }
+        for (Object value : java.util.Arrays.asList(null, "true", 1, Map.of())) {
+            Fixture f = new Fixture(); var input = new LinkedHashMap<String, Object>(Map.of("serviceId", "10", "image", "app:2"));
+            input.put("startFirst", value); assertEquals("UpgradeInputInvalid", rejected(() -> f.preview(input)));
+            assertTrue(f.documents.isEmpty());
+        }
+        Fixture interval = new Fixture();
+        assertEquals("UpgradeInputInvalid", rejected(() -> interval.preview(Map.of("serviceId", "10", "image", "app:2", "intervalMillis", 99))));
+        Fixture raw = new Fixture();
+        assertEquals("UpgradeInputInvalid", rejected(() -> raw.preview(Map.of("serviceId", "10", "image", "app:2", "inServiceStrategy", Map.of()))));
+        Fixture missing = new Fixture(); missing.service.upgradeValidation = null;
+        assertEquals("UpgradePreflightUnavailable", rejected(missing::preview)); assertTrue(missing.documents.isEmpty());
+    }
+
     @Test public void snapshotMapKeepsNestedValuesDetachedAndNullProducesMutableEmptyMap() {
         Fixture f = new Fixture();
         Map<String, Object> environment = new LinkedHashMap<>(Map.of("TEXT", "\u4fdd\u7559", "EMPTY", ""));
@@ -376,6 +583,7 @@ public class AiServiceUpgradePlanServiceTest {
         final AccountRecord project = new AccountRecord();
         final StackRecord stack = new StackRecord();
         final List<Map<String, Object>> observed = new ArrayList<>();
+        final List<String> deniedReasons = new ArrayList<>();
         final Map<String, Map<String, Object>> documents = new HashMap<>();
         final AiServiceUpgradePlanService service;
         String id; int dispatched; int denied; boolean ready = true; boolean failDispatch;
@@ -410,9 +618,10 @@ public class AiServiceUpgradePlanServiceTest {
                     super.dispatch(plan, target, request);
                 }
                 @Override protected void audit(ApiRequest request, String action, String id, Long target, boolean allowed, String reason) { if
-                        (!allowed) denied++; }
+                        (!allowed) { denied++; deniedReasons.add(reason); } }
             };
             service.keyAuthorization = mock(AiKeyAuthorization.class);
+            service.upgradeValidation = mock(ServiceUpgradeValidation.class);
             service.json = new JacksonJsonMapper(); service.clock = Clock.fixed(Instant.parse("2026-10-29T00:00:00Z"), ZoneOffset.UTC);
             service.objects = mock(ObjectManager.class); when(service.objects.loadResource(eq(Service.class), anyString())).thenReturn(target);
             when(service.objects.loadResource(Account.class, 77L)).thenReturn(project);
@@ -460,9 +669,25 @@ public class AiServiceUpgradePlanServiceTest {
             new ValidationHandler().generate(request);
             return request;
         }
+        ApiRequest parsedPreview(String body, Map<String,Object> params) throws Exception {
+            var mapper = new io.github.ibuildthecloud.gdapi.json.JacksonMapper(); mapper.init();
+            var nativeSchema = mapper.readValue(Files.readAllBytes(sourceRoot().resolve("resources/content/schema/base/aiServiceUpgradePlan.json")),
+                    io.github.ibuildthecloud.gdapi.model.impl.SchemaImpl.class);
+            nativeSchema.setId("aiServiceUpgradePlan"); when(schemas.getSchema("aiServiceUpgradePlan")).thenReturn(nativeSchema);
+            ApiContext.newContext().setIdFormatter(new IdentityFormatter());
+            ApiRequest request = new ApiRequest(null,schemas) {
+                @Override public java.io.InputStream getInputStream() { return new java.io.ByteArrayInputStream(body.getBytes(java.nio.charset.StandardCharsets.UTF_8)); }
+            };
+            request.setMethod("POST"); request.setType("aiServiceUpgradePlan"); request.setRequestParams(params);
+            var parser = new BodyParserRequestHandler(); parser.setJsonMarshaller(mapper); parser.init(); parser.handle(request);
+            new AiServiceUpgradePlanInputHandler().handle(request);
+            var validation = new ValidationHandler(); validation.init(); validation.generate(request);
+            return request;
+        }
         ApiRequest request(String action, Map<String, Object> body) { ApiRequest r = request(body); r.setAction(action); return r; }
-        Map<String, Object> preview() { Map<String, Object> result = service.preview(request(Map.of("serviceId", target.getId().toString(),
-                "image", "app:2"))); id = (String) result.get("id"); return result; }
+        Map<String, Object> preview() { return preview(Map.of("serviceId", target.getId().toString(), "image", "app:2")); }
+        Map<String, Object> preview(Map<String, Object> input) { Map<String, Object> result = service.preview(request(input));
+            id = (String) result.get("id"); return result; }
         Map<String, Object> action(String name) { return service.action(id, request(name, Map.of())); }
         Map<String, Object> document() { return documents.get(id); }
     }

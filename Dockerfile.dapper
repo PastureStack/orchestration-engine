@@ -32,6 +32,8 @@ ADD --checksum=sha256:2c418a61d7165d0cde01d9cb05ae025cc41fc75ef6d3f095996bd045ba
 ADD --checksum=sha256:8db913e1fa5a694ca6ba7b828bd18c5204e6853ac07fe7ed9c6e1f94e3444d8e https://security.ubuntu.com/ubuntu/pool/main/c/curl/libcurl3t64-gnutls_8.18.0-1ubuntu2.8_amd64.deb /tmp/libcurl3t64-gnutls.deb
 ADD --checksum=sha256:7c0b37592f83a629cc22f0c98effa176da9edbd6d77b3f38184a9d0ddc5e0266 https://security.ubuntu.com/ubuntu/pool/main/c/curl/libcurl4t64_8.18.0-1ubuntu2.8_amd64.deb /tmp/libcurl4t64.deb
 ADD --checksum=sha256:bedeef1cf3268f90338c411cdb0a45b224d0660fd2240f310f380316c8244606 https://security.ubuntu.com/ubuntu/pool/main/b/brotli/libbrotli1_1.2.0-3ubuntu0.1_amd64.deb /tmp/libbrotli1.deb
+ADD --checksum=sha256:44ebbeb6493eacffbc460ca71446959ba86a00b2e23515e4cfb1a5cc317d6672 https://security.ubuntu.com/ubuntu/pool/main/p/pcre2/libpcre2-8-0_10.46-1ubuntu0.1_amd64.deb /tmp/libpcre2-8-0.deb
+ADD --checksum=sha256:44605ea665673a359927d014f4a027c50fe6472af8bc956bd1b1c43ddc07a1cd https://security.ubuntu.com/ubuntu/pool/main/p/pcre2/libpcre2-posix3_10.46-1ubuntu0.1_amd64.deb /tmp/libpcre2-posix3.deb
 
 ENV DEBIAN_FRONTEND=noninteractive
 ENV LANG=C.UTF-8 LC_ALL=C.UTF-8
@@ -127,7 +129,17 @@ RUN set -eux; \
     test "$(dpkg-deb -f /tmp/libbrotli1.deb Version)" = 1.2.0-3ubuntu0.1; \
     test "$(dpkg-deb -f /tmp/libbrotli1.deb Architecture)" = amd64; \
     dpkg -i /tmp/libbrotli1.deb; \
+    for package in libpcre2-8-0 libpcre2-posix3; do \
+        test "$(dpkg-query -W -f='${db:Status-Status}' "${package}")" = installed; \
+        test "$(dpkg-deb -f "/tmp/${package}.deb" Package)" = "${package}"; \
+        test "$(dpkg-deb -f "/tmp/${package}.deb" Version)" = 10.46-1ubuntu0.1; \
+        test "$(dpkg-deb -f "/tmp/${package}.deb" Architecture)" = amd64; \
+    done; \
+    dpkg -i /tmp/libpcre2-8-0.deb /tmp/libpcre2-posix3.deb; \
     sh /usr/local/bin/install-ubuntu-security-updates /licenses/ubuntu-security-packages.lock /etc/ssl/certs/ca-certificates.crt; \
+    for package in libpcre2-8-0 libpcre2-posix3; do \
+        test "$(dpkg-query -W -f='${Version}' "${package}")" = 10.46-1ubuntu0.1; \
+    done; \
     for package in curl libcurl3t64-gnutls libcurl4t64; do \
         test "$(dpkg-query -W -f='${Version}' "${package}")" = "${UBUNTU_APT_CURL_VERSION}"; \
     done; \

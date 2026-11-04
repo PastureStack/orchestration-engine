@@ -53,6 +53,8 @@ class SnapshotPackagesTest(unittest.TestCase):
         self.bad.write_bytes(BAD)
         self.apt_log = self.home / 'apt.log'
         self.helper_log = self.home / 'helper.log'
+        self.sleep_log = self.home / 'sleep.log'
+        self.snapshot_count = self.home / 'snapshot-count'
         self.installed = self.home / 'installed'
         self.chown_log = self.home / 'chown.log'
         self.args = ['install', '-y', '--no-install-recommends', 'unzip=6.0-29ubuntu1']
@@ -70,6 +72,12 @@ esac
 set -eu
 [ "$#" = 2 ] && [ "$1" = _apt ] && [ "${2##*/}" = payload ] || exit 95
 printf '%s\n' "$2" > "$TEST_CHOWN_LOG"
+''')
+        self.make_script('sleep', r'''#!/bin/sh
+set -eu
+[ "$#" = 1 ] || exit 90
+case "$1" in 1|2|3) ;; *) exit 90 ;; esac
+printf '%s\n' "$1" >> "$TEST_SLEEP_LOG"
 ''')
         if os.name == 'nt':
             # The bundled Windows sh omits sha256sum. Keep this test-only
@@ -101,6 +109,15 @@ esac
 case "$mode" in
     fail) exit 22 ;;
     bad) cp "$TEST_BAD_PAYLOAD" "$3" ;;
+    failed) cp "$TEST_BAD_PAYLOAD" "$3.FAILED"; exit 100 ;;
+    failed-ok) cp "$TEST_BAD_PAYLOAD" "$3.FAILED"; cp "$TEST_GOOD_PAYLOAD" "$3" ;;
+    transient)
+        count=0
+        [ ! -f "$TEST_SNAPSHOT_COUNT" ] || count=$(cat "$TEST_SNAPSHOT_COUNT")
+        count=$((count + 1))
+        printf '%s\n' "$count" > "$TEST_SNAPSHOT_COUNT"
+        [ "$count" -gt 2 ] || exit 22
+        cp "$TEST_GOOD_PAYLOAD" "$3" ;;
     ok) cp "$TEST_GOOD_PAYLOAD" "$3" ;;
     *) exit 94 ;;
 esac
@@ -138,7 +155,8 @@ esac
         return value
 
     def run_helper(self, *, archive='ok', snapshot='ok', plan_status=0, args=None):
-        for path in (self.apt_log, self.helper_log, self.installed, self.chown_log):
+        for path in (self.apt_log, self.helper_log, self.sleep_log,
+                     self.snapshot_count, self.installed, self.chown_log):
             path.unlink(missing_ok=True)
         paths = [self.shell_path(self.bin), self.shell_path(Path(SH).resolve().parent)]
         paths.extend(['/usr/bin', '/bin'] if os.name == 'nt' else [os.environ['PATH']])
@@ -146,6 +164,7 @@ esac
             TEST_APT_LOG=self.apt_log.as_posix(), TEST_HELPER_LOG=self.helper_log.as_posix(),
             TEST_PLAN=self.plan.as_posix(), TEST_INSTALLED=self.installed.as_posix(),
             TEST_CHOWN_LOG=self.chown_log.as_posix(),
+            TEST_SLEEP_LOG=self.sleep_log.as_posix(), TEST_SNAPSHOT_COUNT=self.snapshot_count.as_posix(),
             TEST_GOOD_PAYLOAD=self.good.as_posix(), TEST_BAD_PAYLOAD=self.bad.as_posix(),
             TEST_ARCHIVE_MODE=archive, TEST_SNAPSHOT_MODE=snapshot, TEST_PLAN_STATUS=str(plan_status))
         return subprocess.run([SH, self.script.as_posix(), *(args or self.args)], env=env,
@@ -157,6 +176,9 @@ esac
     def downloads(self):
         return self.helper_log.read_text().splitlines() if self.helper_log.exists() else []
 
+    def sleeps(self):
+        return self.sleep_log.read_text().splitlines() if self.sleep_log.exists() else []
+
     def assert_rejected(self, result):
         self.assertNotEqual(0, result.returncode, result.stdout + result.stderr)
         self.assertFalse(self.installed.exists())
@@ -165,7 +187,7 @@ esac
         result = subprocess.run([SH, '-n', str(ROOT / 'scripts/install-snapshot-packages')],
                                 capture_output=True, text=True, timeout=10)
         self.assertEqual(0, result.returncode, result.stderr)
-        self.assertIn('/usr/lib/apt/apt-helper -o Acquire::Retries=1', SOURCE)
+        self.assertIn('/usr/lib/apt/apt-helper -o Acquire::Retries=0', SOURCE)
         self.assertIn('Acquire::https::Timeout=15', SOURCE)
         self.assertNotIn('APT_HELPER', SOURCE)
         self.assertNotIn('python', SOURCE)
@@ -189,6 +211,7 @@ esac
         result = self.run_helper()
         self.assertEqual(0, result.returncode, result.stderr)
         self.assertEqual([f'https://archive.ubuntu.com/ubuntu/{POOL}|SHA256:{HASH}'], self.downloads())
+        self.assertEqual([], self.sleeps())
         self.assertEqual(GOOD, (self.cache / POOL.rsplit('/', 1)[1]).read_bytes())
         calls = self.apt_calls()
         self.assertEqual(2, len(calls))
@@ -209,12 +232,14 @@ esac
         result = self.run_helper(archive='bad')
         self.assertEqual(0, result.returncode, result.stderr)
         self.assertEqual(2, len(self.downloads()))
+        self.assertEqual([], self.sleeps())
         self.assertEqual(GOOD, (self.cache / POOL.rsplit('/', 1)[1]).read_bytes())
 
     def test_bad_hash_on_both_origins_cannot_install(self):
         result = self.run_helper(archive='bad', snapshot='bad')
         self.assert_rejected(result)
         self.assertEqual(2, len(self.downloads()))
+        self.assertEqual([], self.sleeps())
         self.assertEqual(1, len(self.apt_calls()))
         self.assertFalse(list(self.cache.glob('*.deb')))
 
@@ -223,11 +248,45 @@ esac
         result = self.run_helper()
         self.assert_rejected(result)
         self.assertEqual(2, len(self.downloads()))
+        self.assertEqual([], self.sleeps())
 
     def test_both_transport_failures_cannot_install(self):
         result = self.run_helper(archive='fail', snapshot='fail')
         self.assert_rejected(result)
-        self.assertEqual(2, len(self.downloads()))
+        self.assertEqual([f'https://archive.ubuntu.com/ubuntu/{POOL}|SHA256:{HASH}'] +
+                         [f'{SNAPSHOT}{POOL}|SHA256:{HASH}'] * 4, self.downloads())
+        self.assertEqual(['1', '2', '3'], self.sleeps())
+        self.assertEqual(1, len(self.apt_calls()))
+        self.assertFalse(list(self.cache.glob('*.deb')))
+
+    def test_snapshot_transient_transport_retries_original_url_then_succeeds(self):
+        self.write_plan(self.uri_line(uri=SECURITY + POOL))
+        result = self.run_helper(archive='fail', snapshot='transient')
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertEqual([f'https://archive.ubuntu.com/ubuntu/{POOL}|SHA256:{HASH}'] +
+                         [f'{SECURITY}{POOL}|SHA256:{HASH}'] * 3, self.downloads())
+        self.assertEqual(['1', '2'], self.sleeps())
+        self.assertEqual(GOOD, (self.cache / POOL.rsplit('/', 1)[1]).read_bytes())
+        self.assertIn('--no-download', self.apt_calls()[1])
+
+    def test_apt_failed_integrity_marker_stops_origin_even_with_nonzero_or_success_exit(self):
+        for mode in ('failed', 'failed-ok'):
+            with self.subTest(mode=mode):
+                result = self.run_helper(archive='fail', snapshot=mode)
+                self.assert_rejected(result)
+                self.assertEqual([f'https://archive.ubuntu.com/ubuntu/{POOL}|SHA256:{HASH}',
+                                  f'{SNAPSHOT}{POOL}|SHA256:{HASH}'], self.downloads())
+                self.assertEqual([], self.sleeps())
+                self.assertEqual(1, len(self.apt_calls()))
+                self.assertFalse(list(self.cache.glob('*.deb')))
+
+    def test_archive_apt_failed_integrity_marker_can_recover_from_original_snapshot(self):
+        result = self.run_helper(archive='failed')
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertEqual([f'https://archive.ubuntu.com/ubuntu/{POOL}|SHA256:{HASH}',
+                          f'{SNAPSHOT}{POOL}|SHA256:{HASH}'], self.downloads())
+        self.assertEqual([], self.sleeps())
+        self.assertEqual(GOOD, (self.cache / POOL.rsplit('/', 1)[1]).read_bytes())
 
     def test_illegal_sources_and_paths_reject_before_any_download(self):
         invalid = (
@@ -249,6 +308,7 @@ esac
                 result = self.run_helper()
                 self.assert_rejected(result)
                 self.assertEqual([], self.downloads())
+                self.assertEqual([], self.sleeps())
 
     def test_malformed_plan_hash_filename_or_size_rejects_before_download(self):
         invalid = (

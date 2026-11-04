@@ -85,6 +85,14 @@ public class AiResourceChangePlanService {
         }));
     }
 
+    /** Action operands are authorized snapshots; observing here would retain a write lock before action(). */
+    Map<String, Object> actionTarget(String id, ApiRequest request) {
+        return audited(request, "read", id, () -> {
+            Map<String, Object> plan = owned(store.load(validId(id)), request);
+            audit(request, "read", plan, true, "ResourceChangeRead"); return output(plan);
+        });
+    }
+
     public List<Map<String, Object>> pending(ApiRequest request) {
         human(request); Policy actor = domain.actor(request); List<Map<String, Object>> result = new ArrayList<>();
         for (Map<String, Object> plan : store.pending(actor.getAuthenticatedAsAccountId(), clock.millis())) {
