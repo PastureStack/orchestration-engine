@@ -1,23 +1,11 @@
-# Engine 0.183.369 candidate
+# Orchestration Engine v0.183.369
 
-This candidate adds bounded Volume usage references to the existing read-only
-typed resource detail. It is not published or runtime-qualified. Matching
-Web Console 1.6.208 / bridge 0.2.10 and a new Server assembly are required.
+Adds bounded Volume usage references to the existing read-only typed resource detail. Native SQL retrieves at most 51 relationships before materialization and projects at most 50 currently readable active or stopped containers. Current account, object, Key scope and role-schema visibility remain authoritative. Host source paths, configuration, secrets and hidden target identities/counts are excluded. The browser/bridge converts internal target identities into context-bound opaque references with readable Stack names when separately authorized.
 
-Native SQL reads at most 51 mount relationships and projects at most 50
-currently authorized active or stopped containers. Container destination paths
-and read-only flags are safe metadata; host source paths, configuration, secrets
-and hidden identities/counts are excluded. Current object/Key scope and
-role-schema scalar visibility remain authoritative, including readable Stack
-relationships. Ordinary DTO output filters and deletion oracles are unchanged.
+Completeness is always unknown. An empty or limited result cannot establish unused or safe-to-delete status; the native deletion oracle is unchanged. Fixed safe scalar projection preserves native data-field precedence and schema wrapping while excluding transformed/create-only fields before access. Ordinary output filters, canonical outer read audit and direct-request DENY audit remain. No new tool, operation or grant is added.
 
-Completeness is always unknown. Empty or limited results never mean unused or
-safe to delete. The existing outer read retains canonical audit; inaccessible
-relationship targets create no synthetic API events. Direct denied requests
-still retain their normal audit. No tools, grants or writes are added.
+Original CI: 427 suites, 3957 tests, 0 failures/errors, 1 inherited skip; all 142 required methods passed. Ten new methods and 16 inherited methods in affected classes passed. Source re-extraction retains 1396 tuples with zero semantic/grant delta. The original artifact is 13371364499 from Security 41931074266; producer `69eba9f0e7e60907334a0514f19c84bb48a22f4c` and normal PR158 squash merge `bb77e0ae7da22a1c848d44edc0ef1cba7376369c` share tested tree `ba6ab5fd6e95fb3392a062b10dbee0778f84fe1f`. Publication reuses the original CI bytes without rebuilding or rerunning tests/scans.
 
-Ten focused source methods cover native SQL bounds, ownership/scopes, audit,
-reference metadata and scalar compatibility; all prior 132 required identities
-are retained and ten new identities raise the release registry to 142. C03
-re-extraction retains 1396 tuples with zero operation/grant delta. Necessary
-original CI, artifact qualification and native workflow acceptance remain pending.
+Organization CodeQL reports zero results. Independent extended CodeQL retains the same four lower findings as published368 (three insecure-cookie findings at score4 and one unreleased-lock finding at score5); zero Critical/High or unresolved rules, with no new Volume sink. Original raw/effective scanner reports and exact VEX remain included: effective Dapper retains 44 MEDIUM and 7 LOW findings without fixes. These are not claimed patched. The workflow did not provide SLSA attestations; cryptographic immutable-release verification and anonymous asset readback are separate guarantees.
+
+Matching Web Console 1.6.208 / bridge0.2.10 and a new Server assembly, native role/Key/reference/audit and narrow modal acceptance remain pending. Whole-family and 243-group completion are not claimed.
