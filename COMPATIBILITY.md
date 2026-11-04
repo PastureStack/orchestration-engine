@@ -1,6 +1,6 @@
 # Compatibility Contract
 
-## Engine 0.183.367 source candidate
+## Engine 0.183.367 release
 
 The existing image-upgrade plan accepts three optional strategy fields and
 returns a closed effective `upgradeStrategy`. Omitted fields and old persisted
@@ -11,8 +11,10 @@ client representation boundary, not a new native product maximum. The native
 preflight keeps its existing int-range batch normalization, while dispatch
 receives the approved Long values. Full/legacy keys, role/Key revision checks,
 port/volume rules and durable operation claims remain unchanged. No new mutation
-operation or global grant is introduced. Publication and runtime qualification
-remain pending; see the [candidate note](docs/releases/orchestration-engine-0.183.367.md).
+operation or global grant is introduced. The [published release](https://github.com/PastureStack/orchestration-engine/releases/tag/v0.183.367)
+has passed original component CI/CodeQL and artifact qualification; matching
+Server/native runtime acceptance remains pending. See the
+[release note](docs/releases/orchestration-engine-0.183.367.md).
 
 New plans bind the approved strategy into their private snapshot. An older
 Engine rejects these plans as stale before claiming an operation instead of
@@ -20,7 +22,7 @@ applying its own defaults. Genuine legacy image-only plans remain compatible.
 After a downgrade, pending newer plans require a fresh preview and approval.
 
 Typed Audit queries now preserve a closed-field rejection through normal schema
-sanitization. The existing owner rejects unknown fields with422 and records its
+sanitization. The existing owner rejects unknown fields with 422 and records its
 canonical ERROR outcome without starting the private query runner. Other API
 schema filtering and current actor/Key authorization remain unchanged.
 
@@ -45,6 +47,15 @@ Both Engine build recipes install Ubuntu's official PCRE2 security update
 The two archives are SHA256-pinned and their package, version, architecture and
 installed versions are checked. Other package locks and snapshot dates remain
 unchanged. See [USN-8974-1](https://ubuntu.com/security/notices/USN-8974-1).
+
+Original CI recorded 424 suites / 3,940 tests / zero failures/errors / one
+inherited skip. The 13 affected classes contain 28 source-new and 76 inherited
+methods; all 125 required identities passed, retaining the prior 97. All 12
+original release assets passed anonymous checksum readback without a rebuild.
+The original Dapper dpkg and raw/effective scan inventories verify both PCRE2
+package versions. This is builder evidence; it does not qualify the deployed
+Server's package inventory or native workflows. Frozen serialized schemas retain
+their exact bytes. Component publication and runtime acceptance remain separate.
 
 ## Engine 0.183.366 release
 
