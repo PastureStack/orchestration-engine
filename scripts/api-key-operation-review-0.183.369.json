@@ -1,0 +1,57 @@
+{
+  "schemaVersion": 1,
+  "version": "0.183.369",
+  "scope": "SOURCE_ONLY_NOT_RUNTIME_ACCEPTANCE",
+  "reviewedBaseCommit": "f466d3e514cc08f1d826299826b0b5db27df5d2f",
+  "sourceInputs": {
+    "algorithm": "c03-source-inputs-v1",
+    "baseline": {
+      "count": 447,
+      "sha256": "da122b39e8ffac069b78d60c7234ff62cbb1995028efa835a7f717f8d02dee4c"
+    },
+    "reviewed": {
+      "count": 449,
+      "sha256": "5bbfd304067c39be44f7415ed00e654e2386ef8827f618a2f13ef6ed1c7562a3"
+    },
+    "addedAnchors": [
+      "VolumeDao.java",
+      "VolumeDaoImpl.java"
+    ]
+  },
+  "tupleReview": {
+    "baseline": 1396,
+    "candidate": 1396,
+    "added": 0,
+    "removed": 0,
+    "semanticChanges": 0,
+    "dispositionChanges": 0,
+    "sha256": "8f1c0fb378663b0b3d272efba2f211cb210eb6f17cb8035aefa33b56feeaf36a"
+  },
+  "delta": [
+    {
+      "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/ai/view/AiResourceViewService.java",
+      "before": "54f9aeaeecbf135e34210417f5cf7ec128a90e05b1971fc351ed4bdd76bf8585",
+      "after": "19d91fa89474c9c9604ff7a688afd9a36e6d75fd313667f16ef5550efedc050b"
+    },
+    {
+      "path": "code/iaas/model/src/main/java/io/cattle/platform/core/dao/VolumeDao.java",
+      "before": null,
+      "after": "8fbeb7ef1b63fa000d1788e2603d39de5e6e7dd83eec19df126bcb84510d3823"
+    },
+    {
+      "path": "code/iaas/model/src/main/java/io/cattle/platform/core/dao/impl/VolumeDaoImpl.java",
+      "before": null,
+      "after": "b0a41797307b7a02d44ad5ac08f00bad3fa21fb78143825ac4a01774a8ddcfe6"
+    }
+  ],
+  "authorizationBoundary": "Volume detail adds a read-only bounded usage-reference projection through the existing typed resource view. Native SQL retrieves at most 51 relationships before materialization and exposes at most 50 authorized container targets. Current native object authorization and an exact attested Key query scope remain mandatory; unsupported scoped managers return unknown. Hidden targets create no synthetic API/audit entries. The selected Volume read retains canonical audit and direct hidden-resource requests retain DENY audit. Closed scalar fields reuse native data-field precedence and current-role schema wrapping, excluding transformed/create-only fields before access; parent names require a readable persisted Stack relationship and a fresh authorized Stack read. Completeness is always unknown; no total, hidden identity/count, host source path, write, grant or deletion-oracle change.",
+  "frozenV1SchemaFilesUnchanged": true,
+  "extractor": {
+    "constructionSha256": "078ffe48881469fe5eb3cb43a15fa41b480fe70e11bd5f63102ded6b35a6d076",
+    "parserSha256": "7cc8e70d9f3ea391eb74fef2490f4407aa47833c585b6729c62b3d9e5829ac2b",
+    "extractorSha256": "112d2ff723d88acbe7bb45ff48c9c9018feb93b08031a3e86f867030871477fc"
+  },
+  "historicalProducerAndReviewChainsPreserved": true,
+  "artifactQualificationClaimed": false,
+  "runtimeAcceptanceClaimed": false
+}

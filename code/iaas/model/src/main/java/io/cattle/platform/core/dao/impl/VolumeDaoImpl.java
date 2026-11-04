@@ -281,6 +281,23 @@ public class VolumeDaoImpl extends AbstractJooqDao implements VolumeDao {
     }
 
     @Override
+    public List<? extends Mount> getUsageMounts(long accountId, long volumeId) {
+        return create().select(MOUNT.ID, MOUNT.VOLUME_ID, MOUNT.INSTANCE_ID, MOUNT.PATH, MOUNT.PERMISSIONS)
+                .from(MOUNT)
+                .join(INSTANCE).on(INSTANCE.ID.eq(MOUNT.INSTANCE_ID))
+                .join(VOLUME).on(VOLUME.ID.eq(MOUNT.VOLUME_ID))
+                .where(MOUNT.VOLUME_ID.eq(volumeId))
+                .and(MOUNT.ACCOUNT_ID.eq(accountId))
+                .and(INSTANCE.ACCOUNT_ID.eq(accountId))
+                .and(VOLUME.ACCOUNT_ID.eq(accountId))
+                .and(INSTANCE.KIND.eq("container"))
+                .and(MOUNT.REMOVED.isNull())
+                .and(INSTANCE.REMOVED.isNull())
+                .and(VOLUME.REMOVED.isNull())
+                .orderBy(MOUNT.ID.asc()).limit(51).fetchInto(MountRecord.class);
+    }
+
+    @Override
     public List<? extends Volume> findNonRemovedVolumesOnPool(Long storagePoolId) {
         return create().select(VOLUME.fields())
                 .from(VOLUME)

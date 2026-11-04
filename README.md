@@ -8,6 +8,12 @@ Rancher 1.6 ecosystem. It is not affiliated with Rancher Labs or SUSE.
 This fork of [`rancher/cattle`](https://github.com/rancher/cattle) preserves
 upstream history, authorship, licenses, and dependency notices.
 
+## Next candidate: Engine 0.183.369
+
+[Volume usage safe reads](docs/releases/orchestration-engine-0.183.369.md) are under
+source/CI preparation with matching Web Console 1.6.208 / bridge 0.2.10. This
+candidate is not published or runtime-qualified.
+
 ## Latest published release: Engine 0.183.368
 
 [Engine 0.183.368](https://github.com/PastureStack/orchestration-engine/releases/tag/v0.183.368)

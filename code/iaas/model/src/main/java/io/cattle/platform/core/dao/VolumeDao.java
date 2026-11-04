@@ -36,6 +36,9 @@ public interface VolumeDao {
 
     Map<Long, List<MountEntry>> getMountsForVolumes(List<Long> ids, IdFormatter idF);
 
+    /** Bounded relationship candidates only; callers must authorize each container. */
+    List<? extends Mount> getUsageMounts(long accountId, long volumeId);
+
     List<? extends Volume> identifyUnmappedVolumes(long accountId, Set<Long> volumeIds);
 
     List<? extends Volume> findNonRemovedVolumesOnPool(Long storagePoolId);

@@ -7,7 +7,15 @@ import io.cattle.platform.iaas.api.auth.apikey.ApiKeyAuthorizationService;
 import io.cattle.platform.iaas.api.auth.apikey.ApiKeyCredentialContext;
 import io.cattle.platform.iaas.api.auth.apikey.ApiKeyAiBridgeGuard;
 import io.cattle.platform.core.model.Account;
+import io.cattle.platform.core.dao.VolumeDao;
+import io.cattle.platform.core.model.Mount;
+import io.cattle.platform.core.model.Volume;
+import io.cattle.platform.core.model.Instance;
+import io.cattle.platform.core.model.Stack;
+import io.github.ibuildthecloud.gdapi.model.impl.SchemaImpl;
+import io.github.ibuildthecloud.gdapi.model.impl.WrappedResource;
 import io.cattle.platform.object.ObjectManager;
+import io.cattle.platform.object.util.DataUtils;
 import io.cattle.platform.iaas.api.auth.impl.ApiAuthenticator;
 import io.cattle.platform.util.type.CollectionUtils;
 import io.github.ibuildthecloud.gdapi.condition.Condition;
@@ -82,6 +90,7 @@ public class AiResourceViewService {
     @Inject ResourceManagerLocator managers;
     @Inject ObjectManager objects;
     @Inject io.cattle.platform.iaas.api.auth.change.AiResourceChangeDomain resourceChanges;
+    @Inject VolumeDao volumes;
 
     public Map<String, Object> read(ApiRequest request) {
         Map<String, Object> input = input(request);
@@ -172,11 +181,18 @@ public class AiResourceViewService {
         }
         List<Map<String, Object>> visible = new ArrayList<>();
         for (Object row : rows) {
-            Resource resource = manager.convertResponse(row, domain);
+            Resource resource = "volume".equals(type) && domain.getId() != null
+                    ? coreDetail(row, domain) : manager.convertResponse(row, domain);
             if (resource == null) throw error(503, "ResourceViewUnavailable");
             String id = "processPool".equals(type) ? poolId(resource.getFields()) : resource.getId();
             if (id == null) throw error(503, "ResourceViewUnavailable");
             Map<String, Object> safe = project(type, id, resource.getFields());
+            if ("volume".equals(type) && domain.getId() != null) {
+                for (String field : List.of("isHostPath", "isNative", "sizeMb")) scalar(safe, resource.getFields(), field);
+                if (resource.getFields().get("created") instanceof java.util.Date created) safe.put("created", created);
+                if (resource.getFields().containsKey("removed")) safe.put("removed", resource.getFields().get("removed"));
+                volumeUsage(domain, id, safe);
+            }
             if ("dnsService".equals(type)) safe.putAll(resourceChanges.aliasViewTargets(domain, id, domain.getId() != null));
             if ("processPool".equals(type) && (!(safe.get("name") instanceof String name) || name.isBlank()))
                 safe.put("name", "Process pool " + id.substring(5, 17));
@@ -257,6 +273,136 @@ public class AiResourceViewService {
         } finally {
             context.setApiRequest(domain);
         }
+    }
+
+    private void volumeUsage(ApiRequest domain, String id, Map<String, Object> safe) {
+        // Never infer unused, a hidden count or completeness from this bounded,
+        // permission-filtered snapshot. The native deletion oracle is separate.
+        safe.put("usageReferencesStatus", "unknown");
+        List<Map<String, Object>> references = new ArrayList<>();
+        safe.put("usageReferences", references);
+        if (volumes == null) return;
+        long volumeId;
+        try { volumeId = Long.parseLong(rawId(id).toString()); }
+        catch (NumberFormatException invalid) { throw error(503, "ResourceViewUnavailable"); }
+        if (volumeId <= 0 || !sameId(domain.getId(), id)) throw error(503, "ResourceViewUnavailable");
+        List<? extends Mount> mounts = volumes.getUsageMounts(ApiUtils.getPolicy().getAccountId(), volumeId);
+        if (mounts == null || mounts.size() > 51) throw error(503, "ResourceViewUnavailable");
+        for (Mount mount : mounts.subList(0, Math.min(50, mounts.size()))) {
+            if (mount == null || !Long.valueOf(volumeId).equals(mount.getVolumeId())
+                    || mount.getInstanceId() == null || mount.getRemoved() != null) continue;
+            Resource target = usageTarget(domain, "container", mount.getInstanceId().toString());
+            if (target == null || !"container".equals(target.getType()) || !(target.getFields().get("name") instanceof String)
+                    || !(target.getFields().get("state") instanceof String)) continue;
+            String path = mount.getPath();
+            if (path == null || !path.startsWith("/") || path.length() > 1024
+                    || path.chars().anyMatch(value -> value < 32 || value == 127)
+                    || !("ro".equals(mount.getPermissions()) || "rw".equals(mount.getPermissions()))) continue;
+            Map<String, Object> reference = new LinkedHashMap<>();
+            reference.put("containerId", target.getId());
+            scalar(reference, target.getFields(), "name"); scalar(reference, target.getFields(), "state");
+            reference.put("mountPath", path); reference.put("readOnly", "ro".equals(mount.getPermissions()));
+            reference.put("stackResolution", "unknown");
+            // The native container owns its persisted Stack reference. Never
+            // infer names from labels or a cross-scope relationship SQL join.
+            Object stackId = target.getFields().get("stackId");
+            if (stackId instanceof String || stackId instanceof Number) {
+                Resource stack = usageTarget(domain, "stack", stackId.toString());
+                if (stack != null && stack.getFields().get("name") instanceof String name && !name.isBlank() && name.length() <= 512) {
+                    reference.put("stackName", name); reference.put("stackResolution", "resolved");
+                }
+            }
+            references.add(reference);
+        }
+    }
+
+    private Resource usageTarget(ApiRequest domain, String type, String id) {
+        ApiRequest child = new ApiRequest(domain);
+        child.setRequestServletContext(domain.getServletContext());
+        child.setType(type); child.setId(rawId(id).toString()); child.setMethod("GET");
+        child.setAction(null); child.setLink(null); child.setRequestObject(null);
+        child.setRequestParams(new LinkedHashMap<>()); child.setConditions(new LinkedHashMap<>()); child.setInclude(null);
+        child.setAttribute(DOMAIN_READ_ATTRIBUTE, Boolean.TRUE);
+        ApiKeyCredentialContext key = ApiKeyCredentialContext.get(domain);
+        if (key != null) ApiKeyCredentialContext.attach(child, key);
+        Policy owner = keyAuthorization.actor(child);
+        ApiContext context = ApiContext.getContext();
+        ApiRequest previous = context.getApiRequest(); Object previousPolicy = context.getPolicy();
+        try {
+            var authority = authenticator.currentAuthorization(owner.getAuthenticatedAsAccountId(), owner.getAccountId(), child);
+            child.setSchemaFactory(authority.schemas());
+            context.setApiRequest(child); context.setPolicy(authority.policy());
+            Schema schema = authority.schemas().getSchema(type);
+            if (schema == null || schema.getResourceMethods() == null || !schema.getResourceMethods().contains("GET")) return null;
+            ResourceManager manager = managers.getResourceManagerByType(type);
+            if (manager == null) return null;
+            // A relationship candidate is not a caller-supplied API target.
+            // The attested native getById query applies this exact Key guard
+            // before materialization; do not synthesize per-hidden-target audit
+            // events whose IDs or event count would disclose the relation.
+            if (key != null && key.restricted() && !manager.supportsScopedCollectionQuery(keyAccess)) return null;
+            Object row = manager.getById(type, child.getId(), new ListOptions(child));
+            if (row == null) return null;
+            Resource resource = coreDetail(row, child);
+            if (resource == null || resource.getId() == null || !sameId(resource.getId(), id)
+                    || resource.getFields().get("removed") != null) return null;
+            return resource;
+        } catch (ClientVisibleException denied) {
+            if (!Set.of("KeyScopeDenied", "KeyPolicyDenied", "OwnerPermissionDenied", "NotFound").contains(denied.getCode())) throw denied;
+            return null;
+        } finally {
+            context.setApiRequest(previous); context.setPolicy(previousPolicy);
+        }
+    }
+
+    /** Called only after native getById (including object authorization) and the fresh Key decision. */
+    private Resource coreDetail(Object row, ApiRequest request) {
+        Long id, account; java.util.Date removed;
+        if ("volume".equals(request.getType()) && row instanceof Volume volume) {
+            id = volume.getId(); account = volume.getAccountId(); removed = volume.getRemoved();
+        } else if ("container".equals(request.getType()) && row instanceof Instance instance && "container".equals(instance.getKind())) {
+            id = instance.getId(); account = instance.getAccountId(); removed = instance.getRemoved();
+        } else if ("stack".equals(request.getType()) && row instanceof Stack stack) {
+            id = stack.getId(); account = stack.getAccountId(); removed = stack.getRemoved();
+        } else throw error(503, "ResourceViewUnavailable");
+        if (id == null || !sameId(id, request.getId()) || account == null
+                || account != ApiUtils.getPolicy().getAccountId() || removed != null) throw error(404, "NotFound");
+        Schema schema = request.getSchemaFactory().getSchema(request.getType());
+        if (schema == null || schema.getResourceFields() == null || !schema.getResourceFields().containsKey("id"))
+            throw error(403, "OwnerPermissionDenied");
+        List<String> names = "volume".equals(request.getType())
+                ? List.of("name", "description", "state", "kind", "created", "removed", "driver", "accessMode", "size", "sizeMb", "isHostPath", "isNative")
+                : "container".equals(request.getType()) ? List.of("name", "state", "stackId") : List.of("name");
+        // Reuse the exact role-schema Field accessors and native wrapping rules
+        // (including aliases and reference formatting),
+        // with a bounded field subset. No full DTO/output augmentation runs.
+        SchemaImpl projection = new SchemaImpl(); projection.setId(schema.getId()); projection.setParent(schema.getParent());
+        Map<String, io.github.ibuildthecloud.gdapi.model.Field> fields = new LinkedHashMap<>();
+        fields.put("id", schema.getResourceFields().get("id"));
+        for (String name : names) {
+            var field = schema.getResourceFields().get(name);
+            // Sensitive/create-only accessors must not run, even transiently.
+            if (field != null && field.isIncludeInList() && !field.isReadOnCreateOnly()
+                    && (field.getTransform() == null || field.getTransform().isBlank())) fields.put(name, field);
+        }
+        projection.setResourceFields(fields);
+        // Native wrapping gives persisted data fields precedence over bean getters.
+        // Copy only the already-approved scalar subset, never attachments or transformed values.
+        Map<String, Object> nativeFields = DataUtils.getFields(row), additional = new LinkedHashMap<>();
+        for (String name : fields.keySet()) {
+            Object value = nativeFields.get(name);
+            if (value instanceof String || value instanceof Number || value instanceof Boolean || value instanceof java.util.Date)
+                additional.put(name, value);
+        }
+        Resource wrapped = new WrappedResource(ApiContext.getContext().getIdFormatter(), request.getSchemaFactory(), projection,
+                row, additional, Set.of(), "GET", false);
+        if (row instanceof Instance instance && (!sameId(wrapped.getFields().get("stackId"), instance.getStackId())))
+            wrapped.getFields().remove("stackId");
+        return wrapped;
+    }
+
+    private static boolean sameId(Object left, Object right) {
+        return left != null && right != null && rawId(left.toString()).toString().equals(rawId(right.toString()).toString());
     }
 
     /** No recursive copy: nested credentials, values, payloads and launchConfig stay inside the server. */
