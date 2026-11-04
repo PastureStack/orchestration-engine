@@ -8,52 +8,32 @@ Rancher 1.6 ecosystem. It is not affiliated with Rancher Labs or SUSE.
 This fork of [`rancher/cattle`](https://github.com/rancher/cattle) preserves
 upstream history, authorship, licenses, and dependency notices.
 
-## Development candidate: Engine 0.183.367
+## Latest published release: Engine 0.183.367
 
-Image-upgrade previews accept optional `startFirst`, `batchSize` and
-`intervalMillis`. The immutable plan exposes the three effective values in
-`upgradeStrategy`, with the existing defaults `false`, `1` and `2000`.
-Preview, human confirmation and apply repeat the existing native port/volume
-preflight using that approved strategy. Native role/Key checks, snapshot staleness
-and exactly-once dispatch remain in effect. See the
-[candidate contract](docs/releases/orchestration-engine-0.183.367.md).
-This source candidate has not been published or accepted in runtime QA.
-Catalog-launch, resource-change and upgrade action lookups use authorized read
-snapshots to preserve application/row lock order during concurrent receipt reads.
-
-Typed Audit queries retain their closed-input check before generic schema
-sanitization. Unknown caller fields are rejected with a canonical error outcome
-instead of being discarded into an accepted query.
-
-## Latest published release: Engine 0.183.366
-
-[Engine 0.183.366](https://github.com/PastureStack/orchestration-engine/releases/tag/v0.183.366) is published with 12 original assets verified by
-anonymous SHA256 readback. Use the
-[Server installation guide](https://github.com/PastureStack/server#quick-start)
+[Engine 0.183.367](https://github.com/PastureStack/orchestration-engine/releases/tag/v0.183.367)
+is published with 12 original assets verified by anonymous SHA256 readback.
+Use the [Server installation guide](https://github.com/PastureStack/server#quick-start)
 for deployment; an Engine JAR alone is not a Server installation.
 
-Service creation accepts bounded native `ports` and `healthCheck` fields in
-human-reviewed plans. Preview, confirmation and apply repeat native port
-preflight. Created Services remain inactive; starting one requires a separate
-approved plan. A verified successful receipt reports actual assigned ports in
-read-only `executionResult.assignedPorts`, without changing the approved summary.
-Native IPv6 mappings retain their roundtrip brackets. Private human input for
-environment values remains unimplemented in Service creation parameters.
-
-Catalog transformation now retains native dynamic image, environment, port and
-log-configuration values through the existing role-schema projection. Hidden,
-read-on-create-only and unlisted fields retain their output restrictions.
+Human-reviewed Service image upgrades accept optional `startFirst`, `batchSize`
+and `intervalMillis`. Their effective values remain immutable through approval,
+native preflight and dispatch. New strategy snapshots make older Engines reject
+pending newer plans as stale; genuine legacy image-only plans keep their defaults.
+Typed Audit queries reject unknown caller fields before schema sanitization.
+Catalog-launch, resource-change and upgrade action lookups preserve application/row
+lock order while retaining ordinary receipt reads and current owner/role/Key checks.
 
 | Qualification | Current evidence |
 |---|---|
-| Original component CI and artifact | Required CI/CodeQL and artifact qualification passed: 420 suites / 3,912 tests / zero failures/errors / one existing skip. The 62-case focus contains 21 new and 41 inherited methods; full affected classes contain 63 methods. All 97 required identities passed. |
-| Public bytes | All 12 original assets passed anonymous checksum readback; no publication rebuild was performed. |
-| Assembled Server and live workflows | Matching Server/native business, role/Key and designated workflow acceptance remain pending. Component publication and IPv6 formatting tests do not prove runtime or host IPv6 acceptance. |
+| Original component CI and artifact | Required CI/CodeQL and original artifact qualification passed: 424 suites / 3,940 tests / zero failures/errors / one inherited skip. The 13 affected classes contain 28 new and 76 inherited methods; all 125 required identities passed. |
+| Public bytes | All 12 original assets passed anonymous checksum readback; publication used the original CI bytes without rebuilding. |
+| Build environment | The original Dapper inventory and raw/effective scans verify both Ubuntu PCRE2 packages at official security version `10.46-1ubuntu0.1`. This qualifies the builder, not a deployed Server image. |
+| Assembled Server and live workflows | Matching Server/Web Console/Bridge and native business, role/Key, UI and weak-model acceptance remain pending. Component publication does not prove runtime acceptance. |
 
 Four independent AI opt-ins remain default-off. The
-[release note](docs/releases/orchestration-engine-0.183.366.md) records exact
-published identities, supported fields and compatibility limits. These component
-results do not complete all 243 frontend business groups.
+[release note](docs/releases/orchestration-engine-0.183.367.md) records exact
+published identities and compatibility limits. These component results do not
+complete all 243 frontend business groups.
 
 ## Optional AI resource workflows
 
@@ -179,7 +159,7 @@ evidence are maintained in the
 Acceptance is limited to the documented affected paths, not every resource and
 role combination.
 Versioned evidence and upgrade boundaries are in the
-[366 release note](docs/releases/orchestration-engine-0.183.366.md);
+[367 release note](docs/releases/orchestration-engine-0.183.367.md);
 older changes remain in [release notes](docs/releases).
 
 ## Build and validation
