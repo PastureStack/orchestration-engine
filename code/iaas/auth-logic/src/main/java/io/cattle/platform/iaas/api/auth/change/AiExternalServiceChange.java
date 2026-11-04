@@ -3,9 +3,11 @@ package io.cattle.platform.iaas.api.auth.change;
 import io.cattle.platform.core.model.Service;
 import io.cattle.platform.core.model.ServiceExposeMap;
 import io.cattle.platform.object.util.DataAccessor;
+import java.math.BigDecimal;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -15,6 +17,7 @@ import java.util.Set;
 
 /** A closed adapter to the existing External Service owner, with no network I/O. */
 public final class AiExternalServiceChange {
+    private static final Set<String> TCP_HEALTH_FIELDS = Set.of("port", "interval", "responseTimeout", "healthyThreshold", "unhealthyThreshold");
     private AiExternalServiceChange() { }
 
     public static Map<String, Object> parameters(String operation, Set<String> allowed, Object value) {
@@ -29,6 +32,7 @@ public final class AiExternalServiceChange {
             case "stackId" -> text(content, 1, 128, false);
             case "hostname" -> { if (!(content instanceof String host) || !hostname(host)) invalid(); }
             case "externalIpAddresses" -> content = addresses(content);
+            case "healthCheck" -> content = tcpHealthCheck(content);
             default -> invalid();
             }
             result.put(key, content);
@@ -49,8 +53,43 @@ public final class AiExternalServiceChange {
         if ("create".equals(operation)) {
             result.put("type", "externalService"); result.put("startOnCreate", false);
             result.put("launchConfig", new LinkedHashMap<>());
+            if (parameters.containsKey("healthCheck")) {
+                Map<String, Object> health = new LinkedHashMap<>(tcpHealthCheck(parameters.get("healthCheck")));
+                health.put("requestLine", null); result.put("healthCheck", health);
+            }
         }
         return result;
+    }
+
+    /** The existing AI positive-integer subset, without adding native timing defaults. */
+    private static Map<String, Object> tcpHealthCheck(Object value) {
+        if (!(value instanceof Map<?, ?> input) || !TCP_HEALTH_FIELDS.containsAll(input.keySet()) || !input.containsKey("port")) invalid();
+        Map<String, Object> result = new LinkedHashMap<>();
+        for (var entry : ((Map<?, ?>) value).entrySet()) {
+            if (!(entry.getValue() instanceof Number)) invalid();
+            int integer;
+            try { integer = new BigDecimal(entry.getValue().toString()).intValueExact(); }
+            catch (NumberFormatException | ArithmeticException invalid) { invalid(); return Map.of(); }
+            if (integer < 1 || "port".equals(entry.getKey()) && integer > 65535) invalid();
+            result.put((String) entry.getKey(), integer);
+        }
+        return Collections.unmodifiableMap(result);
+    }
+
+    /** Native schema metadata may add recreate/type/nulls, but cannot change the approved TCP fields. */
+    static boolean healthCheckMatches(Object expected, Object actual) {
+        if (expected == null) return actual == null;
+        if (!(actual instanceof Map<?, ?> input) || input.get("requestLine") != null
+                || input.get("strategy") != null && !"recreate".equals(input.get("strategy"))
+                || input.get("type") != null && !"instanceHealthCheck".equals(input.get("type"))) return false;
+        Map<String, Object> fields = new LinkedHashMap<>();
+        for (var entry : input.entrySet()) {
+            if (TCP_HEALTH_FIELDS.contains(entry.getKey())) {
+                if (entry.getValue() != null) fields.put((String) entry.getKey(), entry.getValue());
+            } else if (!Set.of("requestLine", "strategy", "type").contains(entry.getKey())) return false;
+        }
+        try { return tcpHealthCheck(expected).equals(tcpHealthCheck(fields)); }
+        catch (io.github.ibuildthecloud.gdapi.exception.ClientVisibleException invalid) { return false; }
     }
 
     public static boolean hostname(String value) {
@@ -139,6 +178,8 @@ public final class AiExternalServiceChange {
                 if (!Objects.equals(expected, actual)) return false;
             }
         }
+        if ("create".equals(operation) && !healthCheckMatches(parameters.get("healthCheck"),
+                DataAccessor.field(service, "healthCheck", Object.class))) return false;
         if ("create".equals(operation) || "stop".equals(operation)) return "inactive".equals(service.getState()) && active.isEmpty();
         if ("update_targets".equals(operation) && "inactive".equals(service.getState())) return active.isEmpty();
         Set<String> expected = expected(fields);

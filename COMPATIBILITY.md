@@ -1,5 +1,30 @@
 # Compatibility Contract
 
+## Engine 0.183.368 source candidate
+
+This candidate adds an optional TCP `healthCheck` to the existing typed External
+Service CREATE plan. Its closed caller object requires `port` from 1 through
+65535 and permits `interval`, `responseTimeout`, `healthyThreshold` and
+`unhealthyThreshold`. Optional timing values use the existing typed positive
+integer subset, 1 through 2147483647. Native metadata declares no timing bounds
+or defaults; omitted values are not filled by this adapter.
+
+HTTP controls, unknown fields, nulls, wrong types and fractional values are
+rejected. Only the detached native body receives `requestLine=null` to select
+TCP. Human review retains the exact caller fields. Native role/schema checks
+repeat before preparation and dispatch, and the create receipt requires matching
+TCP readback. Omitting `healthCheck` preserves None. External UPDATE health
+checks remain unsupported; ordinary Service health checks are unchanged.
+
+The existing parent, owner, role, Key revision, approval and one-claim boundaries
+remain. Source re-extraction retains 447 inputs and all 1396 HTTP tuples with no
+operation, admission, native-schema or role-grant delta. Existing focused source
+evidence covers 48 unique methods: 7 new and 41 inherited. It is not a fresh full
+suite, original CI qualification, publication or Server runtime acceptance.
+The candidate is **not published**; README continues to describe released Engine
+0.183.367.
+See the [candidate note](docs/releases/orchestration-engine-0.183.368.md).
+
 ## Engine 0.183.367 release
 
 The existing image-upgrade plan accepts three optional strategy fields and
