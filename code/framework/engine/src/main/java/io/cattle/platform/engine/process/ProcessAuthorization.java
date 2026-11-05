@@ -318,7 +318,7 @@ public final class ProcessAuthorization {
         return "mount".equals(parentType) && "volume".equals(config.getResourceType())
                 && "volume.deactivate".equals(config.getProcessName()) && (serviceRetirementRequest(binding)
                     || "service".equals(binding.get("targetType")) && "upgrade".equals(binding.get("operation"))
-                        && ("upgrade".equals(binding.get("requestAction")) || "finishupgrade".equals(binding.get("requestAction"))));
+                        && Set.of("upgrade", "finishupgrade", "rollback").contains(Objects.toString(binding.get("requestAction"), "")));
     }
 
     private static boolean projectNetworkCreationEdge(String parentType, String parentId,

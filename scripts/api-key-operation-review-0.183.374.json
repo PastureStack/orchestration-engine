@@ -1,0 +1,78 @@
+{
+  "schemaVersion": 1,
+  "version": "0.183.374",
+  "scope": "SOURCE_ONLY_NOT_RUNTIME_ACCEPTANCE",
+  "reviewedBaseCommit": "434c8505d6f3d91724de353c848733fd32e31658",
+  "sourceInputs": {
+    "algorithm": "c03-source-inputs-v1",
+    "baseline": {
+      "count": 464,
+      "sha256": "bbbeacca6f3c5b1196f2b999f97a895b30e588066ade406310124c099af2d4b7"
+    },
+    "reviewed": {
+      "count": 465,
+      "sha256": "f82e28d4a05ed7614f243f3d6d39891a9e48d5f468e5e92922d855475ea5fe9d"
+    },
+    "addedAnchors": [
+      "AiServiceUpgradeLifecycleChange.java"
+    ]
+  },
+  "tupleReview": {
+    "baseline": 1396,
+    "candidate": 1396,
+    "added": 0,
+    "removed": 0,
+    "semanticChanges": 0,
+    "dispositionChanges": 0,
+    "sha256": "8f1c0fb378663b0b3d272efba2f211cb210eb6f17cb8035aefa33b56feeaf36a"
+  },
+  "delta": [
+    {
+      "path": "code/framework/engine/src/main/java/io/cattle/platform/engine/process/ProcessAuthorization.java",
+      "before": "f98fd485d774bf969c0ca01826ca9d5a94b7db6953b422594605e1d05ec03b21",
+      "after": "3cfeae220cf28af1ee485ae56d308a299e7d1fa1d91b2a5b20879441fd3b2e2b"
+    },
+    {
+      "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/apikey/ApiKeyTargetResolver.java",
+      "before": "76742db7c623e670415d14790daa3913f51ae1182737caa459c10d83d3a4abd4",
+      "after": "964d376bb380782b36fae483718752398752749e25dcf06b5ec9112a2fb977d7"
+    },
+    {
+      "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiResourceChangeDescriptor.java",
+      "before": "c29d40b6405166f59a4d17eb70dc751399d5df837a885059ec040d321c045459",
+      "after": "3ee419637e464db5f21da82355a4ea115e5ffe1d15046b8573f1660750ea6dfd"
+    },
+    {
+      "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiResourceChangeDomain.java",
+      "before": "4b06c6143d0cb6d924c01e806344cebeb9779dbc57b843f50b18ea2cc511f4c7",
+      "after": "6580f072594a26d2305306b17f916b4774b59e3a5560df40cb5e85b50324fdab"
+    },
+    {
+      "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiResourceChangePlanService.java",
+      "before": "4eaac957f43a80a2e68a9466c07ef5adbde0ae6c032562fa76d4c4cfc8742796",
+      "after": "91b18f3db3c1f4e045d3e75c87ac1583658fed5d8f8c19d0a31ad7d7c18795a0"
+    },
+    {
+      "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiServiceUpgradeLifecycleChange.java",
+      "before": null,
+      "after": "b582c1d2d234d14e6acd0b7644e8f1ed3da89f6b357091ffc3fb1cc5ba1749cf"
+    },
+    {
+      "path": "resources/content/schema/base/aiResourceChangePlan.json",
+      "before": "6d6eaf84adbd89ab9e3d9941cb20421ff8137ff2c5dc8567b5acecaeb4f334b0",
+      "after": "777e207a5fd072fdff55b77fd52cd3c04dfed9ee4d2f758d42dc34525ddea4c7"
+    }
+  ],
+  "roleFieldDelta": [],
+  "authorizationBoundary": "Existing ordinary-Service finish_upgrade, rollback and cancel_upgrade use empty parameters, the original native actions, fresh role/schema/Key checks and the existing human-approved resource plan. Private phase/configuration CAS, a unique native process and exact generation retirement/attachment readback are required. Cancellation proves only a checkpoint; cancel_rollback remains unsupported because no native capability exists. Only the existing rollback retirement tuple is added; no HTTP route/action or role-field grant is added. Source re-extraction is not compiled-schema, CI, artifact or runtime acceptance.",
+  "frozenV1SchemaFilesUnchanged": true,
+  "nativeRoleRouteActionGrantsUnchanged": true,
+  "compiledRoleSchemaProof": "PENDING_ACTUAL_PACKAGED_CLASSES_AND_SCHEMAS",
+  "extractor": {
+    "path": "C:\\Users\\chen21019\\source\\outputs\\webmcp-expansion-20261029\\integration-360-201\\refresh-integrated-operation-contract.py",
+    "sha256": "078ffe48881469fe5eb3cb43a15fa41b480fe70e11bd5f63102ded6b35a6d076"
+  },
+  "historicalProducerAndReviewChainsPreserved": true,
+  "artifactQualificationClaimed": false,
+  "runtimeAcceptanceClaimed": false
+}

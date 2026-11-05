@@ -103,10 +103,34 @@ public class AiProcessDiagnosticsTest {
             return null;
         }).when(f.base.keyAccess).authorize(any(), any());
         f.childRows.add(child("91", "12"));
-        Map<String, Object> result = f.base.service.read(f.request(Map.of("resourceType", "processInstance", "resourceId", "12")));
+        java.util.UUID trustedViewId = java.util.UUID.fromString("91919191-1111-4111-8111-111111111111");
+        Map<String, Object> result;
+        try (var ids = mockStatic(java.util.UUID.class, CALLS_REAL_METHODS)) {
+            ids.when(java.util.UUID::randomUUID).thenReturn(trustedViewId);
+            result = f.base.service.read(f.request(Map.of("resourceType", "processInstance", "resourceId", "12")));
+        }
+        assertEquals("aiview-" + trustedViewId, result.get("id"));
+        assertEquals("processInstance", result.get("resourceType")); assertFalse(result.toString().contains(SECRET));
+        assertEquals(java.util.Set.of("id", "resourceType", "data", "nextMarker"), result.keySet());
+        assertEquals(1, ((List<?>) result.get("data")).size());
         Map<?, ?> detail = (Map<?, ?>) ((List<?>) result.get("data")).getFirst();
         assertEquals("CreateHandler", detail.get("failedHandler")); assertEquals("unknown", detail.get("diagnosticCompleteness"));
-        assertFalse(result.toString().contains(SECRET)); assertFalse(result.toString().contains("91"));
+        java.util.function.Consumer<Map<?, ?>> safeDetail = row -> {
+            assertFalse(row.toString().contains(SECRET)); assertFalse(row.values().contains("91"));
+            assertEquals("12", row.get("id"));
+            assertTrue(java.util.Set.of("id", "type", "name", "processName", "phase", "exitReason", "startTime", "endTime", "runAfter", "created",
+                    "executionCount", "diagnosticStatus", "diagnosticCompleteness", "diagnosticTruncated", "diagnosticTruncationReason",
+                    "failedHandler", "hasException").containsAll(row.keySet()));
+            assertFalse(row.values().stream().anyMatch(value -> value instanceof Map<?, ?> || value instanceof Iterable<?>));
+        };
+        safeDetail.accept(detail);
+        for (String leak : List.of("child-id", "secret", "raw-field")) {
+            Map<String, Object> injected = new LinkedHashMap<>(); detail.forEach((key, value) -> injected.put((String) key, value));
+            if (leak.equals("child-id")) injected.put("id", "91");
+            if (leak.equals("secret")) injected.put("failedHandler", SECRET);
+            if (leak.equals("raw-field")) injected.put("log", Map.of("message", "ordinary text"));
+            assertThrows(leak, AssertionError.class, () -> safeDetail.accept(injected));
+        }
         verify(f.base.manager).list(eq("processExecution"), argThat((ApiRequest r) -> r.getPagination().getLimit() == 51
                 && r.getConditions().size() == 1 && r.getConditions().containsKey("processInstanceId") && r.getLink() == null));
         verify(f.base.manager, times(2)).getById(eq("processInstance"), eq("12"), any());

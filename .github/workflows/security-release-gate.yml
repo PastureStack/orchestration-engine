@@ -37,7 +37,7 @@ jobs:
           git rev-parse HEAD > evidence/source-revision.txt
           : > evidence/source-status.txt
           sha256sum ubuntu-apt.lock ubuntu-security-packages.lock scripts/install-ubuntu-security-updates.sh .mvn/wrapper/maven-wrapper.properties > evidence/source-locks.sha256
-          python3 tools/pip-security-overlay/test-pip-vex.py
+          python3 tools/pip-security-overlay/test-pip-vex.py -v
           python3 .github/scripts/test_runtime_vulnerability_policy.py
 
       - name: Build and test all Maven modules
@@ -364,6 +364,21 @@ jobs:
                   'queuedNativeOwnerRetainsFullLegacySchemaRevisionAndRevocationChecks',
                   'ordinaryNativeV1V2FullAndLegacyCaptureNeverEnterTheAiMandatoryBranch',
               },
+              'io.cattle.platform.iaas.api.auth.change.AiServiceUpgradeLifecycleChangeTest': {
+                  'nativeSchemaAdmitsTheSameThreeActionsWithoutAddingCancelRollback',
+                  'threeNativeCapabilitiesHaveEmptyParametersAndCancelRollbackRemainsUnsupported',
+                  'privateGenerationCasKeepsLegacyAndSecondaryConfigurationsButExcludesWorkerProgress',
+                  'nativeRollbackReadsPreviousConfigurationsAndCancelOnlyProvesACheckpoint',
+                  'nativeFullLegacyAndCustomUpgradeUseTheNormalActionAndFreshStackScope',
+                  'approvalAndActualProcessAreRequiredAndCapturedHumanDiffNeverChanges',
+                  'phaseGenerationStackAndLateAuthorityDriftNeverClaimAnOperation',
+                  'successfulFinishStillWaitsForExactOldUpgradeInstanceAndAttachmentRetirement',
+                  'processObservationUsesAnExactBoundedRootAndRejectsMissingOrConflictingExecutionEvidence',
+              },
+              'io.cattle.platform.iaas.api.auth.apikey.ApiKeyProcessAuthorizationTest': {
+                  'rollbackRetirementUsesTheExistingVerifiedServiceChainAndKeepsExplicitChildDenials',
+                  'rollbackMountVolumeEdgeRequiresTheOriginalVerifiedSchedulingProof',
+              },
           }
           suites = []
           observed = {}
@@ -514,19 +529,29 @@ jobs:
             --vex /work/evidence/dapper-apt-fixed.openvex.json \
             --format json --output /work/evidence/dapper-image-vulnerabilities.apt-fixed.json \
             "$DAPPER_IMAGE"
-          python3 scripts/check-apt-fixed-vex.py \
-            --dpkg evidence/dapper-dpkg.tsv --inspect evidence/dapper-image-inspect.json \
+          # Both original scans independently use the same exact installed vendor proof.
+          # Keep their original reports; compare only the explicitly pip-qualified views.
+          dapper_subject="$(docker image inspect --format '{{.Id}}' "$DAPPER_IMAGE")"
+          python3 tools/pip-security-overlay/filter-pip-vendor-findings.py \
             --raw evidence/dapper-image-vulnerabilities.raw.json \
-            --installed evidence/dapper-apt-installed-elf.sha256 \
-            --vex evidence/dapper-apt-fixed.openvex.json \
-            --native evidence/dapper-image-vulnerabilities.apt-fixed.json \
-            --proof evidence/dapper-apt-fixed-vex-proof.json
+            --proof evidence/dapper-pip-vendor-proof.json \
+            --output evidence/dapper-image-vulnerabilities.raw-pip-qualified.json \
+            --vex evidence/dapper-pip-vendor.raw-qualified.vex.json \
+            --subject "$dapper_subject"
           python3 tools/pip-security-overlay/filter-pip-vendor-findings.py \
             --raw evidence/dapper-image-vulnerabilities.apt-fixed.json \
             --proof evidence/dapper-pip-vendor-proof.json \
-            --output evidence/dapper-image-vulnerabilities.json \
+            --output evidence/dapper-image-vulnerabilities.apt-fixed-pip-qualified.json \
             --vex evidence/dapper-pip-vendor.vex.json \
-            --subject "$(docker image inspect --format '{{.Id}}' "$DAPPER_IMAGE")"
+            --subject "$dapper_subject"
+          python3 scripts/check-apt-fixed-vex.py \
+            --dpkg evidence/dapper-dpkg.tsv --inspect evidence/dapper-image-inspect.json \
+            --raw evidence/dapper-image-vulnerabilities.raw-pip-qualified.json \
+            --installed evidence/dapper-apt-installed-elf.sha256 \
+            --vex evidence/dapper-apt-fixed.openvex.json \
+            --native evidence/dapper-image-vulnerabilities.apt-fixed-pip-qualified.json \
+            --proof evidence/dapper-apt-fixed-vex-proof.json
+          cp evidence/dapper-image-vulnerabilities.apt-fixed-pip-qualified.json evidence/dapper-image-vulnerabilities.json
           # A scanner which misses an ELF is not a clean Go dependency scan.
           jq -e 'any(.Results[]?; .Type == "gobinary" and
             (.Target | endswith("/docker")) and (.Packages | length > 0))' \

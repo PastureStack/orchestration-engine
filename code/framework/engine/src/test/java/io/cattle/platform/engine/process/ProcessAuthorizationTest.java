@@ -178,18 +178,20 @@ public class ProcessAuthorizationTest {
 
     @Test public void onlyExactUpgradeMountUnmountCanCaptureNewSchedulingEdge() {
         EngineContext engine = EngineContext.getEngineContext();
-        for (String scenario : List.of("valid", "remove", "other-parent", "other-operation", "other-action")) {
+        for (String scenario : List.of("valid", "finish", "rollback", "remove", "other-parent", "other-operation", "other-action")) {
             var binding = new HashMap<String, Object>(Map.of("keyId", "1c1", "targetType", "service", "targetId", "2",
                     "operation", "upgrade", "requestAction", "upgrade"));
             if (scenario.equals("other-operation")) binding.put("operation", "remove");
-            if (scenario.equals("other-action")) binding.put("requestAction", "rollback");
+            if (scenario.equals("finish")) binding.put("requestAction", "finishupgrade");
+            if (scenario.equals("rollback")) binding.put("requestAction", "rollback");
+            if (scenario.equals("other-action")) binding.put("requestAction", "cancelupgrade");
             engine.pushAuthorization(binding);
             var frame = engine.pushVerifiedExecution(scenario.equals("other-parent") ? "nic" : "mount", "7", binding);
             try {
                 var launch = new LaunchConfiguration(scenario.equals("remove") ? "volume.remove" : "volume.deactivate", "volume", "6", 5L, 0, Map.of());
                 ProcessAuthorization.prepare(launch, List.of());
                 var proof = ProcessAuthorization.verifiedChild(new ProcessRecord(launch, 999L, "server"));
-                assertEquals(scenario, scenario.equals("valid"), proof != null);
+                assertEquals(scenario, List.of("valid", "finish", "rollback").contains(scenario), proof != null);
             } finally { engine.popVerifiedExecution(frame); engine.popAuthorization(); }
         }
     }
