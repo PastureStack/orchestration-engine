@@ -1,5 +1,30 @@
 # Compatibility Contract
 
+## Engine 0.183.371 source candidate
+
+The typed Host change owner uses the native Host model for visibility and
+receipt checks. A Host can have driver kind `docker` while its API type remains
+`host`; another native model cannot gain Host access by claiming that kind.
+Service and Container kind checks, native read/write schema and Key ceilings,
+approval, locking, durable claim and audit remain unchanged. No lifecycle or
+permission grant is added.
+
+Three new focused Host cases cover Full-Key visibility/PUT/receipt, read-only
+Key read versus write403, and a rejected wrong model. Four Catalog cases cover
+the real API root/schema handshake, closed route shapes, fresh owner/source
+checks and safe denial audit. Valid root/schema reads are repeatable metadata;
+original delegated writes retain their event and replay boundaries.
+
+Both builders install the same already-pinned OpenSSL security packages before
+the base upgrade. The temporary security source is removed and normal indexes
+are reloaded before that base plan; its original source phase and final exact
+OpenSSL readback are restored afterwards. The twelve already-pinned final
+Python/Curl/CA/Brotli/PCRE packages enter through the normal local-deb APT solver
+before the base plan. Only the three old bootstrap Python/Curl/CA version pins
+are aligned with those existing final versions. Final package versions, security
+lock, source URLs, SHA pins and snapshot dates remain unchanged. Official CI,
+artifact publication and designated runtime acceptance remain pending.
+
 ## Engine 0.183.370 published
 
 Host metadata is limited to name/description through the existing native PUT

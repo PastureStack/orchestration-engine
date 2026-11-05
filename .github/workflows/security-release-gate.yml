@@ -267,6 +267,9 @@ jobs:
                   'nativeSqlExcludesEveryForeignRemovedAndNonContainerRelationshipWithoutWrites',
               },
               'io.cattle.platform.iaas.api.auth.change.AiHostMetadataChangeTest': {
+                  'nativeDockerHostFullKeyUsesModelForVisiblePutAndReceipt',
+                  'nativeDockerHostReadKeyCanReadButRealWriteAuthorizationStillDenies',
+                  'hostSchemaRejectsWrongNativeModelEvenWhenItsKindClaimsHost',
                   'onlyMetadataIntentAndFieldsAreAccepted',
                   'nativePutUsesRealRevisionGuardAndRestoresContext',
                   'nativeMethodFieldAndCrossProjectCeilingsRejectBeforeMutation',
@@ -303,6 +306,12 @@ jobs:
                   'actualSpringFactoryLazilyBindsNativeStackBeforeCreateProcessScheduling',
                   'emptyHandlersAndLegacyListOverrideRemainValidWithoutEagerDependencyCycles',
                   'nativeCreateBindsExactlyOnceAndNestedFailureRestoresThreadLocalEnvelope',
+              },
+              'io.cattle.platform.iaas.api.auth.ai.catalog.AiCatalogLaunchDelegationTest': {
+                  'nativeVersionRootSchemaHandshakeIsRepeatableOwnerMetadataWithoutChildWrites',
+                  'versionRootAuditsVerifiedDenialsWithoutAttributingForgedProofToPlanOrKey',
+                  'versionRootRechecksEventProofOriginalOwnerSourceAndFrozenStackBeforeMetadata',
+                  'versionRootRejectsUnknownPathsMethodsQueriesAndContradictoryRouteShapesWithSafe403',
               },
           }
           suites = []

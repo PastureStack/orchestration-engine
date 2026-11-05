@@ -44,6 +44,11 @@ class SnapshotPackagesTest(unittest.TestCase):
         self.home = Path(self.tmp.name)
         self.bin = self.home / 'bin'
         self.bin.mkdir()
+        self.local_root = self.home / 'local-inputs'
+        self.local_root.mkdir()
+        self.security_lock = self.home / 'security.lock'
+        self.security_lock.write_bytes((ROOT / 'ubuntu-security-packages.lock').read_bytes())
+        self.config_log = self.home / 'config.log'
         self.cache = self.home / 'archives'
         self.plan = self.home / 'plan'
         self.write_plan(self.uri_line())
@@ -60,12 +65,27 @@ class SnapshotPackagesTest(unittest.TestCase):
         self.args = ['install', '-y', '--no-install-recommends', 'unzip=6.0-29ubuntu1']
         self.make_script('apt-get', r'''#!/bin/sh
 set -eu
+printf '%s\n' "${APT_CONFIG-}" >> "$TEST_CONFIG_LOG"
 printf 'BEGIN\n' >> "$TEST_APT_LOG"
 printf '%s\n' "$@" >> "$TEST_APT_LOG"
 case " $* " in
-    *' --print-uris '*) cat "$TEST_PLAN"; exit "$TEST_PLAN_STATUS" ;;
+    *' --print-uris '*)
+        cat "$TEST_PLAN"
+        if [ -n "$TEST_CORRUPT_LOCAL" ]; then printf 'changed input\n' > "$TEST_CORRUPT_LOCAL"; fi
+        exit "$TEST_PLAN_STATUS" ;;
     *' --no-download '*) : > "$TEST_INSTALLED" ;;
     *) exit 91 ;;
+esac
+''')
+        self.make_script('dpkg-deb', r'''#!/bin/sh
+set -eu
+[ "$#" = 3 ] && [ "$1" = -f ] || exit 96
+name=${2##*/}; name=${name%.deb}
+case "$3" in
+    Package) printf '%s\n' "$name" ;;
+    Version) printf '1.0\n' ;;
+    Architecture) if [ "$name" = ca-certificates ]; then printf 'all\n'; else printf 'amd64\n'; fi ;;
+    *) exit 97 ;;
 esac
 ''')
         self.make_script('chown', r'''#!/bin/sh
@@ -126,7 +146,10 @@ esac
         # has no configurable apt-helper, cache or lock-file escape hatch.
         script = SOURCE
         for old, new in (
+                ('local_root=/tmp', 'local_root=' + shlex.quote(self.shell_path(self.local_root))),
                 ('. /licenses/ubuntu-apt.lock', '. ' + shlex.quote((ROOT / 'ubuntu-apt.lock').as_posix())),
+                ('security_lock=/licenses/ubuntu-security-packages.lock',
+                 'security_lock=' + shlex.quote(self.shell_path(self.security_lock))),
                 ('archives=/var/cache/apt/archives', 'archives=' + shlex.quote(self.cache.as_posix())),
                 ('/usr/lib/apt/apt-helper', shlex.quote(helper.as_posix()))):
             self.assertEqual(1, script.count(old))
@@ -154,19 +177,23 @@ esac
             return '/' + value[0].lower() + value[2:]
         return value
 
-    def run_helper(self, *, archive='ok', snapshot='ok', plan_status=0, args=None):
+    def run_helper(self, *, apt_config=None, archive='ok', snapshot='ok', plan_status=0, args=None, corrupt_local=None):
         for path in (self.apt_log, self.helper_log, self.sleep_log,
-                     self.snapshot_count, self.installed, self.chown_log):
+                     self.snapshot_count, self.installed, self.chown_log, self.config_log):
             path.unlink(missing_ok=True)
         paths = [self.shell_path(self.bin), self.shell_path(Path(SH).resolve().parent)]
         paths.extend(['/usr/bin', '/bin'] if os.name == 'nt' else [os.environ['PATH']])
         env = dict(os.environ, PATH=':'.join(paths),
             TEST_APT_LOG=self.apt_log.as_posix(), TEST_HELPER_LOG=self.helper_log.as_posix(),
             TEST_PLAN=self.plan.as_posix(), TEST_INSTALLED=self.installed.as_posix(),
+            TEST_CONFIG_LOG=self.config_log.as_posix(),
             TEST_CHOWN_LOG=self.chown_log.as_posix(),
             TEST_SLEEP_LOG=self.sleep_log.as_posix(), TEST_SNAPSHOT_COUNT=self.snapshot_count.as_posix(),
             TEST_GOOD_PAYLOAD=self.good.as_posix(), TEST_BAD_PAYLOAD=self.bad.as_posix(),
-            TEST_ARCHIVE_MODE=archive, TEST_SNAPSHOT_MODE=snapshot, TEST_PLAN_STATUS=str(plan_status))
+            TEST_ARCHIVE_MODE=archive, TEST_SNAPSHOT_MODE=snapshot, TEST_PLAN_STATUS=str(plan_status),
+            TEST_CORRUPT_LOCAL='' if corrupt_local is None else self.shell_path(corrupt_local))
+        if apt_config is not None:
+            env['APT_CONFIG'] = self.shell_path(apt_config)
         return subprocess.run([SH, self.script.as_posix(), *(args or self.args)], env=env,
                               capture_output=True, text=True, timeout=15)
 
@@ -200,11 +227,261 @@ esac
         docker = (ROOT / 'Dockerfile.dapper').read_text()
         self.assertIn('ENV LANG=C.UTF-8 LC_ALL=C.UTF-8', docker)
         self.assertIn('COPY --chmod=0755 scripts/install-snapshot-packages /usr/local/bin/install-snapshot-packages', docker)
-        self.assertEqual(3, docker.count('    install-snapshot-packages '))
-        self.assertEqual(2, docker.count('    apt-get update;'))
+        self.assertEqual(4, docker.count('    install-snapshot-packages '))
+        self.assertEqual(3, docker.count('    apt-get update;'))
+        # The first/final security indexes bracket the original base-only plan.
+        updates = [m.start() for m in re.finditer('    apt-get update;', docker)]
+        security = '"${UBUNTU_APT_SECURITY_SNAPSHOT}" > /etc/apt/sources.list.d/pasturestack-security.sources;'
+        self.assertEqual(2, docker.count(security))
+        phases = [docker.index(security), updates[0],
+                  docker.index('    rm -f /etc/apt/sources.list.d/pasturestack-security.sources;'),
+                  updates[1], docker.index('    install-snapshot-packages upgrade -y;'),
+                  docker.rindex(security), updates[2]]
+        self.assertEqual(sorted(phases), phases)
         self.assertIn('Signed-By: /usr/share/keyrings/ubuntu-archive-keyring.gpg', docker)
         self.assertIn('Acquire::https::Verify-Peer "true"', docker)
         self.assertIn('Acquire::https::Verify-Host "true"', docker)
+
+    def test_explicit_local_inputs_keep_the_signed_remote_closure_and_original_no_download_install(self):
+        # The utility owns transport, while the recipe owns its exact twelve-package list.
+        names = ['bootstrap-a', 'bootstrap-b']
+        inputs = []
+        plan = ''
+        for i, name in enumerate(names):
+            file = self.local_root / (name + '.deb'); file.write_bytes(GOOD)
+            path = self.shell_path(file); inputs.append(path)
+            arch = 'all' if name == 'ca-certificates' else 'amd64'
+            selection = name if i % 2 == 0 else name + ':' + arch
+            plan += f"Note, selecting '{selection}' instead of '{path}'\n"
+            uri = 'file:' + ('//' if i % 2 else '') + path
+            filename = name + '.deb' if i % 2 else f'{name}_1.0_{arch}.deb'
+            # APT permits local volatile-source records without any hash.
+            plan += f"'{uri}' {filename} {len(GOOD)}" + (f' SHA256:{HASH}' if i % 2 else '') + '\n'
+        pools = (
+            'pool/main/k/krb5/libgssapi-krb5-2_1.22.1-2ubuntu4.1_amd64.deb',
+            'pool/main/r/readline/readline-common_8.3-4_all.deb',
+            'pool/universe/p/python-pip/python3-pip-whl_25.1.1%2bdfsg-1ubuntu2_all.deb',
+            'pool/universe/s/setuptools/python3-setuptools-whl_78.1.1-0.1build1_all.deb',
+        )
+        for pool in pools:
+            plan += self.uri_line(uri=SNAPSHOT + pool, filename=pool.rsplit('/', 1)[1])
+        self.write_plan(plan)
+        args = ['install', '-y', '--no-install-recommends', *inputs]
+        result = self.run_helper(args=args)
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertEqual([f'https://archive.ubuntu.com/ubuntu/{p}|SHA256:{HASH}' for p in pools], self.downloads())
+        self.assertEqual([], self.sleeps())
+        self.assertEqual(args, self.apt_calls()[0][-len(args):])
+        self.assertEqual(args, self.apt_calls()[1][-len(args):])
+        self.assertIn('--no-download', self.apt_calls()[1])
+        for name in names:
+            self.assertEqual(GOOD, (self.local_root / (name + '.deb')).read_bytes())
+
+    def test_complete_remote_diagnostics_precede_transport_without_raw_or_local_data(self):
+        file = self.local_root / 'never-publish-local.deb'
+        file.write_bytes(GOOD)
+        path = self.shell_path(file)
+        pool2 = 'pool/main/r/remaining/remaining_2.0_amd64.deb'
+        remote = self.uri_line() + self.uri_line(uri=SNAPSHOT + pool2, filename=pool2.rsplit('/', 1)[1])
+        plan = f"'file:{path}' never-publish-local.deb {len(GOOD)}\n" + remote
+        self.write_plan(plan + 'private-note-must-not-appear\n')
+        helper = self.bin / 'apt-helper-mock'
+        text = helper.read_text()
+        needle = "printf '%s|%s\\n'"
+        self.assertEqual(1, text.count(needle))
+        helper.write_text(text.replace(needle, "printf 'TRANSPORT_STARTED\\n'\n" + needle), encoding='utf-8', newline='\n')
+        result = self.run_helper(args=['install', '-y', path], archive='fail', snapshot='fail')
+        self.assert_rejected(result)
+        expected = [f'SNAPSHOT_PACKAGE_PLAN pool={pool} size={len(GOOD)} sha256={HASH}'
+                    for pool in (POOL, pool2)]
+        self.assertEqual(expected, [line for line in result.stdout.splitlines()
+                                    if line.startswith('SNAPSHOT_PACKAGE_PLAN pool=')])
+        self.assertLess(result.stdout.index('SNAPSHOT_PACKAGE_PLAN_END'), result.stdout.index('TRANSPORT_STARTED'))
+        self.assertIn('package_download_failed', result.stderr)
+        for private in (path, 'file:', 'private-note-must-not-appear', 'Note, selecting'):
+            self.assertNotIn(private, result.stdout)
+        # A bad later row must prevent even the earlier valid row being logged.
+        for bad in (self.uri_line(digest='bad'), self.uri_line(uri='https://invalid.example/private')):
+            self.write_plan(self.uri_line() + bad)
+            result = self.run_helper(archive='fail', snapshot='fail')
+            self.assert_rejected(result)
+            self.assertEqual([], self.downloads())
+            self.assertNotIn('SNAPSHOT_PACKAGE_PLAN', result.stdout)
+            self.assertNotIn('private', result.stdout)
+
+    def model_native_local_cache_hit(self, filename):
+        # APT 3.2.1 omits an already cached URI after checking size, not SHA.
+        target = self.bin / 'apt-get'
+        text = target.read_text()
+        needle = '        cat "$TEST_PLAN"'
+        self.assertEqual(1, text.count(needle))
+        replacement = '''        planning_cache=
+        for option do
+            case "$option" in Dir::Cache::archives=*) planning_cache=${option#*=} ;; esac
+        done
+        [ -n "$planning_cache" ] || exit 98
+        if [ -f "$planning_cache/''' + filename + '''" ] &&
+           [ "$(wc -c < "$planning_cache/''' + filename + '''" | tr -d '[:space:]')" = ''' + str(len(GOOD)) + ''' ]; then
+            exit "$TEST_PLAN_STATUS"
+        fi
+''' + needle
+        target.write_text(text.replace(needle, replacement), encoding='utf-8', newline='\n')
+
+    def test_local_inputs_use_empty_planning_cache_and_seed_exact_native_cache_names(self):
+        file = self.local_root / 'approved.deb'
+        file.write_bytes(GOOD)
+        path = self.shell_path(file)
+        filename = 'approved_1.0_amd64.deb'
+        self.model_native_local_cache_hit(filename)
+        self.write_plan(f"'file:{path}' {filename} {len(GOOD)}\n")
+        args = ['install', '-y', path]
+        # Empty real cache seeds bytes; a second call must still bind the URI
+        # through the separate empty planner, despite a native size-only hit.
+        for reused in (False, True):
+            result = self.run_helper(args=args)
+            self.assertEqual(0, result.returncode, result.stderr)
+            self.assertEqual(GOOD, (self.cache / filename).read_bytes())
+            self.assertEqual(GOOD, file.read_bytes())
+            self.assertEqual([], self.downloads())
+            planning = next(v for v in self.apt_calls()[0] if v.startswith('Dir::Cache::archives='))
+            self.assertTrue(planning.endswith('/plan-archives'), (reused, planning))
+            self.assertNotEqual('Dir::Cache::archives=' + self.cache.as_posix(), planning)
+            self.assertEqual(args, self.apt_calls()[1][-len(args):])
+            self.assertIn('--no-download', self.apt_calls()[1])
+
+    def test_local_cache_wrong_hash_size_or_directory_cannot_reach_native_install(self):
+        file = self.local_root / 'approved.deb'
+        file.write_bytes(GOOD)
+        path = self.shell_path(file)
+        filename = 'approved_1.0_amd64.deb'
+        self.model_native_local_cache_hit(filename)
+        self.write_plan(f"'file:{path}' {filename} {len(GOOD)}\n")
+        self.cache.mkdir()
+        target = self.cache / filename
+        self.assertEqual(len(GOOD), len(BAD))
+        for mode, value in (('same-size-wrong-sha', BAD), ('wrong-size', GOOD + b'x'), ('directory', None)):
+            with self.subTest(mode=mode):
+                if value is None:
+                    target.mkdir()
+                else:
+                    target.write_bytes(value)
+                result = self.run_helper(args=['install', '-y', path])
+                self.assert_rejected(result)
+                expected = 'invalid_local_cache_destination' if value is None else 'local_cache_verification_failed'
+                self.assertIn(expected, result.stderr)
+                self.assertEqual([], self.downloads())
+                self.assertEqual(GOOD, file.read_bytes())
+                if value is None:
+                    target.rmdir()
+                else:
+                    self.assertEqual(value, target.read_bytes())
+                    target.unlink()
+
+    def test_local_and_remote_canonical_cache_collisions_reject_before_transport(self):
+        file = self.local_root / 'approved.deb'
+        file.write_bytes(GOOD)
+        path = self.shell_path(file)
+        filename = 'approved_1.0_amd64.deb'
+        local = f"'file:{path}' {filename} {len(GOOD)}\n"
+        remote = self.uri_line(uri=SNAPSHOT + 'pool/main/a/approved/' + filename,
+                               filename=filename, digest=hashlib.sha256(BAD).hexdigest())
+        for plan in (local + local, local + remote, remote + local):
+            with self.subTest(order=plan.startswith("'file:")):
+                self.write_plan(plan)
+                result = self.run_helper(args=['install', '-y', path])
+                self.assert_rejected(result)
+                self.assertIn('duplicate_filename', result.stderr)
+                self.assertEqual([], self.downloads())
+                self.assertNotIn('SNAPSHOT_PACKAGE_PLAN', result.stdout)
+
+    def test_local_cache_last_sha_recheck_detects_tampering_after_atomic_seed(self):
+        file = self.local_root / 'approved.deb'
+        file.write_bytes(GOOD)
+        path = self.shell_path(file)
+        filename = 'approved_1.0_amd64.deb'
+        self.write_plan(f"'file:{path}' {filename} {len(GOOD)}\n")
+        real_mv = (Path(SH).resolve().parent / 'mv.exe').as_posix() if os.name == 'nt' else shutil.which('mv')
+        self.assertTrue(real_mv)
+        target = (self.cache / filename).as_posix()
+        self.make_script('mv', '#!/bin/sh\nset -eu\n' + shlex.quote(real_mv) + ' "$@"\n'
+                         'last=\nfor last do :; done\n[ "$last" = ' + shlex.quote(target) + ' ] || exit 98\n'
+                         "printf 'evil package\\n' > \"$last\"\n")
+        result = self.run_helper(args=['install', '-y', path])
+        self.assert_rejected(result)
+        self.assertIn('local_cache_verification_failed', result.stderr)
+        self.assertEqual(GOOD, file.read_bytes())
+        self.assertEqual(BAD, (self.cache / filename).read_bytes())
+
+    def test_local_cache_symlink_is_rejected_even_when_target_bytes_match(self):
+        file = self.local_root / 'approved.deb'
+        file.write_bytes(GOOD)
+        path = self.shell_path(file)
+        filename = 'approved_1.0_amd64.deb'
+        self.write_plan(f"'file:{path}' {filename} {len(GOOD)}\n")
+        self.cache.mkdir()
+        try:
+            (self.cache / filename).symlink_to(file)
+        except OSError as error:
+            if os.name == 'nt' and getattr(error, 'winerror', None) == 1314:
+                self.skipTest('Windows symlink privilege unavailable; Linux CI must execute this control')
+            raise
+        result = self.run_helper(args=['install', '-y', path])
+        self.assert_rejected(result)
+        self.assertIn('invalid_local_cache_destination', result.stderr)
+        self.assertEqual(GOOD, file.read_bytes())
+
+    def test_local_plan_rows_are_bound_to_explicit_argument_bytes_size_and_filename(self):
+        file = self.local_root / 'approved.deb'; file.write_bytes(GOOD)
+        other = self.local_root / 'unbound.deb'; other.write_bytes(GOOD)
+        path = self.shell_path(file)
+        args = ['install', '-y', path]
+        valid = f"'file:{path}' approved.deb {len(GOOD)} SHA256:{HASH}\n"
+        invalid = (
+            valid.replace(path, self.shell_path(other)),
+            valid.replace(path, '/etc/passwd'),
+            valid.replace('file:', 'file://foreign.invalid'),
+            valid.replace('approved.deb ' + str(len(GOOD)), 'other.deb ' + str(len(GOOD))),
+            valid.replace(str(len(GOOD)) + ' SHA256:', str(len(GOOD) + 1) + ' SHA256:'),
+            valid.replace(HASH, 'f' * 64), valid.replace('SHA256:', 'MD5Sum:'),
+            valid.replace(HASH, ''),
+            f"Note, selecting 'unbound' instead of '{path}'\n",
+            self.uri_line().replace('SHA256:', 'MD5Sum:'),
+        )
+        for row in invalid:
+            with self.subTest(plan=row):
+                self.write_plan(self.uri_line() + row)
+                self.assert_rejected(self.run_helper(args=args))
+                self.assertEqual([], self.downloads())
+        self.write_plan(valid)
+        self.assert_rejected(self.run_helper())  # A file row never grants a new local argument.
+
+    def test_local_regular_paths_and_final_snapshot_are_required_before_install(self):
+        file = self.local_root / 'approved.deb'; file.write_bytes(GOOD)
+        outside = self.home / 'outside.deb'; outside.write_bytes(GOOD)
+        directory = self.local_root / 'directory.deb'; directory.mkdir()
+        for path in (self.shell_path(outside), self.shell_path(directory),
+                     self.shell_path(self.local_root / 'missing.deb'),
+                     self.shell_path(file.parent) + '/../approved.deb', self.shell_path(file) + '?query'):
+            with self.subTest(path=path):
+                self.assert_rejected(self.run_helper(args=['install', '-y', path]))
+                self.assertEqual([], self.downloads())
+        # No file rows are required if APT omits them; final input identity still is.
+        result = self.run_helper(args=['install', '-y', self.shell_path(file)], corrupt_local=file)
+        self.assert_rejected(result)
+        self.assertIn('local_input_changed', result.stderr)
+        self.assertEqual(1, len(self.apt_calls()))
+
+    def test_local_symlink_never_reaches_the_native_planner(self):
+        file = self.local_root / 'approved.deb'; file.write_bytes(GOOD)
+        link = self.local_root / 'link.deb'
+        try:
+            link.symlink_to(file)
+        except OSError as error:
+            if os.name == 'nt': self.skipTest('Native symlink permission is unavailable on this Windows fixture host')
+            raise error
+        self.assert_rejected(self.run_helper(args=['install', '-y', self.shell_path(link)]))
+        self.assertEqual([], self.downloads())
+        self.assertFalse(self.apt_log.exists())
 
     def test_official_archive_first_and_exact_no_download_args(self):
         self.write_plan('Reading package lists...\n  unzip\n' + self.uri_line())
@@ -377,6 +654,58 @@ esac
         self.assertEqual([], self.downloads())
         self.assertEqual(['upgrade', '-y'], self.apt_calls()[1][-2:])
 
+
+
+    def test_security_overlay_uses_canonical_snapshot_flags_and_same_private_config(self):
+        header = self.security_lock.read_text().splitlines()[0]
+        date = re.fullmatch(r'# Official Ubuntu 26.04 security/updates snapshot: (\d{8}T\d{6}Z)', header).group(1)
+        self.write_plan(self.uri_line('https://snapshot.ubuntu.com/ubuntu/' + date + '/' + POOL))
+        config = self.home / 'private-apt.conf'
+        config.write_text('Acquire::https::Verify-Peer "true";\n')
+        args = ['install', '-y', '--only-upgrade', '--no-install-recommends', '--no-remove', 'unzip=6.0-29ubuntu1']
+        result = self.run_helper(args=args, apt_config=config)
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertTrue(self.installed.exists())
+        self.assertEqual([self.shell_path(config)] * 2, self.config_log.read_text().splitlines())
+        calls = self.apt_log.read_text().split('BEGIN\n')[1:]
+        self.assertEqual(2, len(calls))
+        self.assertEqual(args, calls[-1].splitlines()[3:])
+        self.assertEqual('--no-download', calls[-1].splitlines()[2])
+        self.assertEqual('https://archive.ubuntu.com/ubuntu/' + POOL,
+                         self.helper_log.read_text().split('|')[0])
+        for option in ('--allow-downgrades', '--allow-unauthenticated', '--force-yes'):
+            with self.subTest(option=option):
+                result = self.run_helper(args=args + [option], apt_config=config)
+                self.assertNotEqual(0, result.returncode)
+                self.assertFalse(self.installed.exists())
+                self.assertFalse(self.apt_log.exists())
+
+    def test_security_snapshot_header_is_unique_closed_and_cannot_escape_the_canonical_lock(self):
+        original = self.security_lock.read_bytes()
+        for value in (b'', b'# Official Ubuntu 26.04 security/updates snapshot: nope\n',
+                      original.splitlines()[0] + b'\n' + original,
+                      b'# Official Ubuntu 26.04 security/updates snapshot: 20261023T000000Z;evil\n'):
+            with self.subTest(header=value[:80]):
+                self.security_lock.write_bytes(value)
+                result = self.run_helper()
+                self.assertNotEqual(0, result.returncode)
+                self.assertFalse(self.apt_log.exists())
+                self.assertFalse(self.installed.exists())
+        self.security_lock.write_bytes(original)
+        self.write_plan(self.uri_line('https://snapshot.ubuntu.com/ubuntu/20261024T000000Z/' + POOL))
+        result = self.run_helper()
+        self.assertNotEqual(0, result.returncode)
+        self.assertFalse(self.installed.exists())
+        self.assertFalse(self.helper_log.exists())
+        if os.name != 'nt':
+            target = self.home / 'other.lock'
+            target.write_bytes(original)
+            self.security_lock.unlink()
+            self.security_lock.symlink_to(target)
+            result = self.run_helper()
+            self.assertNotEqual(0, result.returncode)
+            self.assertFalse(self.apt_log.exists())
+            self.assertFalse(self.installed.exists())
 
 if __name__ == '__main__':
     unittest.main(verbosity=2)

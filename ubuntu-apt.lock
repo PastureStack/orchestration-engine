@@ -1,15 +1,15 @@
 # Ubuntu 26.04 package lock for reproducible PastureStack builds.
-# Refresh the base snapshot and its exact direct-package versions together.
-# Security overlays are added after the base install and pin only listed fixes.
+# Refresh the base snapshot and its unoverlaid direct-package versions together.
+# Existing final fixed packages bootstrap the base install; later overlays retain their exact pins.
 
 UBUNTU_APT_SNAPSHOT='20260826T000000Z'
 UBUNTU_APT_SECURITY_SNAPSHOT='20261002T000000Z'
 UBUNTU_APT_OPENSSL_VERSION='3.5.5-1ubuntu3.7'
 
 UBUNTU_APT_BASH_VERSION='5.3-2ubuntu1'
-UBUNTU_APT_CA_CERTIFICATES_VERSION='20260601~26.04.1'
-# The base snapshot bootstrap is replaced by the SHA256-pinned security packages.
-UBUNTU_APT_CURL_BOOTSTRAP_VERSION='8.18.0-1ubuntu2.4'
+UBUNTU_APT_CA_CERTIFICATES_VERSION='20260816ubuntu0.26.04.1'
+# Bootstrap uses the same SHA256-pinned final Curl packages.
+UBUNTU_APT_CURL_BOOTSTRAP_VERSION='8.18.0-1ubuntu2.8'
 UBUNTU_APT_CURL_VERSION='8.18.0-1ubuntu2.8'
 UBUNTU_APT_GIT_VERSION='1:2.53.0-1ubuntu1'
 UBUNTU_APT_GZIP_VERSION='1.14-1~exp2ubuntu1.1'
@@ -20,7 +20,7 @@ UBUNTU_APT_MARIADB_CLIENT_VERSION='1:11.8.6-5ubuntu0.1'
 UBUNTU_APT_POSTGRESQL_CLIENT_VERSION='18+290ubuntu1'
 UBUNTU_APT_PROCPS_VERSION='2:4.0.4-9ubuntu1'
 UBUNTU_APT_PYTHON3_VERSION='3.14.3-0ubuntu2'
-UBUNTU_APT_PYTHON3_14_VERSION='3.14.4-1ubuntu0.1'
+UBUNTU_APT_PYTHON3_14_VERSION='3.14.4-1ubuntu0.2'
 UBUNTU_APT_PYTHON3_PIP_VERSION='25.1.1+dfsg-1ubuntu2'
 UBUNTU_APT_PYTHON3_VENV_VERSION='3.14.3-0ubuntu2'
 UBUNTU_APT_TAR_VERSION='1.35+dfsg-4ubuntu0.4'

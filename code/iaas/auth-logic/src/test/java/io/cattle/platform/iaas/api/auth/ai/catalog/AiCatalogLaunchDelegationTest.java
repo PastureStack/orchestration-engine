@@ -31,6 +31,7 @@ import io.github.ibuildthecloud.gdapi.exception.ClientVisibleException;
 import io.github.ibuildthecloud.gdapi.factory.SchemaFactory;
 import io.github.ibuildthecloud.gdapi.model.impl.SchemaImpl;
 import io.github.ibuildthecloud.gdapi.request.ApiRequest;
+import io.github.ibuildthecloud.gdapi.request.parser.DefaultApiRequestParser;
 import io.github.ibuildthecloud.gdapi.server.model.ApiServletContext;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -58,6 +59,126 @@ public class AiCatalogLaunchDelegationTest {
         else ArchaiusUtil.getConfiguration().setProperty("api.ai.bridge.enabled", previousBridge);
         if (previous == null) ArchaiusUtil.getConfiguration().clearProperty("api.ai.catalog.launch.enabled");
         else ArchaiusUtil.getConfiguration().setProperty("api.ai.catalog.launch.enabled", previous); }
+
+    @Test public void nativeVersionRootSchemaHandshakeIsRepeatableOwnerMetadataWithoutChildWrites() throws Exception {
+        for (String version : List.of("v1", "v2-beta")) {
+            Fixture f = new Fixture();
+            for (String suffix : List.of("", "/schemas", "/", "/schemas")) {
+                ApiRequest request = f.route("/" + version + suffix, "GET", null, Map.of(), f.proof);
+                assertEquals(version, request.getVersion()); assertNull(request.getId()); assertNull(request.getLink()); assertNull(request.getAction());
+                if (suffix.endsWith("schemas")) assertEquals("schema", request.getType()); else assertNull(request.getType());
+                f.delegation.access.authenticator.handle(request);
+                assertTrue(AiCatalogLaunchDelegation.bootstrap(request));
+                assertEquals(42L, ((Policy) ApiContext.getContext().getPolicy()).getAuthenticatedAsAccountId());
+                assertEquals(5L, ((Policy) ApiContext.getContext().getPolicy()).getAccountId());
+                assertTrue(AiCatalogLaunchAccess.trustedDomain(request));
+                request.setUrlBuilder(mock(io.github.ibuildthecloud.gdapi.url.UrlBuilder.class));
+                if (suffix.endsWith("schemas")) new io.github.ibuildthecloud.gdapi.request.handler.SchemasHandler().handle(request);
+                else new io.github.ibuildthecloud.gdapi.request.handler.VersionHandler().handle(request);
+                assertNotNull(request.getResponseObject());
+                var locator = mock(io.github.ibuildthecloud.gdapi.request.resource.ResourceManagerLocator.class);
+                var resources = new io.github.ibuildthecloud.gdapi.request.handler.ResourceManagerRequestHandler();
+                resources.setResourceManagerLocator(locator); resources.handle(request); verifyNoInteractions(locator);
+                assertFalse(new JacksonJsonMapper().writeValueAsString(request.getResponseObject()).contains(f.proof));
+                f.delegation.complete(request, null); assertEquals(200, request.getResponseCode());
+            }
+            ApiRequest target = f.route("/" + version + "/stacks/1st889", "GET", null, Map.of(), f.proof);
+            f.delegation.access.authenticator.handle(target);
+            assertFalse(AiCatalogLaunchDelegation.bootstrap(target));
+            assertEquals(0, f.store.writesAfterIssue); assertFalse(f.plan.containsKey("ledger")); assertFalse(f.plan.containsKey("createdGraph"));
+            verify(f.delegation.plans, times(5)).audit(any(), eq("delegate"), same(f.plan), eq(true), eq("CatalogLaunchDelegationAllowed"));
+            verifyNoInteractions(f.transformer);
+        }
+    }
+
+    @Test public void versionRootRejectsUnknownPathsMethodsQueriesAndContradictoryRouteShapesWithSafe403() throws Exception {
+        for (String mutation : List.of("empty", "slash", "unknown", "unsupported", "post", "query", "action", "link", "id", "uri",
+                "null-unknown", "version", "body", "params")) {
+            Fixture f = new Fixture();
+            String path = switch (mutation) {
+                case "empty" -> ""; case "slash" -> "/"; case "unknown", "null-unknown" -> "/v2-beta/unknown";
+                case "unsupported" -> "/v9"; default -> "/v2-beta";
+            };
+            ApiRequest request = f.route(path, "post".equals(mutation) ? "POST" : "GET",
+                    "query".equals(mutation) ? "name=private-synthetic" : null,
+                    "query".equals(mutation) ? Map.of("name", new String[] { "private-synthetic" }) : Map.of(), f.proof);
+            if ("action".equals(mutation)) request.setAction("activate");
+            if ("link".equals(mutation)) request.setLink("services");
+            if ("id".equals(mutation)) request.setId("1st889");
+            if ("uri".equals(mutation)) when(request.getServletContext().getRequest().getRequestURI()).thenReturn("/v2-beta/unknown");
+            if ("null-unknown".equals(mutation)) request.setType(null);
+            if ("version".equals(mutation)) request.setVersion("v1");
+            if ("body".equals(mutation)) request.setRequestObject(Map.of("name", "private-synthetic"));
+            if ("params".equals(mutation)) request.setRequestParams(Map.of("name", "private-synthetic"));
+            var denied = assertThrows(mutation, ClientVisibleException.class, () -> f.delegation.access.authenticator.handle(request));
+            assertEquals(mutation, 403, denied.getStatus()); assertEquals("CatalogLaunchDelegationDenied", denied.getCode());
+            assertFalse(AiCatalogLaunchDelegation.bootstrap(request)); assertEquals(0, f.store.writesAfterIssue);
+            verifyNoInteractions(f.transformer);
+        }
+    }
+
+    @Test public void versionRootRechecksEventProofOriginalOwnerSourceAndFrozenStackBeforeMetadata() throws Exception {
+        for (String mutation : List.of("forged", "event", "expired", "closed", "project", "owner", "revision", "revoked",
+                "credential-expiry", "policy", "source", "stack")) {
+            Fixture f = new Fixture(); String proof = f.proof;
+            if ("forged".equals(mutation)) proof = proof.substring(0, proof.length() - 1) + (proof.endsWith("A") ? "B" : "A");
+            if ("event".equals(mutation)) f.plan.put("delegationEventId", UUID.randomUUID().toString());
+            if ("expired".equals(mutation)) f.plan.put("delegationExpiresAt", 0L);
+            if ("closed".equals(mutation)) f.plan.put("delegationClosed", true);
+            if ("owner".equals(mutation)) f.denial = "OwnerPermissionDenied";
+            if ("revision".equals(mutation)) f.denial = "ApiKeyPolicyChanged";
+            if ("revoked".equals(mutation)) f.denial = "ApiKeyRevoked";
+            if ("credential-expiry".equals(mutation)) f.denial = "ApiKeyExpired";
+            if ("policy".equals(mutation)) f.denial = "KeyPolicyDenied";
+            if ("source".equals(mutation)) f.delegation.gateway = new AiCatalogLaunchGateway() {
+                @Override public Map<String, Object> material(String p, String t, String v) {
+                    return Map.of("digest", "b".repeat(64), "questionSchema", List.of());
+                }
+            };
+            if ("stack".equals(mutation)) f.stack.setName("changed");
+            ApiRequest request = f.route("/v2-beta", "GET", null, Map.of(), proof);
+            if ("project".equals(mutation)) request.setAttribute(io.cattle.platform.core.constants.ProjectConstants.PROJECT_HEADER, "1a88");
+            var denied = assertThrows(mutation, ClientVisibleException.class, () -> f.delegation.access.authenticator.handle(request));
+            String expected = switch (mutation) {
+                case "expired" -> "CatalogLaunchDelegationExpired"; case "owner" -> "OwnerPermissionDenied";
+                case "revision" -> "ApiKeyPolicyChanged"; case "source", "stack" -> "CatalogLaunchSourceChanged";
+                case "revoked" -> "ApiKeyRevoked"; case "credential-expiry" -> "ApiKeyExpired"; case "policy" -> "KeyPolicyDenied";
+                default -> "CatalogLaunchDelegationDenied";
+            };
+            assertEquals(mutation, Set.of("source", "stack").contains(mutation) ? 409 : 403, denied.getStatus());
+            assertEquals(mutation, expected, denied.getCode());
+            assertFalse(AiCatalogLaunchDelegation.bootstrap(request)); assertEquals(0, f.store.writesAfterIssue);
+            verifyNoInteractions(f.transformer);
+        }
+    }
+
+    @Test public void versionRootAuditsVerifiedDenialsWithoutAttributingForgedProofToPlanOrKey() throws Exception {
+        for (String mutation : List.of("query", "expired", "owner", "forged")) {
+            Fixture f = new Fixture(); String proof = f.proof;
+            if ("expired".equals(mutation)) f.plan.put("delegationExpiresAt", 0L);
+            if ("owner".equals(mutation)) f.denial = "OwnerPermissionDenied";
+            if ("forged".equals(mutation)) proof = proof.substring(0, proof.length() - 1) + (proof.endsWith("A") ? "B" : "A");
+            ApiRequest request = f.route("/v2-beta", "GET", "query".equals(mutation) ? "synthetic-private=secret" : null,
+                    "query".equals(mutation) ? Map.of("synthetic-private", new String[] { "secret" }) : Map.of(), proof);
+            ClientVisibleException denied = assertThrows(ClientVisibleException.class, () -> f.delegation.access.authenticator.handle(request));
+            assertEquals(403, denied.getStatus());
+            assertEquals("expired".equals(mutation) ? "CatalogLaunchDelegationExpired"
+                    : "owner".equals(mutation) ? "OwnerPermissionDenied" : "CatalogLaunchDelegationDenied", denied.getCode());
+            if ("forged".equals(mutation)) {
+                assertTrue(f.catalogDecisions.isEmpty()); assertNull(ApiKeyCredentialContext.get(request));
+            } else {
+                assertEquals(1, f.catalogDecisions.size()); Map<String, Object> decision = f.catalogDecisions.getFirst();
+                assertEquals(false, decision.get("allowed")); assertEquals(denied.getCode(), decision.get("reason"));
+                assertEquals(f.plan.get("id"), decision.get("planId"));
+                assertEquals("query".equals(mutation) ? 42L : null, decision.get("actor"));
+                assertEquals("query".equals(mutation) ? 7L : null, decision.get("key"));
+                assertFalse(decision.toString().contains(proof)); assertFalse(decision.toString().contains("synthetic-private"));
+                assertFalse(decision.toString().contains("secret"));
+            }
+            assertNull(ApiContext.getContext().getPolicy()); assertSame(request, ApiContext.getContext().getApiRequest());
+            assertEquals(0, f.store.writesAfterIssue); verifyNoInteractions(f.transformer);
+        }
+    }
 
     @Test public void earlyTransformUsesRealAuthenticationAndFrozenInspectInsteadOfLauncherFullPolicy() throws Exception {
         Fixture f = new Fixture(); ApiRequest request = f.transform(f.proof, f.inspect);
@@ -231,11 +352,14 @@ public class AiCatalogLaunchDelegationTest {
         final TransformInspect handler = new TransformInspect(); final DockerTransformer transformer = mock(DockerTransformer.class);
         final Map<String, Object> inspect = Map.of("Name", "/app", "Config", Map.of("Image", "approved"));
         final Map<String, Object> plan = new LinkedHashMap<>(), values = new LinkedHashMap<>();
+        final List<Map<String, Object>> catalogDecisions = new java.util.ArrayList<>();
         final StackRecord stack = new StackRecord(); final String proof;
         Fixture() throws Exception { this(Map.of()); }
         Fixture(Map<String, String> authorizedReferenceIds) throws Exception {
             var json = new JacksonJsonMapper(); graphs.json = json;
             SchemaImpl script = new SchemaImpl(); script.setId("scripts"); when(schemas.getSchema("scripts")).thenReturn(script);
+            when(schemas.getSingularName("schemas")).thenReturn("schema"); when(schemas.getSingularName("stacks")).thenReturn("stack");
+            when(schemas.typeStringMatches(io.github.ibuildthecloud.gdapi.model.Schema.class, "schema")).thenReturn(true);
             DefaultIdFormatter formatter = new DefaultIdFormatter(); formatter.setSchemaFactory(schemas);
             formatter.setTypeMappings(Map.of("account", "a", "project", "a", "stack", "st", "service", "s"));
             stack.setId(889L); stack.setAccountId(5L); stack.setName("chosen"); stack.setKind("stack"); stack.setState("active");
@@ -284,6 +408,7 @@ public class AiCatalogLaunchDelegationTest {
             when(authDao.hasAccessToProject(anyLong(), anyLong(), anyBoolean(), anySet())).thenReturn(true);
             inject(authenticator, "authDao", authDao);
             inject(authenticator, "accountDao", accounts); inject(authenticator, "objectManager", objects);
+            inject(authenticator, "auditSinks", List.of(mock(ApiKeyAuditSink.class)));
             inject(authenticator, "catalogLaunchDelegation", delegation); inject(authenticator, "apiKeyAuthorization", keyAccess);
             access.authenticator = authenticator;
             delegation.access = access; delegation.store = store; delegation.privateData = privateData; delegation.graphs = graphs;
@@ -291,6 +416,15 @@ public class AiCatalogLaunchDelegationTest {
                 return Map.of("digest", "a".repeat(64), "questionSchema", List.of());
             } };
             delegation.plans = mock(AiCatalogLaunchPlanService.class);
+            doAnswer(call -> {
+                Policy auditOwner = (Policy) ApiContext.getContext().getPolicy();
+                ApiKeyCredentialContext auditKey = ApiKeyCredentialContext.get(call.getArgument(0));
+                Map<String, Object> decision = new LinkedHashMap<>();
+                decision.put("allowed", call.getArgument(3)); decision.put("reason", call.getArgument(4));
+                decision.put("planId", ((Map<?, ?>) call.getArgument(2)).get("id"));
+                decision.put("actor", auditOwner == null ? null : auditOwner.getAuthenticatedAsAccountId());
+                decision.put("key", auditKey == null ? null : auditKey.credentialId()); catalogDecisions.add(decision); return null;
+            }).when(delegation.plans).audit(any(), eq("delegate"), anyMap(), anyBoolean(), anyString());
             ProcessState state = mock(ProcessState.class); when(state.getResource()).thenReturn(stack);
             ProcessInstance process = mock(ProcessInstance.class); when(process.getName()).thenReturn("stack.create");
             EventVO<Object> event = EventVO.newEvent("stack.create;handler=compose-executor"); delegation.decorate(state, process, event);
@@ -312,6 +446,19 @@ public class AiCatalogLaunchDelegationTest {
         ApiRequest domain(String type, String method, String id, String action, Map<String, Object> body) {
             ApiRequest request = new ApiRequest(null, schemas); request.setType(type); request.setMethod(method); request.setId(id); request.setAction(action);
             request.setRequestParams(Map.of()); request.setRequestObject(body); return request;
+        }
+        ApiRequest route(String path, String method, String query, Map<String, String[]> parameters, String token) throws Exception {
+            ApiServletContext servlet = mock(ApiServletContext.class); HttpServletRequest http = mock(HttpServletRequest.class);
+            when(servlet.getRequest()).thenReturn(http); when(servlet.getResponse()).thenReturn(mock(HttpServletResponse.class));
+            when(http.getHeader(AiCatalogLaunchDelegation.HEADER)).thenReturn(token); when(http.getMethod()).thenReturn(method);
+            when(http.getServletPath()).thenReturn(path); when(http.getRequestURI()).thenReturn(path); when(http.getContextPath()).thenReturn("");
+            when(http.getRequestURL()).thenReturn(new StringBuffer("http://127.0.0.1:8080" + path));
+            when(http.getParameterMap()).thenReturn(parameters); when(http.getQueryString()).thenReturn(query);
+            when(http.getLocale()).thenReturn(java.util.Locale.ENGLISH);
+            ApiRequest request = new ApiRequest(servlet, schemas); DefaultApiRequestParser parser = new DefaultApiRequestParser();
+            parser.init(); assertTrue(parser.parse(request));
+            new io.github.ibuildthecloud.gdapi.request.handler.BodyParserRequestHandler().handle(request);
+            ApiContext.getContext().setPolicy(null); ApiContext.getContext().setApiRequest(request); return request;
         }
     }
 

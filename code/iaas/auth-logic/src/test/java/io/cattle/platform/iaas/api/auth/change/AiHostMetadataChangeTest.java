@@ -7,8 +7,14 @@ import static io.cattle.platform.core.model.tables.HostTable.HOST;
 
 import io.cattle.platform.archaius.util.ArchaiusUtil;
 import io.cattle.platform.core.model.tables.records.HostRecord;
+import io.cattle.platform.core.model.tables.records.ServiceRecord;
 import io.cattle.platform.iaas.api.auth.apikey.ApiKeyAiBridgeGuard;
 import io.cattle.platform.iaas.api.auth.apikey.ApiKeyAuthorizationService;
+import io.cattle.platform.iaas.api.auth.apikey.ApiKeyCredentialContext;
+import io.cattle.platform.iaas.api.auth.apikey.ApiKeyPolicy;
+import io.cattle.platform.iaas.api.auth.apikey.ApiKeyPolicyEvaluator;
+import io.cattle.platform.iaas.api.auth.apikey.ApiKeyTargetResolver;
+import io.cattle.platform.api.auth.ApiKeyAuditSink;
 import io.cattle.platform.api.auth.Policy;
 import io.cattle.platform.json.JacksonJsonMapper;
 import io.cattle.platform.object.util.DataAccessor;
@@ -22,6 +28,7 @@ import java.util.Date;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.sql.DriverManager;
 import org.jooq.SQLDialect;
 import org.jooq.impl.DSL;
@@ -90,10 +97,13 @@ public class AiHostMetadataChangeTest {
             row.setAccountId(88L);
             assertEquals("NotFound", assertThrows(ClientVisibleException.class,
                     () -> f.domain.visible(f.request, descriptor(), "1h7")).getCode());
-            row.setAccountId(77L); row.setKind("service");
+            row.setAccountId(77L);
+            var wrongModel = new ServiceRecord(); wrongModel.setId(7L); wrongModel.setAccountId(77L); wrongModel.setKind("host");
+            when(manager.getById(eq("host"), eq("1h7"), any())).thenReturn(wrongModel);
             assertEquals("NotFound", assertThrows(ClientVisibleException.class,
                     () -> f.domain.visible(f.request, descriptor(), "1h7")).getCode());
-            row.setKind("host"); assertSame(row, f.domain.visible(f.request, descriptor(), "1h7"));
+            when(manager.getById(eq("host"), eq("1h7"), any())).thenReturn(row);
+            assertSame(row, f.domain.visible(f.request, descriptor(), "1h7"));
             f.domain.keyAccess = new ApiKeyAuthorizationService() {
                 @Override public void authorize(ApiRequest request, Policy policy) {
                     throw new ClientVisibleException(403, "KeyScopeDenied");
@@ -103,6 +113,69 @@ public class AiHostMetadataChangeTest {
                     () -> f.domain.prepare(f.request, descriptor(), "1h7", Map.of("name", "safe"))).getCode());
             verify(manager, never()).update(anyString(), anyString(), any());
 
+        } finally {
+            if (previous == null) ArchaiusUtil.getConfiguration().clearProperty("api.ai.bridge.enabled");
+            else ArchaiusUtil.getConfiguration().setProperty("api.ai.bridge.enabled", previous);
+        }
+    }
+
+    @Test public void nativeDockerHostFullKeyUsesModelForVisiblePutAndReceipt() throws Exception {
+        Object previous = ArchaiusUtil.getConfiguration().getProperty("api.ai.bridge.enabled");
+        try {
+            ArchaiusUtil.getConfiguration().setProperty("api.ai.bridge.enabled", true);
+            var f = fixture(); var row = host(); var manager = f.domain.managers.getResourceManagerByType("host");
+            nativeKeyAccess(f, new ApiKeyPolicy(ApiKeyPolicy.Mode.FULL, ApiKeyPolicy.Effect.ALLOW, null,
+                    List.of(), ApiKeyPolicy.Purpose.AI_BRIDGE));
+            when(manager.getById(eq("host"), eq("1h7"), any())).thenReturn(row);
+            when(manager.update(eq("host"), eq("1h7"), any())).thenReturn(row);
+            when(f.domain.objects.loadResource("host", 7L)).thenReturn(row);
+            when(f.policy.authorizeObject(row)).thenReturn(row);
+            assertEquals("docker", row.getKind());
+            assertSame(row, f.domain.visible(f.request, descriptor(), "1h7"));
+            assertEquals(Map.of("name", "after"), f.domain.prepare(f.request, descriptor(), "1h7", Map.of("name", "after")));
+            assertSame(row, f.domain.dispatch(f.request, descriptor(), "1h7", Map.of("name", "after"), "own-plan"));
+            assertSame(row, f.domain.receiptTarget(f.request, descriptor(), Map.of("internalResourceId", 7L, "resourceId", "1h7")));
+            verify(manager, times(1)).update(eq("host"), eq("1h7"), any());
+            assertSame(f.request, ApiContext.getContext().getApiRequest()); assertSame(f.policy, ApiContext.getContext().getPolicy());
+        } finally {
+            if (previous == null) ArchaiusUtil.getConfiguration().clearProperty("api.ai.bridge.enabled");
+            else ArchaiusUtil.getConfiguration().setProperty("api.ai.bridge.enabled", previous);
+        }
+    }
+
+    @Test public void nativeDockerHostReadKeyCanReadButRealWriteAuthorizationStillDenies() throws Exception {
+        Object previous = ArchaiusUtil.getConfiguration().getProperty("api.ai.bridge.enabled");
+        try {
+            ArchaiusUtil.getConfiguration().setProperty("api.ai.bridge.enabled", true);
+            var f = fixture(); var row = host(); var manager = f.domain.managers.getResourceManagerByType("host");
+            nativeKeyAccess(f, new ApiKeyPolicy(ApiKeyPolicy.Mode.CUSTOM, ApiKeyPolicy.Effect.DENY, null,
+                    List.of(new ApiKeyPolicy.Rule("read-host-project", ApiKeyPolicy.Effect.ALLOW,
+                            ApiKeyPolicy.Scope.project("1a77"), Set.of("read"))), ApiKeyPolicy.Purpose.AI_BRIDGE));
+            when(manager.getById(eq("host"), eq("1h7"), any())).thenReturn(row);
+            assertSame(row, f.domain.visible(f.request, descriptor(), "1h7"));
+            var denied = assertThrows(ClientVisibleException.class,
+                    () -> f.domain.prepare(f.request, descriptor(), "1h7", Map.of("name", "never-written")));
+            assertEquals(403, denied.getStatus()); assertEquals("KeyScopeDenied", denied.getCode());
+            assertEquals("before", row.getName()); verify(manager, never()).update(anyString(), anyString(), any());
+            assertSame(f.request, ApiContext.getContext().getApiRequest()); assertSame(f.policy, ApiContext.getContext().getPolicy());
+        } finally {
+            if (previous == null) ArchaiusUtil.getConfiguration().clearProperty("api.ai.bridge.enabled");
+            else ArchaiusUtil.getConfiguration().setProperty("api.ai.bridge.enabled", previous);
+        }
+    }
+
+    @Test public void hostSchemaRejectsWrongNativeModelEvenWhenItsKindClaimsHost() throws Exception {
+        Object previous = ArchaiusUtil.getConfiguration().getProperty("api.ai.bridge.enabled");
+        try {
+            ArchaiusUtil.getConfiguration().setProperty("api.ai.bridge.enabled", true);
+            var f = fixture(); var manager = f.domain.managers.getResourceManagerByType("host");
+            nativeKeyAccess(f, new ApiKeyPolicy(ApiKeyPolicy.Mode.FULL, ApiKeyPolicy.Effect.ALLOW, null,
+                    List.of(), ApiKeyPolicy.Purpose.AI_BRIDGE));
+            var wrong = new ServiceRecord(); wrong.setId(7L); wrong.setAccountId(77L); wrong.setKind("host");
+            when(manager.getById(eq("host"), eq("1h7"), any())).thenReturn(wrong);
+            var denied = assertThrows(ClientVisibleException.class, () -> f.domain.visible(f.request, descriptor(), "1h7"));
+            assertEquals(404, denied.getStatus()); assertEquals("NotFound", denied.getCode());
+            verify(manager, never()).update(anyString(), anyString(), any());
         } finally {
             if (previous == null) ArchaiusUtil.getConfiguration().clearProperty("api.ai.bridge.enabled");
             else ArchaiusUtil.getConfiguration().setProperty("api.ai.bridge.enabled", previous);
@@ -150,7 +223,7 @@ public class AiHostMetadataChangeTest {
             var sql = DSL.using(configuration); sql.createSchemaIfNotExists("cattle").execute();
             sql.createTable(HOST).columns(HOST.fields()).execute();
             sql.insertInto(HOST).set(HOST.ID, 7L).set(HOST.ACCOUNT_ID, 77L).set(HOST.UUID, "host-uuid")
-                    .set(HOST.KIND, "host").set(HOST.NAME, "before")
+                    .set(HOST.KIND, "docker").set(HOST.NAME, "before")
                     .set(HOST.STATE, "active").set(HOST.IS_PUBLIC, false).set(HOST.DATA, Map.of()).execute();
             var domain = new AiResourceChangeDomain(); domain.json = new JacksonJsonMapper(); domain.setConfiguration(configuration);
             assertEquals("ResourceChangeTransactionRequired", assertThrows(ClientVisibleException.class,
@@ -168,7 +241,7 @@ public class AiHostMetadataChangeTest {
 
     private static HostRecord host() {
         var row = new HostRecord(); row.setId(7L); row.setAccountId(77L); row.setUuid("host-uuid");
-        row.setKind("host"); row.setName("before"); DataAccessor.fields(row).withKey("hostname").set("node.example.test");
+        row.setKind("docker"); row.setName("before"); DataAccessor.fields(row).withKey("hostname").set("node.example.test");
         row.setState("active"); return row;
     }
 
@@ -179,6 +252,16 @@ public class AiHostMetadataChangeTest {
         when(f.schema.getResourceFields()).thenReturn(Map.of("name", f.name, "description", description));
         f.domain.managers = mock(ResourceManagerLocator.class);
         when(f.domain.managers.getResourceManagerByType("host")).thenReturn(mock(ResourceManager.class)); return f;
+    }
+
+    private static void nativeKeyAccess(AiResourceChangeDomainTest.Fixture f, ApiKeyPolicy policy) throws Exception {
+        var access = new ApiKeyAuthorizationService(); var targets = mock(ApiKeyTargetResolver.class);
+        when(targets.resolve(any(), any())).thenReturn(List.of(ApiKeyPolicyEvaluator.Target.projectResource("host", "1h7", "1a77")));
+        for (var field : Map.of("targets", targets, "auditSinks", List.of(mock(ApiKeyAuditSink.class))).entrySet()) {
+            var member = ApiKeyAuthorizationService.class.getDeclaredField(field.getKey()); member.setAccessible(true); member.set(access, field.getValue());
+        }
+        f.domain.keyAccess = access;
+        ApiKeyCredentialContext.attach(f.request, new ApiKeyCredentialContext(7, 42, "apiKeyRestricted", 3, policy));
     }
 
     private static AiResourceChangePlanServiceTest.Fixture preview() {

@@ -54,7 +54,7 @@ public class AiCatalogLaunchAccess extends io.cattle.platform.db.jooq.dao.impl.A
         if (!sameId && permit.id() != null && request.getId() != null && request.getId().matches("[1-9][0-9]*")
                 && ApiContext.getContext() != null && ApiContext.getContext().getIdFormatter() != null)
             sameId = request.getId().equals(ApiContext.getContext().getIdFormatter().parseId(permit.id()));
-        return permit.type().equals(request.getType()) && permit.method().equals(request.getMethod())
+        return Objects.equals(permit.type(), request.getType()) && permit.method().equals(request.getMethod())
                 && sameId && Objects.equals(permit.action(), request.getAction());
     }
 
