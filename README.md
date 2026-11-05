@@ -8,6 +8,19 @@ Rancher 1.6 ecosystem. It is not affiliated with Rancher Labs or SUSE.
 This fork of [`rancher/cattle`](https://github.com/rancher/cattle) preserves
 upstream history, authorship, licenses, and dependency notices.
 
+## Source candidate: Engine 0.183.371
+
+Typed Host metadata plans identify the native Host model independently of its
+driver kind, including `docker`. This corrects Host preview and receipt reads
+that could return 404 in 0.183.370. Native role/Key checks, human approval,
+locking and exact-once dispatch remain unchanged. Qualification, publication
+and native acceptance of this candidate are pending. The internal Catalog
+launcher also gains its authenticated API root/schema metadata handshake;
+resource grants and one-time writes remain bounded by the original delegation.
+The builders install the existing pinned final security packages before the
+frozen base plan, retaining the same final versions and source phases. See the
+[candidate note](docs/releases/orchestration-engine-0.183.371.md).
+
 ## Latest published release: Engine 0.183.370
 
 [Engine 0.183.370](https://github.com/PastureStack/orchestration-engine/releases/tag/v0.183.370)

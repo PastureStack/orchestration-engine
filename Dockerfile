@@ -20,6 +20,7 @@ COPY ubuntu-security-packages.lock /licenses/ubuntu-security-packages.lock
 COPY scripts/install-ubuntu-security-updates.sh /usr/local/bin/install-ubuntu-security-updates
 COPY scripts/install-python-security-tools.sh /usr/local/bin/install-python-security-tools
 COPY tools/pip-security-overlay /usr/local/lib/pip-security-overlay
+COPY --chmod=0755 scripts/install-snapshot-packages /usr/local/bin/install-snapshot-packages
 ADD --checksum=sha256:fac6f0728cf9490a7a698e6b343e4140283e92355b060193c04f5770a666df8a https://security.ubuntu.com/ubuntu/pool/main/p/python3.14/libpython3.14-minimal_3.14.4-1ubuntu0.2_amd64.deb /tmp/libpython3.14-minimal.deb
 ADD --checksum=sha256:3c267ef0f902f763c3615cbf28dd6fe91d2e4f603075d7f03db99f8d4eb66f46 https://security.ubuntu.com/ubuntu/pool/main/p/python3.14/libpython3.14-stdlib_3.14.4-1ubuntu0.2_amd64.deb /tmp/libpython3.14-stdlib.deb
 ADD --checksum=sha256:0a7ea8a52834f9b3de0f11758924f80f7a6ebcbb4b02a55ba4f457503569f55f https://security.ubuntu.com/ubuntu/pool/main/p/python3.14/python3.14-minimal_3.14.4-1ubuntu0.2_amd64.deb /tmp/python3.14-minimal.deb
@@ -79,9 +80,49 @@ RUN set -eux; \
     printf 'Types: deb\nURIs: https://snapshot.ubuntu.com/ubuntu/%s\nSuites: resolute resolute-updates resolute-backports resolute-security\nComponents: main universe restricted multiverse\nSigned-By: /usr/share/keyrings/ubuntu-archive-keyring.gpg\nSnapshot: no\n' \
         "${UBUNTU_APT_SNAPSHOT}" > /etc/apt/sources.list.d/pasturestack-snapshot.sources; \
     printf 'Acquire::Retries "5";\nAcquire::http::Timeout "30";\nAcquire::https::Timeout "30";\nAcquire::http::Pipeline-Depth "0";\nAcquire::https::CaInfo "/etc/ssl/certs/ca-certificates.crt";\nAcquire::https::Verify-Peer "true";\nAcquire::https::Verify-Host "true";\nAcquire::AllowInsecureRepositories "false";\nAPT::Get::AllowUnauthenticated "false";\n' > /etc/apt/apt.conf.d/80pasturestack-retries; \
+    printf 'Types: deb\nURIs: https://snapshot.ubuntu.com/ubuntu/%s\nSuites: resolute-security\nComponents: main\nSigned-By: /usr/share/keyrings/ubuntu-archive-keyring.gpg\nSnapshot: no\n' \
+        "${UBUNTU_APT_SECURITY_SNAPSHOT}" > /etc/apt/sources.list.d/pasturestack-security.sources; \
     apt-get update; \
-    apt-get upgrade -y; \
-    apt-get install -y --no-install-recommends \
+    set --; \
+    for package in libexpat1 libsqlite3-0 libssh2-1t64; do \
+        test "$(grep -c "^${package}=" /licenses/ubuntu-security-packages.lock)" -eq 1; \
+        entry=$(grep "^${package}=" /licenses/ubuntu-security-packages.lock); \
+        set -- "$@" "$entry"; \
+    done; \
+    install-snapshot-packages install -y --no-install-recommends \
+        libssl3t64="${UBUNTU_APT_OPENSSL_VERSION}" \
+        openssl="${UBUNTU_APT_OPENSSL_VERSION}" \
+        openssl-provider-legacy="${UBUNTU_APT_OPENSSL_VERSION}" "$@"; \
+    for entry in "$@"; do \
+        test "$(dpkg-query -W -f='${Version}' "${entry%%=*}")" = "${entry#*=}"; \
+    done; \
+    for package in libssl3t64 openssl openssl-provider-legacy; do \
+        test "$(dpkg-query -W -f='${Version}' "${package}")" = "${UBUNTU_APT_OPENSSL_VERSION}"; \
+    done; \
+    rm -f /etc/apt/sources.list.d/pasturestack-security.sources; \
+    apt-get update; \
+    set --; \
+    for package in libpython3.14-minimal libpython3.14-stdlib python3.14-minimal python3.14 python3.14-venv curl libcurl3t64-gnutls libcurl4t64 ca-certificates libbrotli1 libpcre2-8-0 libpcre2-posix3; do \
+        architecture=amd64; \
+        case "$package" in \
+            libpython3.14-minimal|libpython3.14-stdlib|python3.14-minimal|python3.14|python3.14-venv) version="${UBUNTU_APT_PYTHON3_14_VERSION}";; \
+            curl|libcurl3t64-gnutls|libcurl4t64) version="${UBUNTU_APT_CURL_VERSION}";; \
+            ca-certificates) version="${UBUNTU_APT_CA_CERTIFICATES_VERSION}"; architecture=all;; \
+            libbrotli1) version=1.2.0-3ubuntu0.1;; \
+            libpcre2-8-0|libpcre2-posix3) version=10.46-1ubuntu0.1;; \
+            *) exit 1;; \
+        esac; \
+        test "$(dpkg-deb -f "/tmp/${package}.deb" Package)" = "$package"; \
+        test "$(dpkg-deb -f "/tmp/${package}.deb" Version)" = "$version"; \
+        test "$(dpkg-deb -f "/tmp/${package}.deb" Architecture)" = "$architecture"; \
+        set -- "$@" "/tmp/${package}.deb"; \
+    done; \
+    install-snapshot-packages install -y --no-install-recommends "$@"; \
+    for package in libpython3.14-minimal libpython3.14-stdlib python3.14-minimal python3.14 python3.14-venv curl libcurl3t64-gnutls libcurl4t64 ca-certificates libbrotli1 libpcre2-8-0 libpcre2-posix3; do \
+        test "$(dpkg-query -W -f='${Version}' "$package")" = "$(dpkg-deb -f "/tmp/${package}.deb" Version)"; \
+    done; \
+    install-snapshot-packages upgrade -y; \
+    install-snapshot-packages install -y --no-install-recommends \
         bash="${UBUNTU_APT_BASH_VERSION}" \
         ca-certificates="${UBUNTU_APT_CA_CERTIFICATES_VERSION}" \
         curl="${UBUNTU_APT_CURL_BOOTSTRAP_VERSION}" \
@@ -104,10 +145,6 @@ RUN set -eux; \
     printf 'Types: deb\nURIs: https://snapshot.ubuntu.com/ubuntu/%s\nSuites: resolute-security\nComponents: main\nSigned-By: /usr/share/keyrings/ubuntu-archive-keyring.gpg\nSnapshot: no\n' \
         "${UBUNTU_APT_SECURITY_SNAPSHOT}" > /etc/apt/sources.list.d/pasturestack-security.sources; \
     apt-get update; \
-    apt-get install -y --no-install-recommends \
-        libssl3t64="${UBUNTU_APT_OPENSSL_VERSION}" \
-        openssl="${UBUNTU_APT_OPENSSL_VERSION}" \
-        openssl-provider-legacy="${UBUNTU_APT_OPENSSL_VERSION}"; \
     for package in libssl3t64 openssl openssl-provider-legacy; do \
         test "$(dpkg-query -W -f='${Version}' "${package}")" = "${UBUNTU_APT_OPENSSL_VERSION}"; \
     done; \

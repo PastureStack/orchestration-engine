@@ -112,10 +112,15 @@ public class AiResourceChangeDomain extends AbstractJooqDao {
             request.setAttribute(ALIAS_REFERENCE, new AliasReference(type, publicId, Long.toString(internalId(type, publicId))));
         return authorized(original, request, () -> {
             Object row = manager(type).getById(type, request.getId(), new ListOptions(request));
-            if (row == null || ObjectUtils.getRemoved(row) != null || !Objects.equals(ObjectUtils.getKind(row), type)
+            if (row == null || ObjectUtils.getRemoved(row) != null || !matchesResourceType(type, row)
                     || !Objects.equals(ObjectUtils.getAccountId(row), ApiUtils.getPolicy().getAccountId())) throw error(404, "NotFound");
             return row;
         });
+    }
+
+    private static boolean matchesResourceType(String type, Object target) {
+        // A Host's kind identifies its native driver (for example docker), not the API resource type.
+        return "host".equals(type) ? target instanceof Host : Objects.equals(ObjectUtils.getKind(target), type);
     }
 
     public Map<String, Object> prepare(ApiRequest original, AiResourceChangeDescriptor descriptor,
@@ -406,7 +411,7 @@ public class AiResourceChangeDomain extends AbstractJooqDao {
         Schema schema = current.schemas().getSchema(descriptor.resourceType());
         if (schema == null || schema.getResourceMethods() == null || !schema.getResourceMethods().contains("GET")) throw error(403, "PermissionDenied");
         if (target == null || !Objects.equals(ObjectUtils.getAccountId(target), actor.getAccountId())
-                || !Objects.equals(ObjectUtils.getKind(target), descriptor.resourceType()) || current.policy().authorizeObject(target) == null)
+                || !matchesResourceType(descriptor.resourceType(), target) || current.policy().authorizeObject(target) == null)
             throw error(403, "PermissionDenied");
         if (descriptor.createsResource() && "service".equals(descriptor.resourceType())
                 && (number(ObjectUtils.getId(target)) != number(plan.get("internalResourceId"))

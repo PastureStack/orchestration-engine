@@ -145,6 +145,7 @@ public class ApiKeyAuditTest {
                     service.idFormatter = typedFormatter();
                     ApiRequest request = new ApiRequest(null, null);
                     request.setType(type); request.setId(id); request.setMethod("PUT"); request.setResponseCode(status);
+                    request.setAttribute("apiKey.audit.requestId", "00001c99-0000-4000-8000-000000000000");
                     request.setRequestObject(Map.of("id", "1c99", "accountId", "1a99", "secretValue", "private-secret"));
                     ApiContext.newContext().setPolicy(policy());
                     ApiContext.getContext().setIdFormatter(service.idFormatter);
@@ -157,7 +158,10 @@ public class ApiKeyAuditTest {
                     assertEquals("1a2", event.get("actor")); assertEquals("apiKey", event.get("targetType"));
                     assertEquals("update", event.get("operation")); assertEquals(status, event.get("httpStatus"));
                     assertEquals(status == 401 || status == 403 ? "DENIED" : "FAILED", event.get("outcome"));
-                    assertFalse(delivered.toString().contains("private")); assertFalse(delivered.toString().contains("1c99"));
+                    assertEquals("00001c99-0000-4000-8000-000000000000", event.get("requestId"));
+                    assertFalse(event.containsValue("1c99"));
+                    assertFalse(event.containsKey("requestObject")); assertFalse(event.containsKey("responseObject"));
+                    assertFalse(event.containsKey("secretValue")); assertFalse(event.toString().contains("private-secret"));
                 }
             }
         }

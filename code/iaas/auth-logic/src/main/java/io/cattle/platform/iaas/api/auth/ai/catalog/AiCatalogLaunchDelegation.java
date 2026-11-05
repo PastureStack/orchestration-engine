@@ -15,6 +15,7 @@ import io.cattle.platform.iaas.api.auth.impl.ApiAuthenticator;
 import io.cattle.platform.object.util.ObjectUtils;
 import io.cattle.platform.process.common.handler.ProcessEventDecorator;
 import io.github.ibuildthecloud.gdapi.model.Resource;
+import io.github.ibuildthecloud.gdapi.exception.ClientVisibleException;
 import io.github.ibuildthecloud.gdapi.request.ApiRequest;
 import io.github.ibuildthecloud.gdapi.request.handler.ApiRequestCompletionSink;
 import jakarta.inject.Inject;
@@ -32,6 +33,7 @@ import java.util.Set;
 /** One event-local, exact-graph capability for the authenticated internal Compose launcher. */
 public class AiCatalogLaunchDelegation implements ProcessEventDecorator, ApiRequestCompletionSink,
         io.cattle.platform.api.auth.CatalogLaunchTransformAuthorization {
+    private static final org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger(AiCatalogLaunchDelegation.class);
     public static final String HEADER = "X-PastureStack-Catalog-Launch-Delegation";
     private static final String VERIFIED = AiCatalogLaunchDelegation.class.getName();
     private static final String CLAIM = VERIFIED + ".claim";
@@ -97,23 +99,37 @@ public class AiCatalogLaunchDelegation implements ProcessEventDecorator, ApiRequ
             if (launcher(authenticated) && targetsActiveExecution(request)) throw error(403, "CatalogLaunchDelegationRequired");
             return null;
         }
-        if (!launcher(authenticated) || !proof.matches("cld1\\.[0-9a-f-]{36}\\.[A-Za-z0-9_-]{43}")) throw error(403, "CatalogLaunchDelegationDenied");
-        String planId = "aicataloglaunch-" + proof.substring(5, 41);
-        return store.independent(() -> {
-            Map<String, Object> plan = store.loadForUpdate(planId);
-            if (plan == null) throw error(403, "CatalogLaunchDelegationDenied");
-            if (!(plan.get("delegationBindingDigest") instanceof String bindingDigest) || !bindingDigest.matches("[0-9a-f]{64}")
-                    || !constant(hash(proof + ":" + bindingDigest), Objects.toString(plan.get("delegationProofHash"), "")))
+        try {
+            if (!launcher(authenticated) || !proof.matches("cld1\\.[0-9a-f-]{36}\\.[A-Za-z0-9_-]{43}"))
                 throw error(403, "CatalogLaunchDelegationDenied");
-            // The proof is authentic before any live-policy rejection. Only now
-            // may generic audit omit this private request/response payload.
-            ApiAuditPayload.verifiedCatalogLaunch(request);
+            String planId = "aicataloglaunch-" + proof.substring(5, 41);
+            return store.independent(() -> {
+                Map<String, Object> plan = store.loadForUpdate(planId);
+                if (plan == null) throw error(403, "CatalogLaunchDelegationDenied");
+                if (!(plan.get("delegationBindingDigest") instanceof String bindingDigest) || !bindingDigest.matches("[0-9a-f]{64}")
+                        || !constant(hash(proof + ":" + bindingDigest), Objects.toString(plan.get("delegationProofHash"), "")))
+                    throw error(403, "CatalogLaunchDelegationDenied");
+                // The proof is authentic before any live-policy rejection. Only now
+                // may generic audit omit this private request/response payload.
+                ApiAuditPayload.verifiedCatalogLaunch(request);
+                return admitVerified(request, plan, bindingDigest);
+            });
+        } catch (ClientVisibleException denied) {
+            // Unverified proofs have no trusted plan/Key attribution. Never log the proof, body or original error.
+            LOG.warn("Catalog launch delegation rejected: phase=admission status={} reason={}", denied.getStatus(), safeReason(denied));
+            throw denied;
+        }
+    }
+
+    private Admission admitVerified(ApiRequest request, Map<String, Object> plan, String bindingDigest) {
+        AiCatalogLaunchAccess.Authorization authority = null;
+        try {
             Map<String, Object> values = privateData.open(plan);
             if (!bindingDigest.equals(binding(plan, values))) throw error(403, "CatalogLaunchDelegationDenied");
             requireActive(plan);
             if (!(plan.get("delegationExpiresAt") instanceof Number expiry) || clock.millis() >= expiry.longValue())
                 throw error(403, "CatalogLaunchDelegationExpired");
-            var authority = access.bound(plan, request); access.catalog(authority);
+            authority = access.bound(plan, request); access.catalog(authority);
             frozenStack(plan, values);
             Object project = request.getAttribute(io.cattle.platform.core.constants.ProjectConstants.PROJECT_HEADER);
             String projectHeader = request.getServletContext().getRequest().getHeader(io.cattle.platform.core.constants.ProjectConstants.PROJECT_HEADER);
@@ -134,12 +150,30 @@ public class AiCatalogLaunchDelegation implements ProcessEventDecorator, ApiRequ
             if (verified.operation() != null) claim(plan, verified, request);
             Account actor = access.objects.loadResource(Account.class, authority.current().policy().getAuthenticatedAsAccountId());
             return new Admission(authority.current(), actor);
-        });
+        } catch (ClientVisibleException denied) {
+            var current = authority;
+            if (current != null && current.key() != null) ApiKeyCredentialContext.attach(request, current.key());
+            // A verified proof identifies this plan, but a rejected live owner must never be replaced by the launcher Policy.
+            AiCatalogLaunchAccess.inContext(request, current == null ? null : current.current().policy(), () -> {
+                plans.audit(request, "delegate", plan, false, safeReason(denied)); return null;
+            });
+            throw denied;
+        }
+    }
+
+    private static String safeReason(ClientVisibleException denied) {
+        String code = denied.getCode();
+        return code != null && code.matches("[A-Za-z][A-Za-z0-9_]{0,63}") ? code : "CatalogLaunchDelegationDenied";
     }
 
     Verified match(ApiRequest request, Map<String, Object> plan, Map<String, Object> values) {
         if (request.getLink() != null) throw error(403, "CatalogLaunchDelegationDenied");
         String type = request.getType(), method = request.getMethod(), id = request.getId(), action = request.getAction();
+        if (type == null) {
+            if ("GET".equals(method) && id == null && action == null && parameters(request).isEmpty() && versionRoot(request))
+                return new Verified((String) plan.get("id"), null, null, null, true);
+            throw error(403, "CatalogLaunchDelegationDenied");
+        }
         Map<String, Object> graph = map(values.get("graph")), created = AiCatalogLaunchMaterializer.nullableMap(plan.get("createdGraph"));
         String stackId = wire("stack", ((Number) plan.get("internalStackId")).longValue());
         if ("GET".equals(method) && action == null) {
@@ -191,6 +225,17 @@ public class AiCatalogLaunchDelegation implements ProcessEventDecorator, ApiRequ
             }
         }
         throw error(403, "CatalogLaunchDelegationDenied");
+    }
+
+    private static boolean versionRoot(ApiRequest request) {
+        String version = request.getVersion();
+        if (!("v1".equals(version) || "v2-beta".equals(version)) || request.getServletContext() == null) return false;
+        var http = request.getServletContext().getRequest();
+        String path = http.getServletPath(), root = "/" + version;
+        return "GET".equals(http.getMethod()) && (root.equals(path) || (root + "/").equals(path))
+                && Objects.equals(http.getRequestURI(), Objects.toString(http.getContextPath(), "") + path)
+                && http.getQueryString() == null && (request.getRequestObject() == null
+                || request.getRequestObject() instanceof Map<?, ?> body && body.isEmpty());
     }
 
     void claim(Map<String, Object> plan, Verified verified, ApiRequest request) {

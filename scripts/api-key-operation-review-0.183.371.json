@@ -1,0 +1,56 @@
+{
+  "schemaVersion": 1,
+  "version": "0.183.371",
+  "scope": "SOURCE_ONLY_NOT_RUNTIME_ACCEPTANCE",
+  "reviewedBaseCommit": "7f48482e17bec0eab1010fb045e1771b2b695caf",
+  "sourceInputs": {
+    "algorithm": "c03-source-inputs-v1",
+    "baseline": {
+      "count": 458,
+      "sha256": "7082897c9cfe9d80534ac02a871e0ef4e79356f1c23a618aadd8616be89c3069"
+    },
+    "reviewed": {
+      "count": 458,
+      "sha256": "59ec478abbedf97403a9615c80785b9f69fc289b703650b8316c03730c1244f7"
+    },
+    "addedAnchors": []
+  },
+  "tupleReview": {
+    "baseline": 1396,
+    "candidate": 1396,
+    "added": 0,
+    "removed": 0,
+    "semanticChanges": 0,
+    "dispositionChanges": 0,
+    "sha256": "8f1c0fb378663b0b3d272efba2f211cb210eb6f17cb8035aefa33b56feeaf36a"
+  },
+  "delta": [
+    {
+      "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/ai/catalog/AiCatalogLaunchAccess.java",
+      "before": "5f0e1de8995318226e0c8ae48acbd3a6e07b025e7fa068daa1bc5945e25c6d49",
+      "after": "18c9a38db699f6f0413a2c6601971ec7b7f753e1e8c26f54331df53562ecc782"
+    },
+    {
+      "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/ai/catalog/AiCatalogLaunchDelegation.java",
+      "before": "e75f911701471e63f85b70df645040a4142704f8da94f3008ed2187c43b35a1d",
+      "after": "27f232a3190210e1a34c158bd379c71d6356e39fbca58a069b2fc0378f91bdd2"
+    },
+    {
+      "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiResourceChangeDomain.java",
+      "before": "2378a8875ae2a2b76e70d7c57a0af715d02f6165228bc2063139f208298669d7",
+      "after": "e95bbe9a62c4f7b19be4d72973669794d219654f8787b931456bf09fe38193b7"
+    }
+  ],
+  "authorizationBoundary": "Host metadata checks validate the native Host model independently of driver kind. Event-local Catalog delegation supports only exact GET v1/v2-beta version-root metadata and normal schema reads after proof/event/owner/source/frozenStack validation; metadata is repeatable while original writes retain claims/replay boundaries. Safe rejection audit does not attribute forged proofs to a plan or Key. All native role/Key, schema, lock, human approval and business-resource permission rules remain unchanged.",
+  "frozenV1SchemaFilesUnchanged": true,
+  "nativeRoleGrantsUnchanged": true,
+  "serializedOrPublicSchemaChanges": 0,
+  "extractor": {
+    "constructionSha256": "078ffe48881469fe5eb3cb43a15fa41b480fe70e11bd5f63102ded6b35a6d076",
+    "parserSha256": "7cc8e70d9f3ea391eb74fef2490f4407aa47833c585b6729c62b3d9e5829ac2b",
+    "extractorSha256": "112d2ff723d88acbe7bb45ff48c9c9018feb93b08031a3e86f867030871477fc"
+  },
+  "historicalProducerAndReviewChainsPreserved": true,
+  "artifactQualificationClaimed": false,
+  "runtimeAcceptanceClaimed": false
+}

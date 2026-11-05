@@ -28,17 +28,30 @@ done < "$lock"
 if test "$#" -gt 0; then
     mkdir -p "$tmp/lists/partial"
     printf 'Types: deb\nURIs: https://snapshot.ubuntu.com/ubuntu/20261023T000000Z\nSuites: resolute-updates resolute-security\nComponents: main\nSigned-By: /usr/share/keyrings/ubuntu-archive-keyring.gpg\nSnapshot: no\n' > "$tmp/security.sources"
+    # One native configuration is shared by signed-index update, the exact URI
+    # planner and the final no-download solver. No global APT source is changed.
+    for path in "$tmp" "$trusted_ca"; do
+        case "$path" in /*) ;; *) exit 1;; esac
+        case "$path" in *[!a-zA-Z0-9_./+~-]*) exit 1;; esac
+    done
+    (umask 077; printf '%s\n' \
+        "Dir::Etc::sourcelist \"$tmp/security.sources\";" \
+        "Dir::State::lists \"$tmp/lists\";" \
+        "Dir::Cache::pkgcache \"$tmp/pkgcache.bin\";" \
+        "Dir::Cache::srcpkgcache \"$tmp/srcpkgcache.bin\";" \
+        'Dir::Etc::sourceparts "-";' \
+        "Acquire::https::CaInfo \"$trusted_ca\";" \
+        'Acquire::https::Verify-Peer "true";' \
+        'Acquire::https::Verify-Host "true";' \
+        'Acquire::AllowInsecureRepositories "false";' \
+        'APT::Get::AllowUnauthenticated "false";' \
+        'Acquire::Retries "5";' > "$tmp/security.conf")
     apt_security() {
-        apt-get -o Dir::Etc::sourcelist="$tmp/security.sources" \
-            -o Dir::State::lists="$tmp/lists" \
-            -o Dir::Cache::pkgcache="$tmp/pkgcache.bin" -o Dir::Cache::srcpkgcache="$tmp/srcpkgcache.bin" \
-            -o Dir::Etc::sourceparts=- -o Acquire::https::CaInfo="$trusted_ca" \
-            -o Acquire::https::Verify-Peer=true -o Acquire::https::Verify-Host=true \
-            -o Acquire::AllowInsecureRepositories=false -o APT::Get::AllowUnauthenticated=false \
-            -o Acquire::Retries=5 "$@"
+        APT_CONFIG="$tmp/security.conf" apt-get "$@"
     }
     apt_security update
-    DEBIAN_FRONTEND=noninteractive apt_security install -y --only-upgrade --no-install-recommends --no-remove "$@"
+    DEBIAN_FRONTEND=noninteractive APT_CONFIG="$tmp/security.conf" \
+        install-snapshot-packages install -y --only-upgrade --no-install-recommends --no-remove "$@"
 fi
 while IFS= read -r entry || test -n "$entry"; do
     case "$entry" in ''|'#'*) continue;; esac

@@ -11,15 +11,29 @@ fail()
 }
 
 case "${1:-}" in install|upgrade) ;; *) fail unsupported_operation ;; esac
+local_root=/tmp
+local_args=
 for argument do
     case "$argument" in
-        install|upgrade|-y|--yes|--no-install-recommends) ;;
+        install|upgrade|-y|--yes|--no-install-recommends|--only-upgrade|--no-remove) ;;
+        "$local_root/"*)
+            [ "$1" = install ] || fail unsupported_argument
+            leaf=${argument#"$local_root/"}
+            printf '%s\n' "$leaf" | grep -Eq '^[a-zA-Z0-9][a-zA-Z0-9.+~_-]*\.deb$' || fail invalid_local_path
+            [ -d "$local_root" ] && [ ! -L "$local_root" ] && [ -f "$argument" ] && [ ! -L "$argument" ] || fail invalid_local_file
+            case " $local_args " in *" $argument "*) fail duplicate_local_argument ;; esac
+            local_args="$local_args $argument"
+            ;;
         ''|-*|*[!a-zA-Z0-9.+:~=_-]*) fail unsupported_argument ;;
     esac
 done
 
 . /licenses/ubuntu-apt.lock
-for snapshot in "$UBUNTU_APT_SNAPSHOT" "$UBUNTU_APT_SECURITY_SNAPSHOT"; do
+security_lock=/licenses/ubuntu-security-packages.lock
+[ -f "$security_lock" ] && [ ! -L "$security_lock" ] || fail invalid_security_lock
+[ "$(grep -c '^# Official Ubuntu 26.04 security/updates snapshot:' "$security_lock")" = 1 ] || fail invalid_security_snapshot_header
+micro_snapshot=$(sed -n 's|^# Official Ubuntu 26.04 security/updates snapshot: \([0-9]\{8\}T[0-9]\{6\}Z\)$|\1|p' "$security_lock")
+for snapshot in "$UBUNTU_APT_SNAPSHOT" "$UBUNTU_APT_SECURITY_SNAPSHOT" "$micro_snapshot"; do
     printf '%s\n' "$snapshot" | grep -Eq '^[0-9]{8}T[0-9]{6}Z$' || fail invalid_snapshot_lock
 done
 archives=/var/cache/apt/archives
@@ -30,7 +44,10 @@ cleanup()
     [ -z "$cache_copy" ] || rm -f -- "$cache_copy"
     rm -f -- "$work/payload/package.deb" "$work/payload/package.deb.FAILED"
     [ ! -d "$work/payload" ] || rmdir -- "$work/payload"
-    rm -f -- "$work/plan.raw" "$work/plan.tsv" "$work/names"
+    rm -f -- "$work/plan-archives/lock"
+    [ ! -d "$work/plan-archives/partial" ] || rmdir -- "$work/plan-archives/partial"
+    [ ! -d "$work/plan-archives" ] || rmdir -- "$work/plan-archives"
+    rm -f -- "$work/plan.raw" "$work/plan.tsv" "$work/names" "$work/local.tsv" "$work/local-notes" "$work/local-cache.tsv"
     rmdir -- "$work"
 }
 trap cleanup 0
@@ -40,12 +57,47 @@ mkdir -m 0700 "$work/payload"
 chown _apt "$work/payload"
 mkdir -p "$archives"
 
+same_local()
+{
+    [ -f "$1" ] && [ ! -L "$1" ] || return 1
+    [ "$(wc -c < "$1" | tr -d '[:space:]')" = "$2" ] || return 1
+    local_actual=$(sha256sum "$1")
+    [ "${local_actual%% *}" = "$3" ]
+}
+
+# The recipe authenticates its local inputs with checksum-pinned ADD and native
+# metadata checks. This utility only snapshots and preserves those exact bytes;
+# it does not own another package catalogue or establish new authenticity.
+: > "$work/local.tsv"
+: > "$work/local-notes"
+for local_file in $local_args; do
+    local_size=$(wc -c < "$local_file" | tr -d '[:space:]')
+    local_hash=$(sha256sum "$local_file"); local_hash=${local_hash%% *}
+    local_package=$(dpkg-deb -f "$local_file" Package)
+    local_version=$(dpkg-deb -f "$local_file" Version)
+    local_architecture=$(dpkg-deb -f "$local_file" Architecture)
+    local_filename=${local_package}_${local_version}_${local_architecture}.deb
+    printf '%s\n' "$local_filename" | grep -Eq '^[a-zA-Z0-9][a-zA-Z0-9.+~:_-]*\.deb$' || fail invalid_local_metadata
+    printf '%s\t%s\t%s\t%s\n' "$local_file" "$local_size" "$local_hash" "$local_filename" >> "$work/local.tsv"
+    printf "Note, selecting '%s' instead of '%s'\n" "$local_package" "$local_file" >> "$work/local-notes"
+    printf "Note, selecting '%s:%s' instead of '%s'\n" "$local_package" "$local_architecture" "$local_file" >> "$work/local-notes"
+    same_local "$local_file" "$local_size" "$local_hash" || fail local_input_changed
+done
+
 # These options do not add or refresh any index. The final command keeps the
 # caller's exact operation/package arguments, but cannot download another plan.
-apt-get -o Acquire::ForceHash=SHA256 -o "Dir::Cache::archives=$archives" \
+plan_archives=$archives
+if [ -n "$local_args" ]; then
+    # Native APT cache hits check only size and omit their URI. An empty
+    # planning cache exposes every selected local filename for SHA binding.
+    plan_archives=$work/plan-archives
+    mkdir -m 0700 "$plan_archives"
+fi
+apt-get -o Acquire::ForceHash=SHA256 -o "Dir::Cache::archives=$plan_archives" \
     --print-uris --download-only -y "$@" > "$work/plan.raw"
 : > "$work/plan.tsv"
 : > "$work/names"
+: > "$work/local-cache.tsv"
 
 decode_leaf()
 {
@@ -53,9 +105,43 @@ decode_leaf()
     printf '%s' "$1" | sed -e 's/%3[aA]/:/g' -e 's/%2[bB]/+/g' -e 's/%7[eE]/~/g'
 }
 
+parse_local()
+{
+    [ "$#" -eq 3 ] || [ "$#" -eq 4 ] || fail malformed_local_plan
+    local_uri=${1#\'}; local_uri=${local_uri%\'}
+    case "$local_uri" in
+        file:///*) local_file=${local_uri#file://} ;;
+        file:/*) local_file=${local_uri#file:} ;;
+        *) fail invalid_local_uri ;;
+    esac
+    local_cache_filename=$2
+    printf '%s\n' "$local_cache_filename" | grep -Eq '^[a-zA-Z0-9][a-zA-Z0-9.+~%:_-]*\.deb$' || fail invalid_filename
+    local_plan_filename=$(decode_leaf "$local_cache_filename")
+    local_plan_size=$3
+    local_plan_hash=
+    if [ "$#" -eq 4 ]; then
+        case "$4" in SHA256:*) local_plan_hash=${4#SHA256:} ;; *) fail invalid_local_plan_hash ;; esac
+        printf '%s\n' "$local_plan_hash" | grep -Eq '^[0-9a-fA-F]{64}$' || fail invalid_local_plan_hash
+        local_plan_hash=$(printf '%s' "$local_plan_hash" | tr A-F a-f)
+    fi
+    tab=$(printf '\t')
+    local_record=$(grep -F -- "$local_file$tab" "$work/local.tsv") || fail unbound_local_plan
+    # All manifest fields are single safe words; globbing remains disabled.
+    set -- $local_record
+    [ "$#" -eq 4 ] && [ "$1" = "$local_file" ] || fail unbound_local_plan
+    [ "$local_plan_size" = "$2" ] || fail local_plan_size_changed
+    [ -z "$local_plan_hash" ] || [ "$local_plan_hash" = "$3" ] || fail local_plan_hash_changed
+    [ "$local_plan_filename" = "${local_file##*/}" ] || [ "$local_plan_filename" = "$4" ] || fail local_plan_filename_changed
+    same_local "$1" "$2" "$3" || fail local_input_changed
+    if grep -Fx -- "$local_plan_filename" "$work/names" >/dev/null; then fail duplicate_filename; fi
+    printf '%s\n' "$local_plan_filename" >> "$work/names"
+    printf '%s\t%s\t%s\t%s\n' "$1" "$2" "$3" "$local_cache_filename" >> "$work/local-cache.tsv"
+}
+
 parse_plan()
 {
     while IFS= read -r line || [ -n "$line" ]; do
+        if [ -n "$local_args" ] && grep -Fx -- "$line" "$work/local-notes" >/dev/null; then continue; fi
         case "$line" in
             \'*) ;;
             *://*|*SHA256:*|*.deb*) fail malformed_plan ;;
@@ -63,6 +149,7 @@ parse_plan()
         esac
         # Globbing is disabled; never eval APT's quoted URI or any plan text.
         set -- $line
+        case "${1:-}" in \'file:*\') parse_local "$@"; continue ;; esac
         [ "$#" -eq 4 ] || fail malformed_plan
         case "$1" in \'*\') uri=${1#\'}; uri=${uri%\'} ;; *) fail malformed_plan ;; esac
         filename=$2
@@ -77,7 +164,7 @@ parse_plan()
             *) fail invalid_snapshot_uri ;;
         esac
         date=${relative%%/*}
-        case "$date" in "$UBUNTU_APT_SNAPSHOT"|"$UBUNTU_APT_SECURITY_SNAPSHOT") ;; *) fail unlocked_snapshot ;; esac
+        case "$date" in "$UBUNTU_APT_SNAPSHOT"|"$UBUNTU_APT_SECURITY_SNAPSHOT"|"$micro_snapshot") ;; *) fail unlocked_snapshot ;; esac
         pool=${relative#*/}
         printf '%s\n' "$pool" | grep -Eq '^pool/(main|universe)/[a-z0-9][a-z0-9+.-]*/[a-z0-9][a-z0-9+.-]*/[a-zA-Z0-9][a-zA-Z0-9.+~%:_-]*\.deb$' || fail invalid_pool_path
         leaf=$(decode_leaf "${pool##*/}")
@@ -94,6 +181,15 @@ parse_plan()
     done < "$work/plan.raw"
 }
 parse_plan
+
+# Retain the complete validated remote closure before any transport can fail.
+# Raw APT text and local file records are deliberately not diagnostics.
+printf 'SNAPSHOT_PACKAGE_PLAN_BEGIN\n'
+tab=$(printf '\t')
+while IFS="$tab" read -r plan_uri plan_pool plan_filename plan_size plan_hash; do
+    printf 'SNAPSHOT_PACKAGE_PLAN pool=%s size=%s sha256=%s\n' "$plan_pool" "$plan_size" "$plan_hash"
+done < "$work/plan.tsv"
+printf 'SNAPSHOT_PACKAGE_PLAN_END\n'
 
 verified()
 {
@@ -147,5 +243,34 @@ while IFS="$tab" read -r uri pool filename size hash; do
         fail package_download_failed
     fi
 done < "$work/plan.tsv"
+
+tab=$(printf '\t')
+while IFS="$tab" read -r local_file local_size local_hash local_filename; do
+    same_local "$local_file" "$local_size" "$local_hash" || fail local_input_changed
+    destination=$archives/$local_filename
+    [ ! -L "$destination" ] && [ ! -d "$destination" ] || fail invalid_local_cache_destination
+    if [ -e "$destination" ]; then
+        same_local "$destination" "$local_size" "$local_hash" || fail local_cache_verification_failed
+        continue
+    fi
+    cache_copy=$(mktemp "$archives/.snapshot-package.XXXXXX")
+    cp -- "$local_file" "$cache_copy"
+    same_local "$cache_copy" "$local_size" "$local_hash" || fail local_cache_copy_changed
+    chmod 0644 "$cache_copy"
+    mv -f -- "$cache_copy" "$destination"
+    cache_copy=
+done < "$work/local-cache.tsv"
+
+tab=$(printf '\t')
+while IFS="$tab" read -r local_file local_size local_hash local_filename; do
+    same_local "$local_file" "$local_size" "$local_hash" || fail local_input_changed
+done < "$work/local.tsv"
+
+# APT's size-only cache hit must never substitute unverified same-sized bytes.
+tab=$(printf '\t')
+while IFS="$tab" read -r local_file local_size local_hash local_filename; do
+    same_local "$local_file" "$local_size" "$local_hash" || fail local_input_changed
+    same_local "$archives/$local_filename" "$local_size" "$local_hash" || fail local_cache_verification_failed
+done < "$work/local-cache.tsv"
 
 apt-get -o "Dir::Cache::archives=$archives" --no-download "$@"
