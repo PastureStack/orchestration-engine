@@ -1,17 +1,20 @@
 # Compatibility Contract
 
-## Engine 0.183.373 candidate — not published
+## Engine 0.183.373 published
 
-This candidate adds read-only ProcessInstance discovery, details and bounded failure diagnostics through the existing find/get tools. Native global process schemas, current actor authority and the native Key owner remain decisive; Project ownership does not confer global process permission. Unsupported custom process Key scopes remain denied.
+[The immutable release](https://github.com/PastureStack/orchestration-engine/releases/tag/v0.183.373) contains twelve original assets verified by anonymous bytes/SHA readback and a native GitHub attestation covering all twelve assets and the signed tag. The original CI JAR was streamed without rebuilding. Workflow SLSA was not provided.
 
-Only registered process/handler names, fixed phase/exitReason values and safe timing metadata are projected. Raw exception messages, causes, stack traces, process payloads, credentials and replay are excluded. Empty, unavailable or truncated diagnostics remain unknown and never establish a successful resource operation.
+Read-only ProcessInstance discovery, details and bounded diagnostics use the existing find/get tools. Native global process schemas, current actor authority and the native Key owner remain decisive; Project ownership does not confer global process permission. Unsupported custom process Key scopes remain denied.
 
-Queries retain the native 51/50 bound. Diagnostic work shares a 256-entry/32KiB safe UTF-8 budget across all logs, roots and handlers, with fixed truncation metadata and no recursive child/cause traversal. Normal human UI remains available for raw error inspection.
+Only registered process/handler names, fixed phase/exitReason values and safe timing metadata are projected. Raw exception messages, causes, stack traces, process payloads, credentials and replay are excluded. Empty, unavailable or truncated diagnostics remain unknown and never establish a successful resource operation. Queries retain the native 51/50 bound; diagnostic work shares a 256-entry/32KiB UTF-8 budget across logs, roots and handlers, without recursive child/cause traversal.
 
-The Dapper scan retains four exact CVE-2026-82560 Perl-family MEDIUM findings without an official Ubuntu26.04 package fix. They remain disclosed in the exact unfixed ledger; fixed, unregistered and HIGH/CRITICAL findings still block. Product JAR and build-image evidence remain separate.
+Original CI passed **440 suites / 4,023 tests / 0 failures / 0 errors / 1 inherited skip**, all **208 required methods** (199 carried plus 9 new), and 39 named Linux build controls with zero skips. Packaged evidence covers 3 changed production roots plus 35 complete families byte-identical to published372: 38 roots / 62 physical classes. C03 records 464 source inputs, 1,396 unchanged tuples and 1,397 executed rows; all 16 serialized schemas, 175 JSON schemas and the six prior role-field metadata additions remain preserved.
 
-Normal required CI, original artifact qualification, matching-component integration, platform native acceptance, weak-model acceptance and affected layout checks remain separate. This is not a whole-group or whole-243 acceptance claim. No component is published by this source change.
+Organization CodeQL has zero results across three current analyses. Independent extended CodeQL retains the same four complete lower-severity finding objects as published372, with zero Critical/High, unresolved rules or changed-source findings. Effective Dapper findings remain 48 MEDIUM and 7 LOW. Four exact CVE-2026-82560 Perl-family MEDIUM records have no official Ubuntu26.04 fix; upstream CVSS 7.5 / HIGH remains disclosed. These findings are not claimed patched; raw/effective and product-JAR evidence stay separate.
 
+[Published metadata](https://github.com/PastureStack/orchestration-engine/releases/download/v0.183.373/engine373-release-metadata.json) identifies artifact producer `afb7f866cca922a92033195056dc270fb2bf1e8d`, normal merge/tag target `dbe11e88322bd808d26a275f728af3038d5ade4d` and tested tree `1f09acebe16ea88b04d1bb91be91fffb7ca719e1`. This later documentation commit is not the artifact producer.
+
+Matching-client and Server integration, native Process acceptance, weak-model acceptance and affected layout checks remain separate and pending. Publication does not establish whole-group or whole-243 acceptance. The historical sections below retain their release-time evidence.
 
 ## Engine 0.183.372 published
 
