@@ -8,39 +8,26 @@ Rancher 1.6 ecosystem. It is not affiliated with Rancher Labs or SUSE.
 This fork of [`rancher/cattle`](https://github.com/rancher/cattle) preserves
 upstream history, authorship, licenses, and dependency notices.
 
-## Next candidate: Engine 0.183.372
+## Latest published release: Engine 0.183.372
 
-Selected-Project and load-balancer name/description metadata, native queued-owner authorization and fixed client-reported audit detail are in [source and CI preparation](docs/releases/orchestration-engine-0.183.372.md). Publication and native acceptance are pending; use the published release below.
-
-## Latest published release: Engine 0.183.371
-
-[Engine 0.183.371](https://github.com/PastureStack/orchestration-engine/releases/tag/v0.183.371)
+[Engine 0.183.372](https://github.com/PastureStack/orchestration-engine/releases/tag/v0.183.372)
 is published with twelve original assets verified by anonymous checksum readback
 and GitHub's cryptographic immutable-release attestation. Use the
 [Server installation guide](https://github.com/PastureStack/server#quick-start)
 for deployment; an Engine JAR alone is not a Server installation.
 
-Typed Host name/description plans now recognize native Docker Hosts by their
-Host model rather than their driver kind. Preview, apply and receipt retain
-native role, Key, account and removal checks. The internal Catalog launcher can
-perform its normal authenticated API root/schema handshake while rechecking the
-original owner, source and frozen Stack; metadata reads grant no resource writes.
+Selected-Project and load-balancer name/description plans use the native owner,
+fresh role and Key limits, normal human approval, and durable operation receipts.
+The optional Bridge binding audit detail remains explicitly client-reported.
+Matching Web/Bridge and Server components are required for these workflows;
+their new native acceptance remains pending.
 
-Builders retain the same pinned final package versions and signed source dates.
-Their install/upgrade phases share the verified archive-first downloader and
-normal no-download APT solver, including the final security overlay. Existing
-lower security findings remain disclosed; publication is not a zero-vulnerability
-claim.
-
-The [published release note](docs/releases/orchestration-engine-0.183.371.md)
-records 434 suites / 3,988 tests with zero failures/errors, one inherited skip,
-all 173 required Java methods, and 38 Linux build controls with zero skips.
-The build workflow did not provide SLSA attestations. Four independent AI opt-ins
-remain default-off.
-
-Matching Web 1.6.209 / Bridge 0.2.11 and a compatible Server assembly are required
-for native Host metadata and Catalog launch acceptance. Component publication
-does not complete runtime acceptance or the 243 frontend groups.
+The [published release note](docs/releases/orchestration-engine-0.183.372.md)
+records 439 suites / 4,014 tests, zero failures/errors, one inherited skip,
+199 required Java methods, and 39 Linux build controls with zero skips.
+Existing lower security findings remain disclosed. The build workflow did not
+provide SLSA attestations. Four independent AI opt-ins remain default-off.
+Component publication does not complete the 243 frontend groups.
 
 ## Optional AI resource workflows
 
