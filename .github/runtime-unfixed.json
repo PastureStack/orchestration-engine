@@ -759,6 +759,50 @@
       "officialEvidence": "https://git.launchpad.net/ubuntu-cve-tracker/plain/active/CVE-2026-1703",
       "reason": "Canonical Ubuntu 26.04 status: resolute_python-pip: needed. No official fixed package in this Ubuntu series; keep tracking.",
       "checkedAt": "2026-10-23"
+    },
+    {
+      "id": "CVE-2026-82560",
+      "package": "libperl5.40",
+      "version": "5.40.1-7ubuntu0.3",
+      "purl": "pkg:deb/ubuntu/libperl5.40@5.40.1-7ubuntu0.3?arch=amd64&distro=ubuntu-26.04",
+      "severity": "MEDIUM",
+      "status": "no_official_fix",
+      "officialEvidence": "https://ubuntu.com/security/CVE-2026-82560",
+      "reason": "Ubuntu26.04 remains vulnerable without a released fix. Exact Dapper build-only package; Trivy Ubuntu severity MEDIUM. Upstream CVSS7.5 remains disclosed.",
+      "checkedAt": "2026-11-05"
+    },
+    {
+      "id": "CVE-2026-82560",
+      "package": "perl",
+      "version": "5.40.1-7ubuntu0.3",
+      "purl": "pkg:deb/ubuntu/perl@5.40.1-7ubuntu0.3?arch=amd64&distro=ubuntu-26.04",
+      "severity": "MEDIUM",
+      "status": "no_official_fix",
+      "officialEvidence": "https://ubuntu.com/security/CVE-2026-82560",
+      "reason": "Ubuntu26.04 remains vulnerable without a released fix. Exact Dapper build-only package; Trivy Ubuntu severity MEDIUM. Upstream CVSS7.5 remains disclosed.",
+      "checkedAt": "2026-11-05"
+    },
+    {
+      "id": "CVE-2026-82560",
+      "package": "perl-base",
+      "version": "5.40.1-7ubuntu0.3",
+      "purl": "pkg:deb/ubuntu/perl-base@5.40.1-7ubuntu0.3?arch=amd64&distro=ubuntu-26.04",
+      "severity": "MEDIUM",
+      "status": "no_official_fix",
+      "officialEvidence": "https://ubuntu.com/security/CVE-2026-82560",
+      "reason": "Ubuntu26.04 remains vulnerable without a released fix. Exact Dapper build-only package; Trivy Ubuntu severity MEDIUM. Upstream CVSS7.5 remains disclosed.",
+      "checkedAt": "2026-11-05"
+    },
+    {
+      "id": "CVE-2026-82560",
+      "package": "perl-modules-5.40",
+      "version": "5.40.1-7ubuntu0.3",
+      "purl": "pkg:deb/ubuntu/perl-modules-5.40@5.40.1-7ubuntu0.3?arch=all&distro=ubuntu-26.04",
+      "severity": "MEDIUM",
+      "status": "no_official_fix",
+      "officialEvidence": "https://ubuntu.com/security/CVE-2026-82560",
+      "reason": "Ubuntu26.04 remains vulnerable without a released fix. Exact Dapper build-only package; Trivy Ubuntu severity MEDIUM. Upstream CVSS7.5 remains disclosed.",
+      "checkedAt": "2026-11-05"
     }
   ]
 }

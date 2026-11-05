@@ -60,9 +60,9 @@ public class AiResourceViewService {
             "loadBalancerService", "dnsService", "externalService", "container", "virtualMachine",
             "host", "volume", "snapshot", "backup", "backupTarget", "storagePool", "storageDriver",
             "network", "networkDriver", "certificate", "registry", "registryCredential", "apiKey",
-            "apiKeyRestricted", "setting", "machineDriver", "secret", "processExecution", "processPool", "auditLog");
+            "apiKeyRestricted", "setting", "machineDriver", "secret", "processInstance", "processExecution", "processPool", "auditLog");
     private static final Set<String> GLOBAL_TYPES = Set.of("project", "projectTemplate", "account", "apiKey", "apiKeyRestricted",
-            "setting", "machineDriver", "processExecution", "processPool", "auditLog");
+            "setting", "machineDriver", "processInstance", "processExecution", "processPool", "auditLog");
     private static final Set<String> MEMORY_COLLECTIONS = Set.of("project", "setting", "processPool");
     private static final Set<String> DATABASE_NAME_COLLECTIONS = Set.of("projectTemplate", "account", "stack", "service",
             "loadBalancerService", "dnsService", "externalService", "container", "host", "volume", "snapshot", "backup",
@@ -100,6 +100,7 @@ public class AiResourceViewService {
     @Inject VolumeDao volumes;
     @Inject HostDao hosts;
     @Inject ServiceDao services;
+    @Inject AiProcessDiagnostics processDiagnostics;
 
     private record AuthorizedTarget(Resource resource, boolean serviceIdsReadable, boolean missingPersistedStack, String instanceUuid) { }
 
@@ -174,6 +175,8 @@ public class AiResourceViewService {
             // name search must not page through unrelated rows before filtering.
             domain.getConditions().put("name", List.of(new Condition(ConditionType.LIKE, namePattern(query))));
         }
+        if (domain.getId() == null && !query.isEmpty() && "processInstance".equals(type))
+            domain.getConditions().put("processName", List.of(new Condition(ConditionType.LIKE, namePattern(query))));
         String parent = (String) input.get("parentId");
         if (parent != null) {
             if (!Set.of("service", "loadBalancerService", "dnsService", "externalService").contains(type))
@@ -201,7 +204,12 @@ public class AiResourceViewService {
             if (resource == null) throw error(503, "ResourceViewUnavailable");
             String id = "processPool".equals(type) ? poolId(resource.getFields()) : resource.getId();
             if (id == null) throw error(503, "ResourceViewUnavailable");
-            Map<String, Object> safe = project(type, id, resource.getFields());
+            if ("processInstance".equals(type) && domain.getId() != null && !sameId(id, domain.getId()))
+                throw error(409, "ResourceViewUnavailable");
+            Map<String, Object> safe = "processInstance".equals(type)
+                    ? processDiagnostics.project(id, resource.getFields()) : project(type, id, resource.getFields());
+            if ("processInstance".equals(type) && domain.getId() != null)
+                safe.putAll(processDetail(domain, resource));
             if ("volume".equals(type) && domain.getId() != null) {
                 for (String field : List.of("isHostPath", "isNative", "sizeMb")) scalar(safe, resource.getFields(), field);
                 if (resource.getFields().get("created") instanceof java.util.Date created) safe.put("created", created);
@@ -237,6 +245,80 @@ public class AiResourceViewService {
         // The native LIKE owner binds this as data. Escape pattern characters
         // so the public substring search keeps its literal-name semantics.
         return "%" + value.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%";
+    }
+
+    /** Same native parent/child owners as processExecutions, with a real bounded child GET. */
+    private Map<String, Object> processDetail(ApiRequest original, Resource parent) {
+        Policy actor = keyAuthorization.actor(original);
+        if (actor == null || actor.getAuthenticatedAsAccountId() <= 0) throw error(403, "PermissionDenied");
+        long principal = actor.getAuthenticatedAsAccountId();
+        ApiRequest root = new ApiRequest(original);
+        root.setRequestServletContext(original.getServletContext());
+        root.setAttribute(DOMAIN_READ_ATTRIBUTE, Boolean.TRUE);
+        ApiKeyCredentialContext key = ApiKeyCredentialContext.get(original);
+        if (key != null) ApiKeyCredentialContext.attach(root, key);
+        var authority = authenticator.currentAuthorization(principal, principal, root);
+        root.setSchemaFactory(authority.schemas());
+        Schema parentSchema = authority.schemas().getSchema("processInstance");
+        if (parentSchema == null || parentSchema.getResourceMethods() == null
+                || !parentSchema.getResourceMethods().contains("GET")) throw error(403, "OwnerPermissionDenied");
+        ApiContext context = ApiContext.getContext();
+        ApiRequest previous = context.getApiRequest(); Object previousPolicy = context.getPolicy();
+        context.setApiRequest(root); context.setPolicy(authority.policy());
+        try {
+            keyAccess.authorize(root, authority.policy());
+            ResourceManager parentManager = managers.getResourceManagerByType("processInstance");
+            Object current = parentManager.getById("processInstance", root.getId(), new ListOptions(root));
+            if (current == null) throw error(404, "NotFound");
+            Resource fresh = parentManager.convertResponse(current, root);
+            if (fresh == null || !sameId(fresh.getId(), parent.getId())) throw error(409, "ResourceViewUnavailable");
+            for (String field : List.of("processName", "resourceType", "resourceId"))
+                if (!java.util.Objects.equals(fresh.getFields().get(field), parent.getFields().get(field)))
+                    throw error(409, "ResourceViewUnavailable");
+            Schema schema = authority.schemas().getSchema("processExecution");
+            if (schema == null || schema.getCollectionMethods() == null || !schema.getCollectionMethods().contains("GET")
+                    || !readable(schema, "processInstanceId") || !readable(schema, "log")) return processDiagnostics.unknown();
+            ApiRequest child = new ApiRequest(root);
+            child.setRequestServletContext(root.getServletContext());
+            child.setType("processExecution"); child.setId(null); child.setAction(null); child.setLink(null);
+            child.setMethod("GET"); child.setRequestObject(null); child.setRequestParams(new LinkedHashMap<>());
+            child.setConditions(new LinkedHashMap<>());
+            child.getConditions().put("processInstanceId", List.of(new Condition(ConditionType.EQ, rawId(parent.getId()))));
+            child.setInclude(null); child.setSort(new Sort("id", Sort.SortOrder.DESC, null));
+            child.setPagination(new Pagination(51)); child.setAttribute(DOMAIN_READ_ATTRIBUTE, Boolean.TRUE);
+            if (key != null) ApiKeyCredentialContext.attach(child, key);
+            context.setApiRequest(child);
+            try {
+                keyAccess.authorize(child, authority.policy());
+            } catch (ClientVisibleException denied) {
+                if ((denied.getStatus() != 403 && denied.getStatus() != 404)
+                        || !Set.of("KeyScopeDenied", "OwnerPermissionDenied", "NotFound").contains(denied.getCode())) throw denied;
+                return processDiagnostics.unknown();
+            }
+            ResourceManager manager = managers.getResourceManagerByType("processExecution");
+            if (manager == null) return processDiagnostics.unknown();
+            Object listed = manager.list("processExecution", child);
+            if (!(listed instanceof List<?> rows) || rows.size() > 51) throw error(503, "ResourceViewUnavailable");
+            if (rows.size() > 50) return processDiagnostics.sourceLimit();
+            List<Map<String, Object>> logs = new ArrayList<>();
+            for (Object row : rows) {
+                Resource resource = manager.convertResponse(row, child);
+                if (resource == null || !sameId(resource.getFields().get("processInstanceId"), parent.getId()))
+                    throw error(409, "ResourceViewUnavailable");
+                if (!(resource.getFields().get("log") instanceof Map<?, ?> log)) return processDiagnostics.unknown();
+                Map<String, Object> closed = new LinkedHashMap<>(); closed.put("executions", log.get("executions"));
+                logs.add(closed);
+            }
+            return processDiagnostics.diagnose(fresh.getFields(), logs, false);
+        } finally {
+            context.setApiRequest(previous); context.setPolicy(previousPolicy);
+        }
+    }
+
+    private static boolean readable(Schema schema, String name) {
+        var field = schema.getResourceFields() == null ? null : schema.getResourceFields().get(name);
+        return field != null && field.isIncludeInList() && !field.isReadOnCreateOnly()
+                && (field.getTransform() == null || field.getTransform().isBlank());
     }
 
     /** One authorized parent query per page, rather than one request per candidate. */
@@ -491,6 +573,7 @@ public class AiResourceViewService {
     /** No recursive copy: nested credentials, values, payloads and launchConfig stay inside the server. */
     public static Map<String, Object> project(String type, String id, Map<String, Object> fields) {
         if (!READ_TYPES.contains(type) || id == null || fields == null) throw error(503, "ResourceViewUnavailable");
+        if ("processInstance".equals(type)) return Map.of("id", id, "type", type, "name", "unknown");
         Map<String, Object> safe = new LinkedHashMap<>(); safe.put("id", id); safe.put("type", type);
         for (String field : COMMON_FIELDS) scalar(safe, fields, field);
         for (String field : FIELDS.getOrDefault(type, List.of())) {
