@@ -8,30 +8,30 @@ Rancher 1.6 ecosystem. It is not affiliated with Rancher Labs or SUSE.
 This fork of [`rancher/cattle`](https://github.com/rancher/cattle) preserves
 upstream history, authorship, licenses, and dependency notices.
 
-## Next candidate: Engine 0.183.373
+## Latest published release: Engine 0.183.373
 
-Read-only process diagnosis is in [source and CI preparation](docs/releases/orchestration-engine-0.183.373.md). Publication and native acceptance are pending; use the published release below.
-
-## Latest published release: Engine 0.183.372
-
-[Engine 0.183.372](https://github.com/PastureStack/orchestration-engine/releases/tag/v0.183.372)
+[Engine 0.183.373](https://github.com/PastureStack/orchestration-engine/releases/tag/v0.183.373)
 is published with twelve original assets verified by anonymous checksum readback
 and GitHub's cryptographic immutable-release attestation. Use the
 [Server installation guide](https://github.com/PastureStack/server#quick-start)
 for deployment; an Engine JAR alone is not a Server installation.
 
-Selected-Project and load-balancer name/description plans use the native owner,
-fresh role and Key limits, normal human approval, and durable operation receipts.
-The optional Bridge binding audit detail remains explicitly client-reported.
-Matching Web/Bridge and Server components are required for these workflows;
-their new native acceptance remains pending.
+Read-only process discovery, details and bounded diagnostics use the native
+global resource owner and fresh role, Key and schema checks. Only registered
+names and fixed enums are projected. Raw exception messages, causes, stack traces,
+process payloads and descendant graphs are excluded. Empty, unreadable or
+truncated diagnostics remain unknown.
 
-The [published release note](docs/releases/orchestration-engine-0.183.372.md)
-records 439 suites / 4,014 tests, zero failures/errors, one inherited skip,
-199 required Java methods, and 39 Linux build controls with zero skips.
-Existing lower security findings remain disclosed. The build workflow did not
-provide SLSA attestations. Four independent AI opt-ins remain default-off.
-Component publication does not complete the 243 frontend groups.
+Selected-Project and load-balancer name/description plans retain the native
+owner, fresh role and Key limits, human approval and durable receipts. Compatible
+Web/Bridge and Server components are required. Component publication does not
+establish native workflow or whole-243-group acceptance.
+
+The [published release note](https://github.com/PastureStack/orchestration-engine/releases/tag/v0.183.373)
+records 440 suites / 4,023 tests, zero failures/errors, one inherited skip,
+208 required Java methods (199 carried and 9 new), and 39 Linux build controls
+with zero skips. Existing security findings remain disclosed. The build workflow
+did not provide SLSA attestations. Four independent AI opt-ins remain default-off.
 
 ## Optional AI resource workflows
 
