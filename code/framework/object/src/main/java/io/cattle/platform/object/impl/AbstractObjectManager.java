@@ -26,6 +26,7 @@ public abstract class AbstractObjectManager implements ObjectManager {
     SchemaFactory schemaFactory;
     List<ObjectPostInstantiationHandler> postInitHandlers;
     List<ObjectLifeCycleHandler> lifeCycleHandlers;
+    private java.util.function.Supplier<List<ObjectLifeCycleHandler>> lifeCycleHandlerSupplier;
     ObjectMetaDataManager metaDataManager;
 
     @Override
@@ -82,11 +83,12 @@ public abstract class AbstractObjectManager implements ObjectManager {
     }
 
     protected <T> T callLifeCycleHandlers(LifeCycleEvent event, T instance, Class<?> clz, Map<String, Object> properties) {
-        if (lifeCycleHandlers == null) {
+        List<ObjectLifeCycleHandler> handlers = getLifeCycleHandlers();
+        if (handlers == null) {
             return instance;
         }
 
-        for (ObjectLifeCycleHandler handler : lifeCycleHandlers) {
+        for (ObjectLifeCycleHandler handler : handlers) {
             instance = handler.onEvent(event, instance, clz, properties);
         }
         return instance;
@@ -240,11 +242,18 @@ public abstract class AbstractObjectManager implements ObjectManager {
     }
 
     public List<ObjectLifeCycleHandler> getLifeCycleHandlers() {
-        return lifeCycleHandlers;
+        return lifeCycleHandlerSupplier == null ? lifeCycleHandlers : lifeCycleHandlerSupplier.get();
     }
 
+    /** An explicit legacy list (including null) replaces any lazy supplier. */
     public void setLifeCycleHandlers(List<ObjectLifeCycleHandler> lifeCycleHandlers) {
         this.lifeCycleHandlers = lifeCycleHandlers;
+        this.lifeCycleHandlerSupplier = null;
+    }
+
+    /** Replaces the legacy list on use, after dependent beans can finish construction. */
+    public void setLifeCycleHandlerSupplier(java.util.function.Supplier<List<ObjectLifeCycleHandler>> supplier) {
+        this.lifeCycleHandlerSupplier = java.util.Objects.requireNonNull(supplier);
     }
 
     public ObjectMetaDataManager getMetaDataManager() {

@@ -35,6 +35,10 @@ ADD --checksum=sha256:bedeef1cf3268f90338c411cdb0a45b224d0660fd2240f310f380316c8
 ADD --checksum=sha256:44ebbeb6493eacffbc460ca71446959ba86a00b2e23515e4cfb1a5cc317d6672 https://security.ubuntu.com/ubuntu/pool/main/p/pcre2/libpcre2-8-0_10.46-1ubuntu0.1_amd64.deb /tmp/libpcre2-8-0.deb
 ADD --checksum=sha256:44605ea665673a359927d014f4a027c50fe6472af8bc956bd1b1c43ddc07a1cd https://security.ubuntu.com/ubuntu/pool/main/p/pcre2/libpcre2-posix3_10.46-1ubuntu0.1_amd64.deb /tmp/libpcre2-posix3.deb
 
+# USN-8996-1: replace vulnerable APT before its first package operation.
+ADD --checksum=sha256:0de729b8fe0e1c67c04e8e8d5bd6e0420dbd47f75b93f0b71c8e740edc2d5ffc https://security.ubuntu.com/ubuntu/pool/main/a/apt/apt_3.2.1ubuntu0.1_amd64.deb /tmp/apt.deb
+ADD --checksum=sha256:94e5d41303265b66af0f8c70ade18bfb77260ad286edee6c8045faddef82b94c https://security.ubuntu.com/ubuntu/pool/main/a/apt/libapt-pkg7.0_3.2.1ubuntu0.1_amd64.deb /tmp/libapt-pkg7.0.deb
+
 ENV DEBIAN_FRONTEND=noninteractive
 ENV LANG=C.UTF-8 LC_ALL=C.UTF-8
 ARG TEMURIN_JDK25_URL="https://github.com/adoptium/temurin25-binaries/releases/download/jdk-25.0.5%2B8/OpenJDK25U-jdk_x64_linux_hotspot_25.0.5_8.tar.gz"
@@ -70,6 +74,16 @@ ENV PGUSER=cattle
 ENV PGDATABASE=cattle
 
 RUN set -eux; \
+    for package in apt libapt-pkg7.0; do \
+        test "$(dpkg-query -W -f='${db:Status-Status}' "${package}")" = installed; \
+        test "$(dpkg-deb -f "/tmp/${package}.deb" Package)" = "${package}"; \
+        test "$(dpkg-deb -f "/tmp/${package}.deb" Version)" = 3.2.1ubuntu0.1; \
+        test "$(dpkg-deb -f "/tmp/${package}.deb" Architecture)" = amd64; \
+    done; \
+    dpkg -i /tmp/libapt-pkg7.0.deb /tmp/apt.deb; \
+    for package in apt libapt-pkg7.0; do \
+        test "$(dpkg-query -W -f='${Version}' "${package}")" = 3.2.1ubuntu0.1; \
+    done; \
     . /licenses/ubuntu-apt.lock; \
     rm -f /etc/apt/sources.list /etc/apt/sources.list.d/*.list /etc/apt/sources.list.d/*.sources; \
     rm -rf /tmp/ca-bootstrap; \
@@ -152,7 +166,8 @@ RUN set -eux; \
     rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* /usr/bin/pebble
 
 COPY --from=docker-cli-build /go/src/github.com/docker/cli/build/docker-linux-amd64 /usr/bin/docker
-ADD --checksum=sha256:b530942257fb935f8b2cfaa5f8eb5bd59c555fd8e8d01b8ce98912e077ea606c https://repo.maven.apache.org/maven2/com/google/guava/guava/33.7.2-jre/guava-33.7.2-jre.jar /tmp/guava-33.7.2-jre.jar
+RUN curl -fsSL --retry 5 --retry-all-errors --retry-delay 2 --connect-timeout 10 --max-time 300 -o /tmp/guava-33.7.2-jre.jar "https://repo.maven.apache.org/maven2/com/google/guava/guava/33.7.2-jre/guava-33.7.2-jre.jar" && \
+    echo 'b530942257fb935f8b2cfaa5f8eb5bd59c555fd8e8d01b8ce98912e077ea606c  /tmp/guava-33.7.2-jre.jar' | sha256sum -c -
 
 RUN mkdir -p ${JAVA_HOME} /usr/lib/jvm && \
     curl -fsSL --retry 5 --retry-all-errors --retry-delay 2 --connect-timeout 10 --max-time 600 -o /tmp/temurin-jdk25.tar.gz "${TEMURIN_JDK25_URL}" && \
@@ -160,7 +175,8 @@ RUN mkdir -p ${JAVA_HOME} /usr/lib/jvm && \
     tar -xzf /tmp/temurin-jdk25.tar.gz -C ${JAVA_HOME} --strip-components=1 && \
     rm -f /tmp/temurin-jdk25.tar.gz && \
     ln -sfn ${JAVA_HOME} /usr/lib/jvm/temurin-25-amd64 && \
-    curl -fsSL --retry 5 --retry-all-errors --retry-delay 2 --connect-timeout 10 --max-time 300 -o /tmp/apache-maven.tar.gz "https://archive.apache.org/dist/maven/maven-3/${MAVEN_VERSION}/binaries/apache-maven-${MAVEN_VERSION}-bin.tar.gz" && \
+    (curl -fsSL --retry 5 --retry-all-errors --retry-delay 2 --connect-timeout 10 --max-time 300 -o /tmp/apache-maven.tar.gz "https://dlcdn.apache.org/maven/maven-3/${MAVEN_VERSION}/binaries/apache-maven-${MAVEN_VERSION}-bin.tar.gz" || \
+     curl -fsSL --retry 5 --retry-all-errors --retry-delay 2 --connect-timeout 10 --max-time 300 -o /tmp/apache-maven.tar.gz "https://archive.apache.org/dist/maven/maven-3/${MAVEN_VERSION}/binaries/apache-maven-${MAVEN_VERSION}-bin.tar.gz") && \
     echo "${MAVEN_SHA512}  /tmp/apache-maven.tar.gz" | sha512sum -c - && \
     mkdir -p ${MAVEN_HOME} && \
     tar -xzf /tmp/apache-maven.tar.gz -C ${MAVEN_HOME} --strip-components=1 && \

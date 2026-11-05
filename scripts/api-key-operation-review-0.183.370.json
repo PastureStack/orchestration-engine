@@ -1,0 +1,119 @@
+{
+  "schemaVersion": 1,
+  "version": "0.183.370",
+  "scope": "SOURCE_ONLY_NOT_RUNTIME_ACCEPTANCE",
+  "reviewedBaseCommit": "de1372f27117900a8940783efdaa0e90edeb415b",
+  "sourceInputs": {
+    "algorithm": "c03-source-inputs-v1",
+    "baseline": {
+      "count": 449,
+      "sha256": "5bbfd304067c39be44f7415ed00e654e2386ef8827f618a2f13ef6ed1c7562a3"
+    },
+    "reviewed": {
+      "count": 458,
+      "sha256": "7082897c9cfe9d80534ac02a871e0ef4e79356f1c23a618aadd8616be89c3069"
+    },
+    "addedAnchors": [
+      "AbstractObjectManager.java",
+      "AiHostMetadataChange.java",
+      "HostDao.java",
+      "HostDaoImpl.java",
+      "ServiceDao.java",
+      "ServiceDaoImpl.java",
+      "SystemServicesConfig.java"
+    ]
+  },
+  "tupleReview": {
+    "baseline": 1396,
+    "candidate": 1396,
+    "added": 0,
+    "removed": 0,
+    "semanticChanges": 0,
+    "dispositionChanges": 0,
+    "sha256": "8f1c0fb378663b0b3d272efba2f211cb210eb6f17cb8035aefa33b56feeaf36a"
+  },
+  "delta": [
+    {
+      "path": "code/framework/auditing/src/main/java/io/cattle/platform/iaas/api/auditing/AuditServiceImpl.java",
+      "before": "cb6bb0a8ed3dda48bedd3ae89ed78a490f644c1040c5aa16463e1e701250988e",
+      "after": "df2b080903d9ee35ccb89c0970adbf5b6c88d46fc5a6401eecb620a984b739c4"
+    },
+    {
+      "path": "code/framework/object/src/main/java/io/cattle/platform/object/impl/AbstractObjectManager.java",
+      "before": null,
+      "after": "db0328ff05701ca146e2f770d9bcb34af1d91a73a3e4d59ae432a2c749649539"
+    },
+    {
+      "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/ai/view/AiResourceViewService.java",
+      "before": "19d91fa89474c9c9604ff7a688afd9a36e6d75fd313667f16ef5550efedc050b",
+      "after": "9343029c4b9022380b5b03b434d0d42167d17884b0b54dd868c2fa826ad100ea"
+    },
+    {
+      "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiHostMetadataChange.java",
+      "before": null,
+      "after": "e08978156bc77733326da1d299c97038103049d441a41f0332e3115b4ac07ce7"
+    },
+    {
+      "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiResourceChangeDescriptor.java",
+      "before": "8b81eaa0446c07c786e588ae8299456bc3c25dca90cf31810c29d1ca5a838e35",
+      "after": "dd89c69f6f0608176ca8b6daac85f408c572932b434452abddee233b31f77f96"
+    },
+    {
+      "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiResourceChangeDomain.java",
+      "before": "331c7fa5eae1f60d4f33e3f3767c546d684042be6156a756ab60c627feef443a",
+      "after": "2378a8875ae2a2b76e70d7c57a0af715d02f6165228bc2063139f208298669d7"
+    },
+    {
+      "path": "code/iaas/model/src/main/java/io/cattle/platform/core/dao/HostDao.java",
+      "before": null,
+      "after": "eace82dc713adf92ea4d5b5f0f19db96ad978528956b6abce249b3bf436a25ad"
+    },
+    {
+      "path": "code/iaas/model/src/main/java/io/cattle/platform/core/dao/ServiceDao.java",
+      "before": null,
+      "after": "92a4cd76c988cfab8f3ee3b8e96f2f2ef5fa06c2787ec46ca03cb75ec4f2a7ce"
+    },
+    {
+      "path": "code/iaas/model/src/main/java/io/cattle/platform/core/dao/impl/HostDaoImpl.java",
+      "before": null,
+      "after": "ae0fff79276ce84e8ab5ec19b80b09a78f7c91740c24706e6129be0f15f0f483"
+    },
+    {
+      "path": "code/iaas/model/src/main/java/io/cattle/platform/core/dao/impl/ServiceDaoImpl.java",
+      "before": null,
+      "after": "d13a7164f03e71e7fbbedd9165667834b6f33f99607500d2d819ceecab75902b"
+    },
+    {
+      "path": "code/iaas/service-discovery/api/src/main/java/io/cattle/platform/servicediscovery/api/dao/ServiceDao.java",
+      "before": null,
+      "after": "68efa2475c42844de04d61ec821ea877cea9fdbd7da1600ab2a9dea954a66c93"
+    },
+    {
+      "path": "code/iaas/service-discovery/server/src/main/java/io/cattle/platform/servicediscovery/dao/impl/ServiceDaoImpl.java",
+      "before": null,
+      "after": "05cb4a7254436ddf8583984274d7c1e1567eb6e98d33ba00d17dba24ea312c86"
+    },
+    {
+      "path": "code/packaging/app-config/src/main/java/io/cattle/platform/app/SystemServicesConfig.java",
+      "before": null,
+      "after": "32dba774946a48c2d6a9ec9030fcb5b2ca324ba98cd3269478aec237984a75a8"
+    },
+    {
+      "path": "resources/content/schema/base/aiResourceChangePlan.json",
+      "before": "113f44df62f09f822b7f97f4cfdcab96de2f0f70995c821632f801c20134110c",
+      "after": "b1d67ec8bd3a48b5d9768e6ac15ea92a3ed4203b1bedf512eccbcb7935192baf"
+    }
+  ],
+  "authorizationBoundary": "Host metadata plans accept only name and description and retain native PUT/role/Key ceilings, exact human approval, revision and one claim. Host detail and Volume usage resolve only freshly authorized container, ordinary Service and Stack relations through bounded native queries. The SEM fallback requires a genuinely NULL persisted parent at capture and final verification; multiple, hidden, removed or moved relations remain unknown without IDs or counts. Catalog lifecycle handlers are lazily composed into the native ObjectManager so the new Stack ID is durably bound before CREATE process scheduling. Ordinary creates and output filters remain unchanged. No new tool, Host lifecycle action, generic endpoint, operation grant or secret output is added.",
+  "frozenV1SchemaFilesUnchanged": true,
+  "nativeRoleGrantsUnchanged": true,
+  "onlyTypedPlanSchemaChange": "resourceType enum adds host; no operation/action expansion",
+  "extractor": {
+    "constructionSha256": "078ffe48881469fe5eb3cb43a15fa41b480fe70e11bd5f63102ded6b35a6d076",
+    "parserSha256": "7cc8e70d9f3ea391eb74fef2490f4407aa47833c585b6729c62b3d9e5829ac2b",
+    "extractorSha256": "112d2ff723d88acbe7bb45ff48c9c9018feb93b08031a3e86f867030871477fc"
+  },
+  "historicalProducerAndReviewChainsPreserved": true,
+  "artifactQualificationClaimed": false,
+  "runtimeAcceptanceClaimed": false
+}

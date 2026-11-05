@@ -437,10 +437,12 @@ public class SystemServicesConfig {
 
     @Bean
     DefaultObjectManager defaultObjectManager(@Qualifier("LockingJooqConfiguration") io.cattle.platform.db.jooq.config.Configuration config,
-            @Qualifier("CoreSchemaFactory") SchemaFactory schemaFactory) {
+            @Qualifier("CoreSchemaFactory") SchemaFactory schemaFactory,
+            org.springframework.beans.factory.ObjectProvider<io.cattle.platform.object.lifecycle.ObjectLifeCycleHandler> handlers) {
         DefaultObjectManager om = new DefaultObjectManager();
         om.setLockingConfiguration(config);
         om.setSchemaFactory(schemaFactory);
+        om.setLifeCycleHandlerSupplier(org.springframework.util.function.SingletonSupplier.of(() -> handlers.orderedStream().toList()));
         return om;
     }
 

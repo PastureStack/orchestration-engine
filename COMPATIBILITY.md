@@ -1,5 +1,38 @@
 # Compatibility Contract
 
+## Engine 0.183.370 candidate — not published
+
+Host metadata is limited to name/description through the existing native PUT
+owner and human approval. Bounded Host workload references and the Volume
+serviceIds-to-Stack fallback independently recheck current object, role and Key
+visibility; ambiguous or moved relations remain unknown. The native Catalog
+Stack lifecycle binding now runs before CREATE scheduling through lazy,
+memoized generic-handler composition. Ordinary creates and output filters stay
+unchanged. No Host lifecycle, labels, new tool or permission grant is added.
+
+The release registry preserves all 142 prior identities and adds 24 exact methods
+(166 total). C03 binds 458 real source inputs and retains all 1396 tuples with
+zero HTTP semantic, admission or native-role grant delta. The only typed plan
+schema change adds Host to the existing resourceType enum. Existing sixteen
+frozen v1 serialized schemas are byte-identical. Necessary full CI, artifact
+qualification, matching Web 1.6.209 / Bridge 0.2.11, a new Server assembly and
+native acceptance remain pending. See the [candidate note](docs/releases/orchestration-engine-0.183.370.md).
+
+Both builders download the same SHA512-pinned Maven 3.9.16 bytes from Apache's
+official CDN, with the original Apache archive as a bounded transport fallback.
+The existing TLS, checksum and installed-library checks remain; checksum failure
+is terminal and does not select another origin.
+The same pinned Guava JAR now uses HTTP-status-aware bounded curl downloads
+instead of remote ADD, followed by the unchanged SHA256 check.
+Both builders install the two exact Ubuntu USN-8996-1 APT 3.2.1ubuntu0.1
+packages before the first APT operation. Official package SHA256, metadata and
+installed-version checks remain mandatory; release vulnerability gates are unchanged.
+A narrow native OpenVEX fixed statement covers only these two exact Ubuntu
+amd64 package PURLs while the scanner vendor data lags the official fix. CI
+verifies all nineteen installed package-owned ELF hashes and the native package
+pair on the same image, preserves the original raw report, and rejects any
+unrelated finding removal. The existing pip overlay and release thresholds remain.
+
 ## Engine 0.183.369 published
 
 Volume detail gains a read-only projection of at most fifty currently readable

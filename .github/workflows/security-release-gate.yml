@@ -266,6 +266,44 @@ jobs:
                   'nativeSqlBoundsRelationshipCandidatesBeforeMaterializationIncludingStoppedContainers',
                   'nativeSqlExcludesEveryForeignRemovedAndNonContainerRelationshipWithoutWrites',
               },
+              'io.cattle.platform.iaas.api.auth.change.AiHostMetadataChangeTest': {
+                  'onlyMetadataIntentAndFieldsAreAccepted',
+                  'nativePutUsesRealRevisionGuardAndRestoresContext',
+                  'nativeMethodFieldAndCrossProjectCeilingsRejectBeforeMutation',
+                  'durableSnapshotAndSummaryExcludeMaterialAndObserveExactMetadata',
+                  'boundPlanRequiresHumanApprovalAndExactOnceObservedCompletion',
+                  'casAndLiveWriteRevocationNeverClaimOrDispatch',
+                  'actualHostTableLockRequiresTransactionAndReloadsTheMetadataSnapshot',
+              },
+              'io.cattle.platform.iaas.api.auditing.TypedResourceAuditContractTest': {
+                  'everyRegisteredTypedDomainHasRealClosedMetadataAuditAllowAndDeny',
+              },
+              'io.cattle.platform.core.dao.impl.HostWorkloadDaoTest': {
+                  'boundsNativeHostMappingsBeforeMaterializationAndKeepsStoppedContainers',
+                  'bindsExactHostAndAllTenantOwnersAndRechecksMovedOrRemovedMappings',
+              },
+              'io.cattle.platform.core.dao.impl.UsageServiceDaoTest': {
+                  'nativeSemUsesTwoDistinctServiceSentinelAndBindsAllOwnersIncludingLegacyNullStack',
+                  'finalNativeQueryRequiresCapturedUniqueSemServiceStackAndOptionalExactHostMapping',
+                  'latePersistedStackAssignmentInvalidatesCapturedNullSemFallbackForHostAndVolume',
+              },
+              'io.cattle.platform.iaas.api.auth.ai.view.AiHostWorkloadViewTest': {
+                  'sameNameRunningAndStoppedChildrenUseFreshContainerAndStackOwnersWithoutDtoAugmentation',
+                  'boundUnknownSnapshotsExcludeMovedForeignRemovedAndUnreadableChildrenOrStackNames',
+                  'realScopedKeyNativePredicateHidesChildrenAndTheirAuditIdentitiesButDirectTargetStillDenies',
+                  'parentRbacAndKeyRevocationFailClosedBeforeRelationshipOutputAndRestoreContext',
+                  'cookieFullAndLegacyHostMetadataMatchesActualNativeWrappingAndHostsFilter',
+              },
+              'io.cattle.platform.iaas.api.auth.ai.view.AiUsageServiceStackViewTest': {
+                  'realNativeNullInstanceStackAndNoStackFieldUsesReadableSemServiceStackForHostAndVolume',
+                  'hiddenTransformedNonNullDirectOrMultipleSemRelationsNeverBypassReadableSchemaOrLeakNames',
+                  'exactCapturedSemAndStackRaceDropsFormerNameWhileChangedKeyAbortsTheWholeRead',
+              },
+              'io.cattle.platform.app.AiCatalogLaunchObjectLifecycleWiringTest': {
+                  'actualSpringFactoryLazilyBindsNativeStackBeforeCreateProcessScheduling',
+                  'emptyHandlersAndLegacyListOverrideRemainValidWithoutEagerDependencyCycles',
+                  'nativeCreateBindsExactlyOnceAndNestedFailureRestoresThreadLocalEnvelope',
+              },
           }
           suites = []
           observed = {}
@@ -393,8 +431,38 @@ jobs:
             "$TRIVY_IMAGE" image \
             --offline-scan --scanners vuln --list-all-pkgs --format json --output /work/evidence/dapper-image-vulnerabilities.raw.json \
             "$DAPPER_IMAGE"
-          python3 tools/pip-security-overlay/filter-pip-vendor-findings.py \
+          cp security/ubuntu-apt-fixed.openvex.json evidence/dapper-apt-fixed.openvex.json
+          cp security/ubuntu-apt-fixed.sha256 evidence/dapper-apt-official-elf.sha256
+          docker run --rm --network none --entrypoint sha256sum "$DAPPER_IMAGE" \
+            /usr/bin/apt /usr/bin/apt-cache /usr/bin/apt-cdrom /usr/bin/apt-config \
+            /usr/bin/apt-get /usr/bin/apt-mark /usr/lib/apt/apt-extracttemplates /usr/lib/apt/apt-helper \
+            /usr/lib/apt/methods/cdrom /usr/lib/apt/methods/copy /usr/lib/apt/methods/file /usr/lib/apt/methods/gpgv \
+            /usr/lib/apt/methods/http /usr/lib/apt/methods/mirror /usr/lib/apt/methods/rred /usr/lib/apt/methods/store \
+            /usr/lib/apt/solvers/dump /usr/lib/x86_64-linux-gnu/libapt-pkg.so.7.0.0 /usr/lib/x86_64-linux-gnu/libapt-private.so.0.0.0 > evidence/dapper-apt-installed-elf.sha256
+          python3 scripts/check-apt-fixed-vex.py \
+            --dpkg evidence/dapper-dpkg.tsv --inspect evidence/dapper-image-inspect.json \
             --raw evidence/dapper-image-vulnerabilities.raw.json \
+            --installed evidence/dapper-apt-installed-elf.sha256 \
+            --vex evidence/dapper-apt-fixed.openvex.json --inputs-only
+          docker run --rm --network none \
+            -v /var/run/docker.sock:/var/run/docker.sock \
+            -v "$PWD:/work" -w /work \
+            -v "$trivy_cache:/root/.cache/trivy" \
+            "$TRIVY_IMAGE" image \
+            --offline-scan --scanners vuln --list-all-pkgs \
+            --skip-db-update --skip-java-db-update --skip-vex-repo-update \
+            --vex /work/evidence/dapper-apt-fixed.openvex.json \
+            --format json --output /work/evidence/dapper-image-vulnerabilities.apt-fixed.json \
+            "$DAPPER_IMAGE"
+          python3 scripts/check-apt-fixed-vex.py \
+            --dpkg evidence/dapper-dpkg.tsv --inspect evidence/dapper-image-inspect.json \
+            --raw evidence/dapper-image-vulnerabilities.raw.json \
+            --installed evidence/dapper-apt-installed-elf.sha256 \
+            --vex evidence/dapper-apt-fixed.openvex.json \
+            --native evidence/dapper-image-vulnerabilities.apt-fixed.json \
+            --proof evidence/dapper-apt-fixed-vex-proof.json
+          python3 tools/pip-security-overlay/filter-pip-vendor-findings.py \
+            --raw evidence/dapper-image-vulnerabilities.apt-fixed.json \
             --proof evidence/dapper-pip-vendor-proof.json \
             --output evidence/dapper-image-vulnerabilities.json \
             --vex evidence/dapper-pip-vendor.vex.json \

@@ -109,11 +109,12 @@ public class AiServiceUpgradeAuditTest {
         AuditServiceImpl service = service(delivered, envelopes); ApiRequest request = new ApiRequest(null, null);
         request.setType("aiResourceChangePlan"); request.setMethod("POST");
         request.setRequestObject(Map.of("hostname", "PRIVATE-HOST", "externalIpAddresses", List.of("PRIVATE-IP"),
-                "certificate", "PRIVATE-PEM", "key", "PRIVATE-KEY", "targetServices", List.of("PRIVATE-TARGET")));
+                "certificate", "PRIVATE-PEM", "key", "PRIVATE-KEY", "targetServices", List.of("PRIVATE-TARGET"),
+                "name", "PRIVATE-NAME", "description", "PRIVATE-DESCRIPTION"));
         request.setAttribute("apiKey.audit.keyId", "1c8"); request.setAttribute("apiKey.audit.policyRevision", 3L);
         request.setAttribute("apiKey.audit.verifiedPrincipalAccountId", 42L);
         String receipt = "aichange-11111111-1111-1111-1111-111111111111";
-        for (String type : List.of("externalService", "dnsService", "certificate")) {
+        for (String type : List.of("externalService", "dnsService", "certificate", "host")) {
             for (boolean allowed : List.of(true, false)) {
                 service.recordResourceChangeDecision(request, policy(), "preview", receipt, type, 10L, allowed,
                         allowed ? "ResourceChangePreviewCreated" : "KeyScopeDenied");
@@ -128,12 +129,12 @@ public class AiServiceUpgradeAuditTest {
                 assertFalse(data.toString().contains("PRIVATE")); assertFalse(data.containsKey("targetServices"));
             }
         }
-        assertEquals(6, delivered.size());
+        assertEquals(8, delivered.size());
         for (String unsupported : List.of("unregistered", "ExternalService", "secret", "certificate/key")) {
             assertThrows(IllegalArgumentException.class, () -> service.recordResourceChangeDecision(request, policy(),
                     "preview", receipt, unsupported, 10L, true, "ResourceChangePreviewCreated"));
         }
-        assertEquals(6, delivered.size());
+        assertEquals(8, delivered.size());
     }
 
     @Test public void bothAllowAndDenyUseDurableMetadataOnlyAudit() throws Exception {

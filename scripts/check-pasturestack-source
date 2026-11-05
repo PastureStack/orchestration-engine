@@ -51,14 +51,20 @@ fi
 
 project_version=$(sed -n 's/^[[:space:]]*<version>\([^<]*\)<\/version>[[:space:]]*$/\1/p' code/meta-parent/pom.xml | head -n 1)
 [[ "$project_version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || fail non_numeric_project_version
-require_line code/meta-parent/pom.xml '    <version>0.183.369</version>'
+require_line code/meta-parent/pom.xml '    <version>0.183.370</version>'
 require_line code/meta-parent/pom.xml '                <version>33.7.2-jre</version>'
 require_line ubuntu-security-packages.lock 'libbrotli1=1.2.0-3ubuntu0.1'
+require_line ubuntu-security-packages.lock 'apt=3.2.1ubuntu0.1'
+require_line ubuntu-security-packages.lock 'libapt-pkg7.0=3.2.1ubuntu0.1'
 require_line ubuntu-security-packages.lock 'libpcre2-8-0=10.46-1ubuntu0.1'
 require_line ubuntu-security-packages.lock 'libpcre2-posix3=10.46-1ubuntu0.1'
 for recipe in Dockerfile Dockerfile.dapper; do
+    require_line "$recipe" 'ADD --checksum=sha256:0de729b8fe0e1c67c04e8e8d5bd6e0420dbd47f75b93f0b71c8e740edc2d5ffc https://security.ubuntu.com/ubuntu/pool/main/a/apt/apt_3.2.1ubuntu0.1_amd64.deb /tmp/apt.deb'
+    require_line "$recipe" 'ADD --checksum=sha256:94e5d41303265b66af0f8c70ade18bfb77260ad286edee6c8045faddef82b94c https://security.ubuntu.com/ubuntu/pool/main/a/apt/libapt-pkg7.0_3.2.1ubuntu0.1_amd64.deb /tmp/libapt-pkg7.0.deb'
+    require_line "$recipe" '    dpkg -i /tmp/libapt-pkg7.0.deb /tmp/apt.deb; \'
     require_line "$recipe" 'ADD --checksum=sha256:bedeef1cf3268f90338c411cdb0a45b224d0660fd2240f310f380316c8244606 https://security.ubuntu.com/ubuntu/pool/main/b/brotli/libbrotli1_1.2.0-3ubuntu0.1_amd64.deb /tmp/libbrotli1.deb'
-    require_line "$recipe" 'ADD --checksum=sha256:b530942257fb935f8b2cfaa5f8eb5bd59c555fd8e8d01b8ce98912e077ea606c https://repo.maven.apache.org/maven2/com/google/guava/guava/33.7.2-jre/guava-33.7.2-jre.jar /tmp/guava-33.7.2-jre.jar'
+    require_line "$recipe" 'RUN curl -fsSL --retry 5 --retry-all-errors --retry-delay 2 --connect-timeout 10 --max-time 300 -o /tmp/guava-33.7.2-jre.jar "https://repo.maven.apache.org/maven2/com/google/guava/guava/33.7.2-jre/guava-33.7.2-jre.jar" && \'
+    require_line "$recipe" '    echo '"'"'b530942257fb935f8b2cfaa5f8eb5bd59c555fd8e8d01b8ce98912e077ea606c  /tmp/guava-33.7.2-jre.jar'"'"' | sha256sum -c -'
     require_line "$recipe" '    test "$(dpkg-query -W -f='"'"'${db:Status-Status}'"'"' libbrotli1)" = installed; \'
     require_line "$recipe" '    test "$(dpkg-deb -f /tmp/libbrotli1.deb Version)" = 1.2.0-3ubuntu0.1; \'
     require_line "$recipe" '    dpkg -i /tmp/libbrotli1.deb; \'
@@ -144,6 +150,9 @@ require_text scripts/install-snapshot-packages '/usr/lib/apt/apt-helper'
 require_text scripts/install-snapshot-packages 'SHA256:'
 require_text scripts/install-snapshot-packages '--no-download'
 python3 -B scripts/test-install-snapshot-packages.py
+python3 -B scripts/test-maven-distribution-download.py
+python3 -B scripts/test-apt-security-bootstrap.py
+python3 -B scripts/test-apt-fixed-vex.py
 require_line Makefile 'DAPPER_SOURCE ?= /usr/src/pasturestack/orchestration-engine'
 require_line Dockerfile.dapper 'ENV DAPPER_SOURCE=/usr/src/pasturestack/orchestration-engine'
 require_line scripts/entry 'git config --global --add safe.directory "$(pwd)"'
@@ -486,4 +495,4 @@ require_line README.md 'PastureStack is an independent community effort to prese
 require_line README.md 'Rancher 1.6 ecosystem. It is not affiliated with Rancher Labs or SUSE.'
 require_line ORIGIN.md '- Preserved upstream boundary: `82d154a53f4089fecfb9f320caad826bb4f6055f`'
 
-printf 'PASTURESTACK_SOURCE_GATE_OK version=0.183.369 runtime_sources=github_release images=digest_pinned ubuntu=26.04 ubuntu_snapshot=20260826T000000Z jdk=25.0.5 go=1.27.3 curl=8.18.0-1ubuntu2.8 openssl=3.5.5-1ubuntu3.7 maven=3.9.16 patched_hazelcast=5.7.6 docker_cli=29.9.2 docker_host_29_8_0=exact credential_secret_capacity=mediumtext port_preflight=authoritative volume_preflight=runtime_resolution_aligned volume_preflight_project_schema=authorized volume_preflight_type_set=registered v1_hardware_schema=container-and-launchConfig network_driver_rollback=launch-config-restored stack_driver_rollback=child-launch-config-restored auth_token_session_binding=authorized-create-only auth_token_transport=bare-or-bearer-normalized auth_token_frozen_v1_schema=base-superadmin-token oidc_external_types=validated-before-mutation-owned-stable-account oidc_account_activation=sync-before-mfa oidc_v1_project_member_schema=core-options-merged-scoped oidc_identity_link_owner=explicit-and-verified legacy_token_link_repair=exact-match-only oidc_required_local_recovery=active-admin-only default_project=shared-idempotent-role-preserving,atomic-identity-set oidc_restricted_project_membership=stable-account-aware-required-allowlist-only mfa_policy_confirmation=actor-purpose-digest-single-use auth_config_proxy_identity=caller-platform-credential project_member_collection_acl=requested-project-checked-before-load project_template_v1_public=readonly-frozen-field-merged network_purge=retry-removing dev_artifact=forbidden\n'
+printf 'PASTURESTACK_SOURCE_GATE_OK version=0.183.370 runtime_sources=github_release images=digest_pinned ubuntu=26.04 ubuntu_snapshot=20260826T000000Z jdk=25.0.5 go=1.27.3 curl=8.18.0-1ubuntu2.8 openssl=3.5.5-1ubuntu3.7 maven=3.9.16 patched_hazelcast=5.7.6 docker_cli=29.9.2 docker_host_29_8_0=exact credential_secret_capacity=mediumtext port_preflight=authoritative volume_preflight=runtime_resolution_aligned volume_preflight_project_schema=authorized volume_preflight_type_set=registered v1_hardware_schema=container-and-launchConfig network_driver_rollback=launch-config-restored stack_driver_rollback=child-launch-config-restored auth_token_session_binding=authorized-create-only auth_token_transport=bare-or-bearer-normalized auth_token_frozen_v1_schema=base-superadmin-token oidc_external_types=validated-before-mutation-owned-stable-account oidc_account_activation=sync-before-mfa oidc_v1_project_member_schema=core-options-merged-scoped oidc_identity_link_owner=explicit-and-verified legacy_token_link_repair=exact-match-only oidc_required_local_recovery=active-admin-only default_project=shared-idempotent-role-preserving,atomic-identity-set oidc_restricted_project_membership=stable-account-aware-required-allowlist-only mfa_policy_confirmation=actor-purpose-digest-single-use auth_config_proxy_identity=caller-platform-credential project_member_collection_acl=requested-project-checked-before-load project_template_v1_public=readonly-frozen-field-merged network_purge=retry-removing dev_artifact=forbidden\n'

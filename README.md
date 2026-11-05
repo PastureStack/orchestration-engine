@@ -8,6 +8,12 @@ Rancher 1.6 ecosystem. It is not affiliated with Rancher Labs or SUSE.
 This fork of [`rancher/cattle`](https://github.com/rancher/cattle) preserves
 upstream history, authorship, licenses, and dependency notices.
 
+## Next candidate: Engine 0.183.370
+
+Host name/description review, bounded readable workload references and the
+native Catalog launch binding fix are in [source/CI preparation](docs/releases/orchestration-engine-0.183.370.md).
+Publication and native acceptance remain pending; use the published release below.
+
 ## Latest published release: Engine 0.183.369
 
 [Engine 0.183.369](https://github.com/PastureStack/orchestration-engine/releases/tag/v0.183.369)
@@ -30,10 +36,9 @@ Original CI, source/artifact qualification, immutable release verification and
 public checksums are recorded in the
 [published release note](docs/releases/orchestration-engine-0.183.369.md).
 Existing lower security findings remain disclosed; publication is not a claim
-of zero vulnerabilities. Server 1.6.567 still includes Engine 0.183.368.
-Matching Web 1.6.208 / bridge0.2.10, a new Server assembly and designated native
-Volume/reference/role/Key/layout acceptance remain separate. Full frontend
-coverage is in progress.
+of zero vulnerabilities. Server 1.6.568 includes Engine 0.183.369 with Web
+1.6.208 / Bridge 0.2.10. Component publication does not complete all native
+business acceptance or the 243 frontend groups.
 
 Four independent AI opt-ins remain default-off. The
 [release note](docs/releases/orchestration-engine-0.183.368.md) mirrors the immutable
@@ -179,7 +184,7 @@ Before publishing an Engine artifact, run the complete package gate:
 
 ```sh
 bash scripts/check-cattle-jdk25-full-package
-ENGINE_VERSION=0.183.369 bash scripts/build --release
+ENGINE_VERSION=0.183.370 bash scripts/build --release
 bash scripts/check-release-artifact dist/artifacts/cattle.jar
 ```
 

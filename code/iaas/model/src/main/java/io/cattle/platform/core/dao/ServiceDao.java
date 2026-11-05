@@ -23,6 +23,11 @@ public interface ServiceDao {
 
     Map<Long, List<Object>> getServicesForInstances(List<Long> ids, IdFormatter idFormatter);
 
+    List<Long> getUsageServiceIds(long accountId, long instanceId, String instanceUuid);
+
+    boolean isUsageServiceCurrent(long accountId, long instanceId, String instanceUuid, long serviceId, long stackId,
+            Long hostId, Long hostMappingId);
+
     Map<Long, List<Object>> getInstances(List<Long> ids, IdFormatter idFormatter);
 
     Map<Long, List<ServiceLink>> getServiceLinks(List<Long> ids);

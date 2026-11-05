@@ -17,9 +17,11 @@ import io.cattle.platform.core.constants.MachineConstants;
 import io.cattle.platform.core.dao.GenericResourceDao;
 import io.cattle.platform.core.dao.HostDao;
 import io.cattle.platform.core.model.Host;
+import io.cattle.platform.core.model.InstanceHostMap;
 import io.cattle.platform.core.model.IpAddress;
 import io.cattle.platform.core.model.PhysicalHost;
 import io.cattle.platform.core.model.tables.records.HostRecord;
+import io.cattle.platform.core.model.tables.records.InstanceHostMapRecord;
 import io.cattle.platform.core.model.tables.records.IpAddressRecord;
 import io.cattle.platform.core.model.tables.records.PhysicalHostRecord;
 import io.cattle.platform.db.jooq.dao.impl.AbstractJooqDao;
@@ -131,6 +133,31 @@ public class HostDaoImpl extends AbstractJooqDao implements HostDao {
         }
 
         return result;
+    }
+
+    @Override
+    public List<? extends InstanceHostMap> getWorkloadCandidates(long accountId, long hostId) {
+        return workloadQuery(accountId, hostId).orderBy(INSTANCE_HOST_MAP.ID.asc()).limit(51)
+                .fetchInto(InstanceHostMapRecord.class);
+    }
+
+    @Override
+    public boolean isWorkloadCurrent(long accountId, long hostId, long mappingId, long instanceId, Long stackId) {
+        return create().fetchExists(workloadQuery(accountId, hostId)
+                .and(INSTANCE_HOST_MAP.ID.eq(mappingId)).and(INSTANCE_HOST_MAP.INSTANCE_ID.eq(instanceId))
+                .and(stackId == null ? DSL.trueCondition() : INSTANCE.STACK_ID.eq(stackId)));
+    }
+
+    private org.jooq.SelectConditionStep<?> workloadQuery(long accountId, long hostId) {
+        // Match native Host instances (including stopped containers), but bind
+        // both resource owners and bound candidates before any resource projection.
+        return create().select(INSTANCE_HOST_MAP.ID, INSTANCE_HOST_MAP.HOST_ID, INSTANCE_HOST_MAP.INSTANCE_ID)
+                .from(INSTANCE_HOST_MAP).join(INSTANCE).on(INSTANCE.ID.eq(INSTANCE_HOST_MAP.INSTANCE_ID))
+                .join(HOST).on(HOST.ID.eq(INSTANCE_HOST_MAP.HOST_ID))
+                .where(INSTANCE_HOST_MAP.HOST_ID.eq(hostId)).and(HOST.ACCOUNT_ID.eq(accountId))
+                .and(INSTANCE.ACCOUNT_ID.eq(accountId))
+                .and(INSTANCE.KIND.eq("container")).and(HOST.REMOVED.isNull())
+                .and(INSTANCE_HOST_MAP.REMOVED.isNull()).and(INSTANCE.REMOVED.isNull());
     }
 
     @Override

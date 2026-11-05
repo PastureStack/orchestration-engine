@@ -5,6 +5,7 @@ import static io.cattle.platform.core.model.tables.HealthcheckInstanceHostMapTab
 import static io.cattle.platform.core.model.tables.HealthcheckInstanceTable.*;
 import static io.cattle.platform.core.model.tables.HostTable.*;
 import static io.cattle.platform.core.model.tables.InstanceTable.*;
+import static io.cattle.platform.core.model.tables.InstanceHostMapTable.*;
 import static io.cattle.platform.core.model.tables.ServiceConsumeMapTable.*;
 import static io.cattle.platform.core.model.tables.ServiceExposeMapTable.*;
 import static io.cattle.platform.core.model.tables.ServiceIndexTable.*;
@@ -45,8 +46,10 @@ import jakarta.inject.Inject;
 import jakarta.inject.Named;
 
 import org.jooq.Record;
+import org.jooq.Record1;
 import org.jooq.Record2;
 import org.jooq.Record3;
+import org.jooq.impl.DSL;
 
 @Named
 public class ServiceDaoImpl extends AbstractJooqDao implements ServiceDao {
@@ -121,6 +124,40 @@ public class ServiceDaoImpl extends AbstractJooqDao implements ServiceDao {
     }
 
     @Override
+    public List<Long> getUsageServiceIds(long accountId, long instanceId, String instanceUuid) {
+        return usageServices(accountId, instanceId, instanceUuid).orderBy(SERVICE_EXPOSE_MAP.SERVICE_ID.asc())
+                .limit(2).fetch(SERVICE_EXPOSE_MAP.SERVICE_ID);
+    }
+
+    private org.jooq.SelectConditionStep<Record1<Long>> usageServices(long accountId, long instanceId, String instanceUuid) {
+        // The same native SEM relation as serviceIds, including stopped/inactive
+        // resources. Two distinct Services mean unknown, not a hidden count.
+        return create().selectDistinct(SERVICE_EXPOSE_MAP.SERVICE_ID).from(SERVICE_EXPOSE_MAP)
+                .join(SERVICE).on(SERVICE.ID.eq(SERVICE_EXPOSE_MAP.SERVICE_ID))
+                .join(INSTANCE).on(INSTANCE.ID.eq(SERVICE_EXPOSE_MAP.INSTANCE_ID))
+                .where(INSTANCE.ID.eq(instanceId)).and(INSTANCE.UUID.eq(instanceUuid))
+                .and(INSTANCE.ACCOUNT_ID.eq(accountId)).and(INSTANCE.KIND.eq("container")).and(INSTANCE.REMOVED.isNull())
+                .and(SERVICE_EXPOSE_MAP.ACCOUNT_ID.eq(accountId)).and(SERVICE_EXPOSE_MAP.REMOVED.isNull())
+                .and(SERVICE.ACCOUNT_ID.eq(accountId)).and(SERVICE.REMOVED.isNull());
+    }
+
+    @Override
+    public boolean isUsageServiceCurrent(long accountId, long instanceId, String instanceUuid, long serviceId, long stackId,
+            Long hostId, Long hostMappingId) {
+        if ((hostId == null) != (hostMappingId == null)) return false;
+        var current = usageServices(accountId, instanceId, instanceUuid).and(INSTANCE.STACK_ID.isNull())
+                .and(SERVICE.ID.eq(serviceId)).and(SERVICE.STACK_ID.eq(stackId))
+                .andExists(DSL.selectOne().from(STACK).where(STACK.ID.eq(stackId))
+                        .and(STACK.ACCOUNT_ID.eq(accountId)).and(STACK.REMOVED.isNull()));
+        current.and(DSL.field(DSL.selectCount().from(usageServices(accountId, instanceId, instanceUuid).limit(2).asTable("bindings"))).eq(1));
+        if (hostId != null) current.andExists(DSL.selectOne().from(INSTANCE_HOST_MAP).join(HOST).on(HOST.ID.eq(INSTANCE_HOST_MAP.HOST_ID))
+                .where(INSTANCE_HOST_MAP.ID.eq(hostMappingId)).and(INSTANCE_HOST_MAP.INSTANCE_ID.eq(instanceId))
+                .and(HOST.ID.eq(hostId)).and(HOST.ACCOUNT_ID.eq(accountId)).and(HOST.REMOVED.isNull())
+                .and(INSTANCE_HOST_MAP.REMOVED.isNull()));
+        return create().fetchExists(current);
+    }
+
+    @Override
     public Map<Long, List<Object>> getInstances(List<Long> ids, final IdFormatter idFormatter) {
         final Map<Long, List<Object>> result = new HashMap<>();
         for (Record2<Long, Long> record : create().select(SERVICE_EXPOSE_MAP.INSTANCE_ID, SERVICE_EXPOSE_MAP.SERVICE_ID)
@@ -163,7 +200,8 @@ public class ServiceDaoImpl extends AbstractJooqDao implements ServiceDao {
                         result.put(serviceId, links);
                     }
                     
-                    String consumedServiceName = (record.getValue(SERVICE_CONSUME_MAP.CONSUMED_SERVICE)) != null ? record.getValue(SERVICE_CONSUME_MAP.CONSUMED_SERVICE) : record.getValue(SERVICE.NAME);
+                    String consumedServiceName = (record.getValue(SERVICE_CONSUME_MAP.CONSUMED_SERVICE)) != null
+                            ? record.getValue(SERVICE_CONSUME_MAP.CONSUMED_SERVICE) : record.getValue(SERVICE.NAME);
                     
                     links.add(new ServiceLink(
                                 record.getValue(SERVICE_CONSUME_MAP.NAME),
