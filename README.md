@@ -8,45 +8,35 @@ Rancher 1.6 ecosystem. It is not affiliated with Rancher Labs or SUSE.
 This fork of [`rancher/cattle`](https://github.com/rancher/cattle) preserves
 upstream history, authorship, licenses, and dependency notices.
 
-## Source candidate: Engine 0.183.371
+## Latest published release: Engine 0.183.371
 
-Typed Host metadata plans identify the native Host model independently of its
-driver kind, including `docker`. This corrects Host preview and receipt reads
-that could return 404 in 0.183.370. Native role/Key checks, human approval,
-locking and exact-once dispatch remain unchanged. Qualification, publication
-and native acceptance of this candidate are pending. The internal Catalog
-launcher also gains its authenticated API root/schema metadata handshake;
-resource grants and one-time writes remain bounded by the original delegation.
-The builders install the existing pinned final security packages before the
-frozen base plan, retaining the same final versions and source phases. See the
-[candidate note](docs/releases/orchestration-engine-0.183.371.md).
-
-## Latest published release: Engine 0.183.370
-
-[Engine 0.183.370](https://github.com/PastureStack/orchestration-engine/releases/tag/v0.183.370)
+[Engine 0.183.371](https://github.com/PastureStack/orchestration-engine/releases/tag/v0.183.371)
 is published with twelve original assets verified by anonymous checksum readback
 and GitHub's cryptographic immutable-release attestation. Use the
 [Server installation guide](https://github.com/PastureStack/server#quick-start)
 for deployment; an Engine JAR alone is not a Server installation.
 
-Host metadata plans support name and description with native role/Key checks,
-human approval and one durable claim. Host detail adds bounded readable workload
-references. Host and Volume Stack names follow the native readable Service
-relation when the persisted parent is absent. Every related target remains
-independently authorized; completeness is always unknown, including empty
-results. Native Catalog launch now binds its Stack ID before CREATE scheduling.
-No Host lifecycle, grant, tool or deletion-rule change is introduced.
+Typed Host name/description plans now recognize native Docker Hosts by their
+Host model rather than their driver kind. Preview, apply and receipt retain
+native role, Key, account and removal checks. The internal Catalog launcher can
+perform its normal authenticated API root/schema handshake while rechecking the
+original owner, source and frozen Stack; metadata reads grant no resource writes.
 
-The [published release note](docs/releases/orchestration-engine-0.183.370.md)
-records 434 suites / 3,981 tests with zero failures/errors, one inherited skip,
-and all 166 required methods. Existing lower security findings remain disclosed;
-publication is not a zero-vulnerability claim. The build workflow did not provide
-SLSA attestations. Four independent AI opt-ins remain default-off.
+Builders retain the same pinned final package versions and signed source dates.
+Their install/upgrade phases share the verified archive-first downloader and
+normal no-download APT solver, including the final security overlay. Existing
+lower security findings remain disclosed; publication is not a zero-vulnerability
+claim.
 
-Server 1.6.568 contains Engine 0.183.369 with Web 1.6.208 / Bridge 0.2.10.
-Matching Web 1.6.209 / Bridge 0.2.11 and a new Server assembly are required for
-this batch's native acceptance. Component publication does not complete all
-native business acceptance or the 243 frontend groups.
+The [published release note](docs/releases/orchestration-engine-0.183.371.md)
+records 434 suites / 3,988 tests with zero failures/errors, one inherited skip,
+all 173 required Java methods, and 38 Linux build controls with zero skips.
+The build workflow did not provide SLSA attestations. Four independent AI opt-ins
+remain default-off.
+
+Matching Web 1.6.209 / Bridge 0.2.11 and a compatible Server assembly are required
+for native Host metadata and Catalog launch acceptance. Component publication
+does not complete runtime acceptance or the 243 frontend groups.
 
 ## Optional AI resource workflows
 
@@ -187,7 +177,7 @@ Before publishing an Engine artifact, run the complete package gate:
 
 ```sh
 bash scripts/check-cattle-jdk25-full-package
-ENGINE_VERSION=0.183.370 bash scripts/build --release
+ENGINE_VERSION=0.183.371 bash scripts/build --release
 bash scripts/check-release-artifact dist/artifacts/cattle.jar
 ```
 

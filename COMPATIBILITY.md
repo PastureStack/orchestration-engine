@@ -1,29 +1,43 @@
 # Compatibility Contract
 
-## Engine 0.183.371 source candidate
+## Engine 0.183.371 published
 
-The typed Host change owner uses the native Host model for visibility and
-receipt checks. A Host can have driver kind `docker` while its API type remains
-`host`; another native model cannot gain Host access by claiming that kind.
-Service and Container kind checks, native read/write schema and Key ceilings,
-approval, locking, durable claim and audit remain unchanged. No lifecycle or
-permission grant is added.
+Typed Host metadata visibility and receipt checks use the native Host model;
+a Host may have driver kind `docker` while its API type is `host`. Another model
+cannot gain Host access by claiming that kind. Service/Container kind checks,
+role and Key ceilings, human approval, locking, durable claim and audit remain
+unchanged.
 
-Three new focused Host cases cover Full-Key visibility/PUT/receipt, read-only
-Key read versus write403, and a rejected wrong model. Four Catalog cases cover
-the real API root/schema handshake, closed route shapes, fresh owner/source
-checks and safe denial audit. Valid root/schema reads are repeatable metadata;
-original delegated writes retain their event and replay boundaries.
+Catalog delegation accepts the actual client's exact version-root/schema GET
+handshake after fresh event, original-owner, source and frozen-Stack checks.
+Metadata reads are repeatable; resource grants and delegated-write replay
+boundaries remain unchanged. Invalid route shapes and untrusted proofs stay denied.
 
-Both builders install the same already-pinned OpenSSL security packages before
-the base upgrade. The temporary security source is removed and normal indexes
-are reloaded before that base plan; its original source phase and final exact
-OpenSSL readback are restored afterwards. The twelve already-pinned final
-Python/Curl/CA/Brotli/PCRE packages enter through the normal local-deb APT solver
-before the base plan. Only the three old bootstrap Python/Curl/CA version pins
-are aligned with those existing final versions. Final package versions, security
-lock, source URLs, SHA pins and snapshot dates remain unchanged. Official CI,
-artifact publication and designated runtime acceptance remain pending.
+Both builders use the same signed-plan archive-first helper for install/upgrade,
+including the existing final security overlay's private native APT configuration.
+`--only-upgrade`, `--no-remove`, package-set comparisons, TLS/signature checks, all final
+versions, source URLs, SHA pins and snapshot dates remain intact. The original
+CI Dapper package table is byte-identical to published370.
+
+Original Security/JDK25 and both CodeQL workflows passed. Maven executed 434
+suites / 3,988 tests / zero failures and errors / one inherited skip. All 173
+required Java methods passed (166 preserved plus three Host and four Catalog
+regressions); the 41 product-related methods retain seven new and 34 inherited.
+The corrected existing governance-audit oracle passed separately. All 38 Linux
+build controls passed with zero skips. C03 retains 458 inputs and 1396 unchanged
+policy tuples; the public schema and all sixteen serialized v1 schemas match370.
+
+Producer `55baa21d7952f6d0d54076af6b250a4d60f2d5d7` and normal PR163 merge/tag
+target `c6f9ebe1fd3a0843e36737722e017cb401cdd628` share tested tree
+`4aa43f55a5a5ebc865003a2b534dc2b91cb7e2ee`. Twelve anonymous original assets and
+GitHub's native immutable-release cryptographic attestation passed. No rebuild,
+workflow SLSA or runtime-acceptance claim is inferred. Effective Dapper 44 MEDIUM
+and seven LOW findings remain disclosed and are not claimed patched.
+
+Native Host/Catalog acceptance requires a matching Server assembly. Publication
+is separate from that acceptance and whole-family/243-group completion. The
+[published release note](docs/releases/orchestration-engine-0.183.371.md) mirrors
+the immutable public release body.
 
 ## Engine 0.183.370 published
 
