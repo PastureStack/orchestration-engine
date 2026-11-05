@@ -1,6 +1,7 @@
 package io.cattle.platform.iaas.api.auth.change;
 
 import static io.cattle.platform.core.model.tables.InstanceTable.INSTANCE;
+import static io.cattle.platform.core.model.tables.HostTable.HOST;
 import static io.cattle.platform.core.model.tables.CertificateTable.CERTIFICATE;
 import static io.cattle.platform.core.model.tables.ServiceTable.SERVICE;
 import static io.cattle.platform.core.model.tables.StackTable.STACK;
@@ -9,6 +10,7 @@ import io.cattle.platform.api.auth.Policy;
 import io.cattle.platform.api.utils.ApiUtils;
 import io.cattle.platform.core.model.Account;
 import io.cattle.platform.core.model.Certificate;
+import io.cattle.platform.core.model.Host;
 import io.cattle.platform.core.model.Instance;
 import io.cattle.platform.core.model.InstanceHostMap;
 import io.cattle.platform.core.model.InstanceLink;
@@ -254,7 +256,7 @@ public class AiResourceChangeDomain extends AbstractJooqDao {
         Schema schema = current.schemas().getSchema(request.getType());
         if (schema == null) throw error(403, "PermissionDenied");
         if (request.getAttribute(DOMAIN) instanceof AiResourceChangeDescriptor descriptor
-                && Set.of("dnsService", "certificate").contains(descriptor.resourceType())) {
+                && Set.of("dnsService", "certificate", "host").contains(descriptor.resourceType())) {
             if (request.getAction() != null) {
                 var actions = request.getId() == null ? schema.getCollectionActions() : schema.getResourceActions();
                 if (actions == null || !actions.containsKey(request.getAction())) throw error(403, "PermissionDenied");
@@ -301,11 +303,13 @@ public class AiResourceChangeDomain extends AbstractJooqDao {
         case "service", "externalService", "dnsService" -> create().selectFrom(SERVICE).where(SERVICE.ID.eq(id)).forUpdate().fetchOne();
         case "container" -> create().selectFrom(INSTANCE).where(INSTANCE.ID.eq(id)).forUpdate().fetchOne();
         case "certificate" -> create().selectFrom(CERTIFICATE).where(CERTIFICATE.ID.eq(id)).forUpdate().fetchOne();
+        case "host" -> create().selectFrom(HOST).where(HOST.ID.eq(id)).forUpdate().fetchOne();
         default -> throw error(422, "ResourceChangeUnsupported");
         };
     }
 
     public Map<String, Object> snapshot(Object target) {
+        if (target instanceof Host host) return copyMap(AiHostMetadataChange.snapshot(host));
         Map<String, Object> result = new LinkedHashMap<>();
         if (target != null) for (String field : List.of("id", "accountId", "kind", "name", "description", "state", "removed",
                 "stackId", "startCount", "data")) {
@@ -383,7 +387,8 @@ public class AiResourceChangeDomain extends AbstractJooqDao {
         if (target instanceof Service service && "dnsService".equals(service.getKind()) && parent == null && service.getStackId() != null)
             parent = read(request, AiResourceChangeDescriptor.require("dnsService", "update_targets"), "stack", publicId("stack", service.getStackId()), true);
         Policy actor = actor(request); Account project = objects.loadResource(Account.class, actor.getAccountId());
-        String name = target == null ? String.valueOf(parameters.get("name")) : String.valueOf(ObjectUtils.getPropertyIgnoreErrors(target, "name"));
+        String name = target instanceof Host host ? AiHostMetadataChange.displayName(host)
+                : target == null ? String.valueOf(parameters.get("name")) : String.valueOf(ObjectUtils.getPropertyIgnoreErrors(target, "name"));
         return Objects.toString(project.getName(), "") + " / "
                 + (parent == null ? "" : Objects.toString(ObjectUtils.getPropertyIgnoreErrors(parent, "name"), "") + " / ") + name;
     }

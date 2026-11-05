@@ -8,6 +8,11 @@ import io.cattle.platform.iaas.api.auth.apikey.ApiKeyCredentialContext;
 import io.cattle.platform.iaas.api.auth.apikey.ApiKeyAiBridgeGuard;
 import io.cattle.platform.core.model.Account;
 import io.cattle.platform.core.dao.VolumeDao;
+import io.cattle.platform.core.dao.HostDao;
+import io.cattle.platform.core.dao.ServiceDao;
+import io.cattle.platform.core.model.Host;
+import io.cattle.platform.core.model.InstanceHostMap;
+import io.cattle.platform.core.model.Service;
 import io.cattle.platform.core.model.Mount;
 import io.cattle.platform.core.model.Volume;
 import io.cattle.platform.core.model.Instance;
@@ -43,6 +48,7 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.HexFormat;
+import org.apache.commons.lang3.StringUtils;
 
 /**
  * Metadata is projected on the server before it reaches a dedicated AI Key.
@@ -71,7 +77,8 @@ public class AiResourceViewService {
             Map.entry("dnsService", List.of("stackId", "archived")), Map.entry("externalService", List.of("stackId", "archived")),
             Map.entry("container", List.of("imageUuid", "memory", "cpuShares", "startCount", "networkMode")),
             Map.entry("virtualMachine", List.of("imageUuid", "memory", "cpuShares")),
-            Map.entry("host", List.of("hostname", "agentIpAddress", "dockerVersion", "memTotal", "cpuCount")),
+            Map.entry("host", List.of("hostname", "agentIpAddress", "dockerVersion", "memTotal", "cpuCount",
+                    "agentState", "memory", "milliCpu", "localStorageMb")),
             Map.entry("volume", List.of("driver", "accessMode", "size")),
             Map.entry("certificate", List.of("cn", "expiresAt", "issuedAt")),
             Map.entry("registry", List.of()), Map.entry("registryCredential", List.of()),
@@ -91,6 +98,10 @@ public class AiResourceViewService {
     @Inject ObjectManager objects;
     @Inject io.cattle.platform.iaas.api.auth.change.AiResourceChangeDomain resourceChanges;
     @Inject VolumeDao volumes;
+    @Inject HostDao hosts;
+    @Inject ServiceDao services;
+
+    private record AuthorizedTarget(Resource resource, boolean serviceIdsReadable, boolean missingPersistedStack, String instanceUuid) { }
 
     public Map<String, Object> read(ApiRequest request) {
         Map<String, Object> input = input(request);
@@ -181,7 +192,7 @@ public class AiResourceViewService {
         }
         List<Map<String, Object>> visible = new ArrayList<>();
         for (Object row : rows) {
-            Resource resource = "volume".equals(type) && domain.getId() != null
+            Resource resource = Set.of("volume", "host").contains(type) && domain.getId() != null
                     ? coreDetail(row, domain) : manager.convertResponse(row, domain);
             if (resource == null) throw error(503, "ResourceViewUnavailable");
             String id = "processPool".equals(type) ? poolId(resource.getFields()) : resource.getId();
@@ -193,6 +204,7 @@ public class AiResourceViewService {
                 if (resource.getFields().containsKey("removed")) safe.put("removed", resource.getFields().get("removed"));
                 volumeUsage(domain, id, safe);
             }
+            if ("host".equals(type) && domain.getId() != null) hostWorkloads(domain, id, safe);
             if ("dnsService".equals(type)) safe.putAll(resourceChanges.aliasViewTargets(domain, id, domain.getId() != null));
             if ("processPool".equals(type) && (!(safe.get("name") instanceof String name) || name.isBlank()))
                 safe.put("name", "Process pool " + id.substring(5, 17));
@@ -291,7 +303,8 @@ public class AiResourceViewService {
         for (Mount mount : mounts.subList(0, Math.min(50, mounts.size()))) {
             if (mount == null || !Long.valueOf(volumeId).equals(mount.getVolumeId())
                     || mount.getInstanceId() == null || mount.getRemoved() != null) continue;
-            Resource target = usageTarget(domain, "container", mount.getInstanceId().toString());
+            AuthorizedTarget child = usageTarget(domain, "container", mount.getInstanceId().toString());
+            Resource target = child == null ? null : child.resource();
             if (target == null || !"container".equals(target.getType()) || !(target.getFields().get("name") instanceof String)
                     || !(target.getFields().get("state") instanceof String)) continue;
             String path = mount.getPath();
@@ -303,20 +316,67 @@ public class AiResourceViewService {
             scalar(reference, target.getFields(), "name"); scalar(reference, target.getFields(), "state");
             reference.put("mountPath", path); reference.put("readOnly", "ro".equals(mount.getPermissions()));
             reference.put("stackResolution", "unknown");
-            // The native container owns its persisted Stack reference. Never
-            // infer names from labels or a cross-scope relationship SQL join.
-            Object stackId = target.getFields().get("stackId");
-            if (stackId instanceof String || stackId instanceof Number) {
-                Resource stack = usageTarget(domain, "stack", stackId.toString());
-                if (stack != null && stack.getFields().get("name") instanceof String name && !name.isBlank() && name.length() <= 512) {
-                    reference.put("stackName", name); reference.put("stackResolution", "resolved");
-                }
-            }
+            usageStack(domain, child, reference, null, null);
             references.add(reference);
         }
     }
 
-    private Resource usageTarget(ApiRequest domain, String type, String id) {
+    private void hostWorkloads(ApiRequest domain, String id, Map<String, Object> safe) {
+        safe.put("workloadReferencesStatus", "unknown");
+        List<Map<String, Object>> references = new ArrayList<>();
+        safe.put("workloadReferences", references);
+        if (hosts == null) return;
+        long hostId = Long.parseLong(rawId(id).toString()), account = ApiUtils.getPolicy().getAccountId();
+        if (hostId <= 0 || !sameId(domain.getId(), id)) throw error(503, "ResourceViewUnavailable");
+        List<? extends InstanceHostMap> candidates = hosts.getWorkloadCandidates(account, hostId);
+        if (candidates == null || candidates.size() > 51) throw error(503, "ResourceViewUnavailable");
+        Set<Long> seen = new LinkedHashSet<>();
+        for (InstanceHostMap candidate : candidates.subList(0, Math.min(50, candidates.size()))) {
+            if (candidate == null || candidate.getId() == null || candidate.getId() <= 0
+                    || !Long.valueOf(hostId).equals(candidate.getHostId()) || candidate.getInstanceId() == null
+                    || candidate.getInstanceId() <= 0 || candidate.getRemoved() != null || !seen.add(candidate.getInstanceId())) continue;
+            AuthorizedTarget child = usageTarget(domain, "container", candidate.getInstanceId().toString());
+            Resource target = child == null ? null : child.resource();
+            if (target == null || !(target.getFields().get("name") instanceof String)
+                    || !(target.getFields().get("state") instanceof String)) continue;
+            Map<String, Object> reference = new LinkedHashMap<>();
+            reference.put("containerId", target.getId());
+            scalar(reference, target.getFields(), "name"); scalar(reference, target.getFields(), "state");
+            reference.put("stackResolution", "unknown");
+            boolean resolved = usageStack(domain, child, reference, hostId, candidate.getId());
+            if (resolved || hosts.isWorkloadCurrent(account, hostId, candidate.getId(), candidate.getInstanceId(), null)) references.add(reference);
+        }
+    }
+
+    private boolean usageStack(ApiRequest domain, AuthorizedTarget child, Map<String, Object> reference, Long hostId, Long hostMappingId) {
+        Resource target = child.resource(); Object stackId = target.getFields().get("stackId");
+        Long serviceId = null; long account = ApiUtils.getPolicy().getAccountId();
+        long instanceId = Long.parseLong(rawId(target.getId()).toString());
+        if (stackId == null) {
+            // Native service containers commonly have no persisted Stack. Use
+            // only the same visible serviceIds relationship as the normal UI.
+            if (!child.missingPersistedStack() || !child.serviceIdsReadable() || services == null
+                    || child.instanceUuid() == null || !child.instanceUuid().matches("[0-9a-fA-F]{8}(?:-[0-9a-fA-F]{4}){3}-[0-9a-fA-F]{12}"))
+                return false;
+            List<Long> ids = services.getUsageServiceIds(account, instanceId, child.instanceUuid());
+            if (ids == null || ids.size() > 2) throw error(503, "ResourceViewUnavailable");
+            if (ids.size() != 1 || ids.getFirst() == null || ids.getFirst() <= 0) return false;
+            serviceId = ids.getFirst(); AuthorizedTarget service = usageTarget(domain, "service", serviceId.toString());
+            if (service == null) return false;
+            stackId = service.resource().getFields().get("stackId");
+        }
+        if (!(stackId instanceof String || stackId instanceof Number)) return false;
+        long capturedStack = Long.parseLong(rawId(stackId.toString()).toString());
+        AuthorizedTarget stack = usageTarget(domain, "stack", stackId.toString());
+        if (stack == null || !(stack.resource().getFields().get("name") instanceof String name) || name.isBlank() || name.length() > 512)
+            return false;
+        if (serviceId != null) {
+            if (!services.isUsageServiceCurrent(account, instanceId, child.instanceUuid(), serviceId, capturedStack, hostId, hostMappingId)) return false;
+        } else if (hostId != null && !hosts.isWorkloadCurrent(account, hostId, hostMappingId, instanceId, capturedStack)) return false;
+        reference.put("stackName", name); reference.put("stackResolution", "resolved"); return true;
+    }
+
+    private AuthorizedTarget usageTarget(ApiRequest domain, String type, String id) {
         ApiRequest child = new ApiRequest(domain);
         child.setRequestServletContext(domain.getServletContext());
         child.setType(type); child.setId(rawId(id).toString()); child.setMethod("GET");
@@ -343,10 +403,15 @@ public class AiResourceViewService {
             if (key != null && key.restricted() && !manager.supportsScopedCollectionQuery(keyAccess)) return null;
             Object row = manager.getById(type, child.getId(), new ListOptions(child));
             if (row == null) return null;
+            if ("service".equals(type) && row instanceof Service service && !"service".equals(service.getKind())) return null;
             Resource resource = coreDetail(row, child);
             if (resource == null || resource.getId() == null || !sameId(resource.getId(), id)
                     || resource.getFields().get("removed") != null) return null;
-            return resource;
+            var relation = schema.getResourceFields() == null ? null : schema.getResourceFields().get("serviceIds");
+            boolean readable = relation != null && relation.isIncludeInList() && !relation.isReadOnCreateOnly()
+                    && (relation.getTransform() == null || relation.getTransform().isBlank());
+            return new AuthorizedTarget(resource, "container".equals(type) && readable,
+                    row instanceof Instance instance && instance.getStackId() == null, row instanceof Instance instance ? instance.getUuid() : null);
         } catch (ClientVisibleException denied) {
             if (!Set.of("KeyScopeDenied", "KeyPolicyDenied", "OwnerPermissionDenied", "NotFound").contains(denied.getCode())) throw denied;
             return null;
@@ -360,10 +425,14 @@ public class AiResourceViewService {
         Long id, account; java.util.Date removed;
         if ("volume".equals(request.getType()) && row instanceof Volume volume) {
             id = volume.getId(); account = volume.getAccountId(); removed = volume.getRemoved();
+        } else if ("host".equals(request.getType()) && row instanceof Host host) {
+            id = host.getId(); account = host.getAccountId(); removed = host.getRemoved();
         } else if ("container".equals(request.getType()) && row instanceof Instance instance && "container".equals(instance.getKind())) {
             id = instance.getId(); account = instance.getAccountId(); removed = instance.getRemoved();
         } else if ("stack".equals(request.getType()) && row instanceof Stack stack) {
             id = stack.getId(); account = stack.getAccountId(); removed = stack.getRemoved();
+        } else if ("service".equals(request.getType()) && row instanceof Service service && "service".equals(service.getKind())) {
+            id = service.getId(); account = service.getAccountId(); removed = service.getRemoved();
         } else throw error(503, "ResourceViewUnavailable");
         if (id == null || !sameId(id, request.getId()) || account == null
                 || account != ApiUtils.getPolicy().getAccountId() || removed != null) throw error(404, "NotFound");
@@ -372,7 +441,10 @@ public class AiResourceViewService {
             throw error(403, "OwnerPermissionDenied");
         List<String> names = "volume".equals(request.getType())
                 ? List.of("name", "description", "state", "kind", "created", "removed", "driver", "accessMode", "size", "sizeMb", "isHostPath", "isNative")
-                : "container".equals(request.getType()) ? List.of("name", "state", "stackId") : List.of("name");
+                : "host".equals(request.getType()) ? List.of("name", "description", "state", "kind", "created", "hostname",
+                        "agentIpAddress", "dockerVersion", "memTotal", "cpuCount", "agentState", "memory", "milliCpu", "localStorageMb")
+                : "container".equals(request.getType()) ? List.of("name", "state", "stackId")
+                : "service".equals(request.getType()) ? List.of("stackId") : List.of("name");
         // Reuse the exact role-schema Field accessors and native wrapping rules
         // (including aliases and reference formatting),
         // with a bounded field subset. No full DTO/output augmentation runs.
@@ -396,7 +468,14 @@ public class AiResourceViewService {
         }
         Resource wrapped = new WrappedResource(ApiContext.getContext().getIdFormatter(), request.getSchemaFactory(), projection,
                 row, additional, Set.of(), "GET", false);
+        // Preserve the ordinary HostsFilter state semantics without its unbounded
+        // instanceIds/physical-host augmentation or bypassing a hidden state field.
+        if (!"v1".equals(request.getVersion()) && row instanceof Host host && wrapped.getFields().containsKey("state")
+                && "active".equals(host.getState()) && StringUtils.isNotBlank(host.getAgentState()))
+            wrapped.getFields().put("state", host.getAgentState());
         if (row instanceof Instance instance && (!sameId(wrapped.getFields().get("stackId"), instance.getStackId())))
+            wrapped.getFields().remove("stackId");
+        if (row instanceof Service service && !sameId(wrapped.getFields().get("stackId"), service.getStackId()))
             wrapped.getFields().remove("stackId");
         return wrapped;
     }

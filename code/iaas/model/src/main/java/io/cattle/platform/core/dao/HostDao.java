@@ -3,6 +3,7 @@ package io.cattle.platform.core.dao;
 import io.cattle.platform.archaius.util.ArchaiusUtil;
 import io.cattle.platform.archaius.util.ConfigProperty;
 import io.cattle.platform.core.model.Host;
+import io.cattle.platform.core.model.InstanceHostMap;
 import io.cattle.platform.core.model.IpAddress;
 import io.cattle.platform.core.model.PhysicalHost;
 import io.github.ibuildthecloud.gdapi.id.IdFormatter;
@@ -24,6 +25,10 @@ public interface HostDao {
     IpAddress getIpAddressForHost(Long hostId);
 
     Map<Long, List<Object>> getInstancesPerHost(List<Long> hosts, IdFormatter idFormatter);
+
+    List<? extends InstanceHostMap> getWorkloadCandidates(long accountId, long hostId);
+
+    boolean isWorkloadCurrent(long accountId, long hostId, long mappingId, long instanceId, Long stackId);
 
     PhysicalHost createMachineForHost(Host host, String driver);
 
