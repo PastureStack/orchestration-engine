@@ -19,7 +19,7 @@ public final class ProcessAuthorization {
     private static final Set<String> FIELDS = Set.of("keyId", "policyRevision", "principalAccountId", "accountId",
             "requestId", "operation", "targetType", "targetId", "preview", "requestMethod", "requestAction", "requestLink",
             "requestCollection", "projectCreation", "aliasServiceUuid", "aliasMapUuid", "aliasConsumedServiceId", "aliasConsumedServiceUuid",
-            "aliasStackId", "aliasStackUuid", "aliasConsumedStackId", "aliasConsumedStackUuid");
+            "aliasStackId", "aliasStackUuid", "aliasConsumedStackId", "aliasConsumedStackUuid", "projectUpdateUuid", "projectUpdateFields");
 
     private ProcessAuthorization() { }
 
@@ -28,6 +28,12 @@ public final class ProcessAuthorization {
         if (source != null) {
             for (String name : FIELDS) {
                 Object value = source.get(name);
+                if (name.equals("projectUpdateFields")) {
+                    if (value instanceof List<?> fields && !fields.isEmpty() && fields.size() <= 128
+                            && fields.stream().allMatch(field -> field instanceof String text && text.matches("[A-Za-z][A-Za-z0-9_]{0,127}"))
+                            && Set.copyOf(fields).size() == fields.size()) result.put(name, List.copyOf(fields));
+                    continue;
+                }
                 if ((name.equals("requestCollection") || name.equals("projectCreation")) && !(value instanceof Boolean)) {
                     continue;
                 }
@@ -76,7 +82,8 @@ public final class ProcessAuthorization {
         }
         if (!metadata.isEmpty()) {
             data.put(DATA_KEY, sanitize(metadata));
-            if ((Boolean.TRUE.equals(metadata.get("projectCreation")) || aliasLinkExecution(config, metadata)) && config.getResourceType() != null
+            if ((Boolean.TRUE.equals(metadata.get("projectCreation")) || aliasLinkExecution(config, metadata)
+                    || projectUpdateExecution(config, metadata)) && config.getResourceType() != null
                     && config.getResourceId() != null && config.getProcessName() != null
                     && (config.getAccountId() == null || config.getAccountId() instanceof Number)) {
                 Map<String, Object> binding = new HashMap<>();
@@ -129,7 +136,45 @@ public final class ProcessAuthorization {
                 || !proof.containsKey("accountId") || !sameAccount(proof.get("accountId"), config.getAccountId())
                 || !(proof.get("authorization") instanceof Map<?, ?> raw)) return false;
         Map<String, Object> metadata = metadata(config);
-        return !metadata.isEmpty() && metadata.equals(raw) && sanitize(raw).equals(raw);
+        return !metadata.isEmpty() && metadata.equals(raw) && sanitize(raw).equals(raw)
+                && (!projectUpdateCaptured(config, metadata) || projectUpdateExecution(config, metadata));
+    }
+
+    /** Select mandatory native proof without treating a missing or modified proof as an old generic job. */
+    public static boolean projectUpdateCaptured(LaunchConfiguration config, Map<String, Object> metadata) {
+        if (metadata.containsKey("projectUpdateUuid") || metadata.containsKey("projectUpdateFields")) return true;
+        Object proof = config.getData() == null ? null : config.getData().get(CAPTURED_EXECUTION_KEY);
+        return proof instanceof Map<?, ?> binding && binding.get("authorization") instanceof Map<?, ?> authorization
+                && (authorization.containsKey("projectUpdateUuid") || authorization.containsKey("projectUpdateFields"));
+    }
+
+    /** Native scheduling data only: actual changed field names, never values or authorization flags. */
+    public static List<String> projectUpdateFields(LaunchConfiguration config) {
+        if (config.getData() == null) return List.of();
+        Set<String> reserved = Set.of(DATA_KEY, COMPLETION_PENDING_KEY, VERIFIED_CHILD_KEY, CAPTURED_EXECUTION_KEY, "old", "type");
+        java.util.ArrayList<String> fields = new java.util.ArrayList<>();
+        for (String field : config.getData().keySet()) {
+            if (reserved.contains(field)) continue;
+            if (!field.matches("[A-Za-z][A-Za-z0-9_]{0,127}")) return List.of();
+            fields.add(field);
+        }
+        if (fields.isEmpty() || fields.size() > 128 || !(config.getData().get("old") instanceof Map<?, ?> old)
+                || !old.keySet().equals(Set.copyOf(fields))) return List.of();
+        fields.sort(String::compareTo); return List.copyOf(fields);
+    }
+
+    public static boolean projectUpdateExecution(LaunchConfiguration config, Map<String, Object> metadata) {
+        return "project".equals(metadata.get("targetType")) && "update".equals(metadata.get("operation"))
+                && "PUT".equals(metadata.get("requestMethod")) && Boolean.FALSE.equals(metadata.get("requestCollection"))
+                && Boolean.FALSE.equals(metadata.get("preview")) && !metadata.containsKey("requestAction") && !metadata.containsKey("requestLink")
+                && "account".equals(config.getResourceType()) && "account.update".equals(config.getProcessName()) && config.getAccountId() == null
+                && Objects.equals(config.getResourceId(), metadata.get("targetId"))
+                && metadata.get("accountId") instanceof Number project && project.longValue() > 0
+                && Long.toString(project.longValue()).equals(config.getResourceId())
+                && metadata.get("projectUpdateUuid") instanceof String uuid && !uuid.isBlank()
+                && metadata.get("projectUpdateFields") instanceof List<?> fields && !fields.isEmpty()
+                && fields.equals(projectUpdateFields(config))
+                && (config.getData().get("type") == null || "project".equals(config.getData().get("type")));
     }
 
     private static boolean sameAccount(Object expected, Object actual) {

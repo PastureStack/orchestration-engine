@@ -37,6 +37,57 @@ def block(name):
 
 
 class AptSecurityBootstrapTest(unittest.TestCase):
+    def test_every_index_update_fails_closed_before_install_on_warning_only_failure(self):
+        commands = set()
+        for name, expected in (("Dockerfile", 3), ("Dockerfile.dapper", 3),
+                               ("scripts/install-ubuntu-security-updates.sh", 1)):
+            text = (REPO / name).read_text(encoding="utf-8")
+            calls = re.findall(r"^\s+((?:apt-get|apt_security) update[^;\n]*)(?:;|\n)", text, re.M)
+            self.assertEqual(expected, len(calls), name)
+            for call in calls:
+                owner = call.split()[0]
+                self.assertEqual(owner + " update --error-on=any", call)
+                commands.add(call)
+        self.assertEqual(2, len(commands))
+        # Model APT's documented warning-only result independently from the
+        # production call sites. Every real call must convert it into a fatal
+        # status before any following installation can execute.
+        stub = r'''#!/bin/sh
+set -eu
+printf '%s\n' "$*" >> calls
+if test "$1" = update; then
+    test "$APT_UPDATE_FIXTURE_INDEX_OK" = 0 || exit 0
+    printf 'W: simulated unavailable signed index\n' >&2
+    for argument do
+        test "$argument" != --error-on=any || exit 100
+    done
+    exit 0
+fi
+test "$1" = install
+printf 'INSTALL_REACHED\n' >> calls
+'''
+        for command in sorted(commands):
+            for mode in ("strict-failure", "original-warning-only", "strict-success"):
+                with self.subTest(command=command, mode=mode), tempfile.TemporaryDirectory() as directory:
+                    executable = Path(directory) / "bin" / "apt-get"
+                    executable.parent.mkdir()
+                    executable.write_text(stub, encoding="utf-8", newline="\n")
+                    executable.chmod(0o755)
+                    actual = command.replace(" --error-on=any", "") if mode == "original-warning-only" else command
+                    script = ('set -eu\nPATH="$PWD/bin:$PATH"\nexport PATH\n'
+                              'test "$(command -v apt-get)" = "$PWD/bin/apt-get"\n'
+                              'apt_security() { apt-get "$@"; }\n' + actual +
+                              "\napt-get install fixture-only\n")
+                    environment = dict(os.environ,
+                                       APT_UPDATE_FIXTURE_INDEX_OK="1" if mode == "strict-success" else "0")
+                    result = subprocess.run([shell(), "-c", script], cwd=directory,
+                                            env=environment, capture_output=True, text=True, timeout=10)
+                    calls = (Path(directory) / "calls").read_text().splitlines()
+                    self.assertEqual("" if mode == "strict-success" else
+                                     "W: simulated unavailable signed index\n", result.stderr)
+                    self.assertEqual(100 if mode == "strict-failure" else 0, result.returncode)
+                    self.assertEqual(mode != "strict-failure", "INSTALL_REACHED" in calls)
+
     def test_existing_openssl_security_overlay_precedes_base_upgrade_without_changing_its_scope(self):
         lock = (REPO / "ubuntu-apt.lock").read_text(encoding="utf-8")
         version = re.search(r"^UBUNTU_APT_OPENSSL_VERSION='([^']+)'$", lock, re.M).group(1)
@@ -56,7 +107,7 @@ class AptSecurityBootstrapTest(unittest.TestCase):
                     # existing security source is restored afterwards.
                     remove = text.index("    rm -f /etc/apt/sources.list.d/pasturestack-security.sources;", at)
                     self.assertLess(remove, text.index(upgrade))
-                    self.assertIn("    apt-get update;", text[remove:text.index(upgrade)])
+                    self.assertIn("    apt-get update --error-on=any;", text[remove:text.index(upgrade)])
                     self.assertEqual(2, text.count('"${UBUNTU_APT_SECURITY_SNAPSHOT}" > /etc/apt/sources.list.d/pasturestack-security.sources;'))
                     for package in ("libssl3t64", "openssl", "openssl-provider-legacy"):
                         self.assertIn(package + '=\"${UBUNTU_APT_OPENSSL_VERSION}\"', text[at:remove])
@@ -112,7 +163,7 @@ class AptSecurityBootstrapTest(unittest.TestCase):
                     self.assertIn("version=1.2.0-3ubuntu0.1", phase)
                     self.assertIn("version=10.46-1ubuntu0.1", phase)
                     reset = text.rindex("rm -f /etc/apt/sources.list.d/pasturestack-security.sources;", 0, begin)
-                    self.assertIn("apt-get update;", text[reset:begin])
+                    self.assertIn("apt-get update --error-on=any;", text[reset:begin])
                     self.assertNotIn("--force", phase)
                     self.assertNotIn("--allow-downgrades", text)
                 verify(source)
@@ -259,7 +310,7 @@ if [ "$PST_APT_MODE" = install-failure ]; then exit 1; fi
                 self.assertIn('Architecture)" = amd64', production)
                 self.assertIn("${db:Status-Status}", production)
                 self.assertIn("${Version}", production)
-                self.assertLess(source.index(production), source.index("    apt-get update;"))
+                self.assertLess(source.index(production), source.index("    apt-get update --error-on=any;"))
                 self.assertIn("Acquire::https::Verify-Peer", source)
                 self.assertNotIn("--allow-downgrades", production)
                 self.assertNotIn("--force", production)
@@ -341,7 +392,7 @@ set -eu
 ''')
                 executable('apt-get', '''#!/bin/sh
 set -eu
-[ "$#" = 1 ] && [ "$1" = update ] || exit 91
+[ "$#" = 2 ] && [ "$1" = update ] && [ "$2" = --error-on=any ] || exit 91
 [ -s "$APT_CONFIG" ]
 printf '%s\\n' update > "$TEST_HOME/update"
 cp "$APT_CONFIG" "$TEST_HOME/observed-config"

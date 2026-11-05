@@ -99,7 +99,7 @@ RUN set -eux; \
     printf 'Acquire::Retries "5";\nAcquire::http::Timeout "30";\nAcquire::https::Timeout "30";\nAcquire::http::Pipeline-Depth "0";\nAcquire::https::CaInfo "/etc/ssl/certs/ca-certificates.crt";\nAcquire::https::Verify-Peer "true";\nAcquire::https::Verify-Host "true";\nAcquire::AllowInsecureRepositories "false";\nAPT::Get::AllowUnauthenticated "false";\n' > /etc/apt/apt.conf.d/80pasturestack-retries; \
     printf 'Types: deb\nURIs: https://snapshot.ubuntu.com/ubuntu/%s\nSuites: resolute-security\nComponents: main\nSigned-By: /usr/share/keyrings/ubuntu-archive-keyring.gpg\nSnapshot: no\n' \
         "${UBUNTU_APT_SECURITY_SNAPSHOT}" > /etc/apt/sources.list.d/pasturestack-security.sources; \
-    apt-get update; \
+    apt-get update --error-on=any; \
     set --; \
     for package in libexpat1 libsqlite3-0 libssh2-1t64; do \
         test "$(grep -c "^${package}=" /licenses/ubuntu-security-packages.lock)" -eq 1; \
@@ -117,7 +117,7 @@ RUN set -eux; \
         test "$(dpkg-query -W -f='${Version}' "${package}")" = "${UBUNTU_APT_OPENSSL_VERSION}"; \
     done; \
     rm -f /etc/apt/sources.list.d/pasturestack-security.sources; \
-    apt-get update; \
+    apt-get update --error-on=any; \
     set --; \
     for package in libpython3.14-minimal libpython3.14-stdlib python3.14-minimal python3.14 python3.14-venv curl libcurl3t64-gnutls libcurl4t64 ca-certificates libbrotli1 libpcre2-8-0 libpcre2-posix3; do \
         architecture=amd64; \
@@ -161,7 +161,7 @@ RUN set -eux; \
         xz-utils="${UBUNTU_APT_XZ_UTILS_VERSION}"; \
     printf 'Types: deb\nURIs: https://snapshot.ubuntu.com/ubuntu/%s\nSuites: resolute-security\nComponents: main\nSigned-By: /usr/share/keyrings/ubuntu-archive-keyring.gpg\nSnapshot: no\n' \
         "${UBUNTU_APT_SECURITY_SNAPSHOT}" > /etc/apt/sources.list.d/pasturestack-security.sources; \
-    apt-get update; \
+    apt-get update --error-on=any; \
     for package in libssl3t64 openssl openssl-provider-legacy; do \
         test "$(dpkg-query -W -f='${Version}' "${package}")" = "${UBUNTU_APT_OPENSSL_VERSION}"; \
     done; \

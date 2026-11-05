@@ -58,7 +58,7 @@ public class AuditServiceImpl implements AuditService, ApiKeyAuditSink, ApiReque
     public static final Set<String> API_KEY_AUDIT_FIELDS = Collections.unmodifiableSet(new HashSet<>(Arrays.asList(
             "eventId", "keyId", "decision", "outcome", "httpStatus", "responseCode", "requestId", "actor",
             "targetType", "targetId", "operation", "policyRevision", "reason", "phase", "preview", "processId", "processName", "hostUuid", "failureCode",
-            "clientReportedCommand", "clientReportedPhase", "clientReportedStatus", "clientReportedReason",
+            "clientReportedCommand", "clientReportedPhase", "clientReportedStatus", "clientReportedReason", "clientReportedReasonDetail",
             "clientCorrelationId", "evidenceSource", "channel")));
     private static final Set<String> SENSITIVE_AUDIT_FIELDS = Set.of(
             "secretvalue", "secretvalues", "password", "newsecret", "oldsecret", "adminaccountpassword", "serviceaccountpassword",
@@ -374,7 +374,8 @@ public class AuditServiceImpl implements AuditService, ApiKeyAuditSink, ApiReque
     @Override
     public void recordResourceChangeDecision(ApiRequest request, Policy policy, String action, String receiptId,
             String resourceType, Long resourceId, boolean allowed, String reason) {
-        if (!Set.of("stack", "service", "container", "externalService", "dnsService", "certificate", "host", "aiResourceChangePlan")
+        if (!Set.of("stack", "service", "container", "externalService", "dnsService", "certificate", "host", "project",
+                "loadBalancerService", "aiResourceChangePlan")
                 .contains(resourceType))
             throw new IllegalArgumentException("Invalid resource-change audit target");
         recordTypedResourceDecision(request, policy, action, receiptId, "aichange", resourceType, resourceId,
@@ -434,6 +435,7 @@ public class AuditServiceImpl implements AuditService, ApiKeyAuditSink, ApiReque
         data.put("evidenceSource", "client_reported"); data.put("channel", "webmcp-client-report");
         data.put("clientReportedCommand", report.command()); data.put("clientReportedPhase", report.phase());
         data.put("clientReportedStatus", report.status()); data.put("clientReportedReason", report.reason());
+        if (report.reasonDetail() != null) data.put("clientReportedReasonDetail", report.reasonDetail());
         if (report.correlationId() != null) data.put("clientCorrelationId", report.correlationId());
         Map<String, Object> event = new HashMap<>();
         event.put("resourceType", "aiToolCallEvent"); event.put("resourceId", null);

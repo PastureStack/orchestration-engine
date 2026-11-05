@@ -1025,6 +1025,11 @@ public class IaasApiConfig {
     AiCatalogMetadataResourceManager AiCatalogMetadataResourceManager() { return new AiCatalogMetadataResourceManager(); }
 
     @Bean
+    io.cattle.platform.iaas.api.auth.change.AiProjectMetadataChange AiProjectMetadataChange() {
+        return new io.cattle.platform.iaas.api.auth.change.AiProjectMetadataChange();
+    }
+
+    @Bean
     AiResourceChangeDomain AiResourceChangeDomain() { return new AiResourceChangeDomain(); }
 
     @Bean

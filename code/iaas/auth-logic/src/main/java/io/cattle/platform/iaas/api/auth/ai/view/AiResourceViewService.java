@@ -123,6 +123,10 @@ public class AiResourceViewService {
                 ? null : rawId((String) input.get("resourceId")).toString());
         domain.setMethod("GET"); domain.setAction(null); domain.setLink(null); domain.setRequestObject(null);
         domain.setRequestParams(new LinkedHashMap<>()); domain.setConditions(new LinkedHashMap<>());
+        // Ask the ordinary Project owner for its normal Admin view; native RBAC and
+        // the common Key collection filter still decide every returned Project.
+        if (source == null && "project".equals(type) && domain.getId() == null)
+            domain.getRequestParams().put("all", new String[] {"true"});
         domain.setInclude(null);
         domain.setSort(new Sort("id", Sort.SortOrder.ASC, null));
         domain.setPagination(new Pagination(MEMORY_COLLECTIONS.contains(type) ? 10001 : 51));

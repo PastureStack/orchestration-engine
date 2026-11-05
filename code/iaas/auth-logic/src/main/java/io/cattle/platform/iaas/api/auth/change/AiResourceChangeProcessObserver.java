@@ -8,6 +8,7 @@ import io.cattle.platform.engine.process.ExitReason;
 import io.cattle.platform.engine.process.LaunchConfiguration;
 import io.cattle.platform.engine.process.ProcessAuthorization;
 import io.cattle.platform.engine.process.ProcessAuthorizationHook;
+import io.cattle.platform.engine.process.ProcessAuthorizationDeniedException;
 import io.cattle.platform.iaas.api.auth.apikey.ApiKeyCredentialContext;
 import io.cattle.platform.iaas.api.auth.apikey.ApiKeyTargetResolver;
 import io.cattle.platform.object.ObjectManager;
@@ -23,7 +24,7 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.function.Supplier;
 
-/** Owner outcome projection only. This observer never authorizes a process or a receipt read. */
+/** Owner outcomes and exact metadata execution attestation; native authorization and receipt reads remain separate owners. */
 public class AiResourceChangeProcessObserver implements ProcessAuthorizationHook {
     static final String ATTRIBUTE = "ai.resource.change.execution.owner";
     @Inject AiResourceChangePlanStore store;
@@ -41,10 +42,18 @@ public class AiResourceChangeProcessObserver implements ProcessAuthorizationHook
         if (binding == null || !id.equals(binding.get("id")) || !id.equals(request.getAttribute("apiKey.audit.requestId"))
                 || !"ALLOW".equals(request.getAttribute("apiKey.audit.decision"))
                 || number(binding.get("actorId")) != owner.getAuthenticatedAsAccountId()
-                || number(binding.get("accountId")) != owner.getAccountId()
+                || authorizationAccount(binding) != owner.getAccountId()
                 || number(binding.get("credentialId")) != key.credentialId() || number(binding.get("credentialRevision")) != key.revision()
                 || !Objects.equals(binding.get("credentialKind"), key.kind()) || !requestMatches(binding, request))
             throw new IllegalStateException("Resource-change execution binding unavailable");
+        if ("loadBalancerService".equals(binding.get("resourceType"))) {
+            Map<String, Object> plan = store.load(id);
+            if (plan == null || !(plan.get("parameters") instanceof Map<?, ?> approved) || approved.isEmpty()
+                    || !Set.of("name", "description").containsAll(approved.keySet()) || !approved.equals(request.getRequestObject()))
+                throw new IllegalStateException("Resource-change metadata request unavailable");
+        }
+        if (AiProjectMetadataChange.metadataBinding(binding) && !approvedProjectRequest(id, request))
+            throw new IllegalStateException("Resource-change metadata request unavailable");
         Object previous = request.getAttribute(ATTRIBUTE);
         request.setAttribute(ATTRIBUTE, new Dispatch(request, id));
         try { return operation.get(); }
@@ -66,18 +75,19 @@ public class AiResourceChangeProcessObserver implements ProcessAuthorizationHook
             }
             if (rootId == null) return Map.of();
             Object root = objects.loadResource(nativeType, rootId);
-            if (!ownedRow(root, number(binding.get("accountId"))) || !resourceKind(binding, root)
+            if (!ownedRoot(binding, root) || !resourceKind(binding, root)
                     || !Objects.equals(ObjectUtils.getId(root), rootId)
-                    || number(config.getAccountId()) != number(binding.get("accountId"))
+                    || !(AiProjectMetadataChange.metadataBinding(binding) ? config.getAccountId() == null
+                            : number(config.getAccountId()) == number(binding.get("accountId")))
                     || "create".equals(binding.get("operation")) && !"requested".equals(ObjectUtils.getState(root))) return Map.of();
             Object initial = objects.loadResource(config.getResourceType(), config.getResourceId());
-            if (!ownedRow(initial, number(binding.get("accountId"))) || !Objects.equals(String.valueOf(ObjectUtils.getId(initial)), config.getResourceId())
+            if (!ownedRoot(binding, initial) || !Objects.equals(String.valueOf(ObjectUtils.getId(initial)), config.getResourceId())
                     || !initialEdge(binding, rootId, config, initial)) return Map.of();
             Map<String, Object> after = new LinkedHashMap<>(binding);
             if (binding.get("rootUuid") != null && !Objects.equals(binding.get("rootUuid"), uuid(root))) return Map.of();
             after.put("rootId", rootId); after.put("rootUuid", uuid(root));
             after.put("rootStackId", ObjectUtils.getPropertyIgnoreErrors(root, "stackId"));
-            if ("dnsService".equals(binding.get("resourceType"))) {
+            if (Set.of("dnsService", "loadBalancerService").contains(binding.get("resourceType"))) {
                 var stack = objects.loadResource(io.cattle.platform.core.model.Stack.class, number(after.get("rootStackId")));
                 if (!ownedRow(stack, number(binding.get("accountId")))) return Map.of();
                 after.put("rootStackUuid", uuid(stack));
@@ -93,6 +103,15 @@ public class AiResourceChangeProcessObserver implements ProcessAuthorizationHook
             if (store.attest(scope.id(), binding, after)) return Map.of();
         }
         throw new IllegalStateException("Resource-change execution binding unavailable");
+    }
+
+    @Override public void beforeExecution(LaunchConfiguration config, Map<String, Object> metadata) {
+        if (metadata.get("requestId") instanceof String id && id.matches("aichange-[0-9a-f-]{36}")
+                && "loadBalancerService".equals(metadata.get("targetType")) && "PUT".equals(metadata.get("requestMethod"))
+                && "service".equals(config.getResourceType()) && "service.update".equals(config.getProcessName())
+                && !attestsLoadBalancerMetadata(config, metadata)) throw new ProcessAuthorizationDeniedException("OwnerPermissionDenied");
+        if (requiresProjectMetadataAttestation(config, metadata) && !attestsProjectMetadataExecution(config, metadata))
+            throw new ProcessAuthorizationDeniedException("OwnerPermissionDenied");
     }
 
     @Override public void afterExecution(LaunchConfiguration config, Map<String, Object> metadata, ExitReason reason) {
@@ -117,18 +136,18 @@ public class AiResourceChangeProcessObserver implements ProcessAuthorizationHook
         long accountId = number(binding.get("accountId"));
         Object root = objects.loadResource(nativeType((String) binding.get("resourceType")), number(binding.get("rootId")));
         Object child = objects.loadResource(config.getResourceType(), config.getResourceId());
-        if (!ownedRow(root, accountId) || !resourceKind(binding, root)
+        if (!ownedRoot(binding, root) || !resourceKind(binding, root)
                 || number(binding.get("rootId")) != number(ObjectUtils.getId(root))
                 || child == null || !Objects.equals(String.valueOf(ObjectUtils.getId(child)), config.getResourceId())
                 || !Objects.equals(uuid(root), binding.get("rootUuid"))
                 || !Objects.equals(ObjectUtils.getPropertyIgnoreErrors(root, "stackId"), binding.get("rootStackId") instanceof Number stack
                         ? stack.longValue() : null)) return false;
-        if ("dnsService".equals(binding.get("resourceType"))) {
+        if (Set.of("dnsService", "loadBalancerService").contains(binding.get("resourceType"))) {
             var stack = objects.loadResource(io.cattle.platform.core.model.Stack.class, number(binding.get("rootStackId")));
             if (!ownedRow(stack, accountId) || !Objects.equals(uuid(stack), binding.get("rootStackUuid"))) return false;
         }
         if (list(binding.get("initial")).contains(initialIdentity(config, child)))
-            return ownedRow(child, accountId) && initialEdge(binding, number(binding.get("rootId")), config, child)
+            return ownedRoot(binding, child) && initialEdge(binding, number(binding.get("rootId")), config, child)
                     && (!(child instanceof io.cattle.platform.core.model.ServiceConsumeMap) || ProcessAuthorization.executionBound(config));
         // StackRemove's direct ServiceRemove edge is scheduled by that exact
         // owner. Freeze the original child IDs and recheck their persisted parent.
@@ -281,7 +300,7 @@ public class AiResourceChangeProcessObserver implements ProcessAuthorizationHook
     }
 
     private static boolean resourceKind(Map<String, Object> binding, Object root) {
-        return !Set.of("externalService", "dnsService").contains(String.valueOf(binding.get("resourceType")))
+        return !Set.of("externalService", "dnsService", "loadBalancerService").contains(String.valueOf(binding.get("resourceType")))
                 || root instanceof Service service && Objects.equals(binding.get("resourceType"), service.getKind());
     }
 
@@ -380,7 +399,107 @@ public class AiResourceChangeProcessObserver implements ProcessAuthorizationHook
     }
 
     private static String nativeType(String type) {
-        return "container".equals(type) ? "instance" : Set.of("externalService", "dnsService").contains(type) ? "service" : type;
+        return "project".equals(type) ? "account" : "container".equals(type) ? "instance"
+                : Set.of("externalService", "dnsService", "loadBalancerService").contains(type) ? "service" : type;
+    }
+    private boolean attestsLoadBalancerMetadata(LaunchConfiguration config, Map<String, Object> metadata) {
+        if (!(metadata.get("requestId") instanceof String id) || !id.matches("aichange-[0-9a-f-]{36}")
+                || !(config instanceof ProcessRecord record) || record.getId() == null || record.getId() <= 0
+                || !ProcessAuthorization.metadata(config).equals(metadata)) return false;
+        for (int attempt = 0; attempt < 2; attempt++) {
+            Map<String, Object> binding = store.execution(id);
+            Map<String, Object> plan = store.load(id);
+            if (binding == null || plan == null || !id.equals(plan.get("operationId"))
+                    || !"loadBalancerService".equals(binding.get("resourceType")) || !"update_metadata".equals(binding.get("operation"))
+                    || !"PUT".equals(binding.get("method")) || !metadataMatches(binding, metadata) || !provenChild(binding, config, metadata)
+                    || !(plan.get("parameters") instanceof Map<?, ?> approved) || approved.isEmpty()
+                    || !Set.of("name", "description").containsAll(approved.keySet()) || config.getData() == null) return false;
+            Set<String> reserved = Set.of("old", ProcessAuthorization.DATA_KEY, ProcessAuthorization.CAPTURED_EXECUTION_KEY,
+                    ProcessAuthorization.VERIFIED_CHILD_KEY, ProcessAuthorization.COMPLETION_PENDING_KEY);
+            for (var entry : config.getData().entrySet()) {
+                if (!reserved.contains(entry.getKey()) && (!approved.containsKey(entry.getKey())
+                        || !Objects.equals(approved.get(entry.getKey()), entry.getValue()))) return false;
+            }
+            var root = objects.loadResource("service", number(binding.get("rootId")));
+            var stack = objects.loadResource(io.cattle.platform.core.model.Stack.class, number(binding.get("rootStackId")));
+            if (root == null || ObjectUtils.getRemoved(root) != null || stack == null || stack.getRemoved() != null) return false;
+            var persisted = objects.loadResource(io.cattle.platform.core.model.ProcessInstance.class, record.getId());
+            if (persisted == null || persisted.getEndTime() != null || !Objects.equals(persisted.getId(), record.getId())
+                    || !Objects.equals(persisted.getAccountId(), config.getAccountId())
+                    || !Objects.equals(persisted.getProcessName(), config.getProcessName())
+                    || !Objects.equals(persisted.getResourceType(), config.getResourceType())
+                    || !Objects.equals(persisted.getResourceId(), config.getResourceId()) || !Objects.equals(persisted.getData(), config.getData())
+                    || !(persisted.getData().get(ProcessAuthorization.DATA_KEY) instanceof Map<?, ?> raw)
+                    || !metadata.equals(raw) || !metadata.equals(ProcessAuthorization.sanitize(raw))) return false;
+            if (binding.get("rootProcessId") instanceof Number prior)
+                return prior.longValue() == record.getId() && store.loadBalancerMetadataExecutionActive(id, binding);
+            Map<String, Object> after = new LinkedHashMap<>(binding); after.put("rootProcessId", record.getId());
+            if (store.attestLoadBalancerMetadataProcess(id, binding, after)) return true;
+        }
+        return false;
+    }
+
+    private boolean requiresProjectMetadataAttestation(LaunchConfiguration config, Map<String, Object> metadata) {
+        if (!(metadata.get("requestId") instanceof String id) || !id.matches("aichange-[0-9a-f-]{36}")) return false;
+        // Shape only selects mandatory attestation; it can never supply authority when the private binding is absent.
+        if ("project".equals(metadata.get("targetType"))
+                || "account".equals(config.getResourceType()) && "account.update".equals(config.getProcessName())) return true;
+        Map<String, Object> binding = store.execution(id);
+        return binding != null && "project".equals(binding.get("resourceType"));
+    }
+
+    /** A durable, already claimed exact Account.update chain, never a client-provided AI flag. */
+    public boolean attestsProjectMetadataExecution(LaunchConfiguration config, Map<String, Object> metadata) {
+        if (!(config instanceof ProcessRecord record) || record.getId() == null || record.getId() <= 0
+                || !(metadata.get("requestId") instanceof String id) || !id.matches("aichange-[0-9a-f-]{36}")) return false;
+        for (int attempt = 0; attempt < 2; attempt++) {
+            Map<String, Object> binding = store.execution(id);
+            if (!AiProjectMetadataChange.metadataBinding(binding) || config.getAccountId() != null
+                    || !"account".equals(config.getResourceType()) || !"account.update".equals(config.getProcessName())
+                    || !metadataMatches(binding, metadata) || !approvedProjectUpdate(id, binding, config, metadata)
+                    || !provenChild(binding, config, metadata)) return false;
+            var persisted = objects.loadResource(io.cattle.platform.core.model.ProcessInstance.class, record.getId());
+            if (persisted == null || persisted.getEndTime() != null || !Objects.equals(persisted.getId(), record.getId())
+                    || persisted.getAccountId() != null
+                    || !Objects.equals(persisted.getProcessName(), config.getProcessName())
+                    || !Objects.equals(persisted.getResourceType(), config.getResourceType())
+                    || !Objects.equals(persisted.getResourceId(), config.getResourceId()) || persisted.getData() == null
+                    || !(persisted.getData().get(ProcessAuthorization.DATA_KEY) instanceof Map<?, ?> raw)
+                    || !metadata.equals(raw) || !metadata.equals(ProcessAuthorization.sanitize(raw))) return false;
+            if (binding.get("rootProcessId") instanceof Number prior)
+                return prior.longValue() == record.getId() && store.projectExecutionActive(id, binding);
+            Map<String, Object> after = new LinkedHashMap<>(binding); after.put("rootProcessId", record.getId());
+            if (store.attestProjectProcess(id, binding, after)) return true;
+        }
+        return false;
+    }
+    private boolean approvedProjectRequest(String id, ApiRequest request) {
+        Map<String, Object> plan = store.load(id);
+        if (plan == null || !(plan.get("parameters") instanceof Map<?, ?> approved)
+                || !(request.getRequestObject() instanceof Map<?, ?> body)) return false;
+        Map<Object, Object> actual = new LinkedHashMap<>(body);
+        if (actual.containsKey("type") && !"project".equals(actual.remove("type"))) return false;
+        return actual.equals(approved);
+    }
+
+    private boolean approvedProjectUpdate(String id, Map<String, Object> binding, LaunchConfiguration config, Map<String, Object> metadata) {
+        if (!ProcessAuthorization.executionBound(config) || !ProcessAuthorization.projectUpdateExecution(config, metadata)
+                || !Objects.equals(binding.get("rootUuid"), metadata.get("projectUpdateUuid"))) return false;
+        List<?> actual = (List<?>) metadata.get("projectUpdateFields");
+        if (!((List<?>) binding.get("metadataFields")).containsAll(actual)) return false;
+        Map<String, Object> plan = store.load(id);
+        if (plan == null || !(plan.get("parameters") instanceof Map<?, ?> approved)) return false;
+        // Native scheduling omits unchanged parameters. Every actual change still equals its privately approved value.
+        return actual.stream().allMatch(field -> approved.containsKey(field) && Objects.equals(approved.get(field), config.getData().get(field)));
+    }
+
+    private static long authorizationAccount(Map<String, Object> binding) {
+        return number(binding.get(AiProjectMetadataChange.metadataBinding(binding) ? "actorId" : "accountId"));
+    }
+    private static boolean ownedRoot(Map<String, Object> binding, Object row) {
+        if (!AiProjectMetadataChange.metadataBinding(binding)) return ownedRow(row, number(binding.get("accountId")));
+        try { return AiProjectMetadataChange.selected(row, number(binding.get("accountId"))) != null; }
+        catch (io.github.ibuildthecloud.gdapi.exception.ClientVisibleException denied) { return false; }
     }
     private static boolean ownedRow(Object row, long account) {
         if (row == null || !Objects.equals(ObjectUtils.getAccountId(row), account) || uuid(row) == null) return false;

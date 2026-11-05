@@ -89,6 +89,35 @@ public class AiResourceChangePlanStore extends AbstractJooqDao {
                 .where(ID.eq(id).and(STATE.eq("dispatching")).and(EXECUTION.eq(encode(before)))).execute() == 1;
     }
 
+    boolean loadBalancerMetadataExecutionActive(String id, Map<String, Object> binding) {
+        return loadBalancerMetadata(binding) && create().fetchCount(TABLE,
+                ID.eq(id).and(STATE.in("dispatching", "accepted", "running", "unknown")).and(FAILURE.isNull()).and(EXECUTION.eq(encode(binding)))) == 1;
+    }
+
+    boolean attestLoadBalancerMetadataProcess(String id, Map<String, Object> before, Map<String, Object> after) {
+        if (!loadBalancerMetadata(before) || before.containsKey("rootProcessId")) return false;
+        return create().update(TABLE).set(EXECUTION, encode(after))
+                .where(ID.eq(id).and(STATE.in("dispatching", "accepted", "running", "unknown")).and(FAILURE.isNull())
+                        .and(EXECUTION.eq(encode(before)))).execute() == 1;
+    }
+
+    private static boolean loadBalancerMetadata(Map<String, Object> binding) {
+        return binding != null && "loadBalancerService".equals(binding.get("resourceType"))
+                && "update_metadata".equals(binding.get("operation")) && "PUT".equals(binding.get("method"));
+    }
+
+    boolean projectExecutionActive(String id, Map<String, Object> binding) {
+        return AiProjectMetadataChange.metadataBinding(binding) && create().fetchCount(TABLE,
+                ID.eq(id).and(STATE.in("dispatching", "accepted", "running", "unknown")).and(FAILURE.isNull()).and(EXECUTION.eq(encode(binding)))) == 1;
+    }
+
+    boolean attestProjectProcess(String id, Map<String, Object> before, Map<String, Object> after) {
+        if (!AiProjectMetadataChange.metadataBinding(before) || before.containsKey("rootProcessId")) return false;
+        return create().update(TABLE).set(EXECUTION, encode(after))
+                .where(ID.eq(id).and(STATE.in("dispatching", "accepted", "running", "unknown")).and(FAILURE.isNull())
+                        .and(EXECUTION.eq(encode(before)))).execute() == 1;
+    }
+
     boolean recordAuthorizationDenied(String id, Map<String, Object> binding) {
         return create().update(TABLE).set(FAILURE, AUTHORIZATION_DENIED)
                 .where(ID.eq(id).and(EXECUTION.eq(encode(binding))).and(STATE.notIn("preview", "cancelled"))
@@ -122,6 +151,13 @@ public class AiResourceChangePlanStore extends AbstractJooqDao {
         binding.put("resourceType", descriptor.resourceType()); binding.put("operation", descriptor.operation());
         binding.put("method", descriptor.method()); binding.put("action", descriptor.action()); binding.put("keyOperation", descriptor.keyOperation());
         binding.put("rootId", plan.get("internalResourceId")); binding.put("initial", new java.util.ArrayList<>());
+        if ("project".equals(descriptor.resourceType())) {
+            binding.put("metadataFields", descriptor.parameters(plan.get("parameters")).keySet().stream().sorted().toList());
+            if (!AiProjectMetadataChange.metadataBinding(binding) || !(plan.get("snapshot") instanceof Map<?, ?> snapshot)
+                    || !(snapshot.get("uuid") instanceof String uuid) || uuid.isBlank())
+                throw new IllegalStateException("Resource-change execution binding unavailable");
+            binding.put("rootUuid", uuid);
+        }
         java.util.ArrayList<Object> services = new java.util.ArrayList<>();
         if (plan.get("snapshot") instanceof Map<?, ?> snapshot && snapshot.get("childServices") instanceof List<?> children) {
             for (Object child : children) if (child instanceof Map<?, ?> row && row.get("id") instanceof Number) services.add(row.get("id"));

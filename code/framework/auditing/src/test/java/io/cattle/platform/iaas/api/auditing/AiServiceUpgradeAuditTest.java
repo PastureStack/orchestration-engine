@@ -25,6 +25,68 @@ import org.junit.rules.TemporaryFolder;
 
 public class AiServiceUpgradeAuditTest {
     @Rule public TemporaryFolder temporary = new TemporaryFolder();
+    @Test public void privateProjectCaptureKeepsSelectedAuditScopeForPrimaryAndQueueOutcomes() throws Exception {
+        // Auth-logic's durableAccountUpdateBinding test owns private capture and the native owner.
+        // This module owns canonical projection of that public audit/queue contract.
+        List<Map<?, ?>> delivered = new ArrayList<>(); List<Object[]> envelopes = new ArrayList<>();
+        AuditServiceImpl audit = service(delivered, envelopes); ApiRequest request = new ApiRequest(null, null);
+        request.setType("aiResourceChangePlan"); request.setMethod("POST");
+        request.setRequestObject(Map.of("name", "after", "description", "PRIVATE-DESCRIPTION"));
+        request.setAttribute("apiKey.audit.keyId", "1c7"); request.setAttribute("apiKey.audit.policyRevision", 3L);
+        request.setAttribute("apiKey.audit.verifiedPrincipalAccountId", 42L);
+        String id = "aichange-11111111-1111-1111-1111-111111111111";
+        audit.recordResourceChangeDecision(request, policy(), "apply", id, "project", 77L, true, "ResourceChangeAccepted");
+        audit.recordResourceChangeDecision(request, policy(), "apply", id, "project", 77L, false, "OwnerPermissionDenied");
+        var metadata = new HashMap<String, Object>(Map.of("accountId", 77L, "principalAccountId", 42L,
+                "keyId", "1c7", "policyRevision", 3L, "targetType", "project", "targetId", "77",
+                "requestId", id, "operation", "update"));
+        var execution = new io.cattle.platform.engine.process.LaunchConfiguration("account.update", "account", "77", null, 0, Map.of());
+        audit.afterExecution(execution, metadata, io.cattle.platform.engine.process.ExitReason.DONE);
+        audit.afterExecution(execution, metadata, io.cattle.platform.engine.process.ExitReason.AUTHORIZATION_DENIED);
+        assertEquals(4, delivered.size()); assertEquals(4, envelopes.size());
+        for (int i = 0; i < delivered.size(); i++) {
+            Map<?, ?> data = delivered.get(i); Object[] envelope = envelopes.get(i);
+            assertEquals("project", envelope[0]); assertEquals(77L, envelope[1]);
+            assertEquals(77L, envelope[4]); assertEquals(42L, envelope[5]);
+            assertEquals("1c7", data.get("keyId")); assertEquals("3", data.get("policyRevision").toString());
+            assertEquals(i % 2 == 0 ? "ALLOW" : "DENY", data.get("decision"));
+            assertFalse(data.toString().contains("after")); assertFalse(data.toString().contains("PRIVATE"));
+        }
+    }
+
+    @Test public void bindingReasonDetailSurvivesJsonOutboxReplayAndCanonicalProjectionAsClientEvidence() throws Exception {
+        List<Map<?, ?>> delivered = new ArrayList<>(); List<Object[]> envelopes = new ArrayList<>();
+        AuditServiceImpl service = service(delivered, envelopes); AuditLogDao working = service.auditLogDao;
+        service.auditLogDao = (AuditLogDao) Proxy.newProxyInstance(AuditLogDao.class.getClassLoader(), new Class<?>[]{AuditLogDao.class},
+                (proxy, method, args) -> { throw new IllegalStateException("temporary unavailable"); });
+        String id = "aitool-11111111-1111-1111-1111-111111111111";
+        ApiRequest request = new ApiRequest(null, null); request.setRequestObject(Map.of("password", "PRIVATE-PAYLOAD"));
+        service.recordClientToolEvent(request, policy(), new ClientToolAuditEvent(id, "preview_resource_change", "result",
+                "needs_user", "NEEDS_USER", id, ClientToolAuditEvent.BRIDGE_PROJECT_BINDING_REQUIRED));
+        assertTrue(delivered.isEmpty());
+        try (var paths = Files.walk(temporary.getRoot().toPath(), 2)) {
+            var pending = paths.filter(path -> path.toString().endsWith(".json")).limit(3).toList(); assertEquals(1, pending.size());
+            String json = Files.readString(pending.getFirst());
+            assertTrue(json.contains("clientReportedReasonDetail")); assertTrue(json.contains(ClientToolAuditEvent.BRIDGE_PROJECT_BINDING_REQUIRED));
+            assertFalse(json.contains("PRIVATE-PAYLOAD")); assertFalse(json.contains("requestObject"));
+        }
+        service.auditLogDao = working;
+        service.recordClientToolEvent(policy(), new ClientToolAuditEvent(id, "get_service", "start", "pending", "NONE", null));
+        assertEquals(2, delivered.size()); Map<?, ?> detail = delivered.getFirst();
+        assertEquals(ClientToolAuditEvent.BRIDGE_PROJECT_BINDING_REQUIRED, detail.get("clientReportedReasonDetail"));
+        assertEquals("client_reported", detail.get("evidenceSource")); assertEquals("NOT_EVALUATED", detail.get("decision"));
+        assertEquals("REPORTED", detail.get("outcome")); assertEquals("NEEDS_USER", detail.get("clientReportedReason"));
+        assertFalse(delivered.getLast().containsKey("clientReportedReasonDetail"));
+        assertEquals(77L, envelopes.getFirst()[4]); assertEquals(42L, envelopes.getFirst()[5]);
+        var row = new io.cattle.platform.core.model.tables.records.AuditLogRecord(); row.setResourceType("aiToolCallEvent");
+        row.setData(Map.of("fields", detail));
+        var output = new io.github.ibuildthecloud.gdapi.model.impl.ResourceImpl("1al1", "auditLog",
+                new HashMap<>(Map.of("requestObject", "PRIVATE", "responseObject", "PRIVATE")));
+        new AuditLogOutPutFilter().filter(new ApiRequest(null, null), row, output);
+        assertEquals(ClientToolAuditEvent.BRIDGE_PROJECT_BINDING_REQUIRED, output.getFields().get("clientReportedReasonDetail"));
+        assertEquals("client_reported", output.getFields().get("evidenceSource")); assertFalse(output.getFields().containsKey("requestObject"));
+        assertFalse(output.getFields().containsKey("responseObject"));
+    }
     @Test public void cookieQueryCompletionProjectsCanonicalMetadataButNeverRawPayload() {
         var row = new io.cattle.platform.core.model.tables.records.AuditLogRecord();
         row.setResourceType("aiAuditQuery");

@@ -10,6 +10,7 @@ import io.cattle.platform.core.model.Account;
 import io.cattle.platform.core.model.tables.records.AccountRecord;
 import io.cattle.platform.iaas.api.auth.apikey.ApiKeyCredentialContext;
 import io.cattle.platform.object.ObjectManager;
+import io.cattle.platform.util.type.CollectionUtils;
 import io.github.ibuildthecloud.gdapi.context.ApiContext;
 import io.github.ibuildthecloud.gdapi.exception.ClientVisibleException;
 import io.github.ibuildthecloud.gdapi.id.IdentityFormatter;
@@ -23,6 +24,41 @@ import org.junit.Test;
 
 public class AiToolCallEventServiceTest {
     @After public void cleanup() { ApiContext.remove(); }
+
+    @Test public void bindingDetailCapabilityKeepsLegacyConstructorAndDurableReadonlyAcksCompatible() throws Exception {
+        Fixture f = new Fixture();
+        ClientToolAuditEvent.class.getConstructor(String.class, String.class, String.class, String.class, String.class, String.class);
+        assertEquals(13, ClientToolAuditEvent.REASONS.size());
+        assertTrue(new ClientToolAuditEvent(id(), "get_service", "result", "succeeded", "NONE", id()).valid());
+        Map<String, Object> start = f.service.report(f.request("preview_resource_change", "start", "pending", "NONE", null));
+        assertEquals(List.of(ClientToolAuditEvent.BRIDGE_PROJECT_BINDING_REQUIRED), start.get("supportedReasonDetails"));
+        ApiRequest detail = f.request("preview_resource_change", "result", "needs_user", "NEEDS_USER", (String) start.get("requestId"));
+        CollectionUtils.toMap(detail.getRequestObject()).put("reasonDetail", ClientToolAuditEvent.BRIDGE_PROJECT_BINDING_REQUIRED);
+        assertEquals(true, f.service.report(detail).get("accepted"));
+        assertEquals(ClientToolAuditEvent.BRIDGE_PROJECT_BINDING_REQUIRED, f.events.getLast().reasonDetail());
+        Map<String, Object> legacy = f.service.report(f.request("get_service", "result", "succeeded", "NONE", id()));
+        assertEquals(true, legacy.get("accepted")); assertFalse(legacy.containsKey("supportedReasonDetails"));
+        assertNull(f.events.getLast().reasonDetail()); assertEquals("readonly", f.policy.getRoles().iterator().next());
+        verify(f.objects, never()).persist(any());
+    }
+
+    @Test public void invalidReasonDetailsNeverReachDurableSink() {
+        Fixture f = new Fixture();
+        for (Object value : java.util.Arrays.asList(null, 1, Map.of("reason", "PRIVATE"), List.of("PRIVATE"), "", "PRIVATE", "x".repeat(20000))) {
+            ApiRequest request = f.request("preview_resource_change", "result", "needs_user", "NEEDS_USER", id());
+            CollectionUtils.toMap(request.getRequestObject()).put("reasonDetail", value);
+            assertEquals("AiToolEventInvalid", rejected(() -> f.service.report(request)));
+        }
+        for (String[] tuple : List.of(new String[]{"get_service", "result", "needs_user", "NEEDS_USER"},
+                new String[]{"preview_resource_change", "start", "pending", "NONE"},
+                new String[]{"preview_resource_change", "result", "succeeded", "NEEDS_USER"},
+                new String[]{"preview_resource_change", "result", "needs_user", "FORBIDDEN"})) {
+            ApiRequest request = f.request(tuple[0], tuple[1], tuple[2], tuple[3], "start".equals(tuple[1]) ? null : id());
+            CollectionUtils.toMap(request.getRequestObject()).put("reasonDetail", ClientToolAuditEvent.BRIDGE_PROJECT_BINDING_REQUIRED);
+            assertEquals("AiToolEventInvalid", rejected(() -> f.service.report(request)));
+        }
+        assertTrue(f.events.isEmpty());
+    }
 
     @Test public void readonlyActorGetsDurableStartAndResultAcksForEveryCommand() {
         Fixture f = new Fixture();
@@ -89,7 +125,9 @@ public class AiToolCallEventServiceTest {
     }
 
     static String id() { return "aitool-11111111-1111-1111-1111-111111111111"; }
-    static String rejected(Runnable run) { try { run.run(); fail("must reject"); return null; } catch (ClientVisibleException error) { return error.getCode(); } }
+    static String rejected(Runnable run) {
+        try { run.run(); fail("must reject"); return null; } catch (ClientVisibleException error) { return error.getCode(); }
+    }
     static class Fixture {
         final AiToolCallEventService service = new AiToolCallEventService();
         final Policy policy = mock(Policy.class); final ObjectManager objects = mock(ObjectManager.class);
@@ -97,10 +135,13 @@ public class AiToolCallEventServiceTest {
         final AccountRecord actor = new AccountRecord(), project = new AccountRecord();
         final List<ClientToolAuditEvent> events = new ArrayList<>(); final List<Long> recordedActors = new ArrayList<>();
         Fixture() {
-            when(policy.getAuthenticatedAsAccountId()).thenReturn(42L); when(policy.getAccountId()).thenReturn(77L); when(policy.getRoles()).thenReturn(java.util.Set.of("readonly"));
+            when(policy.getAuthenticatedAsAccountId()).thenReturn(42L); when(policy.getAccountId()).thenReturn(77L);
+            when(policy.getRoles()).thenReturn(java.util.Set.of("readonly"));
             actor.setId(42L); actor.setState("active"); project.setId(77L); project.setKind("project"); project.setState("active");
             when(objects.loadResource(Account.class, 42L)).thenReturn(actor); when(objects.loadResource(Account.class, 77L)).thenReturn(project);
-            doAnswer(call -> { recordedActors.add(((Policy) call.getArgument(1)).getAuthenticatedAsAccountId()); events.add(call.getArgument(2)); return null; }).when(sink).recordClientToolEvent(any(), any(), any());
+            doAnswer(call -> {
+                recordedActors.add(((Policy) call.getArgument(1)).getAuthenticatedAsAccountId()); events.add(call.getArgument(2)); return null;
+            }).when(sink).recordClientToolEvent(any(), any(), any());
             service.keyAuthorization = mock(AiKeyAuthorization.class); when(service.keyAuthorization.actor(any())).thenReturn(policy);
             service.objects = objects; service.auditSinks = List.of(sink);
             ApiContext.newContext().setPolicy(policy); ApiContext.getContext().setIdFormatter(new IdentityFormatter());

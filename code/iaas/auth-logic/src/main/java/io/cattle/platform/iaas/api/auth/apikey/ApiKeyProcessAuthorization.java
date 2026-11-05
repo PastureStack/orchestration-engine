@@ -16,6 +16,7 @@ import io.cattle.platform.engine.process.ProcessAuthorizationHook;
 import io.cattle.platform.engine.process.ProcessAuthorizationDeniedException;
 import io.cattle.platform.iaas.api.auth.impl.ApiAuthenticator;
 import io.cattle.platform.iaas.api.auth.projects.ProjectCreationScope;
+import io.cattle.platform.iaas.api.auth.projects.ProjectAccessService;
 import io.cattle.platform.object.ObjectManager;
 import io.github.ibuildthecloud.gdapi.context.ApiContext;
 import io.github.ibuildthecloud.gdapi.exception.ClientVisibleException;
@@ -33,6 +34,7 @@ public class ApiKeyProcessAuthorization implements ProcessAuthorizationHook {
     @Inject ObjectManager objectManager;
     @Inject ApiAuthenticator authenticator;
     @Inject ApiKeyTargetResolver targets;
+    @Inject ProjectAccessService projectAccess;
     Clock clock = Clock.systemUTC();
     private final ApiKeyPolicyCodec codec = new ApiKeyPolicyCodec();
     private final ApiKeyPolicyEvaluator evaluator = new ApiKeyPolicyEvaluator();
@@ -71,6 +73,7 @@ public class ApiKeyProcessAuthorization implements ProcessAuthorizationHook {
             metadata.put("targetId", createdProjectId.toString());
         }
         metadata.put("preview", false);
+        if (projectAccess != null) metadata.putAll(projectAccess.captureUpdate(request, owner, config));
         if (ProcessAuthorization.aliasLinkExecution(config, metadata)) metadata.putAll(targets.aliasSchedulingReferences(config, metadata, owner));
         return metadata;
     }
@@ -91,14 +94,19 @@ public class ApiKeyProcessAuthorization implements ProcessAuthorizationHook {
             ApiRequest request = new ApiRequest(null, objectManager.getSchemaFactory());
             request.setSchemaVersion("v2-beta");
             request.setType(type);
-            var current = authenticator.currentAuthorization(credential.getAccountId(), number(metadata, "accountId"), request);
+            boolean projectUpdate = ProcessAuthorization.projectUpdateCaptured(config, metadata);
+            var current = authenticator.currentAuthorization(credential.getAccountId(),
+                    projectUpdate ? credential.getAccountId() : number(metadata, "accountId"), request);
             Object root = objectManager.loadResource(type, parseNumeric(type, text(metadata, "targetId")));
             Object child = objectManager.loadResource(config.getResourceType(), config.getResourceId());
             if (root == null || child == null || !schemaAllows(current.schemas().getSchema(type), metadata)) {
                 denied("OwnerPermissionDenied");
             }
             if (authorizedProjectCreation(config, metadata, policy, current.policy(), root, child)) return;
-            if (current.policy().authorizeObject(root) == null) denied("OwnerPermissionDenied");
+            if (projectUpdate) {
+                if (projectAccess == null) denied("OwnerPermissionDenied");
+                projectAccess.authorizeQueuedUpdate(root, child, current.policy(), current.schemas().getSchema("project"), config, metadata);
+            } else if (current.policy().authorizeObject(root) == null) denied("OwnerPermissionDenied");
             // Image CREATE runs before the caller returns. Its actual instance
             // relation is persisted by storage first; that narrow dependency is
             // authorized through live owner access, never a blanket internal bypass.
@@ -115,7 +123,7 @@ public class ApiKeyProcessAuthorization implements ProcessAuthorizationHook {
                     && ("image.deactivate".equals(config.getProcessName()) || "image.remove".equals(config.getProcessName()))
                     || child instanceof ImageStoragePoolMap && "imageStoragePoolMap".equalsIgnoreCase(config.getResourceType())
                     && ("imagestoragepoolmap.deactivate".equals(config.getProcessName()) || "imagestoragepoolmap.remove".equals(config.getProcessName())));
-            if (current.policy().authorizeObject(child) == null) {
+            if (!projectUpdate && current.policy().authorizeObject(child) == null) {
                 if (imageDependency) dependency = targets.resolveImageDependency(root, (Image) child, current.policy());
                 else if (imageEnsure) ensure = targets.resolveImageEnsureDependency(root, child, current.policy(),
                         EngineContext.getEngineContext().currentVerifiedExecution(), metadata);
