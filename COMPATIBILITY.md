@@ -1,22 +1,43 @@
 # Compatibility Contract
 
-## Engine 0.183.370 candidate — not published
+## Engine 0.183.370 published
 
 Host metadata is limited to name/description through the existing native PUT
 owner and human approval. Bounded Host workload references and the Volume
 serviceIds-to-Stack fallback independently recheck current object, role and Key
-visibility; ambiguous or moved relations remain unknown. The native Catalog
-Stack lifecycle binding now runs before CREATE scheduling through lazy,
-memoized generic-handler composition. Ordinary creates and output filters stay
-unchanged. No Host lifecycle, labels, new tool or permission grant is added.
+visibility; ambiguous or moved relations remain unknown. Native Catalog Stack
+lifecycle binding runs before CREATE scheduling through lazy, memoized generic
+handler composition. Ordinary creates and output filters stay unchanged. No Host
+lifecycle, labels, new tool or permission grant is added.
 
-The release registry preserves all 142 prior identities and adds 24 exact methods
-(166 total). C03 binds 458 real source inputs and retains all 1396 tuples with
-zero HTTP semantic, admission or native-role grant delta. The only typed plan
-schema change adds Host to the existing resourceType enum. Existing sixteen
-frozen v1 serialized schemas are byte-identical. Necessary full CI, artifact
-qualification, matching Web 1.6.209 / Bridge 0.2.11, a new Server assembly and
-native acceptance remain pending. See the [candidate note](docs/releases/orchestration-engine-0.183.370.md).
+Original Security/JDK25, independent CodeQL and organization CodeQL passed.
+Maven executed 434 suites / 3,981 tests / zero failures and errors / one inherited
+skip. All 166 required methods passed: 142 preserved identities plus 24 new;
+affected classes contain 56 executed methods (24 new and 32 inherited). C03 binds
+458 source inputs and retains all 1396 tuples with zero semantic or grant delta.
+The only typed plan schema change adds Host to the existing resourceType enum;
+all sixteen frozen v1 serialized schemas remain byte-identical.
+
+Producer `efa6e4acf2bb023411ee7ab213c4a84d346e2662` and normal PR161 squash
+merge/tag target `842a7126a7431a3fb01f994d69314aa15bb3fdcd` share tested tree
+`4bc2c86cc0d92fcc8146dba84812c84b111eef39`. One original CI ZIP supplied the
+release without rebuilding or rerunning tests/scans. All twelve anonymous public
+assets and GitHub's native immutable-release cryptographic attestation passed.
+The build workflow did not provide SLSA attestations.
+
+Independent extended CodeQL retains the same four lower findings as published369
+(three score4 insecure-cookie findings and one score5 unreleased-lock finding),
+with zero Critical/High, unresolved rules or new changed-source findings.
+Organization CodeQL has zero results. Raw Dapper findings remain 5 HIGH, 45
+MEDIUM and 8 LOW. Exact native APT fixed VEX resolves two occurrences and the
+unchanged pip-vendor proof resolves five, leaving effective zero HIGH, 44 MEDIUM
+and seven LOW. The remaining findings are not claimed patched.
+
+Server 1.6.568 remains on Engine 0.183.369. Matching Web 1.6.209 / Bridge 0.2.11,
+a new Server assembly and this batch's native role/Key/relationship/Host metadata
+and Catalog acceptance remain separate. No whole-family or 243-group completion
+is claimed. The [published release note](docs/releases/orchestration-engine-0.183.370.md)
+mirrors the immutable public release body.
 
 Both builders download the same SHA512-pinned Maven 3.9.16 bytes from Apache's
 official CDN, with the original Apache archive as a bounded transport fallback.
