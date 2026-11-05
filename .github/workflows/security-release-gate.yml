@@ -59,6 +59,17 @@ jobs:
           import xml.etree.ElementTree as ET
 
           required = {
+              'io.cattle.platform.iaas.api.auth.ai.view.AiProcessDiagnosticsTest': {
+                  'registeredNamesAndClosedEnumsReplaceAllPersistedLabelsAndPayloadText',
+                  'onlyRegisteredRootHandlersAreProjectedAndEmptyOrOversizedLogsStayUnknown',
+                  'freshGlobalSchemaAndKeyDecisionsPrecedeNativeReadsWithoutProjectRoleFallback',
+                  'nativeListsRetainFiftyRowCursorAndOnlyEscapedProcessNameConditions',
+                  'boundedChildReadsRequireFreshParentAndExactRelationshipAndDoNotExportChildren',
+                  'hiddenChildFieldsDeniedKeysAndChangingParentFailClosedWithoutCountsOrWrites',
+                  'globalEntryBudgetTruncatesAcrossRootsWithoutRejectingSmallOrOneHundredHandlerLogs',
+                  'globalUtf8BudgetChargesBytesAndReturnsOnlyFixedTruncationMetadata',
+                  'nativeChildLimitReportsSourceTruncationWithoutParsingRowsOrRetainingPartialConclusions',
+              },
               'io.cattle.platform.iaas.api.auth.ai.catalog.AiCatalogLaunchLockOrderTest': {
                   'nativeActionPrefetchAndConcurrentNativeGetCompleteWithApplicationBeforeRowLock',
                   'onlyExactInternalActionOperandUsesSnapshotAndOrdinaryGetStillChecksSource',

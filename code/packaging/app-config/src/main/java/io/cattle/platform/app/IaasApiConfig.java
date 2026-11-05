@@ -95,6 +95,7 @@ import io.cattle.platform.iaas.api.auth.ai.catalog.AiCatalogMetadataGateway;
 import io.cattle.platform.iaas.api.auth.ai.catalog.AiCatalogMetadataService;
 import io.cattle.platform.iaas.api.auth.ai.catalog.AiCatalogMetadataResourceManager;
 import io.cattle.platform.iaas.api.auth.ai.view.AiResourceViewService;
+import io.cattle.platform.iaas.api.auth.ai.view.AiProcessDiagnostics;
 import io.cattle.platform.iaas.api.auth.ai.view.AiResourceViewResourceManager;
 import io.cattle.platform.iaas.api.auth.change.AiResourceChangePlan;
 import io.cattle.platform.iaas.api.auth.change.AiResourceChangeDomain;
@@ -954,6 +955,9 @@ public class IaasApiConfig {
 
     @Bean
     AiResourceViewService AiResourceViewService() { return new AiResourceViewService(); }
+
+    @Bean
+    AiProcessDiagnostics AiProcessDiagnostics() { return new AiProcessDiagnostics(); }
 
     @Bean
     AiResourceViewResourceManager AiResourceViewResourceManager() { return new AiResourceViewResourceManager(); }

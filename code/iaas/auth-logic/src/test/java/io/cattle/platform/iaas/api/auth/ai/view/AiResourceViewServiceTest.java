@@ -43,7 +43,7 @@ public class AiResourceViewServiceTest {
                 "rules", List.of(Map.of("secret", "DO-NOT-LEAK"))));
         for (String type : AiResourceViewService.READ_TYPES) {
             Map<String, Object> result = AiResourceViewService.project(type, "1", fields);
-            assertEquals("safe-name", result.get("name"));
+            assertEquals("processInstance".equals(type) ? "unknown" : "safe-name", result.get("name"));
             assertFalse(type, result.toString().contains("DO-NOT-LEAK"));
             assertFalse(result.containsKey("launchConfig")); assertFalse(result.containsKey("apiKeyPolicy"));
         }

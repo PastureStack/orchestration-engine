@@ -1,0 +1,58 @@
+{
+  "schemaVersion": 1,
+  "version": "0.183.373",
+  "scope": "SOURCE_ONLY_NOT_RUNTIME_ACCEPTANCE",
+  "reviewedBaseCommit": "4f9c229cf388b83368505e9a8674ac65df9623a8",
+  "sourceInputs": {
+    "algorithm": "c03-source-inputs-v1",
+    "baseline": {
+      "count": 463,
+      "sha256": "5341a75119cf267c98a9775ad17fc2e4e09e170a7e886bf9d4698d2ec9a2cef0"
+    },
+    "reviewed": {
+      "count": 464,
+      "sha256": "bbbeacca6f3c5b1196f2b999f97a895b30e588066ade406310124c099af2d4b7"
+    },
+    "addedAnchors": [
+      "AiProcessDiagnostics.java"
+    ]
+  },
+  "tupleReview": {
+    "baseline": 1396,
+    "candidate": 1396,
+    "added": 0,
+    "removed": 0,
+    "semanticChanges": 0,
+    "dispositionChanges": 0,
+    "sha256": "8f1c0fb378663b0b3d272efba2f211cb210eb6f17cb8035aefa33b56feeaf36a"
+  },
+  "delta": [
+    {
+      "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/ai/view/AiProcessDiagnostics.java",
+      "before": null,
+      "after": "d35bab52f96dc7cb9a074c93c26f6a4f54173d7944b9ea38ac48209c7e159c8a"
+    },
+    {
+      "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/ai/view/AiResourceViewService.java",
+      "before": "2f6337a0a84490c46dc9032a8a86b6fd113f537139b0377f94f5548796fb09e3",
+      "after": "0e2be437d77b6e70abc939bf6f715831c2065ae28cf64dc8dad580004727726e"
+    },
+    {
+      "path": "code/packaging/app-config/src/main/java/io/cattle/platform/app/IaasApiConfig.java",
+      "before": "bbdd79638bb6b4a0eaeddd4c7b7ef69ad06e016e762a29f5a286e69669dce38a",
+      "after": "431dfb2c11bcd27cbcf5b24c39ba7ead4276f2bb95a94242ea4a37ffb57f4e9d"
+    }
+  ],
+  "roleFieldDelta": [],
+  "authorizationBoundary": "Read-only processInstance projection uses the existing native global process schema, currentAuthorization and native Key owner. Registered process/handler names and fixed enums are projected only after native reads; unsupported custom process scopes remain denied. Bounded diagnostic traversal and fixed unknown/truncation metadata add no arbitrary HTTP tool, replay, route/action or role-field grant. Source re-extraction is not compiled-schema, CI, artifact or runtime acceptance.",
+  "frozenV1SchemaFilesUnchanged": true,
+  "nativeRoleRouteActionGrantsUnchanged": true,
+  "compiledRoleSchemaProof": "PENDING_ACTUAL_PACKAGED_CLASSES_AND_SCHEMAS",
+  "extractor": {
+    "path": "C:\\Users\\chen21019\\source\\outputs\\webmcp-expansion-20261029\\integration-360-201\\refresh-integrated-operation-contract.py",
+    "sha256": "078ffe48881469fe5eb3cb43a15fa41b480fe70e11bd5f63102ded6b35a6d076"
+  },
+  "historicalProducerAndReviewChainsPreserved": true,
+  "artifactQualificationClaimed": false,
+  "runtimeAcceptanceClaimed": false
+}
