@@ -313,6 +313,46 @@ jobs:
                   'versionRootRechecksEventProofOriginalOwnerSourceAndFrozenStackBeforeMetadata',
                   'versionRootRejectsUnknownPathsMethodsQueriesAndContradictoryRouteShapesWithSafe403',
               },
+              'io.cattle.platform.engine.process.ProcessAuthorizationProjectUpdateTest': {
+                  'capturedNativeProjectUpdateProofCannotBeForgedRetargetedOrGrowFields',
+              },
+              'io.cattle.platform.iaas.api.auth.projects.NativeProjectQueuedOwnerTest': {
+                  'ordinaryNativeOwnerFullLegacyCustomAndLiveDenialsUseManagerCaptureWithoutAi',
+              },
+              'io.cattle.platform.iaas.api.auth.change.AiProjectMetadataChangeTest': {
+                  'accountRootLockUsesTheActualAccountRowAndDetectsConcurrentMetadataChange',
+                  'customReadKeyDoesNotBorrowGlobalOwnerWriteAuthority',
+                  'durableAccountUpdateBindingUsesSelectedRootAndSeparateNativePrincipal',
+                  'metadataOwnerUsesNativeProjectOwnerAndGlobalSchemaWithoutGrantingObjects',
+                  'projectDescriptorIsMetadataOnlyAndKeepsNativeTextBounds',
+                  'selectedAccountIdentityAndScalarSnapshotNeverCopyConfigurationOrCredentials',
+                  'selectedProjectReadAndPreflightUseFreshGlobalNativeOwnerThenRestoreSelectedContext',
+                  'typedProjectProcessCannotFallbackWhenDurableBindingIsMissingOrMismatched',
+                  'unknownProjectExecutionKeepsOnlyItsOriginalDurableProcessWithoutReplayOrTerminalAuthority',
+              },
+              'io.cattle.platform.iaas.api.auditing.AiServiceUpgradeAuditTest': {
+                  'bindingReasonDetailSurvivesJsonOutboxReplayAndCanonicalProjectionAsClientEvidence',
+                  'privateProjectCaptureKeepsSelectedAuditScopeForPrimaryAndQueueOutcomes',
+              },
+              'io.cattle.platform.iaas.api.auth.ai.AiToolCallEventServiceTest': {
+                  'bindingDetailCapabilityKeepsLegacyConstructorAndDurableReadonlyAcksCompatible',
+                  'invalidReasonDetailsNeverReachDurableSink',
+              },
+              'io.cattle.platform.iaas.api.auth.ai.view.AiProjectCollectionOwnerTest': {
+                  'adminNativeFullAndLegacySeeNonMembershipProjectsWithoutWideningMemberOrReadonly',
+                  'allIsPrivateToTypedProjectCollectionAndNeverChangesSingleGetOrOtherTypesOrAcceptsModelAll',
+                  'exactProjectCustomDenyAndReadonlyKeysRetainExactSetsThroughNativeCommonCollectionFilter',
+              },
+              'io.cattle.platform.iaas.api.auth.change.AiLoadBalancerMetadataChangeTest': {
+                  'onlyLoadBalancerMetadataFieldsAndIntentAreAdmitted',
+                  'freshNativeStackAndKeyChecksProtectTheSparsePutAndPrivateParentRead',
+                  'scalarSnapshotsAndStackContextCasExcludeConfigurationAndRejectScopeOrMovement',
+                  'loadBalancerPlanKeepsHumanApprovalSnapshotCasRevocationAndOneClaim',
+                  'loadBalancerMetadataLocksActualServiceRowAndDetectsNativeScalarChanges',
+                  'queuedNativeServiceUpdateUsesExactLbKindUuidStackAndCapturedProcess',
+                  'queuedNativeOwnerRetainsFullLegacySchemaRevisionAndRevocationChecks',
+                  'ordinaryNativeV1V2FullAndLegacyCaptureNeverEnterTheAiMandatoryBranch',
+              },
           }
           suites = []
           observed = {}

@@ -50,8 +50,10 @@ public record AiResourceChangeDescriptor(String resourceType, String operation, 
                     : "update_metadata".equals(operation) ? Set.of("name", "description")
                     : "update_targets".equals(operation) ? Set.of("serviceIds") : Set.of());
         }
+        add(result, "loadBalancerService", "update_metadata", "PUT", null, "update", Set.of("name", "description"));
         add(result, "certificate", "update_metadata", "PUT", null, "update", Set.of("name", "description"));
         add(result, "host", "update_metadata", "PUT", null, "update", Set.of("name", "description"));
+        add(result, "project", "update_metadata", "PUT", null, "update", Set.of("name", "description"));
         return Map.copyOf(result);
     }
 

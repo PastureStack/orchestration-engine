@@ -49,7 +49,7 @@ if test "$#" -gt 0; then
     apt_security() {
         APT_CONFIG="$tmp/security.conf" apt-get "$@"
     }
-    apt_security update
+    apt_security update --error-on=any
     DEBIAN_FRONTEND=noninteractive APT_CONFIG="$tmp/security.conf" \
         install-snapshot-packages install -y --only-upgrade --no-install-recommends --no-remove "$@"
 fi

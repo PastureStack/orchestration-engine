@@ -61,7 +61,9 @@ public class AiResourceChangePlanService {
                 plan.put("parameters", parameters); plan.put("body", body);
                 if ("dnsService".equals(descriptor.resourceType()) && Set.of("update_targets", "remove").contains(descriptor.operation()))
                     plan.put("referenceSnapshot", domain.aliasReferenceSnapshot(request, descriptor, resourceId, parameters));
-                plan.put("snapshot", domain.snapshot(target)); plan.put("parentSnapshot", domain.snapshot(parent));
+                if (AiResourceChangeDomain.loadBalancerMetadata(descriptor))
+                    plan.put("referenceSnapshot", domain.loadBalancerMetadataContext(request, descriptor, resourceId));
+                plan.put("snapshot", targetSnapshot(descriptor, target)); plan.put("parentSnapshot", domain.snapshot(parent));
                 plan.put("targetPath", domain.targetPath(request, target, parent, parameters));
                 plan.put("changes", domain.changes(descriptor, target, parameters));
                 plan.put("expiresAt", clock.instant().plusSeconds(300).toString());
@@ -141,7 +143,7 @@ public class AiResourceChangePlanService {
             }
             requireEnabled();
             if (!clock.instant().isBefore(java.time.Instant.parse(text(plan.get("expiresAt"))))) throw error(409, "ResourceChangePlanExpired");
-            if (!domain.snapshot(target).equals(plan.get("snapshot")) || !domain.snapshot(parent).equals(plan.get("parentSnapshot")))
+            if (!targetSnapshot(descriptor, target).equals(plan.get("snapshot")) || !domain.snapshot(parent).equals(plan.get("parentSnapshot")))
                 throw error(409, "ResourceChangePlanStale");
             if (!descriptor.createsResource()) visibleTarget(request, descriptor, text(plan.get("resourceId")), target);
             domain.parent(request, descriptor, parameters); domain.ready(descriptor, target, parent);
@@ -185,6 +187,10 @@ public class AiResourceChangePlanService {
             };
             return descriptor.changesArchive() ? domain.withArchiveChange(descriptor, target, change) : change.get();
         }));
+    }
+
+    private Map<String, Object> targetSnapshot(AiResourceChangeDescriptor descriptor, Object target) {
+        return AiResourceChangeDomain.loadBalancerMetadata(descriptor) ? domain.loadBalancerMetadataSnapshot(target) : domain.snapshot(target);
     }
 
     private void visibleTarget(ApiRequest request, AiResourceChangeDescriptor descriptor, String id, Object lockedTarget) {

@@ -228,9 +228,9 @@ esac
         self.assertIn('ENV LANG=C.UTF-8 LC_ALL=C.UTF-8', docker)
         self.assertIn('COPY --chmod=0755 scripts/install-snapshot-packages /usr/local/bin/install-snapshot-packages', docker)
         self.assertEqual(4, docker.count('    install-snapshot-packages '))
-        self.assertEqual(3, docker.count('    apt-get update;'))
+        self.assertEqual(3, docker.count('    apt-get update --error-on=any;'))
         # The first/final security indexes bracket the original base-only plan.
-        updates = [m.start() for m in re.finditer('    apt-get update;', docker)]
+        updates = [m.start() for m in re.finditer('    apt-get update --error-on=any;', docker)]
         security = '"${UBUNTU_APT_SECURITY_SNAPSHOT}" > /etc/apt/sources.list.d/pasturestack-security.sources;'
         self.assertEqual(2, docker.count(security))
         phases = [docker.index(security), updates[0],

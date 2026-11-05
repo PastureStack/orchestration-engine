@@ -25,10 +25,11 @@ public class AiToolCallEventService {
     public Map<String, Object> report(ApiRequest request) {
         Policy actor = actor(request);
         Map<String, Object> input = CollectionUtils.toMap(request.getRequestObject());
-        if (!Set.of("command", "phase", "status", "reason", "correlationId", "type").containsAll(input.keySet())) throw error(422, "AiToolEventInvalid");
+        if (!Set.of("command", "phase", "status", "reason", "reasonDetail", "correlationId", "type").containsAll(input.keySet())
+                || input.containsKey("reasonDetail") && !(input.get("reasonDetail") instanceof String)) throw error(422, "AiToolEventInvalid");
         ClientToolAuditEvent event = new ClientToolAuditEvent("aitool-" + UUID.randomUUID(),
                 text(input.get("command")), text(input.get("phase")), text(input.get("status")),
-                text(input.get("reason")), text(input.get("correlationId")));
+                text(input.get("reason")), text(input.get("correlationId")), text(input.get("reasonDetail")));
         if (!event.valid()) throw error(422, "AiToolEventInvalid");
         if (auditSinks == null || auditSinks.isEmpty()) throw error(503, "AiToolAuditUnavailable");
         try {
@@ -40,6 +41,7 @@ public class AiToolCallEventService {
         Map<String, Object> response = new LinkedHashMap<>();
         response.put("id", event.requestId()); response.put("requestId", event.requestId());
         response.put("accepted", true); response.put("evidenceSource", "client_reported");
+        if ("start".equals(event.phase())) response.put("supportedReasonDetails", List.of(ClientToolAuditEvent.BRIDGE_PROJECT_BINDING_REQUIRED));
         return response;
     }
 

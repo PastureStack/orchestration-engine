@@ -7,9 +7,11 @@
         "phase": { "type": "enum", "options": [ "start", "result" ], "create": true, "required": true },
         "status": { "type": "enum", "options": [ "pending", "succeeded", "accepted", "running", "failed", "unknown", "cancelled", "rejected", "needs_user" ], "create": true, "required": true },
         "reason": { "type": "enum", "options": [ "NONE", "INVALID_INPUT", "UNAVAILABLE", "CONTEXT_CHANGED", "STALE_REFERENCE", "FORBIDDEN", "SESSION_REQUIRED", "CONFLICT", "NEEDS_USER", "INVALID_RESPONSE", "UNKNOWN_RESULT", "CANCELLED", "CAPACITY" ], "create": true, "required": true },
+        "reasonDetail": { "type": "enum", "options": [ "BRIDGE_PROJECT_BINDING_REQUIRED" ], "create": true, "nullable": false },
         "correlationId": { "type": "string", "create": true, "maxLength": 43, "nullable": true },
         "requestId": { "type": "string", "create": false, "update": false },
         "accepted": { "type": "boolean", "create": false, "update": false },
-        "evidenceSource": { "type": "string", "create": false, "update": false }
+        "evidenceSource": { "type": "string", "create": false, "update": false },
+        "supportedReasonDetails": { "type": "array[string]", "create": false, "update": false }
     }
 }

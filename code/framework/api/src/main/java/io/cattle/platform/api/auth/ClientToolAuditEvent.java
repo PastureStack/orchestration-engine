@@ -4,7 +4,12 @@ import java.util.Set;
 
 /** Bounded client evidence, never proof of authorization or business completion. */
 public record ClientToolAuditEvent(String requestId, String command, String phase,
-        String status, String reason, String correlationId) {
+        String status, String reason, String correlationId, String reasonDetail) {
+    public static final String BRIDGE_PROJECT_BINDING_REQUIRED = "BRIDGE_PROJECT_BINDING_REQUIRED";
+    public ClientToolAuditEvent(String requestId, String command, String phase,
+            String status, String reason, String correlationId) {
+        this(requestId, command, phase, status, reason, correlationId, null);
+    }
     public static final Set<String> COMMANDS = Set.of("find_stacks", "find_services", "get_service",
             "preview_service_upgrade", "apply_service_upgrade", "get_operation", "update_service_description",
             "list_capabilities", "find_resources", "get_resource", "preview_resource_change", "apply_resource_change", "unknown");
@@ -19,6 +24,9 @@ public record ClientToolAuditEvent(String requestId, String command, String phas
     public boolean valid() {
         return validId(requestId) && command != null && COMMANDS.contains(command)
                 && status != null && STATUSES.contains(status) && reason != null && REASONS.contains(reason)
+                && (reasonDetail == null || BRIDGE_PROJECT_BINDING_REQUIRED.equals(reasonDetail)
+                    && "preview_resource_change".equals(command) && "result".equals(phase)
+                    && "needs_user".equals(status) && "NEEDS_USER".equals(reason))
                 && (("start".equals(phase) && "pending".equals(status) && correlationId == null)
                     || ("result".equals(phase) && !"pending".equals(status) && validId(correlationId)));
     }
