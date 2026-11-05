@@ -8,42 +8,32 @@ Rancher 1.6 ecosystem. It is not affiliated with Rancher Labs or SUSE.
 This fork of [`rancher/cattle`](https://github.com/rancher/cattle) preserves
 upstream history, authorship, licenses, and dependency notices.
 
-## Next candidate: Engine 0.183.370
+## Latest published release: Engine 0.183.370
 
-Host name/description review, bounded readable workload references and the
-native Catalog launch binding fix are in [source/CI preparation](docs/releases/orchestration-engine-0.183.370.md).
-Publication and native acceptance remain pending; use the published release below.
-
-## Latest published release: Engine 0.183.369
-
-[Engine 0.183.369](https://github.com/PastureStack/orchestration-engine/releases/tag/v0.183.369)
+[Engine 0.183.370](https://github.com/PastureStack/orchestration-engine/releases/tag/v0.183.370)
 is published with twelve original assets verified by anonymous checksum readback
 and GitHub's cryptographic immutable-release attestation. Use the
 [Server installation guide](https://github.com/PastureStack/server#quick-start)
 for deployment; an Engine JAR alone is not a Server installation.
 
-Volume detail adds at most fifty currently readable container references from
-native SQL bounded to fifty-one relationships. Names, states, container mount
-paths and read-only mode retain native role/Key visibility. Separately readable
-Stack names distinguish same-name containers. Hidden identities/counts, host
-source paths and secrets are excluded. Completeness stays unknown: empty or
-partial results never establish unused or safe-to-delete status.
+Host metadata plans support name and description with native role/Key checks,
+human approval and one durable claim. Host detail adds bounded readable workload
+references. Host and Volume Stack names follow the native readable Service
+relation when the persisted parent is absent. Every related target remains
+independently authorized; completeness is always unknown, including empty
+results. Native Catalog launch now binds its Stack ID before CREATE scheduling.
+No Host lifecycle, grant, tool or deletion-rule change is introduced.
 
-Typed changes retain their native owner, current Key revision, exact human
-approval and one-claim checks. No new tool, grant or deletion rule is added.
+The [published release note](docs/releases/orchestration-engine-0.183.370.md)
+records 434 suites / 3,981 tests with zero failures/errors, one inherited skip,
+and all 166 required methods. Existing lower security findings remain disclosed;
+publication is not a zero-vulnerability claim. The build workflow did not provide
+SLSA attestations. Four independent AI opt-ins remain default-off.
 
-Original CI, source/artifact qualification, immutable release verification and
-public checksums are recorded in the
-[published release note](docs/releases/orchestration-engine-0.183.369.md).
-Existing lower security findings remain disclosed; publication is not a claim
-of zero vulnerabilities. Server 1.6.568 includes Engine 0.183.369 with Web
-1.6.208 / Bridge 0.2.10. Component publication does not complete all native
-business acceptance or the 243 frontend groups.
-
-Four independent AI opt-ins remain default-off. The
-[release note](docs/releases/orchestration-engine-0.183.368.md) mirrors the immutable
-public release body. These component results do not complete all 243 frontend
-business groups.
+Server 1.6.568 contains Engine 0.183.369 with Web 1.6.208 / Bridge 0.2.10.
+Matching Web 1.6.209 / Bridge 0.2.11 and a new Server assembly are required for
+this batch's native acceptance. Component publication does not complete all
+native business acceptance or the 243 frontend groups.
 
 ## Optional AI resource workflows
 
