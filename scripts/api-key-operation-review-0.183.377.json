@@ -1,0 +1,125 @@
+{
+  "schemaVersion": 1,
+  "version": "0.183.377",
+  "scope": "SOURCE_ONLY_NOT_RUNTIME_ACCEPTANCE",
+  "reviewedBaseCommit": "131c6c15c2809ca1fd26df62e0d402800c095d80",
+  "sourceInputs": {
+    "algorithm": "c03-source-inputs-v1",
+    "baseline": {
+      "count": 469,
+      "sha256": "b71723882d57bb02d7c24b55f41e80a4ef88139c1c575ce8e4e31fa0e1445e25"
+    },
+    "reviewed": {
+      "count": 470,
+      "sha256": "1ac4f9ac567d1d076df1770f96d2f33e3e143334ddb3e575d30598d65d6a78a3"
+    },
+    "addedAnchors": [
+      "AuditLogKeySelector.java"
+    ]
+  },
+  "tupleReview": {
+    "baseline": 1396,
+    "candidate": 1396,
+    "added": 0,
+    "removed": 0,
+    "semanticChanges": 0,
+    "dispositionChanges": 0,
+    "sha256": "8f1c0fb378663b0b3d272efba2f211cb210eb6f17cb8035aefa33b56feeaf36a"
+  },
+  "delta": [
+    {
+      "path": "code/framework/auditing/src/main/java/io/cattle/platform/iaas/api/auditing/AuditLogKeySelector.java",
+      "before": null,
+      "after": "9baea35aa4f71d3ce594dec126325a6ca9267c084941ad754c699bb4098d1db0"
+    },
+    {
+      "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/ai/view/AiAuditSourcePage.java",
+      "before": "4e47ab9f1fef9108e68a0471b633d3d99f5f5069591e7dcecfe57018f09b6b78",
+      "after": "1d4fce7baabc938b415bbb0f1ee95b93634f33015ad9deead48c955215ae2069"
+    },
+    {
+      "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/ai/view/AiResourceViewService.java",
+      "before": "0e2be437d77b6e70abc939bf6f715831c2065ae28cf64dc8dad580004727726e",
+      "after": "ef85eb1f46f74db959a2cb6d5573d2ca267126c4d8b2dd34b6bd2f68486b1547"
+    },
+    {
+      "path": "code/packaging/app-config/src/main/java/io/cattle/platform/app/IaasApiConfig.java",
+      "before": "431dfb2c11bcd27cbcf5b24c39ba7ead4276f2bb95a94242ea4a37ffb57f4e9d",
+      "after": "3bc51cdbf8e1d4c71ca97f645fa0fb1bd4687d17d4a47feab416d10f4685b4e0"
+    },
+    {
+      "path": "resources/content/schema/admin/admin-auth.json",
+      "before": "dda63cc55419c4a8fd4cee2e7ed2cb3d18cda4e0ea041c55389488ee82e1f140",
+      "after": "9aa4fe651a0af938f07688dd783fcbe8965bd53e8e13d698badcd6bed74db984"
+    },
+    {
+      "path": "resources/content/schema/base/aiAuditSourcePageInput.json",
+      "before": "2aca5cba9323daae33a7171ac5f3bec2591cbdbffbdc32cf263ac8398a75e444",
+      "after": "596d4fd08371596df697a6eda93cf3292b5998108f75b5223ee846426e5b0a52"
+    },
+    {
+      "path": "resources/content/schema/base/auditLog.json",
+      "before": "deb85dbe6eef9830ffc19aeea29d60d675e0cab8fc2f1821dde254946622efe0",
+      "after": "7fb8887c551a233c9a1c5234b249f2cf3a849afab7dc4a3374e940c521cfa405"
+    },
+    {
+      "path": "resources/content/schema/project/project-auth.json",
+      "before": "ab5fddccdf20349e6b6ad2717c0c22c24e984ae329c285a275064c514d0d760d",
+      "after": "0be17e4bc525cb1d5b0178a86daf8db96b3d966f22d383db7e489f72897fa607"
+    },
+    {
+      "path": "resources/content/schema/user/user-auth.json",
+      "before": "e15cb3126e5c120c1d9581019a8b5a62e58ca98e08382c0e8fe143e43e5f06c1",
+      "after": "1ac0571be57620a2733e150c4f6dc0bea3337c7c1f92462737dc8c535c1e2e54"
+    }
+  ],
+  "roleFieldDelta": [
+    {
+      "path": "resources/content/schema/admin/admin-auth.json",
+      "field": "aiAuditSourcePageInput.keyId",
+      "before": null,
+      "after": "cr"
+    },
+    {
+      "path": "resources/content/schema/admin/admin-auth.json",
+      "field": "aiAuditSourcePageInput.capabilitiesOnly",
+      "before": null,
+      "after": "cr"
+    },
+    {
+      "path": "resources/content/schema/user/user-auth.json",
+      "field": "aiAuditSourcePageInput.keyId",
+      "before": null,
+      "after": "cr"
+    },
+    {
+      "path": "resources/content/schema/user/user-auth.json",
+      "field": "aiAuditSourcePageInput.capabilitiesOnly",
+      "before": null,
+      "after": "cr"
+    },
+    {
+      "path": "resources/content/schema/project/project-auth.json",
+      "field": "aiAuditSourcePageInput.keyId",
+      "before": null,
+      "after": "cr"
+    },
+    {
+      "path": "resources/content/schema/project/project-auth.json",
+      "field": "aiAuditSourcePageInput.capabilitiesOnly",
+      "before": null,
+      "after": "cr"
+    }
+  ],
+  "authorizationBoundary": "An optional exact audit Key selector ANDs the existing native tenant/actor/Key restrictions before pagination. MYSQL/MARIADB advertise only the fixed keyId eq capability; H2/HSQLDB keep the original bounded scan and reject explicit selectors. The private four-source adapter exposes only a closed auditLog capabilitiesOnly=true empty-result request after fresh native authorization. Three role overlays add only optional keyId/capabilitiesOnly input metadata cr; no native route/action or resource-method grant changes. No Key-created time floor, error fallback, DDL or arbitrary schema/SQL/URL is introduced. Source re-extraction is not CI, artifact, publication or native acceptance.",
+  "frozenV1SchemaFilesUnchanged": true,
+  "nativeRoleRouteActionGrantsUnchanged": true,
+  "compiledRoleSchemaProof": "PENDING_ACTUAL_PACKAGED_CLASSES_AND_SCHEMAS",
+  "extractor": {
+    "path": "C:\\Users\\chen21019\\source\\outputs\\webmcp-expansion-20261029\\integration-360-201\\refresh-integrated-operation-contract.py",
+    "sha256": "078ffe48881469fe5eb3cb43a15fa41b480fe70e11bd5f63102ded6b35a6d076"
+  },
+  "historicalProducerAndReviewChainsPreserved": true,
+  "artifactQualificationClaimed": false,
+  "runtimeAcceptanceClaimed": false
+}

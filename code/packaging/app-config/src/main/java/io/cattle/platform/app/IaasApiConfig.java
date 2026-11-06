@@ -21,6 +21,7 @@ import io.cattle.platform.host.api.HostApiPublicKeyScriptHandler;
 import io.cattle.platform.host.stats.api.StatsAccess;
 import io.cattle.platform.host.stats.api.StatsOutputFilter;
 import io.cattle.platform.iaas.api.auditing.AuditLogOutPutFilter;
+import io.cattle.platform.iaas.api.auditing.AuditLogKeySelector;
 import io.cattle.platform.iaas.api.auditing.AuditLogsRequestHandler;
 import io.cattle.platform.iaas.api.auditing.ResourceIdInputFilter;
 import io.cattle.platform.iaas.api.auditing.ResourceIdOutputFilter;
@@ -290,6 +291,9 @@ public class IaasApiConfig {
     ResourceIdOutputFilter ResourceIdOutputFilter() {
         return new ResourceIdOutputFilter();
     }
+
+    @Bean
+    AuditLogKeySelector AuditLogKeySelector() { return new AuditLogKeySelector(); }
 
     @Bean
     AuditLogOutPutFilter AuditLogOutPutFilter() {
