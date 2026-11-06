@@ -1,7 +1,9 @@
-# Engine 0.183.377 candidate — not published
+# Orchestration Engine v0.183.377
 
-Native audit queries can select one canonical API Key before pagination while retaining the current actor, account and live Key authorization. Only MYSQL/MARIADB advertise this exact selector. Unsupported H2/HSQLDB deployments retain the existing bounded-history behavior and explicitly reject selector requests.
+Audit-log reads can select an exact API Key through the native authority path on MySQL/MariaDB. A closed read-only capability probe reports support; H2/HSQLDB retain the existing bounded reads and reject an explicitly unsupported selector. Account, role, Key, revision and field checks remain authoritative. No DDL or resource/action grant is added.
 
-The private audit source adapter can query the fixed capability after fresh native GET/schema/Key checks, returning no audit rows. Its only new optional input metadata is keyId and capabilitiesOnly; no new resource method, arbitrary field or SQL endpoint is exposed. Errors never trigger an unfiltered retry, and no Key creation-time assumption truncates imported or HA history.
+The original CI qualified 445 suites and 4053 tests with zero failures/errors and one inherited skip. All 238 required methods passed (229 carried and 9 new), along with 39 named Linux build controls and 13 PIP-owner controls. The original JAR, all 183 final packages, 47 class families, 16 serialized schemas and 175 schema JSON inputs were verified. C03 retains 1396 operation tuples; only two optional input fields receive six read/create metadata entries across three role overlays.
 
-All 229 prior required methods remain registered with nine new selector/capability methods (238 total). Focused source results are separate from normal module CI and original artifact qualification, which remain pending. Web216/Bridge0.2.18 remain immutable; a Server assembly must qualify this backend tuple against their existing contract. Publication, native audit/layout acceptance and whole-243 completion are not claimed.
+Critical/High and available-fix gates passed. Raw/effective reports remain separate; existing no-fix findings, including the four exact builder Perl records, remain tracked. The release streams the qualified original JAR and does not rebuild or repeat tests. Native immutable-release crypto and anonymous readback are verified after publication; this workflow does not provide SLSA provenance.
+
+Matching Web/Bridge and Server assembly, deployment and native business acceptance remain pending. This release does not claim completion of all 243 frontend groups.
