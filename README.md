@@ -8,75 +8,18 @@ Rancher 1.6 ecosystem. It is not affiliated with Rancher Labs or SUSE.
 This fork of [`rancher/cattle`](https://github.com/rancher/cattle) preserves
 upstream history, authorship, licenses, and dependency notices.
 
-## Source candidate: Engine 0.183.381
+## Current component
 
-Typed TCP load-balancer creation now preserves exact native numeric Stack and
-backend references through framework validation. String references retain their
-canonical ID checks. The focused 49-test regression and Checkstyle pass; formal
-CI, packaged qualification, publication and native acceptance remain pending.
-Use the published release below until those stages are complete.
+[Engine **0.183.381**](https://github.com/PastureStack/orchestration-engine/releases/tag/v0.183.381)
+is published. Typed TCP load-balancer creation preserves exact native numeric
+Stack and backend references while retaining canonical wire-ID checks for
+String references. See the [release note](docs/releases/orchestration-engine-0.183.381.md)
+for changes, verification and upgrade boundaries.
 
-## Latest published release: Engine 0.183.380
-
-[Engine 0.183.380](https://github.com/PastureStack/orchestration-engine/releases/tag/v0.183.380)
-is published with twelve original assets verified by anonymous checksum readback
-and GitHub's cryptographic immutable-release attestation. Use the
-[Server installation guide](https://github.com/PastureStack/server#quick-start)
-for deployment; an Engine JAR alone is not a Server installation.
-
-The opt-in `get_resource view=stack_graph` reads bounded ordinary-Service links
-through fresh native authority, tenant, endpoint, parent and Key checks. Opaque
-references and unknown completeness are preserved; ordinary detail reads do not
-query the graph unless the selector is supplied. Native Stack graph acceptance
-remains pending.
-
-Non-Global load balancers support a separately human-approved manual scale
-plan while preserving configuration and active/inactive state. Exactly attested
-canceled Container-start processes produce a fixed failed receipt; a stopped
-state alone never establishes failure. Native business acceptance remains pending.
-
-API Key details now show configured policy and read-only capability information;
-they do not claim effective grants. Typed TCP load-balancer creation requires
-explicit activation intent and preserves each listener/backend choice. Load
-balancers can start or stop through the existing native lifecycle with their
-configuration preserved. These workflows retain human review and fresh authority.
-
-Audit-log reads can select an exact API Key through native authority on
-MySQL/MariaDB. A closed read-only capability probe reports support; H2/HSQLDB
-retain bounded history and reject an explicitly unsupported selector. Existing
-account, role, Key and revision checks remain authoritative.
-
-Standalone Container create plans now review and preserve native port mappings.
-Creation leaves the Container stopped and verifies saved configuration; a live
-binding requires a separate approved start. Service port allocation and health
-checks retain their existing behavior. Native Container port acceptance remains
-pending.
-
-A selected Project stays readable during its normal metadata update. New
-writes still require active state, and only the original captured process may
-finish the approved change. A denied process produces a failed receipt.
-
-Existing ordinary Services can finish an upgrade, roll back, or cancel an
-upgrade through a human-reviewed plan with fresh native role and Key checks.
-Cancellation confirms only the `canceled-upgrade` checkpoint; `cancel_rollback`
-remains unsupported. New lifecycle native acceptance remains separate.
-
-Read-only process discovery, details and bounded diagnostics use the native
-global resource owner and fresh role, Key and schema checks. Only registered
-names and fixed enums are projected. Raw exception messages, causes, stack traces,
-process payloads and descendant graphs are excluded. Empty, unreadable or
-truncated diagnostics remain unknown.
-
-Selected-Project and load-balancer name/description plans retain the native
-owner, fresh role and Key limits, human approval and durable receipts. Compatible
-Web/Bridge and Server components are required. Component publication does not
-establish native workflow or whole-243-group acceptance.
-
-The [published release note](https://github.com/PastureStack/orchestration-engine/releases/tag/v0.183.380)
-records 450 suites / 4,084 tests, zero failures/errors, one inherited skip,
-269 required Java methods (265 carried and 4 new), and 43 Linux build controls
-with zero skips. Existing security findings remain disclosed. The build workflow
-did not provide SLSA attestations. Four independent AI opt-ins remain default-off.
+Deploy through the [Server installation guide](https://github.com/PastureStack/server#quick-start)
+using a qualified matching component assembly; an Engine JAR alone is not a
+Server installation. Component publication does not establish native workflow
+or complete WebMCP coverage.
 
 ## Optional AI resource workflows
 
@@ -106,6 +49,20 @@ Stack's state alone cannot prove its child services have started or stopped.
 Unused pending or approved-but-unsubmitted plans can be cancelled from the
 human inbox. Client-reported audit events remain distinct from server-verified
 authorization and completion evidence.
+
+Supported resource families and lifecycle operations remain partial. The
+optional `get_resource view=stack_graph` returns bounded ordinary-Service links
+with unknown completeness; ordinary detail reads do not query the graph.
+Read-only process views use the native global owner and fixed diagnostic enums;
+Project ownership grants no global process access. Empty or unreadable results
+do not establish completeness or safe resource removal.
+
+Container creation verifies stopped configuration and supported port mappings;
+live bindings require a separate approved start. Typed TCP load-balancer creation
+requires explicit activation and complete ordered listener/backend rules.
+Metadata-only plans do not edit load-balancer configuration, certificates, scale
+or lifecycle. API Key details describe configured policy rather than effective
+grants. Native workflow acceptance remains separate from component verification.
 
 Enable the flags for the selected AI workflow by appending properties to the
 existing JVM options without replacing its other arguments:
@@ -201,9 +158,8 @@ evidence are maintained in the
 [Server release notes](https://github.com/PastureStack/server/tree/main/docs/releases).
 Acceptance is limited to the documented affected paths, not every resource and
 role combination.
-Versioned evidence and upgrade boundaries are in the
-[368 release note](docs/releases/orchestration-engine-0.183.368.md);
-older changes remain in [release notes](docs/releases).
+Versioned changes, evidence and upgrade boundaries remain in
+[release notes](docs/releases).
 
 ## Build and validation
 
