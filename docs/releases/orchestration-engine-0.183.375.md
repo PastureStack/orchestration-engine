@@ -1,7 +1,11 @@
-# Engine 0.183.375 candidate — not published
+# Orchestration Engine v0.183.375
 
-Selected-Project metadata plans retain strict active-state admission for new writes. Native reads and only the already captured account.update process now support its temporary updating-active state without losing the original actor, role/Key, field, UUID or process binding.
+Keeps a selected Project readable during its normal `updating-active` metadata transition while retaining active-only admission for new writes. Only the already captured original `account.update` process may use the transition, with fresh actor/role/Key checks, exact approved fields, Project UUID and durable process binding. Successful verification still requires active state and exact approved readback. A denied original process produces a terminal failed receipt instead of remaining accepted; an unrelated process cannot finalize it. No generic account mutation or new native role/action grant is added.
 
-Successful verification still requires active state and exact approved readback. A denied original process is recorded as terminal failure instead of leaving an accepted plan indefinitely; an unrelated process cannot finalize it. No generic account update authority is introduced.
+Original CI: 441 suites, 4037 tests, 0 failures, 0 errors and 1 inherited skip. All 222 required methods passed (219 carried+3 new); the affected classes contain 12 observed methods. Actual C03 records 466 inputs, 1396 unchanged tuples and 1397 executed rows. Packaged proof covers4 changed and37 complete byte-identical published374 class families (41roots/69physicalclasses),16serialized schemas and175JSON schemas. All6 prior role-field metadata entries remain unchanged.
 
-All 219 prior required methods remain registered, with 3 new focused methods (222 total). Normal CI, original artifact qualification and matching Server/native acceptance remain pending. This source candidate is not a published release or runtime acceptance.
+Security 42139771082, producer `7d4e32d07e69a64f3800c6dac17dfbcc543204dc` and normal PR171 merge `f32a4bd3f1364f95308fb22a82564e255529c466` share tested tree `7c38dc629f70902e50da4901460a334b71d10eb7`. Publication streams the original CI JAR without rebuilding, rerunning tests or rescanning. Organization CodeQL has0 results across3 current exact analyses; independent extended CodeQL retains the4 full lower-severity published374 findings, with0 Critical/High, unresolved rules or changed-source findings.
+
+Raw and effective evidence remain separate. Effective Dapper findings remain 48 MEDIUM and 7 LOW. Four exact builder Perl CVE-2026-82560 records have no official fix; Trivy Ubuntu severity MEDIUM and upstream CVSS7.5/HIGH are both retained. These findings are not claimed patched. Existing JDBC/PCRE/APT/native OpenVEX gates remain intact. No workflow SLSA attestation is provided; immutable-release crypto verification and anonymous readback are separate post-publication guarantees.
+
+Matching Web/Bridge, assembled Server and native Project transition acceptance remain pending. This release does not claim whole-family or243-group completion.
