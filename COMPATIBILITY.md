@@ -1,5 +1,12 @@
 # Compatibility Contract
 
+## Engine 0.183.380 candidate — not published
+
+An explicit get_resource view=stack_graph reads bounded ordinary-Service dependency links through current native authority. Opaque endpoint and parent references are refreshed; cross-project, hidden, unreadable or replaced identities fail closed. No launch configuration, environment, raw relation payload or hidden count is returned. Both completeness fields remain unknown. Ordinary get_resource remains unchanged unless the selector is supplied.
+
+Three role overlays add only optional view input metadata; no native route/action or Key grant is added. Normal required CI, original artifact/schema qualification, immutable publication and all eight native criteria remain pending. Matching Web221/Bridge0.2.23 and a qualified Server assembly are required; no whole-243 acceptance is claimed.
+
+
 ## Engine 0.183.379 published
 
 Non-Global load balancers support a separately human-approved manual scale plan with fresh native role/Key and parent checks. Active/inactive state and configuration remain bound to the review; an inactive load balancer is not activated. Ordinary Service scale limits remain unchanged.

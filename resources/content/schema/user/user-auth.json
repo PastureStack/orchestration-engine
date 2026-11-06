@@ -63,6 +63,7 @@
         "aiResourceView.query": "cr",
         "aiResourceView.marker": "cr",
         "aiResourceView.parentId": "cr",
+        "aiResourceView.view": "cr",
         "aiResourceView.sourcePage": "cr",
         "aiResourceView.sourcePageResult": "r",
         "aiResourceView.nativeAuthority": "r",

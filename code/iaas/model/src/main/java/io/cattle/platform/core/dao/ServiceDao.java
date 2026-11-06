@@ -32,6 +32,11 @@ public interface ServiceDao {
 
     Map<Long, List<ServiceLink>> getServiceLinks(List<Long> ids);
 
+    /** Bounded relationship candidates only; neither endpoint authorization nor a complete graph. */
+    List<GraphLink> getStackGraphLinks(long accountId, long stackId, List<Long> authorizedSourceIds);
+
+    record GraphLink(long serviceId, long consumedServiceId) { }
+
     class ServiceLink {
         public String linkName;
         public String serviceName;

@@ -1,0 +1,95 @@
+{
+  "schemaVersion": 1,
+  "version": "0.183.380",
+  "scope": "SOURCE_ONLY_NOT_RUNTIME_ACCEPTANCE",
+  "reviewedBaseCommit": "97d45245984f8ab58208b1d39693e2735e922dea",
+  "sourceInputs": {
+    "algorithm": "c03-source-inputs-v1",
+    "baseline": {
+      "count": 472,
+      "sha256": "8951b39686dfd0d3d931ad73d942d80e46609262e7c824390894dc80091095b9"
+    },
+    "reviewed": {
+      "count": 472,
+      "sha256": "82ce35d6b062095018a546d308a8ae2208348938a54e2cc6b6aa6456da90fc69"
+    },
+    "addedAnchors": []
+  },
+  "tupleReview": {
+    "baseline": 1396,
+    "candidate": 1396,
+    "added": 0,
+    "removed": 0,
+    "semanticChanges": 0,
+    "dispositionChanges": 0,
+    "sha256": "8f1c0fb378663b0b3d272efba2f211cb210eb6f17cb8035aefa33b56feeaf36a"
+  },
+  "delta": [
+    {
+      "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/ai/view/AiResourceViewService.java",
+      "before": "7df9391896d73e3563998448b23cdd2118d03737135dc970d7b20e8314676c01",
+      "after": "bff4f815baba28d487b116edcd9e12110e760b629d3d10e824b566f74570eb55"
+    },
+    {
+      "path": "code/iaas/model/src/main/java/io/cattle/platform/core/dao/ServiceDao.java",
+      "before": "92a4cd76c988cfab8f3ee3b8e96f2f2ef5fa06c2787ec46ca03cb75ec4f2a7ce",
+      "after": "27bb54b90c1c1a1949177ee6f50a039cc89c6dd4abf6bd2edfc78d09fe4143b2"
+    },
+    {
+      "path": "code/iaas/model/src/main/java/io/cattle/platform/core/dao/impl/ServiceDaoImpl.java",
+      "before": "d13a7164f03e71e7fbbedd9165667834b6f33f99607500d2d819ceecab75902b",
+      "after": "0b81fbf09fb773d97a9d5294efd6d9c6bda541ffcd842935ee0f39bf36a06884"
+    },
+    {
+      "path": "resources/content/schema/admin/admin-auth.json",
+      "before": "9aa4fe651a0af938f07688dd783fcbe8965bd53e8e13d698badcd6bed74db984",
+      "after": "1c5fe597971c097c2a87e3ed2e94be7bc6094630c0f5b6529d48b451720de7d7"
+    },
+    {
+      "path": "resources/content/schema/base/aiResourceView.json",
+      "before": "5bd8e7f91b44165d8f57ebb5b17689c40b2c236d1d6a80af0ade78dba552cc73",
+      "after": "01802e590d7b3c639c27544c1fff92ba5a93ba394ebe6a580e139363a04a9bed"
+    },
+    {
+      "path": "resources/content/schema/project/project-auth.json",
+      "before": "0be17e4bc525cb1d5b0178a86daf8db96b3d966f22d383db7e489f72897fa607",
+      "after": "b2b3003f9b441c972959e1c418a5815f856ec4e87b6dabbcb4eb15c0769228b9"
+    },
+    {
+      "path": "resources/content/schema/user/user-auth.json",
+      "before": "1ac0571be57620a2733e150c4f6dc0bea3337c7c1f92462737dc8c535c1e2e54",
+      "after": "71638082ce7a00b2961e5bf168ed7a04fb3f6e12a3de44c54608565d6be0e458"
+    }
+  ],
+  "roleFieldDelta": [
+    {
+      "path": "resources/content/schema/admin/admin-auth.json",
+      "field": "aiResourceView.view",
+      "before": null,
+      "after": "cr"
+    },
+    {
+      "path": "resources/content/schema/user/user-auth.json",
+      "field": "aiResourceView.view",
+      "before": null,
+      "after": "cr"
+    },
+    {
+      "path": "resources/content/schema/project/project-auth.json",
+      "field": "aiResourceView.view",
+      "before": null,
+      "after": "cr"
+    }
+  ],
+  "authorizationBoundary": "An opt-in stack_graph selector reads only bounded native ordinary-Service consume-map relations after fresh endpoint and parent visibility, tenant and Key checks. Ordinary detail has no graph query. Both completeness fields remain unknown and hidden candidate counts are never projected. Only the optional aiResourceView.view create/read input metadata is added in three existing role overlays; no native method/action, Key ceiling or HTTP tuple changes. Source extraction is separate from required CI, packaged schemas, immutable publication and eight pending native criteria.",
+  "frozenV1SchemaFilesUnchanged": true,
+  "nativeRoleRouteActionGrantsUnchanged": true,
+  "compiledRoleSchemaProof": "PENDING_ACTUAL_PACKAGED_CLASSES_AND_SCHEMAS",
+  "extractor": {
+    "path": "C:\\Users\\chen21019\\source\\outputs\\webmcp-expansion-20261029\\integration-360-201\\refresh-integrated-operation-contract.py",
+    "sha256": "078ffe48881469fe5eb3cb43a15fa41b480fe70e11bd5f63102ded6b35a6d076"
+  },
+  "historicalProducerAndReviewChainsPreserved": true,
+  "artifactQualificationClaimed": false,
+  "runtimeAcceptanceClaimed": false
+}

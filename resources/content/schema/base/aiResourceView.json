@@ -8,6 +8,7 @@
     "query": {"type": "string", "create": true, "maxLength": 256},
     "marker": {"type": "string", "create": true, "maxLength": 128},
     "parentId": {"type": "string", "create": true, "maxLength": 128},
+    "view": {"type": "string", "create": true, "maxLength": 32, "options": ["stack_graph"]},
     "sourcePage": {"type": "aiAuditSourcePageInput", "create": true},
     "data": {"type": "array[json]", "create": false},
     "nextMarker": {"type": "string", "create": false},
