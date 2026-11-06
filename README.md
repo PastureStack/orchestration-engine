@@ -8,6 +8,14 @@ Rancher 1.6 ecosystem. It is not affiliated with Rancher Labs or SUSE.
 This fork of [`rancher/cattle`](https://github.com/rancher/cattle) preserves
 upstream history, authorship, licenses, and dependency notices.
 
+## Source candidate: Engine 0.183.381
+
+Typed TCP load-balancer creation now preserves exact native numeric Stack and
+backend references through framework validation. String references retain their
+canonical ID checks. The focused 49-test regression and Checkstyle pass; formal
+CI, packaged qualification, publication and native acceptance remain pending.
+Use the published release below until those stages are complete.
+
 ## Latest published release: Engine 0.183.380
 
 [Engine 0.183.380](https://github.com/PastureStack/orchestration-engine/releases/tag/v0.183.380)
@@ -209,7 +217,7 @@ Before publishing an Engine artifact, run the complete package gate:
 
 ```sh
 bash scripts/check-cattle-jdk25-full-package
-ENGINE_VERSION=0.183.380 bash scripts/build --release
+ENGINE_VERSION=0.183.381 bash scripts/build --release
 bash scripts/check-release-artifact dist/artifacts/cattle.jar
 ```
 

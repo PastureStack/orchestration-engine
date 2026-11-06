@@ -87,7 +87,7 @@ final class AiLoadBalancerCreateChange {
                     || !Objects.equals(approved.get("startOnCreate"), actual.get("startOnCreate"))
                     || !(actual.get("scale") instanceof Number scale) || scale.doubleValue() != 1
                     || actual.get("stackId") == null || !Objects.equals(stackId.apply((String) approved.get("stackId")),
-                            stackId.apply(actual.get("stackId").toString()))
+                            nativeReferenceId(actual.get("stackId"), stackId))
                     || !(approved.get("launchConfig") instanceof Map<?, ?> expectedLaunch)
                     || !(actual.get("launchConfig") instanceof Map<?, ?> launch)
                     || !Objects.equals(expectedLaunch.get("imageUuid"), launch.get("imageUuid"))
@@ -148,23 +148,24 @@ final class AiLoadBalancerCreateChange {
             int priority = port(rule.get("priority"));
             if (priority != result.size() + 1) throw invalid();
             result.add(Map.of("protocol", "tcp", "sourcePort", port(rule.get("sourcePort")), "targetPort", port(rule.get("targetPort")),
-                    "priority", priority, "serviceId", nativeServiceId(rule.get("serviceId"), serviceId)));
+                    "priority", priority, "serviceId", nativeReferenceId(rule.get("serviceId"), serviceId)));
         }
         return result;
     }
 
-    private static long nativeServiceId(Object value, Function<String, Long> parser) {
-        final String id;
+    private static long nativeReferenceId(Object value, Function<String, Long> parser) {
+        final Long parsed;
         if (value instanceof String text) {
-            text(text, 1, 128); id = text;
+            // Strings still belong to the canonical wire-ID parser. Only the
+            // native framework's numeric reference values bypass that parser.
+            text(text, 1, 128); parsed = parser.apply(text);
         } else if (value instanceof Number number) {
             // This path reads native conversion/persistence, never model input.
             if ((number instanceof Double || number instanceof Float)
                     && (!Double.isFinite(number.doubleValue()) || Math.abs(number.doubleValue()) > 9007199254740991D)) throw invalid();
-            try { id = Long.toString(new java.math.BigDecimal(number.toString()).longValueExact()); }
+            try { parsed = new java.math.BigDecimal(number.toString()).longValueExact(); }
             catch (ArithmeticException | NumberFormatException unsafe) { throw invalid(); }
         } else throw invalid();
-        Long parsed = parser.apply(id);
         if (parsed == null || parsed <= 0) throw invalid();
         return parsed;
     }
