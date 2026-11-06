@@ -8,17 +8,17 @@ Rancher 1.6 ecosystem. It is not affiliated with Rancher Labs or SUSE.
 This fork of [`rancher/cattle`](https://github.com/rancher/cattle) preserves
 upstream history, authorship, licenses, and dependency notices.
 
-## Next candidate: Engine 0.183.375
+## Latest published release: Engine 0.183.375
 
-The Project update transition correction is in [source and CI preparation](docs/releases/orchestration-engine-0.183.375.md). Publication and native acceptance remain pending; use the published release below.
-
-## Latest published release: Engine 0.183.374
-
-[Engine 0.183.374](https://github.com/PastureStack/orchestration-engine/releases/tag/v0.183.374)
+[Engine 0.183.375](https://github.com/PastureStack/orchestration-engine/releases/tag/v0.183.375)
 is published with twelve original assets verified by anonymous checksum readback
 and GitHub's cryptographic immutable-release attestation. Use the
 [Server installation guide](https://github.com/PastureStack/server#quick-start)
 for deployment; an Engine JAR alone is not a Server installation.
+
+A selected Project stays readable during its normal metadata update. New
+writes still require active state, and only the original captured process may
+finish the approved change. A denied process produces a failed receipt.
 
 Existing ordinary Services can finish an upgrade, roll back, or cancel an
 upgrade through a human-reviewed plan with fresh native role and Key checks.
@@ -36,9 +36,9 @@ owner, fresh role and Key limits, human approval and durable receipts. Compatibl
 Web/Bridge and Server components are required. Component publication does not
 establish native workflow or whole-243-group acceptance.
 
-The [published release note](https://github.com/PastureStack/orchestration-engine/releases/tag/v0.183.374)
-records 441 suites / 4,034 tests, zero failures/errors, one inherited skip,
-219 required Java methods (208 carried and 11 new), and 39 Linux build controls
+The [published release note](https://github.com/PastureStack/orchestration-engine/releases/tag/v0.183.375)
+records 441 suites / 4,037 tests, zero failures/errors, one inherited skip,
+222 required Java methods (219 carried and 3 new), and 39 Linux build controls
 with zero skips. Existing security findings remain disclosed. The build workflow
 did not provide SLSA attestations. Four independent AI opt-ins remain default-off.
 

@@ -1,12 +1,16 @@
 # Compatibility Contract
 
-## Engine 0.183.375 candidate — not published
+## Engine 0.183.375 published
 
 Selected-Project metadata plans retain strict active-state admission for new writes. Native reads and only the already captured account.update process now support its temporary updating-active state without losing the original actor, role/Key, field, UUID or process binding.
 
 Successful verification still requires active state and exact approved readback. A denied original process is recorded as terminal failure instead of leaving an accepted plan indefinitely; an unrelated process cannot finalize it. No generic account update authority is introduced.
 
-All 219 prior required methods remain registered, with 3 new focused methods (222 total). Normal CI, original artifact qualification and matching Server/native acceptance remain pending. This source candidate is not a published release or runtime acceptance.
+[The immutable release](https://github.com/PastureStack/orchestration-engine/releases/tag/v0.183.375) contains twelve original assets verified by anonymous bytes/SHA readback and a native GitHub attestation covering the assets and signed tag. Original CI passed 441 suites / 4,037 tests with zero failures/errors and one inherited skip; all 222 required methods (219 carried and 3 new), 39 Linux build controls and 13 PIP boundary controls passed. Packaged proof covers 4 changed and 37 complete published374 class families (41 roots / 69 physical classes). The final 183-package Dapper table is byte-identical to published374; raw/effective findings remain separate. Workflow SLSA was not provided.
+
+Matching client and Server integration, native Project transition acceptance and weak-model/layout acceptance remain separate. Publication claims no whole-group or whole-243 completion.
+
+[Published metadata](https://github.com/PastureStack/orchestration-engine/releases/download/v0.183.375/engine375-release-metadata.json) identifies artifact producer `7d4e32d07e69a64f3800c6dac17dfbcc543204dc`, normal merge/tag target `f32a4bd3f1364f95308fb22a82564e255529c466` and tested tree `7c38dc629f70902e50da4901460a334b71d10eb7`. This documentation commit is separate from the artifact producer.
 
 ## Engine 0.183.374 published
 
