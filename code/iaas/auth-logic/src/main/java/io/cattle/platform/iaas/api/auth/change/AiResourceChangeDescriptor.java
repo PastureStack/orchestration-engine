@@ -57,6 +57,7 @@ public record AiResourceChangeDescriptor(String resourceType, String operation, 
             add(result, "loadBalancerService", operation, "POST", "start".equals(operation) ? "activate" : "deactivate", "update", Set.of());
         add(result, "loadBalancerService", "create", "POST", null, "create", Set.of("name", "description", "stackId", "portRules", "startOnCreate"));
         add(result, "loadBalancerService", "update_metadata", "PUT", null, "update", Set.of("name", "description"));
+        add(result, "loadBalancerService", "scale", "PUT", null, "update", Set.of("scale"));
         add(result, "certificate", "update_metadata", "PUT", null, "update", Set.of("name", "description"));
         add(result, "host", "update_metadata", "PUT", null, "update", Set.of("name", "description"));
         add(result, "project", "update_metadata", "PUT", null, "update", Set.of("name", "description"));
@@ -114,8 +115,10 @@ public record AiResourceChangeDescriptor(String resourceType, String operation, 
                 content = List.copyOf(arguments);
             }
             case "scale" -> {
+                boolean loadBalancer = "loadBalancerService".equals(resourceType);
                 if (!(content instanceof Number number) || number.doubleValue() != number.longValue()
-                        || number.longValue() < 0 || number.longValue() > 100) throw error("ResourceChangeInputInvalid");
+                        || number.longValue() < (loadBalancer ? 1 : 0)
+                        || number.longValue() > (loadBalancer ? Integer.MAX_VALUE : 100)) throw error("ResourceChangeInputInvalid");
                 content = number.intValue();
             }
             default -> throw error("ResourceChangeInputInvalid");

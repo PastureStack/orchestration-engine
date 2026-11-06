@@ -47,7 +47,7 @@ cleanup()
     rm -f -- "$work/plan-archives/lock"
     [ ! -d "$work/plan-archives/partial" ] || rmdir -- "$work/plan-archives/partial"
     [ ! -d "$work/plan-archives" ] || rmdir -- "$work/plan-archives"
-    rm -f -- "$work/plan.raw" "$work/plan.tsv" "$work/names" "$work/local.tsv" "$work/local-notes" "$work/local-cache.tsv"
+    rm -f -- "$work/plan.raw" "$work/plan.tsv" "$work/names" "$work/local.tsv" "$work/local-notes" "$work/local-cache.tsv" "$work/retained.headers"
     rmdir -- "$work"
 }
 trap cleanup 0
@@ -201,11 +201,13 @@ verified()
 
 download()
 {
+    download_uri=$1
+    shift
     rm -f -- "$work/payload/package.deb" "$work/payload/package.deb.FAILED"
     download_status=0
     /usr/lib/apt/apt-helper -o Acquire::Retries=0 \
         -o Acquire::https::Timeout=15 -o Acquire::http::Timeout=15 \
-        download-file "$1" "$work/payload/package.deb" "SHA256:$hash" || download_status=$?
+        "$@" download-file "$download_uri" "$work/payload/package.deb" "SHA256:$hash" || download_status=$?
     # APT renames a hash-mismatched payload to .FAILED. Neither this nor our
     # own size/hash rejection is a transport failure eligible for retry.
     [ ! -e "$work/payload/package.deb.FAILED" ] || return 2
@@ -227,12 +229,58 @@ download_snapshot()
     done
 }
 
+download_retained()
+{
+    retained_leaf=$(decode_leaf "${pool##*/}")
+    retained_primary=https://launchpad.net/ubuntu/+archive/primary/+files/$retained_leaf
+    (umask 077; : > "$work/retained.headers") || return 1
+    retained_status=0
+    (
+        # Native APT exposes the fixed 303 before its disabled redirect. Bound
+        # both debug and any unexpected payload; raw headers are never logged.
+        ulimit -f 32 || exit 1
+        download "$retained_primary" -o Acquire::https::AllowRedirect=false \
+            -o Debug::Acquire::https=true
+    ) > "$work/retained.headers" 2>&1 || retained_status=$?
+    [ "$retained_status" -ne 0 ] || return 2
+    [ ! -e "$work/payload/package.deb.FAILED" ] || return 2
+    [ "$(wc -c < "$work/retained.headers" | tr -d '[:space:]')" -le 8192 ] || return 2
+    retained_location=$(awk -v wanted="Answer for: $retained_primary" '
+        { sub(/\r$/, "") }
+        /^Answer for: / { answers++; if ($0 != wanted) bad=1; header=1; next }
+        header && /^$/ { header=0; next }
+        header && /^HTTP\/[0-9.]+ / { statuses++; if ($0 ~ /^HTTP\/[0-9.]+ 303([ ]|$)/) status303++ }
+        header && /^[ \t]/ { bad=1 }
+        tolower($1) == "location:" { if (!header) bad=1; sub(/^[^:]*:[ \t]*/, ""); count++; value=$0 }
+        END { if (answers != 1 || statuses != 1 || status303 != 1 || count != 1 || bad) exit 1; print value }
+    ' "$work/retained.headers") || return 2
+    case "$retained_location" in
+        https://launchpadlibrarian.net/*) retained_path=${retained_location#https://launchpadlibrarian.net/} ;;
+        *) return 2 ;;
+    esac
+    retained_id=${retained_path%%/*}
+    printf '%s\n' "$retained_id" | grep -Eq '^[1-9][0-9]*$' || return 2
+    [ "$retained_path" = "$retained_id/$retained_leaf" ] || return 2
+    # A second redirect cannot escape the closed official host/path boundary.
+    download "$retained_location" -o Acquire::https::AllowRedirect=false
+}
+
+download_origins()
+{
+    download "https://archive.ubuntu.com/ubuntu/$pool" && return 0
+    snapshot_status=0
+    download_snapshot "$uri" || snapshot_status=$?
+    [ "$snapshot_status" -ne 0 ] || return 0
+    [ "$snapshot_status" -eq 1 ] || return "$snapshot_status"
+    download_retained
+}
+
 tab=$(printf '\t')
 while IFS="$tab" read -r uri pool filename size hash; do
     destination=$archives/$filename
     if verified "$destination"; then continue; fi
     [ ! -d "$destination" ] || fail invalid_cache_destination
-    if download "https://archive.ubuntu.com/ubuntu/$pool" || download_snapshot "$uri"; then
+    if download_origins; then
         cache_copy=$(mktemp "$archives/.snapshot-package.XXXXXX")
         cp -- "$work/payload/package.deb" "$cache_copy"
         chmod 0644 "$cache_copy"

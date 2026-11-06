@@ -1,0 +1,61 @@
+{
+  "schemaVersion": 1,
+  "version": "0.183.379",
+  "scope": "SOURCE_ONLY_NOT_RUNTIME_ACCEPTANCE",
+  "reviewedBaseCommit": "b504e8214891be9c3808aed011be64380bafb74c",
+  "sourceInputs": {
+    "algorithm": "c03-source-inputs-v1",
+    "baseline": {
+      "count": 472,
+      "sha256": "b465ddfa2028490c242b972c081add4b2ba1e09916cb7b0ee562646bca37310a"
+    },
+    "reviewed": {
+      "count": 472,
+      "sha256": "8951b39686dfd0d3d931ad73d942d80e46609262e7c824390894dc80091095b9"
+    },
+    "addedAnchors": []
+  },
+  "tupleReview": {
+    "baseline": 1396,
+    "candidate": 1396,
+    "added": 0,
+    "removed": 0,
+    "semanticChanges": 0,
+    "dispositionChanges": 0,
+    "sha256": "8f1c0fb378663b0b3d272efba2f211cb210eb6f17cb8035aefa33b56feeaf36a"
+  },
+  "delta": [
+    {
+      "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiResourceChangeDescriptor.java",
+      "before": "e51ae1488e27cb302f5245ba5a088584c9895ecfd8cca80a07ea02f6e09f6c61",
+      "after": "c09762d47e571452f95db9424f1debd4f7a3517d4f0a9efabd3629a00bf04402"
+    },
+    {
+      "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiResourceChangeDomain.java",
+      "before": "573046c10e7561f62aab6c700e5c10f0225c5f7a8d4923bfaf44b5100e9e215a",
+      "after": "99d5cd8f07dfc412999eee7acf0bf3665272bf6186e249ab4e709dbe268bef95"
+    },
+    {
+      "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiResourceChangePlanStore.java",
+      "before": "b9508594acf6d18864f96173d6ae21321c1b177811587525c20c3f6971a9ee9c",
+      "after": "25819a0fbafa0c5874b2c0d19c9cbbfbcffff72a238b9881e78432c968ba7851"
+    },
+    {
+      "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiResourceChangeProcessObserver.java",
+      "before": "2019c2d98fdab535eb41be3d1944f27263532069589b69f54728a82581f1e3aa",
+      "after": "91ae16db8441644b877085819be8f65e66d81e690ac28aaaef649811c07bd649"
+    }
+  ],
+  "roleFieldDelta": [],
+  "authorizationBoundary": "Existing typed load-balancer scale uses the normal native update ceiling and preserves configuration and inactive state. Exact canceled Container-start roots project a fixed failure via the original completion SPI; child stop/retry/state coincidences do not prove failure. Native role/action grants, HTTP tuples, private Key authority, human confirmation and frozen v1 schemas remain unchanged. Source extraction is not CI, packaged evidence, publication or native acceptance.",
+  "frozenV1SchemaFilesUnchanged": true,
+  "nativeRoleRouteActionGrantsUnchanged": true,
+  "compiledRoleSchemaProof": "PENDING_ACTUAL_PACKAGED_CLASSES_AND_SCHEMAS",
+  "extractor": {
+    "path": "C:\\Users\\chen21019\\source\\outputs\\webmcp-expansion-20261029\\integration-360-201\\refresh-integrated-operation-contract.py",
+    "sha256": "078ffe48881469fe5eb3cb43a15fa41b480fe70e11bd5f63102ded6b35a6d076"
+  },
+  "historicalProducerAndReviewChainsPreserved": true,
+  "artifactQualificationClaimed": false,
+  "runtimeAcceptanceClaimed": false
+}

@@ -55,8 +55,11 @@ public class AiLoadBalancerMetadataChangeTest {
         for (String field : List.of("lbConfig", "portRules", "certificateIds", "image", "scale", "action", "data", "launchConfig", "stackId"))
             assertEquals("ResourceChangeInputInvalid", assertThrows(ClientVisibleException.class,
                     () -> descriptor.parameters(Map.of(field, "PRIVATE-CANARY"))).getCode());
-        for (String operation : List.of("restart", "scale", "remove", "archive", "restore"))
+        for (String operation : List.of("restart", "remove", "archive", "restore"))
             assertThrows(ClientVisibleException.class, () -> AiResourceChangeDescriptor.require("loadBalancerService", operation));
+        assertEquals(Map.of("scale", 1), AiResourceChangeDescriptor.require("loadBalancerService", "scale").parameters(Map.of("scale", 1)));
+        assertEquals("ResourceChangeInputInvalid", assertThrows(ClientVisibleException.class,
+                () -> descriptor.parameters(Map.of("scale", 1))).getCode());
         var create = AiResourceChangeDescriptor.require("loadBalancerService", "create");
         assertEquals("POST", create.method());
         assertThrows(ClientVisibleException.class, () -> create.parameters(Map.of("name", "safe-name", "stackId", "1st3")));
@@ -514,6 +517,130 @@ public class AiLoadBalancerMetadataChangeTest {
         var stack = new StackRecord(); stack.setId(3L); stack.setAccountId(77L); stack.setUuid("stack-uuid"); stack.setKind("stack");
         stack.setName("Blue"); stack.setState("active"); return stack;
     }
+    @Test public void loadBalancerManualScaleUsesUiMinimumNativeIntAndOriginalServiceLimits() {
+        var descriptor = AiResourceChangeDescriptor.require("loadBalancerService", "scale");
+        assertEquals("PUT", descriptor.method()); assertNull(descriptor.action()); assertEquals("update", descriptor.keyOperation());
+        for (int value : List.of(1, 2, 101, Integer.MAX_VALUE)) {
+            assertEquals(Map.of("scale", value), descriptor.parameters(Map.of("scale", value)));
+            assertEquals(Map.of("scale", value), descriptor.body(Map.of("scale", value)));
+        }
+        for (Number value : List.of(0, -1, 1.5, 2147483648L, Double.NaN, Double.POSITIVE_INFINITY))
+            assertEquals("ResourceChangeInputInvalid", assertThrows(ClientVisibleException.class,
+                    () -> descriptor.parameters(Map.of("scale", value))).getCode());
+        for (String field : List.of("lbConfig", "ports", "portRules", "launchConfig", "weights", "stackId", "startOnCreate"))
+            assertThrows(ClientVisibleException.class, () -> descriptor.parameters(Map.of("scale", 2, field, "PRIVATE")));
+        assertThrows(ClientVisibleException.class, () -> descriptor.parameters(Map.of()));
+        var ordinary = AiResourceChangeDescriptor.require("service", "scale");
+        assertEquals(Map.of("scale", 0), ordinary.parameters(Map.of("scale", 0)));
+        assertThrows(ClientVisibleException.class, () -> ordinary.parameters(Map.of("scale", 101)));
+        var f = new DomainFixture();
+        f.domain.deploymentReadiness = mock(io.cattle.platform.servicediscovery.api.service.ServiceDeploymentReadiness.class);
+        for (String state : List.of("active", "inactive")) {
+            f.row.setState(state);
+            assertEquals("ResourceChangeUnsupported", assertThrows(ClientVisibleException.class,
+                    () -> f.domain.ready(descriptor, f.row, null)).getCode());
+            when(f.domain.deploymentReadiness.supportsManualScale(f.row)).thenReturn(true);
+            f.domain.ready(descriptor, f.row, null);
+            when(f.domain.deploymentReadiness.supportsManualScale(f.row)).thenReturn(false);
+        }
+        when(f.domain.deploymentReadiness.supportsManualScale(f.row)).thenReturn(true);
+        for (String state : List.of("activating", "updating-active", "removing", "running", "stopped")) {
+            f.row.setState(state); assertEquals("ResourceChangeTargetBusy", assertThrows(ClientVisibleException.class,
+                    () -> f.domain.ready(descriptor, f.row, null)).getCode());
+        }
+    }
+
+    @Test public void loadBalancerManualScalePreservesConfigurationIdentityAndInactiveState() {
+        var descriptor = AiResourceChangeDescriptor.require("loadBalancerService", "scale");
+        for (String state : List.of("active", "inactive")) {
+            var f = new DomainFixture(); f.row.setState(state);
+            f.domain.deploymentReadiness = mock(io.cattle.platform.servicediscovery.api.service.ServiceDeploymentReadiness.class);
+            when(f.domain.deploymentReadiness.isReady(f.row)).thenReturn(true);
+            io.cattle.platform.object.util.DataAccessor.fields(f.row).withKey("scale").set(1);
+            io.cattle.platform.object.util.DataAccessor.fields(f.row).withKey("lbConfig").set(Map.of("portRules", List.of("PRIVATE")));
+            var before = f.domain.snapshot(f.row);
+            assertFalse(f.domain.complete(descriptor, f.row, Map.of("scale", 2), before));
+            io.cattle.platform.object.util.DataAccessor.fields(f.row).withKey("scale").set(2);
+            assertTrue(f.domain.complete(descriptor, f.row, Map.of("scale", 2), before));
+            f.row.setState("inactive".equals(state) ? "active" : "inactive");
+            assertFalse(f.domain.complete(descriptor, f.row, Map.of("scale", 2), before)); f.row.setState(state);
+            for (String field : List.of("lbConfig", "launchConfig", "secondaryLaunchConfigs", "ports", "certificateIds", "volumes", "labels")) {
+                Object original = io.cattle.platform.object.util.DataAccessor.field(f.row, field, Object.class);
+                io.cattle.platform.object.util.DataAccessor.fields(f.row).withKey(field).set(Map.of("changed", true));
+                assertFalse(field, f.domain.complete(descriptor, f.row, Map.of("scale", 2), before));
+                io.cattle.platform.object.util.DataAccessor.fields(f.row).withKey(field).set(original);
+            }
+            f.row.setUuid("replacement"); assertFalse(f.domain.complete(descriptor, f.row, Map.of("scale", 2), before));
+            f.row.setUuid("lb-uuid"); f.row.setStackId(9L); assertFalse(f.domain.complete(descriptor, f.row, Map.of("scale", 2), before));
+            f.row.setStackId(3L);
+            if ("active".equals(state)) {
+                when(f.domain.deploymentReadiness.isReady(f.row)).thenReturn(false);
+                assertFalse(f.domain.complete(descriptor, f.row, Map.of("scale", 2), before));
+            } else {
+                var instance = new io.cattle.platform.core.model.tables.records.InstanceRecord();
+                instance.setId(91L); instance.setAccountId(77L); instance.setState("running");
+                var link = new io.cattle.platform.core.model.tables.records.ServiceExposeMapRecord();
+                link.setManaged(true); link.setInstanceId(91L);
+                when(f.domain.objects.find(io.cattle.platform.core.model.ServiceExposeMap.class, "serviceId", 7L, "removed", null))
+                        .thenReturn(List.of(link));
+                when(f.domain.objects.loadResource(io.cattle.platform.core.model.Instance.class, 91L)).thenReturn(instance);
+                assertFalse(f.domain.complete(descriptor, f.row, Map.of("scale", 2), before));
+            }
+        }
+    }
+
+    @Test public void loadBalancerManualScaleNativePrepareIsZeroWriteAndKeepsFreshFieldParentKeyAndCrossIdCeilings() throws Exception {
+        enabled(() -> {
+            var f = new DomainFixture(); realKey(f, full()); var scale = new FieldImpl(); scale.setUpdate(true);
+            when(f.schema.getResourceFields()).thenReturn(Map.of("scale", scale));
+            var descriptor = AiResourceChangeDescriptor.require("loadBalancerService", "scale");
+            assertEquals(Map.of("scale", 2), f.domain.prepare(f.request, descriptor, "1s7", Map.of("scale", 2)));
+            verify(f.manager, never()).update(anyString(), anyString(), any());
+            when(f.manager.update(eq("loadBalancerService"), eq("1s7"), any())).thenAnswer(call -> {
+                ApiRequest request = call.getArgument(2); assertEquals(Map.of("scale", 2), request.getRequestObject());
+                assertNull(request.getAction()); return f.row;
+            });
+            assertSame(f.row, f.domain.dispatch(f.request, descriptor, "1s7", Map.of("scale", 2), "own-plan"));
+            verify(f.manager, never()).resourceAction(anyString(), any());
+            when(f.schema.getResourceMethods()).thenReturn(List.of("GET"));
+            assertThrows(ClientVisibleException.class, () -> f.domain.prepare(f.request, descriptor, "1s7", Map.of("scale", 2)));
+            when(f.schema.getResourceMethods()).thenReturn(List.of("GET", "PUT"));
+            realKey(f, new ApiKeyPolicy(ApiKeyPolicy.Mode.CUSTOM, ApiKeyPolicy.Effect.DENY, null,
+                    List.of(new ApiKeyPolicy.Rule("lb-only", ApiKeyPolicy.Effect.ALLOW,
+                            ApiKeyPolicy.Scope.resource("service", "1s7"), Set.of("read", "update"))), ApiKeyPolicy.Purpose.AI_BRIDGE));
+            assertEquals("KeyScopeDenied", assertThrows(ClientVisibleException.class,
+                    () -> f.domain.prepare(f.request, descriptor, "1s7", Map.of("scale", 2))).getCode());
+            realKey(f, full()); f.row.setAccountId(99L);
+            assertEquals("NotFound", assertThrows(ClientVisibleException.class,
+                    () -> f.domain.prepare(f.request, descriptor, "1s7", Map.of("scale", 2))).getCode());
+        });
+    }
+
+    @Test public void loadBalancerManualScalePlansKeepApprovalPrivateConfigCasAuditAndOneClaim() throws Exception {
+        var f = new AiResourceChangePlanServiceTest.Fixture(); f.target.setKind("loadBalancerService"); f.target.setUuid("lb-uuid");
+        f.target.setStackId(3L); f.target.setState("inactive");
+        io.cattle.platform.object.util.DataAccessor.fields(f.target).withKey("scale").set(1);
+        var owner = new AiResourceChangeDomain(); owner.json = f.json; owner.objects = mock(ObjectManager.class);
+        when(f.domain.snapshot(any())).thenAnswer(call -> owner.snapshot(call.getArgument(0)));
+        when(f.domain.changes(any(), any(), anyMap())).thenAnswer(call -> owner.changes(call.getArgument(0), call.getArgument(1), call.getArgument(2)));
+        when(f.domain.loadBalancerMetadataContext(any(), any(), anyString())).thenReturn(Map.of("uuid", "stack-uuid", "name", "Blue"));
+        doAnswer(call -> { f.dispatched++; return f.target; }).when(f.domain).dispatch(any(), any(), nullable(String.class), anyMap(), anyString());
+        ApiRequest request = f.request(null, true); request.setRequestObject(Map.of("resourceType", "loadBalancerService", "operation", "scale",
+                "resourceId", "1s7", "parameters", Map.of("scale", 2))); f.id = (String) f.service.preview(request).get("id");
+        assertEquals(0, f.dispatched); assertEquals(0, f.claims);
+        assertEquals("ResourceChangeNeedsConfirmation", assertThrows(ClientVisibleException.class, () -> f.apply(true)).getCode());
+        Map<String, Object> originalData = f.json.readValue(f.json.writeValueAsString(f.target.getData()));
+        io.cattle.platform.object.util.DataAccessor.fields(f.target).withKey("ports").set(List.of("CHANGED"));
+        assertEquals("ResourceChangePlanStale", assertThrows(ClientVisibleException.class, f::confirm).getCode());
+        f.target.setData(originalData);
+        f.writeAllowed = false; assertThrows(ClientVisibleException.class, f::confirm); f.writeAllowed = true;
+        f.confirm(); assertEquals("ResourceChangeBoundKeyRequired", assertThrows(ClientVisibleException.class, () -> f.apply(false)).getCode());
+        assertEquals("accepted", f.apply(true).get("status")); f.apply(true); assertEquals(1, f.claims); assertEquals(1, f.dispatched);
+        f.complete = true; assertEquals(true, f.service.get(f.id, f.request(null, true)).get("verifiedResult"));
+        assertTrue(f.audits.stream().anyMatch(value -> value.startsWith("preview:loadBalancerService:true:")));
+        assertTrue(f.audits.stream().anyMatch(value -> value.startsWith("apply:loadBalancerService:true:")));
+    }
+
     private static class DomainFixture extends AiResourceChangeDomainTest.Fixture {
         final ServiceRecord row = row(); final StackRecord stack = stack();
         final ResourceManager manager = mock(ResourceManager.class), stackManager = mock(ResourceManager.class);

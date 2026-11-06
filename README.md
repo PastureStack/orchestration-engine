@@ -8,6 +8,14 @@ Rancher 1.6 ecosystem. It is not affiliated with Rancher Labs or SUSE.
 This fork of [`rancher/cattle`](https://github.com/rancher/cattle) preserves
 upstream history, authorship, licenses, and dependency notices.
 
+## Source candidate: Engine 0.183.379
+
+This unpublished candidate adds manual scaling for non-global load balancers,
+with native role/Key checks and configuration/state preservation. An exactly
+bound canceled native Container start records a fixed failed receipt; a stopped
+state alone never establishes failure. Normal CI, original artifacts and release
+qualification are pending. Use the latest published component below.
+
 ## Latest published release: Engine 0.183.378
 
 [Engine 0.183.378](https://github.com/PastureStack/orchestration-engine/releases/tag/v0.183.378)
