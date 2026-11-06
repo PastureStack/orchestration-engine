@@ -1,14 +1,14 @@
 # Compatibility Contract
 
-## Engine 0.183.377 published
+## Engine 0.183.378 published
 
-Native audit queries can select one canonical API Key before pagination while retaining the current actor, account and live Key authorization. Only MySQL/MariaDB advertise this exact selector. H2/HSQLDB retain bounded history and explicitly reject selector requests.
+API Key detail reads project configured policy and native read-only capability information without changing effective authorization or mutation grants. TCP load-balancer creation requires explicit activation intent and 1–16 complete ordered rules. The native Stack/backend identities, exact reviewed configuration and current role/Key authority remain binding. Load-balancer start/stop uses the existing Service lifecycle and verifies preserved configuration.
 
-The private audit source adapter queries the fixed capability after fresh native GET/schema/Key checks and returns no audit rows. Its only new optional inputs are `keyId` and `capabilitiesOnly`. No resource method, arbitrary field or SQL endpoint is added. Errors never trigger an unfiltered retry, and no creation-time assumption truncates imported or HA history.
+The existing native audit Key selector remains supported only on MySQL/MariaDB. H2/HSQLDB retain bounded history and explicitly reject selector requests. Capability metadata grants no authority and errors never trigger an unfiltered retry.
 
-[The immutable release](https://github.com/PastureStack/orchestration-engine/releases/tag/v0.183.377) contains twelve original assets verified by anonymous bytes/SHA readback and a native attestation covering thirteen subjects. Original CI passed 445 suites / 4,053 tests with zero failures/errors and one inherited skip; all 238 required methods, 39 Linux build controls and 13 PIP controls passed. Packaged evidence covers 4 changed and 43 byte-identical published376 class families. The final 183-package Dapper table is unchanged. Raw/effective findings remain separate; workflow SLSA was not provided.
+[The immutable release](https://github.com/PastureStack/orchestration-engine/releases/tag/v0.183.378) contains twelve original assets verified by anonymous bytes/SHA readback and a native attestation covering thirteen subjects. Original CI passed 447 suites / 4,071 tests with zero failures/errors and one inherited skip; all 256 required methods, 39 Linux build controls and 13 PIP controls passed. Packaged evidence covers 8 changed/new and 41 byte-identical published377 class families. The final 183-package Dapper table is unchanged. C03 retains 1396 operation tuples, with no new role/field grants. Raw/effective findings remain separate; workflow SLSA was not provided.
 
-[Published metadata](https://github.com/PastureStack/orchestration-engine/releases/download/v0.183.377/engine377-release-metadata.json) separates producer `941cf517ddcd3eac46fb914ba79ccee633e3d532`, normal merge/tag target `83334ba62da37e8f9a013803c16d6525e6638760` and tested tree `047261e6ac1ae25e35fa539b95cf3e71c9c0d672` from this documentation commit. Matching Web217/Bridge0.2.19 and a qualified Server assembly are required. Native audit/layout, Container port and whole-243-group acceptance remain separate.
+[Published metadata](https://github.com/PastureStack/orchestration-engine/releases/download/v0.183.378/engine378-release-metadata.json) separates producer `967d4231a3eb592136d9bccb2cb36e34ce47efb7`, normal merge/tag target `1e7195e5a60376a05b3c27da3bae1590d799a8f5` and tested tree `d5138d3a41408cd1cae89e298baef1400e4f83f1` from this documentation commit. Matching Web218/Bridge0.2.20 and qualified Server assembly are required. Native Key-policy/TCP/LB lifecycle and whole-243-group acceptance remain separate.
 
 ## Engine 0.183.376 published
 
