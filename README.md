@@ -8,13 +8,19 @@ Rancher 1.6 ecosystem. It is not affiliated with Rancher Labs or SUSE.
 This fork of [`rancher/cattle`](https://github.com/rancher/cattle) preserves
 upstream history, authorship, licenses, and dependency notices.
 
-## Latest published release: Engine 0.183.377
+## Latest published release: Engine 0.183.378
 
-[Engine 0.183.377](https://github.com/PastureStack/orchestration-engine/releases/tag/v0.183.377)
+[Engine 0.183.378](https://github.com/PastureStack/orchestration-engine/releases/tag/v0.183.378)
 is published with twelve original assets verified by anonymous checksum readback
 and GitHub's cryptographic immutable-release attestation. Use the
 [Server installation guide](https://github.com/PastureStack/server#quick-start)
 for deployment; an Engine JAR alone is not a Server installation.
+
+API Key details now show configured policy and read-only capability information;
+they do not claim effective grants. Typed TCP load-balancer creation requires
+explicit activation intent and preserves each listener/backend choice. Load
+balancers can start or stop through the existing native lifecycle with their
+configuration preserved. These workflows retain human review and fresh authority.
 
 Audit-log reads can select an exact API Key through native authority on
 MySQL/MariaDB. A closed read-only capability probe reports support; H2/HSQLDB
@@ -47,9 +53,9 @@ owner, fresh role and Key limits, human approval and durable receipts. Compatibl
 Web/Bridge and Server components are required. Component publication does not
 establish native workflow or whole-243-group acceptance.
 
-The [published release note](https://github.com/PastureStack/orchestration-engine/releases/tag/v0.183.377)
-records 445 suites / 4,053 tests, zero failures/errors, one inherited skip,
-238 required Java methods (229 carried and 9 new), and 39 Linux build controls
+The [published release note](https://github.com/PastureStack/orchestration-engine/releases/tag/v0.183.378)
+records 447 suites / 4,071 tests, zero failures/errors, one inherited skip,
+256 required Java methods (238 carried and 18 new), and 39 Linux build controls
 with zero skips. Existing security findings remain disclosed. The build workflow
 did not provide SLSA attestations. Four independent AI opt-ins remain default-off.
 
@@ -192,7 +198,7 @@ Before publishing an Engine artifact, run the complete package gate:
 
 ```sh
 bash scripts/check-cattle-jdk25-full-package
-ENGINE_VERSION=0.183.377 bash scripts/build --release
+ENGINE_VERSION=0.183.378 bash scripts/build --release
 bash scripts/check-release-artifact dist/artifacts/cattle.jar
 ```
 
