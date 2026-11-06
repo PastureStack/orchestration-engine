@@ -34,6 +34,7 @@ import io.cattle.platform.object.util.DataAccessor;
 import io.cattle.platform.object.util.ObjectUtils;
 import io.cattle.platform.servicediscovery.api.service.ServiceDeploymentReadiness;
 import io.cattle.platform.servicediscovery.api.service.ServiceCreateValidation;
+import io.cattle.platform.iaas.api.port.InstanceCreatePortValidation;
 import io.cattle.platform.servicediscovery.api.service.ResourceArchiveChange;
 import io.github.ibuildthecloud.gdapi.context.ApiContext;
 import io.github.ibuildthecloud.gdapi.exception.ClientVisibleException;
@@ -74,6 +75,7 @@ public class AiResourceChangeDomain extends AbstractJooqDao {
     @Inject ApiKeyTargetResolver targets;
     @Inject ServiceDeploymentReadiness deploymentReadiness;
     @Inject ServiceCreateValidation serviceCreateValidation;
+    @Inject InstanceCreatePortValidation instanceCreatePortValidation;
     @Inject ResourceArchiveChange archiveChanges;
 
     /** This marker only exists on a fresh, server-created domain request. */
@@ -173,6 +175,12 @@ public class AiResourceChangeDomain extends AbstractJooqDao {
                     if (parameters.containsKey(field) && !Objects.equals(parameters.get(field), launch.get(field)))
                         throw error(403, "PermissionDenied");
                 serviceCreateValidation.validatePorts(request);
+            }
+            if (descriptor.createsResource() && "container".equals(descriptor.resourceType()) && parameters.containsKey("ports")) {
+                Map<String, Object> validated = copyMap(request.getRequestObject());
+                if (!Objects.equals(parameters.get("ports"), validated.get("ports"))) throw error(403, "PermissionDenied");
+                if (instanceCreatePortValidation == null) throw error(503, "ResourceChangePreflightUnavailable");
+                instanceCreatePortValidation.validateCreatePorts(request);
             }
             if ("dnsService".equals(descriptor.resourceType()) && Set.of("update_targets", "remove").contains(descriptor.operation())) {
                 Map<String, Object> references = aliasReferenceSnapshot(original, descriptor, publicId, parameters);
@@ -695,6 +703,8 @@ public class AiResourceChangeDomain extends AbstractJooqDao {
                         internalId("stack", (String) parameters.get("stackId")), serviceCreateValidation.imageUuid(image));
             }
             return "container".equals(descriptor.resourceType()) ? "stopped".equals(state)
+                    && (!parameters.containsKey("ports") || target instanceof Instance instance
+                        && AiCreatePorts.configuredMatch(parameters.get("ports"), DataAccessor.field(instance, "ports", Object.class)))
                     : "stack".equals(descriptor.resourceType()) && Set.of("active", "inactive").contains(state);
         }
         if ("container".equals(descriptor.resourceType())) return "stop".equals(descriptor.operation()) ? "stopped".equals(state)

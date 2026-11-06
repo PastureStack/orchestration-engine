@@ -115,7 +115,12 @@ public class AiResourceChangeDescriptorTest {
             Object decoded = new JacksonJsonMapper().readValue((String) summary, Object.class);
             assertEquals(parameters.get(field), decoded);
         }
-        for (String type : List.of("container", "stack", "externalService", "dnsService"))
+        var container = AiResourceChangeDescriptor.require("container", "create");
+        assertEquals(input.get("ports"), container.body(container.parameters(Map.of("name", "probe", "image", "busybox",
+                "ports", input.get("ports")))).get("ports"));
+        assertCode("ResourceChangeInputInvalid", () -> container.parameters(Map.of("name", "probe", "image", "busybox",
+                "healthCheck", input.get("healthCheck"))));
+        for (String type : List.of("stack", "externalService", "dnsService"))
             for (String field : List.of("ports", "healthCheck")) {
                 var unrelated = new LinkedHashMap<String, Object>(Map.of("name", "probe", "image", "busybox", "stackId", "1st3"));
                 unrelated.put(field, input.get(field));
