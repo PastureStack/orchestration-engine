@@ -61,9 +61,11 @@ public class AiResourceChangePlanService {
                 plan.put("parameters", parameters); plan.put("body", body);
                 if ("dnsService".equals(descriptor.resourceType()) && Set.of("update_targets", "remove").contains(descriptor.operation()))
                     plan.put("referenceSnapshot", domain.aliasReferenceSnapshot(request, descriptor, resourceId, parameters));
-                if (AiResourceChangeDomain.loadBalancerMetadata(descriptor))
+                if (AiLoadBalancerCreateChange.supports(descriptor))
+                    plan.put("referenceSnapshot", domain.loadBalancerCreateReferences(request, descriptor, parameters));
+                if (AiResourceChangeDomain.loadBalancerOwned(descriptor))
                     plan.put("referenceSnapshot", domain.loadBalancerMetadataContext(request, descriptor, resourceId));
-                plan.put("snapshot", targetSnapshot(descriptor, target)); plan.put("parentSnapshot", domain.snapshot(parent));
+                plan.put("snapshot", targetSnapshot(descriptor, target)); plan.put("parentSnapshot", parentSnapshot(descriptor, parent));
                 if (AiServiceUpgradeLifecycleChange.supports(descriptor)) {
                     Map<String, Object> reference = domain.upgradeLifecycleContext(request, descriptor, resourceId);
                     plan.put("referenceSnapshot", reference);
@@ -152,7 +154,7 @@ public class AiResourceChangePlanService {
             }
             requireEnabled();
             if (!clock.instant().isBefore(java.time.Instant.parse(text(plan.get("expiresAt"))))) throw error(409, "ResourceChangePlanExpired");
-            if (!targetSnapshot(descriptor, target).equals(plan.get("snapshot")) || !domain.snapshot(parent).equals(plan.get("parentSnapshot")))
+            if (!targetSnapshot(descriptor, target).equals(plan.get("snapshot")) || !parentSnapshot(descriptor, parent).equals(plan.get("parentSnapshot")))
                 throw error(409, "ResourceChangePlanStale");
             if (!descriptor.createsResource()) visibleTarget(request, descriptor, text(plan.get("resourceId")), target);
             domain.parent(request, descriptor, parameters); domain.ready(descriptor, target, parent);
@@ -180,7 +182,7 @@ public class AiResourceChangePlanService {
                         long numericId = createdId instanceof Number numeric ? numeric.longValue()
                                 : domain.internalId(descriptor.resourceType(), text(createdId));
                         if (numericId <= 0) throw new IllegalStateException("Created resource identity unavailable");
-                        if ("service".equals(descriptor.resourceType())) {
+                        if (Set.of("service", "loadBalancerService").contains(descriptor.resourceType())) {
                             Object uuid = ObjectUtils.getPropertyIgnoreErrors(result, "uuid");
                             if (!(uuid instanceof String identity) || identity.isBlank())
                                 throw new IllegalStateException("Created Service identity unavailable");
@@ -200,6 +202,10 @@ public class AiResourceChangePlanService {
             };
             return descriptor.changesArchive() ? domain.withArchiveChange(descriptor, target, change) : change.get();
         }));
+    }
+
+    private Map<String, Object> parentSnapshot(AiResourceChangeDescriptor descriptor, Object parent) {
+        return AiLoadBalancerCreateChange.supports(descriptor) ? domain.loadBalancerCreateParentSnapshot(parent) : domain.snapshot(parent);
     }
 
     private Map<String, Object> targetSnapshot(AiResourceChangeDescriptor descriptor, Object target) {
@@ -242,6 +248,7 @@ public class AiResourceChangePlanService {
         AiResourceChangeDescriptor descriptor = descriptor(plan);
         Object target = domain.receiptTarget(request, descriptor, plan);
         Map<String, Object> before = map(plan.get("snapshot"));
+        if (AiLoadBalancerCreateChange.supports(descriptor)) before.put("loadBalancerCreateBody", plan.get("body"));
         String lifecycleOutcome = AiServiceUpgradeLifecycleChange.supports(descriptor) ? domain.upgradeLifecycleProcessOutcome(plan, target) : null;
         if (AiServiceUpgradeLifecycleChange.supports(descriptor)) before.put("retirementSnapshot", plan.get("retirementSnapshot"));
         if ((lifecycleOutcome == null || "succeeded".equals(lifecycleOutcome)) && domain.complete(descriptor, target, map(plan.get("parameters")), before)) {

@@ -106,6 +106,23 @@ public class AiResourceChangePlanStore extends AbstractJooqDao {
                 && "update_metadata".equals(binding.get("operation")) && "PUT".equals(binding.get("method"));
     }
 
+    boolean loadBalancerCreateExecutionActive(String id, Map<String, Object> binding) {
+        return loadBalancerCreate(binding) && create().fetchCount(TABLE,
+                ID.eq(id).and(STATE.in("dispatching", "accepted", "running", "unknown")).and(FAILURE.isNull()).and(EXECUTION.eq(encode(binding)))) == 1;
+    }
+
+    boolean attestLoadBalancerCreateProcess(String id, Map<String, Object> before, Map<String, Object> after) {
+        if (!loadBalancerCreate(before) || before.containsKey("rootProcessId")) return false;
+        return create().update(TABLE).set(EXECUTION, encode(after))
+                .where(ID.eq(id).and(STATE.in("dispatching", "accepted", "running", "unknown")).and(FAILURE.isNull())
+                        .and(EXECUTION.eq(encode(before)))).execute() == 1;
+    }
+
+    private static boolean loadBalancerCreate(Map<String, Object> binding) {
+        return binding != null && "loadBalancerService".equals(binding.get("resourceType"))
+                && "create".equals(binding.get("operation")) && "POST".equals(binding.get("method"));
+    }
+
     boolean projectExecutionActive(String id, Map<String, Object> binding) {
         return AiProjectMetadataChange.metadataBinding(binding) && create().fetchCount(TABLE,
                 ID.eq(id).and(STATE.in("dispatching", "accepted", "running", "unknown")).and(FAILURE.isNull()).and(EXECUTION.eq(encode(binding)))) == 1;
@@ -163,6 +180,12 @@ public class AiResourceChangePlanStore extends AbstractJooqDao {
             for (Object child : children) if (child instanceof Map<?, ?> row && row.get("id") instanceof Number) services.add(row.get("id"));
         }
         binding.put("services", services);
+        if (AiLoadBalancerCreateChange.supports(descriptor)) {
+            Object references = plan.get("referenceSnapshot") instanceof Map<?, ?> snapshot ? snapshot.get("targets") : null;
+            binding.put("loadBalancerTargets", pins(references, List.of("id", "uuid", "accountId", "stackId", "stackUuid", "kind")));
+            Object parent = plan.get("parentSnapshot");
+            binding.put("loadBalancerParent", pins(List.of(parent), List.of("id", "uuid", "accountId", "kind")).getFirst());
+        }
         if ("dnsService".equals(descriptor.resourceType())) {
             Object references = plan.get("referenceSnapshot") instanceof Map<?, ?> snapshot ? snapshot.get("after") : null;
             binding.put("aliasReferences", pins(references, List.of("id", "uuid", "accountId", "stackId", "stackUuid", "kind")));

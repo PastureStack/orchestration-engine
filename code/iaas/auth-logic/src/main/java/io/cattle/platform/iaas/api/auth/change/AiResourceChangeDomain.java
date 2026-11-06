@@ -58,6 +58,8 @@ import java.util.function.Supplier;
 public class AiResourceChangeDomain extends AbstractJooqDao {
     private static final String DOMAIN = "ai.resource.change.domain.descriptor";
     private static final String PARENT_READ = "ai.resource.change.parent.read";
+    private static final String LB_CREATE_REFERENCE = "ai.resource.change.lb.create.reference";
+    private record LoadBalancerReference(ApiRequest request, String type, String publicId, String nativeId) { }
     private static final String ALIAS_REFERENCE = "ai.resource.change.alias.reference";
     private static final String LB_METADATA_STACK = "ai.resource.change.lb.metadata.stack";
     private static final String UPGRADE_LIFECYCLE_STACK = "ai.resource.change.upgrade.lifecycle.stack";
@@ -88,7 +90,7 @@ public class AiResourceChangeDomain extends AbstractJooqDao {
                 && request.getAttribute(ALIAS_REFERENCE) instanceof AliasReference reference
                 && Objects.equals(reference.type(), request.getType()) && (Objects.equals(reference.publicId(), request.getId())
                         || Objects.equals(reference.nativeId(), request.getId()))) return true;
-        if (loadBalancerMetadata(descriptor) && request.getAttribute(LB_METADATA_STACK) instanceof MetadataStackRead scope
+        if (loadBalancerOwned(descriptor) && request.getAttribute(LB_METADATA_STACK) instanceof MetadataStackRead scope
                 && scope.request() == request && "stack".equals(request.getType()) && "GET".equals(request.getMethod())
                 && request.getAction() == null && (Objects.equals(scope.publicId(), request.getId())
                         || Objects.equals(scope.nativeId(), request.getId()))) return true;
@@ -96,6 +98,11 @@ public class AiResourceChangeDomain extends AbstractJooqDao {
                 && scope.request() == request && "stack".equals(request.getType()) && "GET".equals(request.getMethod())
                 && request.getAction() == null && (Objects.equals(scope.publicId(), request.getId())
                         || Objects.equals(scope.nativeId(), request.getId()))) return true;
+        if (AiLoadBalancerCreateChange.supports(descriptor) && "GET".equals(request.getMethod()) && request.getAction() == null
+                && request.getAttribute(LB_CREATE_REFERENCE) instanceof LoadBalancerReference reference
+                && reference.request() == request && Set.of("service", "externalService").contains(reference.type())
+                && reference.type().equals(request.getType()) && (reference.publicId().equals(request.getId())
+                        || reference.nativeId().equals(request.getId()))) return true;
         if (!parent && !descriptor.resourceType().equals(request.getType())) return false;
         if ("GET".equals(request.getMethod()) && request.getAction() == null) return true;
         return !parent && descriptor.method().equals(request.getMethod()) && Objects.equals(descriptor.action(), request.getAction())
@@ -124,13 +131,15 @@ public class AiResourceChangeDomain extends AbstractJooqDao {
 
     private Object read(ApiRequest original, AiResourceChangeDescriptor descriptor, String type, String publicId, boolean parent) {
         ApiRequest request = domain(original, descriptor, type, publicId, "GET", null, new LinkedHashMap<>());
-        if (parent && loadBalancerMetadata(descriptor))
+        if (parent && loadBalancerOwned(descriptor))
             request.setAttribute(LB_METADATA_STACK, new MetadataStackRead(request, publicId, Long.toString(internalId("stack", publicId))));
         else if (parent && AiServiceUpgradeLifecycleChange.supports(descriptor))
             request.setAttribute(UPGRADE_LIFECYCLE_STACK, new MetadataStackRead(request, publicId, Long.toString(internalId("stack", publicId))));
         else if (parent) request.setAttribute(PARENT_READ, true);
         if ("dnsService".equals(descriptor.resourceType()) && !"dnsService".equals(type))
             request.setAttribute(ALIAS_REFERENCE, new AliasReference(type, publicId, Long.toString(internalId(type, publicId))));
+        if (AiLoadBalancerCreateChange.supports(descriptor) && Set.of("service", "externalService").contains(type))
+            request.setAttribute(LB_CREATE_REFERENCE, new LoadBalancerReference(request, type, publicId, Long.toString(internalId(type, publicId))));
         long selectedProject = "project".equals(type) ? actor(original).getAccountId() : -1;
         return authorized(original, request, () -> {
             Object row = manager(type).getById(type, request.getId(), new ListOptions(request));
@@ -159,13 +168,18 @@ public class AiResourceChangeDomain extends AbstractJooqDao {
                 descriptor.method(), descriptor.action(), body);
         return authorized(original, request, () -> {
             if (boundPlan != null) keys.authorizeBoundDomain(boundPlan, request);
-            if (loadBalancerMetadata(descriptor)) {
+            if (loadBalancerOwned(descriptor)) {
                 Map<String, Object> context = loadBalancerMetadataContext(original, descriptor, publicId);
                 if (boundPlan != null && !context.equals(boundPlan.get("referenceSnapshot"))) throw error(409, "ResourceChangePlanStale");
             }
             if (AiServiceUpgradeLifecycleChange.supports(descriptor)) {
                 Map<String, Object> context = upgradeLifecycleContext(original, descriptor, publicId);
                 if (boundPlan != null && !context.equals(boundPlan.get("referenceSnapshot"))) throw error(409, "ResourceChangePlanStale");
+            }
+            if (AiLoadBalancerCreateChange.supports(descriptor)) {
+                Map<String, Object> references = loadBalancerCreateReferences(original, descriptor, parameters);
+                if (boundPlan != null && !references.equals(boundPlan.get("referenceSnapshot"))) throw error(409, "ResourceChangePlanStale");
+                validateLoadBalancerCreate(descriptor, parameters, request);
             }
             validateExternalHealthCheck(descriptor, parameters, request);
             if (descriptor.createsResource() && "service".equals(descriptor.resourceType())) {
@@ -191,6 +205,40 @@ public class AiResourceChangeDomain extends AbstractJooqDao {
             }
             return copyMap(request.getRequestObject());
         });
+    }
+
+    public Map<String, Object> loadBalancerCreateParentSnapshot(Object parent) {
+        Map<String, Object> result = new LinkedHashMap<>();
+        for (String field : List.of("id", "uuid", "accountId", "kind", "name", "state", "removed"))
+            result.put(field, ObjectUtils.getPropertyIgnoreErrors(parent, field));
+        result.put("archived", Boolean.TRUE.equals(DataAccessor.field(parent, "archived", Object.class)));
+        return copyMap(result);
+    }
+
+    public Map<String, Object> loadBalancerCreateReferences(ApiRequest original, AiResourceChangeDescriptor descriptor,
+            Map<String, Object> parameters) {
+        if (!AiLoadBalancerCreateChange.supports(descriptor)) return Map.of();
+        Object destination = parent(original, descriptor, parameters);
+        if (!(destination instanceof io.cattle.platform.core.model.Stack destinationStack) || destinationStack.getUuid() == null)
+            throw error(404, "NotFound");
+        Map<Long, Map<String, Object>> references = new LinkedHashMap<>();
+        for (Map<String, Object> rule : AiLoadBalancerCreateChange.rules(parameters.get("portRules"))) {
+            long id = internalId("service", (String) rule.get("serviceId"));
+            if (references.containsKey(id)) continue;
+            Service candidate = objects.loadResource(Service.class, id);
+            if (candidate == null || !Set.of("service", "externalService").contains(candidate.getKind())) throw error(404, "NotFound");
+            Service visible = (Service) read(original, descriptor, candidate.getKind(), publicId(candidate.getKind(), id), false);
+            if (visible.getUuid() == null || visible.getStackId() == null || !Set.of("active", "inactive").contains(visible.getState())
+                    || "externalService".equals(visible.getKind()) && DataAccessor.fieldString(visible, "hostname") != null)
+                throw error(422, "ResourceChangeUnsupported");
+            var stack = (io.cattle.platform.core.model.Stack) read(original, descriptor, "stack", publicId("stack", visible.getStackId()), true);
+            if (stack.getUuid() == null) throw error(404, "NotFound");
+            Map<String, Object> pin = new LinkedHashMap<>();
+            for (String field : List.of("id", "uuid", "accountId", "stackId", "kind")) pin.put(field, ObjectUtils.getPropertyIgnoreErrors(visible, field));
+            pin.put("stackUuid", stack.getUuid()); pin.put("path", Objects.toString(stack.getName(), "") + " / " + Objects.toString(visible.getName(), ""));
+            references.put(id, pin);
+        }
+        return copyMap(Map.of("targets", new ArrayList<>(references.values())));
     }
 
     public List<Map<String, Object>> aliasReferences(ApiRequest original, AiResourceChangeDescriptor descriptor, Map<String, Object> parameters) {
@@ -258,7 +306,11 @@ public class AiResourceChangeDomain extends AbstractJooqDao {
                 descriptor.method(), descriptor.action(), descriptor.body(parameters));
         return authorized(original, request, () -> {
             validateExternalHealthCheck(descriptor, parameters, request);
-            if (loadBalancerMetadata(descriptor)) loadBalancerStack(original, descriptor, publicId);
+            if (AiLoadBalancerCreateChange.supports(descriptor)) {
+                validateLoadBalancerCreate(descriptor, parameters, request);
+                loadBalancerCreateReferences(original, descriptor, parameters);
+            }
+            if (loadBalancerOwned(descriptor)) loadBalancerStack(original, descriptor, publicId);
             if (AiServiceUpgradeLifecycleChange.supports(descriptor)) upgradeLifecycleStack(original, descriptor, publicId);
             request.setAttribute("apiKey.audit.requestId", planId);
             return processObserver.dispatch(request, planId, () -> {
@@ -274,6 +326,12 @@ public class AiResourceChangeDomain extends AbstractJooqDao {
                 return result;
             });
         });
+    }
+
+    private void validateLoadBalancerCreate(AiResourceChangeDescriptor descriptor, Map<String, Object> parameters, ApiRequest request) {
+        if (!AiLoadBalancerCreateChange.submittedMatches(descriptor.body(parameters), copyMap(request.getRequestObject()),
+                id -> internalId("service", id), id -> internalId("stack", id))) throw error(403, "PermissionDenied");
+        serviceCreateValidation.validatePorts(request);
     }
 
     private void validateExternalHealthCheck(AiResourceChangeDescriptor descriptor, Map<String, Object> parameters, ApiRequest request) {
@@ -370,6 +428,14 @@ public class AiResourceChangeDomain extends AbstractJooqDao {
         return "loadBalancerService".equals(descriptor.resourceType()) && "update_metadata".equals(descriptor.operation());
     }
 
+    static boolean loadBalancerLifecycle(AiResourceChangeDescriptor descriptor) {
+        return "loadBalancerService".equals(descriptor.resourceType()) && Set.of("start", "stop").contains(descriptor.operation());
+    }
+
+    static boolean loadBalancerOwned(AiResourceChangeDescriptor descriptor) {
+        return loadBalancerMetadata(descriptor) || loadBalancerLifecycle(descriptor);
+    }
+
     /** Only this new metadata plan uses a closed scalar snapshot; other Service/Stack snapshots stay unchanged. */
     public Map<String, Object> loadBalancerMetadataSnapshot(Object target) {
         if (target == null) return new LinkedHashMap<>();
@@ -381,7 +447,7 @@ public class AiResourceChangeDomain extends AbstractJooqDao {
     }
 
     public Map<String, Object> loadBalancerMetadataContext(ApiRequest request, AiResourceChangeDescriptor descriptor, String publicId) {
-        if (!loadBalancerMetadata(descriptor)) throw error(422, "ResourceChangeUnsupported");
+        if (!loadBalancerOwned(descriptor)) throw error(422, "ResourceChangeUnsupported");
         Object stack = loadBalancerStack(request, descriptor, publicId);
         Map<String, Object> result = new LinkedHashMap<>();
         for (String field : List.of("id", "uuid", "accountId", "kind", "name", "state", "removed"))
@@ -535,6 +601,10 @@ public class AiResourceChangeDomain extends AbstractJooqDao {
             result.put("certFingerprint", DataAccessor.fieldString(certificate, "certFingerprint"));
         }
         if (target instanceof Service service) {
+            if ("loadBalancerService".equals(service.getKind())) {
+                result.put("uuid", service.getUuid());
+                result.put("loadBalancerConfiguration", loadBalancerConfiguration(service));
+            }
             List<Map<String, Object>> instances = new ArrayList<>();
             for (ServiceExposeMap link : objects.find(ServiceExposeMap.class, "serviceId", service.getId(), "removed", null)) {
                 if (!Boolean.TRUE.equals(link.getManaged()) || link.getInstanceId() == null) continue;
@@ -562,6 +632,16 @@ public class AiResourceChangeDomain extends AbstractJooqDao {
             services.sort(java.util.Comparator.comparingLong(row -> number(row.get("id"))));
             result.put("childServices", services);
         }
+        return copyMap(result);
+    }
+
+    /** Private preservation operands, including nested ports/certificates/volumes; never accepted as action inputs. */
+    private Map<String, Object> loadBalancerConfiguration(Service service) {
+        Map<String, Object> result = new LinkedHashMap<>();
+        for (String field : List.of("lbConfig", "launchConfig", "secondaryLaunchConfigs", "scale", "ports",
+                "certificateIds", "defaultCertificateId", "volumes", "volumeMounts", "metadata", "labels",
+                "upgrade", "assignServiceIpAddress", "retainIp")) result.put(field, DataAccessor.field(service, field, Object.class));
+        result.put("selectorContainer", service.getSelectorContainer()); result.put("selectorLink", service.getSelectorLink());
         return copyMap(result);
     }
 
@@ -632,12 +712,20 @@ public class AiResourceChangeDomain extends AbstractJooqDao {
         if (target == null || !Objects.equals(ObjectUtils.getAccountId(target), actor.getAccountId())
                 || !matchesResourceType(descriptor.resourceType(), target) || current.policy().authorizeObject(target) == null)
             throw error(403, "PermissionDenied");
-        if (descriptor.createsResource() && "service".equals(descriptor.resourceType())
+        if (descriptor.createsResource() && Set.of("service", "loadBalancerService").contains(descriptor.resourceType())
                 && (number(ObjectUtils.getId(target)) != number(plan.get("internalResourceId"))
                     || !(plan.get("createdResourceUuid") instanceof String uuid) || uuid.isBlank()
                     || !uuid.equals(ObjectUtils.getPropertyIgnoreErrors(target, "uuid")))) throw error(403, "PermissionDenied");
         if (ObjectUtils.getRemoved(target) == null) visible(request, descriptor, (String) plan.get("resourceId"));
-        if (loadBalancerMetadata(descriptor)) {
+        if (AiLoadBalancerCreateChange.supports(descriptor)) {
+            Object parent = parent(request, descriptor, copyMap(plan.get("parameters")));
+            Map<String, Object> originalParent = copyMap(plan.get("parentSnapshot"));
+            if (!Set.of("succeeded", "failed", "cancelled").contains(Objects.toString(plan.get("status"), ""))
+                    && (!Objects.equals(ObjectUtils.getPropertyIgnoreErrors(parent, "uuid"), originalParent.get("uuid"))
+                        || !Objects.equals(ObjectUtils.getPropertyIgnoreErrors(target, "stackId"), ObjectUtils.getId(parent))))
+                throw error(409, "ResourceChangePlanStale");
+        }
+        if (loadBalancerOwned(descriptor)) {
             Map<String, Object> stack = loadBalancerMetadataContext(request, descriptor, (String) plan.get("resourceId"));
             // Completed receipts are historical; pending receipts must still prove the approved identity.
             if (!Set.of("succeeded", "failed", "cancelled").contains(Objects.toString(plan.get("status"), ""))) {
@@ -673,6 +761,15 @@ public class AiResourceChangeDomain extends AbstractJooqDao {
                     && before.get("retirementSnapshot") instanceof Map<?, ?> retirement
                     && upgradeLifecycleRetirementSettled((Service) target, copyMap(retirement));
         }
+        if (AiLoadBalancerCreateChange.supports(descriptor)) {
+            Map<String, Object> approved = copyMap(before.get("loadBalancerCreateBody"));
+            if (!(target instanceof Service service) || !(approved.get("launchConfig") instanceof Map<?, ?> launch)
+                    || !(launch.get("imageUuid") instanceof String image)) return false;
+            boolean start = Boolean.TRUE.equals(parameters.get("startOnCreate"));
+            return AiLoadBalancerCreateChange.configurationMatches(service, approved, internalId("stack", (String) parameters.get("stackId")),
+                    serviceCreateValidation.imageUuid(image), id -> internalId("service", id))
+                    && (start ? "active".equals(service.getState()) && serviceReady(service, true) : "inactive".equals(service.getState()));
+        }
         if ("dnsService".equals(descriptor.resourceType())) {
             Set<Long> expected = new java.util.LinkedHashSet<>();
             if (parameters.get("serviceIds") instanceof List<?> ids) for (Object id : ids) expected.add(internalId("service", (String) id));
@@ -707,10 +804,16 @@ public class AiResourceChangeDomain extends AbstractJooqDao {
                         && AiCreatePorts.configuredMatch(parameters.get("ports"), DataAccessor.field(instance, "ports", Object.class)))
                     : "stack".equals(descriptor.resourceType()) && Set.of("active", "inactive").contains(state);
         }
+        if (loadBalancerLifecycle(descriptor)) {
+            if (!(target instanceof Service service) || !parameters.isEmpty()) return false;
+            Map<String, Object> current = snapshot(service);
+            for (String field : List.of("id", "uuid", "accountId", "kind", "stackId", "name", "description", "loadBalancerConfiguration"))
+                if (!before.containsKey(field) || !Objects.equals(before.get(field), current.get(field))) return false;
+        }
         if ("container".equals(descriptor.resourceType())) return "stop".equals(descriptor.operation()) ? "stopped".equals(state)
                 : "running".equals(state) && (!"restart".equals(descriptor.operation())
                     || number(ObjectUtils.getPropertyIgnoreErrors(target, "startCount")) > number(before.get("startCount")));
-        if ("service".equals(descriptor.resourceType())) return "stop".equals(descriptor.operation())
+        if ("service".equals(descriptor.resourceType()) || loadBalancerLifecycle(descriptor)) return "stop".equals(descriptor.operation())
                 ? "inactive".equals(state) && serviceReady((Service) target, false) && priorInstancesStopped((Service) target, before)
                 : "active".equals(state) && serviceReady((Service) target, true)
                     && retiredInstancesSettled((Service) target, before)
@@ -831,6 +934,25 @@ public class AiResourceChangeDomain extends AbstractJooqDao {
     public List<Map<String, Object>> changes(AiResourceChangeDescriptor descriptor, Object target, Map<String, Object> parameters) {
         if (AiServiceUpgradeLifecycleChange.supports(descriptor)) return AiServiceUpgradeLifecycleChange.changes(descriptor, target);
         List<Map<String, Object>> result = new ArrayList<>();
+        if (AiLoadBalancerCreateChange.supports(descriptor)) {
+            Map<String, Object> reference = loadBalancerCreateReferences(ApiContext.getContext().getApiRequest(), descriptor, parameters);
+            Map<Long, String> paths = new LinkedHashMap<>();
+            for (Object item : (List<?>) reference.get("targets")) {
+                Map<?, ?> pin = (Map<?, ?>) item; paths.put(number(pin.get("id")), (String) pin.get("path"));
+            }
+            List<Map<String, Object>> rows = new ArrayList<>();
+            for (Map<String, Object> rule : AiLoadBalancerCreateChange.rules(parameters.get("portRules"))) {
+                Map<String, Object> row = new LinkedHashMap<>(rule);
+                row.put("target", paths.get(internalId("service", (String) row.remove("serviceId")))); rows.add(row);
+            }
+            result.add(change("name", null, parameters.get("name")));
+            if (parameters.containsKey("description")) result.add(change("description", null, parameters.get("description")));
+            result.add(change("portRules", null, displayed("portRules", rows)));
+            result.add(change("startOnCreate", null, parameters.get("startOnCreate")));
+            result.add(change("scale", null, 1));
+            result.add(change("image", null, ((Map<?, ?>) descriptor.body(parameters).get("launchConfig")).get("imageUuid")));
+            return result;
+        }
         if (descriptor.changesArchive()) return List.of(change("archived",
                 Boolean.TRUE.equals(DataAccessor.field(target, "archived", Object.class)), "archive".equals(descriptor.operation())));
         if ("dnsService".equals(descriptor.resourceType()) && "update_targets".equals(descriptor.operation())) {
@@ -906,7 +1028,7 @@ public class AiResourceChangeDomain extends AbstractJooqDao {
             try { value = AiExternalServiceChange.addresses(value); }
             catch (ClientVisibleException unsafe) { return null; }
         }
-        if (!Set.of("command", "entryPoint", "ports", "healthCheck", "externalIpAddresses", "targetServices").contains(field)) return value;
+        if (!Set.of("command", "entryPoint", "ports", "healthCheck", "externalIpAddresses", "targetServices", "portRules").contains(field)) return value;
         try { return json.writeValueAsString(value); }
         catch (IOException failure) { throw new IllegalStateException("Resource-change summary unavailable", failure); }
     }

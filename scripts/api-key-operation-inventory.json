@@ -220,22 +220,23 @@
     "defaultProcesses": "ebf41ab873c349656c307511712674e0db434a9c4986e08d03ec35d92bdcd6a7"
   },
   "currentSourceReview": {
-    "version": "unreleased-377-native-audit-key-selector",
+    "version": "unreleased-378-configured-key-and-tcp-lb",
     "status": "SOURCE_REEXTRACTED_NOT_ARTIFACT_OR_RUNTIME_ACCEPTANCE",
-    "baseCommit": "131c6c15c2809ca1fd26df62e0d402800c095d80",
+    "baseCommit": "3b42dc8cf4992da69d34bfa64b8fc467c24d7e7d",
     "sourceCandidate": "STAGED_NOT_COMMITTED",
     "producerCommit": null,
     "contract": "scripts/api-key-operation-contract.json",
-    "contractSha256": "9581bb5bd858ebc1d9d8c7471e97e53260825c4ff2d9b451a3f533f87411d766",
+    "contractSha256": "bb5c603197b4d2b1a3987fdd5c4f45bdb5d8aef5321d7bf1f3cb3870284c391c",
     "sourceInputs": {
       "algorithm": "c03-source-inputs-v1",
-      "count": 470,
-      "sha256": "1ac4f9ac567d1d076df1770f96d2f33e3e143334ddb3e575d30598d65d6a78a3",
+      "count": 472,
+      "sha256": "b465ddfa2028490c242b972c081add4b2ba1e09916cb7b0ee562646bca37310a",
       "anchors": [
         "AbstractObjectManager.java",
         "AbstractSchemaFactory.java",
         "AccountDaoImpl.java",
         "AiAliasServiceChange.java",
+        "AiApiKeyReadView.java",
         "AiAuditQuery.java",
         "AiAuditQueryInputHandler.java",
         "AiAuditQueryResourceManager.java",
@@ -275,6 +276,7 @@
         "AiCreatePorts.java",
         "AiExternalServiceChange.java",
         "AiHostMetadataChange.java",
+        "AiLoadBalancerCreateChange.java",
         "AiProcessDiagnostics.java",
         "AiProjectMetadataChange.java",
         "AiResourceChangeDescriptor.java",
@@ -367,57 +369,20 @@
     "addedTuples": [],
     "removedTuples": [],
     "changedTuples": [],
-    "roleFieldDelta": [
-      {
-        "path": "resources/content/schema/admin/admin-auth.json",
-        "field": "aiAuditSourcePageInput.keyId",
-        "before": null,
-        "after": "cr"
-      },
-      {
-        "path": "resources/content/schema/admin/admin-auth.json",
-        "field": "aiAuditSourcePageInput.capabilitiesOnly",
-        "before": null,
-        "after": "cr"
-      },
-      {
-        "path": "resources/content/schema/user/user-auth.json",
-        "field": "aiAuditSourcePageInput.keyId",
-        "before": null,
-        "after": "cr"
-      },
-      {
-        "path": "resources/content/schema/user/user-auth.json",
-        "field": "aiAuditSourcePageInput.capabilitiesOnly",
-        "before": null,
-        "after": "cr"
-      },
-      {
-        "path": "resources/content/schema/project/project-auth.json",
-        "field": "aiAuditSourcePageInput.keyId",
-        "before": null,
-        "after": "cr"
-      },
-      {
-        "path": "resources/content/schema/project/project-auth.json",
-        "field": "aiAuditSourcePageInput.capabilitiesOnly",
-        "before": null,
-        "after": "cr"
-      }
-    ],
+    "roleFieldDelta": [],
     "historicalInventoryPreserved": true,
     "previousReview": {
-      "version": "unreleased-376-container-create-ports",
+      "version": "unreleased-377-native-audit-key-selector",
       "status": "SOURCE_REEXTRACTED_NOT_ARTIFACT_OR_RUNTIME_ACCEPTANCE",
-      "baseCommit": "1fa84087d4b482c6415c81bcad076899aab7a6b4",
+      "baseCommit": "131c6c15c2809ca1fd26df62e0d402800c095d80",
       "sourceCandidate": "STAGED_NOT_COMMITTED",
       "producerCommit": null,
       "contract": "scripts/api-key-operation-contract.json",
-      "contractSha256": "7d2f9f32c4b94d64ed8b4da1a5943c6676e4a7dcdf4a39a4d31d962ed2c31a1b",
+      "contractSha256": "9581bb5bd858ebc1d9d8c7471e97e53260825c4ff2d9b451a3f533f87411d766",
       "sourceInputs": {
         "algorithm": "c03-source-inputs-v1",
-        "count": 469,
-        "sha256": "b71723882d57bb02d7c24b55f41e80a4ef88139c1c575ce8e4e31fa0e1445e25",
+        "count": 470,
+        "sha256": "1ac4f9ac567d1d076df1770f96d2f33e3e143334ddb3e575d30598d65d6a78a3",
         "anchors": [
           "AbstractObjectManager.java",
           "AbstractSchemaFactory.java",
@@ -486,6 +451,7 @@
           "ApiKeyQueryScopes.java",
           "ApiKeyTargetResolver.java",
           "ApiServerConfig.java",
+          "AuditLogKeySelector.java",
           "AuditLogOutPutFilter.java",
           "AuditServiceImpl.java",
           "CatalogLaunchTransformAuthorization.java",
@@ -553,20 +519,57 @@
       "addedTuples": [],
       "removedTuples": [],
       "changedTuples": [],
-      "roleFieldDelta": [],
+      "roleFieldDelta": [
+        {
+          "path": "resources/content/schema/admin/admin-auth.json",
+          "field": "aiAuditSourcePageInput.keyId",
+          "before": null,
+          "after": "cr"
+        },
+        {
+          "path": "resources/content/schema/admin/admin-auth.json",
+          "field": "aiAuditSourcePageInput.capabilitiesOnly",
+          "before": null,
+          "after": "cr"
+        },
+        {
+          "path": "resources/content/schema/user/user-auth.json",
+          "field": "aiAuditSourcePageInput.keyId",
+          "before": null,
+          "after": "cr"
+        },
+        {
+          "path": "resources/content/schema/user/user-auth.json",
+          "field": "aiAuditSourcePageInput.capabilitiesOnly",
+          "before": null,
+          "after": "cr"
+        },
+        {
+          "path": "resources/content/schema/project/project-auth.json",
+          "field": "aiAuditSourcePageInput.keyId",
+          "before": null,
+          "after": "cr"
+        },
+        {
+          "path": "resources/content/schema/project/project-auth.json",
+          "field": "aiAuditSourcePageInput.capabilitiesOnly",
+          "before": null,
+          "after": "cr"
+        }
+      ],
       "historicalInventoryPreserved": true,
       "previousReview": {
-        "version": "unreleased-375-project-update-transition",
+        "version": "unreleased-376-container-create-ports",
         "status": "SOURCE_REEXTRACTED_NOT_ARTIFACT_OR_RUNTIME_ACCEPTANCE",
-        "baseCommit": "e1d1466cd6375766dc8988c927a154f1cc95838d",
+        "baseCommit": "1fa84087d4b482c6415c81bcad076899aab7a6b4",
         "sourceCandidate": "STAGED_NOT_COMMITTED",
         "producerCommit": null,
         "contract": "scripts/api-key-operation-contract.json",
-        "contractSha256": "db010cd89e6a78c27579ad965f89d2aef38d976c3a6f7324f0798d751fb1caa2",
+        "contractSha256": "7d2f9f32c4b94d64ed8b4da1a5943c6676e4a7dcdf4a39a4d31d962ed2c31a1b",
         "sourceInputs": {
           "algorithm": "c03-source-inputs-v1",
-          "count": 466,
-          "sha256": "39aad424879990d9ad40f2797ad76720a7d3de7f6452016be805f14e3c833c30",
+          "count": 469,
+          "sha256": "b71723882d57bb02d7c24b55f41e80a4ef88139c1c575ce8e4e31fa0e1445e25",
           "anchors": [
             "AbstractObjectManager.java",
             "AbstractSchemaFactory.java",
@@ -608,6 +611,7 @@
             "AiCatalogLaunchResponseFilter.java",
             "AiCatalogLaunchRunner.java",
             "AiCatalogLaunchWorkflowTest.java",
+            "AiCreatePorts.java",
             "AiExternalServiceChange.java",
             "AiHostMetadataChange.java",
             "AiProcessDiagnostics.java",
@@ -653,6 +657,8 @@
             "HostDaoImpl.java",
             "IaasApiConfig.java",
             "InServiceUpgradeStrategy.java",
+            "InstanceCreatePortValidation.java",
+            "InstancePortsValidationFilter.java",
             "NotWritablePostProcessor.java",
             "PortBindingAddress.java",
             "PortPreflightInputs.java",
@@ -702,20 +708,21 @@
         "roleFieldDelta": [],
         "historicalInventoryPreserved": true,
         "previousReview": {
-          "version": "unreleased-374-service-upgrade-lifecycle",
+          "version": "unreleased-375-project-update-transition",
           "status": "SOURCE_REEXTRACTED_NOT_ARTIFACT_OR_RUNTIME_ACCEPTANCE",
-          "baseCommit": "434c8505d6f3d91724de353c848733fd32e31658",
+          "baseCommit": "e1d1466cd6375766dc8988c927a154f1cc95838d",
           "sourceCandidate": "STAGED_NOT_COMMITTED",
           "producerCommit": null,
           "contract": "scripts/api-key-operation-contract.json",
-          "contractSha256": "904307d9e9f9b223baabdf111d572ee7510ff9d688b68d64e1b560abbcadac4e",
+          "contractSha256": "db010cd89e6a78c27579ad965f89d2aef38d976c3a6f7324f0798d751fb1caa2",
           "sourceInputs": {
             "algorithm": "c03-source-inputs-v1",
-            "count": 465,
-            "sha256": "f82e28d4a05ed7614f243f3d6d39891a9e48d5f468e5e92922d855475ea5fe9d",
+            "count": 466,
+            "sha256": "39aad424879990d9ad40f2797ad76720a7d3de7f6452016be805f14e3c833c30",
             "anchors": [
               "AbstractObjectManager.java",
               "AbstractSchemaFactory.java",
+              "AccountDaoImpl.java",
               "AiAliasServiceChange.java",
               "AiAuditQuery.java",
               "AiAuditQueryInputHandler.java",
@@ -847,17 +854,17 @@
           "roleFieldDelta": [],
           "historicalInventoryPreserved": true,
           "previousReview": {
-            "version": "unreleased-373-bounded-process-diagnostics",
+            "version": "unreleased-374-service-upgrade-lifecycle",
             "status": "SOURCE_REEXTRACTED_NOT_ARTIFACT_OR_RUNTIME_ACCEPTANCE",
-            "baseCommit": "4f9c229cf388b83368505e9a8674ac65df9623a8",
+            "baseCommit": "434c8505d6f3d91724de353c848733fd32e31658",
             "sourceCandidate": "STAGED_NOT_COMMITTED",
             "producerCommit": null,
             "contract": "scripts/api-key-operation-contract.json",
-            "contractSha256": "b9285ded598d190aa40179950023b63054af3ccc7aad74644cb2c8880c75ff1b",
+            "contractSha256": "904307d9e9f9b223baabdf111d572ee7510ff9d688b68d64e1b560abbcadac4e",
             "sourceInputs": {
               "algorithm": "c03-source-inputs-v1",
-              "count": 464,
-              "sha256": "bbbeacca6f3c5b1196f2b999f97a895b30e588066ade406310124c099af2d4b7",
+              "count": 465,
+              "sha256": "f82e28d4a05ed7614f243f3d6d39891a9e48d5f468e5e92922d855475ea5fe9d",
               "anchors": [
                 "AbstractObjectManager.java",
                 "AbstractSchemaFactory.java",
@@ -910,6 +917,7 @@
                 "AiResourceViewResourceManager.java",
                 "AiResourceViewService.java",
                 "AiServiceCreateChange.java",
+                "AiServiceUpgradeLifecycleChange.java",
                 "AiServiceUpgradePlanInputHandler.java",
                 "AiServiceUpgradePlanService.java",
                 "AiToolCallEventService.java",
@@ -991,17 +999,17 @@
             "roleFieldDelta": [],
             "historicalInventoryPreserved": true,
             "previousReview": {
-              "version": "unreleased-372-selected-project-metadata",
+              "version": "unreleased-373-bounded-process-diagnostics",
               "status": "SOURCE_REEXTRACTED_NOT_ARTIFACT_OR_RUNTIME_ACCEPTANCE",
-              "baseCommit": "6b83fe2f6077386a981f7835e2a0cd8445cac281",
+              "baseCommit": "4f9c229cf388b83368505e9a8674ac65df9623a8",
               "sourceCandidate": "STAGED_NOT_COMMITTED",
               "producerCommit": null,
               "contract": "scripts/api-key-operation-contract.json",
-              "contractSha256": "c9f364ab6763d1a080800c851e2eda8b8c93eb6060b0dd0da0fc5d7b1df3014f",
+              "contractSha256": "b9285ded598d190aa40179950023b63054af3ccc7aad74644cb2c8880c75ff1b",
               "sourceInputs": {
                 "algorithm": "c03-source-inputs-v1",
-                "count": 463,
-                "sha256": "5341a75119cf267c98a9775ad17fc2e4e09e170a7e886bf9d4698d2ec9a2cef0",
+                "count": 464,
+                "sha256": "bbbeacca6f3c5b1196f2b999f97a895b30e588066ade406310124c099af2d4b7",
                 "anchors": [
                   "AbstractObjectManager.java",
                   "AbstractSchemaFactory.java",
@@ -1044,6 +1052,7 @@
                   "AiCatalogLaunchWorkflowTest.java",
                   "AiExternalServiceChange.java",
                   "AiHostMetadataChange.java",
+                  "AiProcessDiagnostics.java",
                   "AiProjectMetadataChange.java",
                   "AiResourceChangeDescriptor.java",
                   "AiResourceChangeDomain.java",
@@ -1131,63 +1140,20 @@
               "addedTuples": [],
               "removedTuples": [],
               "changedTuples": [],
-              "roleFieldDelta": [
-                {
-                  "role": "admin",
-                  "resourceType": "aiToolCallEvent",
-                  "field": "reasonDetail",
-                  "before": null,
-                  "after": "cr"
-                },
-                {
-                  "role": "admin",
-                  "resourceType": "aiToolCallEvent",
-                  "field": "supportedReasonDetails",
-                  "before": null,
-                  "after": "r"
-                },
-                {
-                  "role": "user",
-                  "resourceType": "aiToolCallEvent",
-                  "field": "reasonDetail",
-                  "before": null,
-                  "after": "cr"
-                },
-                {
-                  "role": "user",
-                  "resourceType": "aiToolCallEvent",
-                  "field": "supportedReasonDetails",
-                  "before": null,
-                  "after": "r"
-                },
-                {
-                  "role": "project",
-                  "resourceType": "aiToolCallEvent",
-                  "field": "reasonDetail",
-                  "before": null,
-                  "after": "cr"
-                },
-                {
-                  "role": "project",
-                  "resourceType": "aiToolCallEvent",
-                  "field": "supportedReasonDetails",
-                  "before": null,
-                  "after": "r"
-                }
-              ],
+              "roleFieldDelta": [],
               "historicalInventoryPreserved": true,
               "previousReview": {
-                "version": "unreleased-371-native-host-model-and-catalog-version-bootstrap",
+                "version": "unreleased-372-selected-project-metadata",
                 "status": "SOURCE_REEXTRACTED_NOT_ARTIFACT_OR_RUNTIME_ACCEPTANCE",
-                "baseCommit": "7f48482e17bec0eab1010fb045e1771b2b695caf",
-                "sourceCandidate": "WORKTREE_NOT_COMMITTED",
-                "producerCommit": "NOT_ASSIGNED_DURING_SOURCE_REVIEW",
+                "baseCommit": "6b83fe2f6077386a981f7835e2a0cd8445cac281",
+                "sourceCandidate": "STAGED_NOT_COMMITTED",
+                "producerCommit": null,
                 "contract": "scripts/api-key-operation-contract.json",
-                "contractSha256": "a01c913e43148af9044ce500e4754028e6a2e2b1dad6e79a2d8646a47da721f1",
+                "contractSha256": "c9f364ab6763d1a080800c851e2eda8b8c93eb6060b0dd0da0fc5d7b1df3014f",
                 "sourceInputs": {
                   "algorithm": "c03-source-inputs-v1",
-                  "count": 458,
-                  "sha256": "59ec478abbedf97403a9615c80785b9f69fc289b703650b8316c03730c1244f7",
+                  "count": 463,
+                  "sha256": "5341a75119cf267c98a9775ad17fc2e4e09e170a7e886bf9d4698d2ec9a2cef0",
                   "anchors": [
                     "AbstractObjectManager.java",
                     "AbstractSchemaFactory.java",
@@ -1230,6 +1196,7 @@
                     "AiCatalogLaunchWorkflowTest.java",
                     "AiExternalServiceChange.java",
                     "AiHostMetadataChange.java",
+                    "AiProjectMetadataChange.java",
                     "AiResourceChangeDescriptor.java",
                     "AiResourceChangeDomain.java",
                     "AiResourceChangePlanService.java",
@@ -1240,6 +1207,7 @@
                     "AiServiceCreateChange.java",
                     "AiServiceUpgradePlanInputHandler.java",
                     "AiServiceUpgradePlanService.java",
+                    "AiToolCallEventService.java",
                     "ApiAuditPayload.java",
                     "ApiAuthenticator.java",
                     "ApiCookieAuthentication.java",
@@ -1253,6 +1221,7 @@
                     "AuditLogOutPutFilter.java",
                     "AuditServiceImpl.java",
                     "CatalogLaunchTransformAuthorization.java",
+                    "ClientToolAuditEvent.java",
                     "DefaultAuthorizationProvider.java",
                     "DefaultObjectMetaDataManager.java",
                     "DefaultProcessInstanceImpl.java",
@@ -1275,6 +1244,8 @@
                     "PortSpec.java",
                     "ProcessAuthorization.java",
                     "ProcessEventDecorator.java",
+                    "ProjectAccessService.java",
+                    "ProjectResourceManager.java",
                     "RequestReRouterHandler.java",
                     "ResourceManagerRequestHandler.java",
                     "SchemaFactoryImpl.java",
@@ -1312,20 +1283,63 @@
                 "addedTuples": [],
                 "removedTuples": [],
                 "changedTuples": [],
-                "roleFieldDelta": [],
+                "roleFieldDelta": [
+                  {
+                    "role": "admin",
+                    "resourceType": "aiToolCallEvent",
+                    "field": "reasonDetail",
+                    "before": null,
+                    "after": "cr"
+                  },
+                  {
+                    "role": "admin",
+                    "resourceType": "aiToolCallEvent",
+                    "field": "supportedReasonDetails",
+                    "before": null,
+                    "after": "r"
+                  },
+                  {
+                    "role": "user",
+                    "resourceType": "aiToolCallEvent",
+                    "field": "reasonDetail",
+                    "before": null,
+                    "after": "cr"
+                  },
+                  {
+                    "role": "user",
+                    "resourceType": "aiToolCallEvent",
+                    "field": "supportedReasonDetails",
+                    "before": null,
+                    "after": "r"
+                  },
+                  {
+                    "role": "project",
+                    "resourceType": "aiToolCallEvent",
+                    "field": "reasonDetail",
+                    "before": null,
+                    "after": "cr"
+                  },
+                  {
+                    "role": "project",
+                    "resourceType": "aiToolCallEvent",
+                    "field": "supportedReasonDetails",
+                    "before": null,
+                    "after": "r"
+                  }
+                ],
                 "historicalInventoryPreserved": true,
                 "previousReview": {
-                  "version": "unreleased-370-host-metadata-readable-workloads-and-catalog-binding",
+                  "version": "unreleased-371-native-host-model-and-catalog-version-bootstrap",
                   "status": "SOURCE_REEXTRACTED_NOT_ARTIFACT_OR_RUNTIME_ACCEPTANCE",
-                  "baseCommit": "de1372f27117900a8940783efdaa0e90edeb415b",
+                  "baseCommit": "7f48482e17bec0eab1010fb045e1771b2b695caf",
                   "sourceCandidate": "WORKTREE_NOT_COMMITTED",
                   "producerCommit": "NOT_ASSIGNED_DURING_SOURCE_REVIEW",
                   "contract": "scripts/api-key-operation-contract.json",
-                  "contractSha256": "55ad6de95049436b43bcdc55ba910cdc09634cb7845a588980d4749fa945832b",
+                  "contractSha256": "a01c913e43148af9044ce500e4754028e6a2e2b1dad6e79a2d8646a47da721f1",
                   "sourceInputs": {
                     "algorithm": "c03-source-inputs-v1",
                     "count": 458,
-                    "sha256": "7082897c9cfe9d80534ac02a871e0ef4e79356f1c23a618aadd8616be89c3069",
+                    "sha256": "59ec478abbedf97403a9615c80785b9f69fc289b703650b8316c03730c1244f7",
                     "anchors": [
                       "AbstractObjectManager.java",
                       "AbstractSchemaFactory.java",
@@ -1453,18 +1467,19 @@
                   "roleFieldDelta": [],
                   "historicalInventoryPreserved": true,
                   "previousReview": {
-                    "version": "unreleased-369-volume-usage-safe-read",
+                    "version": "unreleased-370-host-metadata-readable-workloads-and-catalog-binding",
                     "status": "SOURCE_REEXTRACTED_NOT_ARTIFACT_OR_RUNTIME_ACCEPTANCE",
-                    "baseCommit": "f466d3e514cc08f1d826299826b0b5db27df5d2f",
+                    "baseCommit": "de1372f27117900a8940783efdaa0e90edeb415b",
                     "sourceCandidate": "WORKTREE_NOT_COMMITTED",
                     "producerCommit": "NOT_ASSIGNED_DURING_SOURCE_REVIEW",
                     "contract": "scripts/api-key-operation-contract.json",
-                    "contractSha256": "99aba456727ef358339aa9456aa711e36aa9d72448cf10886a665892b1e2d048",
+                    "contractSha256": "55ad6de95049436b43bcdc55ba910cdc09634cb7845a588980d4749fa945832b",
                     "sourceInputs": {
                       "algorithm": "c03-source-inputs-v1",
-                      "count": 449,
-                      "sha256": "5bbfd304067c39be44f7415ed00e654e2386ef8827f618a2f13ef6ed1c7562a3",
+                      "count": 458,
+                      "sha256": "7082897c9cfe9d80534ac02a871e0ef4e79356f1c23a618aadd8616be89c3069",
                       "anchors": [
+                        "AbstractObjectManager.java",
                         "AbstractSchemaFactory.java",
                         "AiAliasServiceChange.java",
                         "AiAuditQuery.java",
@@ -1504,6 +1519,7 @@
                         "AiCatalogLaunchRunner.java",
                         "AiCatalogLaunchWorkflowTest.java",
                         "AiExternalServiceChange.java",
+                        "AiHostMetadataChange.java",
                         "AiResourceChangeDescriptor.java",
                         "AiResourceChangeDomain.java",
                         "AiResourceChangePlanService.java",
@@ -1538,6 +1554,8 @@
                         "ExternalDynamicExtensionHandler.java",
                         "FileSchemaFactory.java",
                         "GenericWhitelistedProxy.java",
+                        "HostDao.java",
+                        "HostDaoImpl.java",
                         "IaasApiConfig.java",
                         "InServiceUpgradeStrategy.java",
                         "NotWritablePostProcessor.java",
@@ -1553,11 +1571,14 @@
                         "ServiceConsumeMapDaoImpl.java",
                         "ServiceCreate.java",
                         "ServiceCreateValidation.java",
+                        "ServiceDao.java",
+                        "ServiceDaoImpl.java",
                         "ServiceDiscoveryServiceImpl.java",
                         "ServiceUpgradeStrategy.java",
                         "ServiceUpgradeValidation.java",
                         "ServiceUpgradeValidationFilter.java",
                         "ServiceValidationFilter.java",
+                        "SystemServicesConfig.java",
                         "TokenAuthLookup.java",
                         "TransformInspect.java",
                         "VolumeDao.java",
@@ -1584,18 +1605,17 @@
                     "roleFieldDelta": [],
                     "historicalInventoryPreserved": true,
                     "previousReview": {
-                      "version": "unreleased-368-external-service-create-tcp-healthcheck",
+                      "version": "unreleased-369-volume-usage-safe-read",
                       "status": "SOURCE_REEXTRACTED_NOT_ARTIFACT_OR_RUNTIME_ACCEPTANCE",
-                      "baseCommit": "8678dec7dd261c2f2b68f329f0722d8edc91ac1f",
-                      "functionalSourceCommit": "2bd0ed5abffd3413422916b1df1aeaecb86fcb6a",
+                      "baseCommit": "f466d3e514cc08f1d826299826b0b5db27df5d2f",
                       "sourceCandidate": "WORKTREE_NOT_COMMITTED",
                       "producerCommit": "NOT_ASSIGNED_DURING_SOURCE_REVIEW",
                       "contract": "scripts/api-key-operation-contract.json",
-                      "contractSha256": "0fb84661147a50f27e51a8a9501ac52fb0d3cabac02e790d6522dfe8c556e5dd",
+                      "contractSha256": "99aba456727ef358339aa9456aa711e36aa9d72448cf10886a665892b1e2d048",
                       "sourceInputs": {
                         "algorithm": "c03-source-inputs-v1",
-                        "count": 447,
-                        "sha256": "da122b39e8ffac069b78d60c7234ff62cbb1995028efa835a7f717f8d02dee4c",
+                        "count": 449,
+                        "sha256": "5bbfd304067c39be44f7415ed00e654e2386ef8827f618a2f13ef6ed1c7562a3",
                         "anchors": [
                           "AbstractSchemaFactory.java",
                           "AiAliasServiceChange.java",
@@ -1692,6 +1712,8 @@
                           "ServiceValidationFilter.java",
                           "TokenAuthLookup.java",
                           "TransformInspect.java",
+                          "VolumeDao.java",
+                          "VolumeDaoImpl.java",
                           "VolumePreflightInputs.java",
                           "VolumePreflightService.java"
                         ],
@@ -1714,17 +1736,18 @@
                       "roleFieldDelta": [],
                       "historicalInventoryPreserved": true,
                       "previousReview": {
-                        "version": "unreleased-367-service-upgrade-strategy-audit-preview-native-action-lock-order-and-rollback-fence",
-                        "status": "SOURCE_REEXTRACTED_NOT_SIGNED_NOT_RUNTIME_ACCEPTANCE",
-                        "baseCommit": "c8cd1f8218d29e034c2569af1e0e8530c305ce50",
+                        "version": "unreleased-368-external-service-create-tcp-healthcheck",
+                        "status": "SOURCE_REEXTRACTED_NOT_ARTIFACT_OR_RUNTIME_ACCEPTANCE",
+                        "baseCommit": "8678dec7dd261c2f2b68f329f0722d8edc91ac1f",
+                        "functionalSourceCommit": "2bd0ed5abffd3413422916b1df1aeaecb86fcb6a",
                         "sourceCandidate": "WORKTREE_NOT_COMMITTED",
                         "producerCommit": "NOT_ASSIGNED_DURING_SOURCE_REVIEW",
                         "contract": "scripts/api-key-operation-contract.json",
-                        "contractSha256": "35b2b2447c0f07205b806ff7304aacb4a90ecface2558701dbde8725a56c50c8",
+                        "contractSha256": "0fb84661147a50f27e51a8a9501ac52fb0d3cabac02e790d6522dfe8c556e5dd",
                         "sourceInputs": {
                           "algorithm": "c03-source-inputs-v1",
                           "count": 447,
-                          "sha256": "66a5ce2ee5f4277993c03de0f72a08dd828ec65e4c447430248c1b093583ab59",
+                          "sha256": "da122b39e8ffac069b78d60c7234ff62cbb1995028efa835a7f717f8d02dee4c",
                           "anchors": [
                             "AbstractSchemaFactory.java",
                             "AiAliasServiceChange.java",
@@ -1840,96 +1863,25 @@
                         "addedTuples": [],
                         "removedTuples": [],
                         "changedTuples": [],
-                        "roleFieldDelta": [
-                          {
-                            "path": "resources/content/schema/admin/admin-auth.json",
-                            "pointer": "/authorize/aiServiceUpgradePlan.startFirst",
-                            "before": null,
-                            "after": "cr"
-                          },
-                          {
-                            "path": "resources/content/schema/admin/admin-auth.json",
-                            "pointer": "/authorize/aiServiceUpgradePlan.batchSize",
-                            "before": null,
-                            "after": "cr"
-                          },
-                          {
-                            "path": "resources/content/schema/admin/admin-auth.json",
-                            "pointer": "/authorize/aiServiceUpgradePlan.intervalMillis",
-                            "before": null,
-                            "after": "cr"
-                          },
-                          {
-                            "path": "resources/content/schema/admin/admin-auth.json",
-                            "pointer": "/authorize/aiServiceUpgradePlan.upgradeStrategy",
-                            "before": null,
-                            "after": "r"
-                          },
-                          {
-                            "path": "resources/content/schema/project/project-auth.json",
-                            "pointer": "/authorize/aiServiceUpgradePlan.startFirst",
-                            "before": null,
-                            "after": "cr"
-                          },
-                          {
-                            "path": "resources/content/schema/project/project-auth.json",
-                            "pointer": "/authorize/aiServiceUpgradePlan.batchSize",
-                            "before": null,
-                            "after": "cr"
-                          },
-                          {
-                            "path": "resources/content/schema/project/project-auth.json",
-                            "pointer": "/authorize/aiServiceUpgradePlan.intervalMillis",
-                            "before": null,
-                            "after": "cr"
-                          },
-                          {
-                            "path": "resources/content/schema/project/project-auth.json",
-                            "pointer": "/authorize/aiServiceUpgradePlan.upgradeStrategy",
-                            "before": null,
-                            "after": "r"
-                          },
-                          {
-                            "path": "resources/content/schema/user/user-auth.json",
-                            "pointer": "/authorize/aiServiceUpgradePlan.startFirst",
-                            "before": null,
-                            "after": "cr"
-                          },
-                          {
-                            "path": "resources/content/schema/user/user-auth.json",
-                            "pointer": "/authorize/aiServiceUpgradePlan.batchSize",
-                            "before": null,
-                            "after": "cr"
-                          },
-                          {
-                            "path": "resources/content/schema/user/user-auth.json",
-                            "pointer": "/authorize/aiServiceUpgradePlan.intervalMillis",
-                            "before": null,
-                            "after": "cr"
-                          },
-                          {
-                            "path": "resources/content/schema/user/user-auth.json",
-                            "pointer": "/authorize/aiServiceUpgradePlan.upgradeStrategy",
-                            "before": null,
-                            "after": "r"
-                          }
-                        ],
+                        "roleFieldDelta": [],
                         "historicalInventoryPreserved": true,
                         "previousReview": {
-                          "version": "unreleased-366-service-create-native-ports-healthcheck-and-catalog-projection",
+                          "version": "unreleased-367-service-upgrade-strategy-audit-preview-native-action-lock-order-and-rollback-fence",
                           "status": "SOURCE_REEXTRACTED_NOT_SIGNED_NOT_RUNTIME_ACCEPTANCE",
-                          "baseCommit": "259ef59e8110fab71488d5dbd8c9affda4279217",
-                          "sourceCandidate": "9efe87becb752287072e2257c949680fed75282d",
+                          "baseCommit": "c8cd1f8218d29e034c2569af1e0e8530c305ce50",
+                          "sourceCandidate": "WORKTREE_NOT_COMMITTED",
+                          "producerCommit": "NOT_ASSIGNED_DURING_SOURCE_REVIEW",
                           "contract": "scripts/api-key-operation-contract.json",
-                          "contractSha256": "8af458ac13a30c611fde008992297ad77b6fb40e237d615b7397e74e4302c820",
+                          "contractSha256": "35b2b2447c0f07205b806ff7304aacb4a90ecface2558701dbde8725a56c50c8",
                           "sourceInputs": {
                             "algorithm": "c03-source-inputs-v1",
-                            "count": 441,
-                            "sha256": "7ce17c8b05ccfba961414808148d8638bf54a9ad3bbc7de00facfcba4b26ac39",
+                            "count": 447,
+                            "sha256": "66a5ce2ee5f4277993c03de0f72a08dd828ec65e4c447430248c1b093583ab59",
                             "anchors": [
                               "AbstractSchemaFactory.java",
                               "AiAliasServiceChange.java",
                               "AiAuditQuery.java",
+                              "AiAuditQueryInputHandler.java",
                               "AiAuditQueryResourceManager.java",
                               "AiAuditQueryRunner.java",
                               "AiAuditQueryService.java",
@@ -1973,6 +1925,8 @@
                               "AiResourceViewResourceManager.java",
                               "AiResourceViewService.java",
                               "AiServiceCreateChange.java",
+                              "AiServiceUpgradePlanInputHandler.java",
+                              "AiServiceUpgradePlanService.java",
                               "ApiAuditPayload.java",
                               "ApiAuthenticator.java",
                               "ApiCookieAuthentication.java",
@@ -1998,6 +1952,7 @@
                               "FileSchemaFactory.java",
                               "GenericWhitelistedProxy.java",
                               "IaasApiConfig.java",
+                              "InServiceUpgradeStrategy.java",
                               "NotWritablePostProcessor.java",
                               "PortBindingAddress.java",
                               "PortPreflightInputs.java",
@@ -2012,9 +1967,14 @@
                               "ServiceCreate.java",
                               "ServiceCreateValidation.java",
                               "ServiceDiscoveryServiceImpl.java",
+                              "ServiceUpgradeStrategy.java",
+                              "ServiceUpgradeValidation.java",
+                              "ServiceUpgradeValidationFilter.java",
                               "ServiceValidationFilter.java",
                               "TokenAuthLookup.java",
-                              "TransformInspect.java"
+                              "TransformInspect.java",
+                              "VolumePreflightInputs.java",
+                              "VolumePreflightService.java"
                             ],
                             "markers": [
                               "@Type",
@@ -2032,68 +1992,92 @@
                           "addedTuples": [],
                           "removedTuples": [],
                           "changedTuples": [],
-                          "roleProjectionDelta": [
+                          "roleFieldDelta": [
                             {
                               "path": "resources/content/schema/admin/admin-auth.json",
-                              "pointer": "/authorize/aiResourceChangePlan.executionResult",
+                              "pointer": "/authorize/aiServiceUpgradePlan.startFirst",
+                              "before": null,
+                              "after": "cr"
+                            },
+                            {
+                              "path": "resources/content/schema/admin/admin-auth.json",
+                              "pointer": "/authorize/aiServiceUpgradePlan.batchSize",
+                              "before": null,
+                              "after": "cr"
+                            },
+                            {
+                              "path": "resources/content/schema/admin/admin-auth.json",
+                              "pointer": "/authorize/aiServiceUpgradePlan.intervalMillis",
+                              "before": null,
+                              "after": "cr"
+                            },
+                            {
+                              "path": "resources/content/schema/admin/admin-auth.json",
+                              "pointer": "/authorize/aiServiceUpgradePlan.upgradeStrategy",
                               "before": null,
                               "after": "r"
                             },
                             {
                               "path": "resources/content/schema/project/project-auth.json",
-                              "pointer": "/authorize/aiResourceChangePlan.executionResult",
+                              "pointer": "/authorize/aiServiceUpgradePlan.startFirst",
+                              "before": null,
+                              "after": "cr"
+                            },
+                            {
+                              "path": "resources/content/schema/project/project-auth.json",
+                              "pointer": "/authorize/aiServiceUpgradePlan.batchSize",
+                              "before": null,
+                              "after": "cr"
+                            },
+                            {
+                              "path": "resources/content/schema/project/project-auth.json",
+                              "pointer": "/authorize/aiServiceUpgradePlan.intervalMillis",
+                              "before": null,
+                              "after": "cr"
+                            },
+                            {
+                              "path": "resources/content/schema/project/project-auth.json",
+                              "pointer": "/authorize/aiServiceUpgradePlan.upgradeStrategy",
                               "before": null,
                               "after": "r"
                             },
                             {
                               "path": "resources/content/schema/user/user-auth.json",
-                              "pointer": "/authorize/aiResourceChangePlan.executionResult",
+                              "pointer": "/authorize/aiServiceUpgradePlan.startFirst",
+                              "before": null,
+                              "after": "cr"
+                            },
+                            {
+                              "path": "resources/content/schema/user/user-auth.json",
+                              "pointer": "/authorize/aiServiceUpgradePlan.batchSize",
+                              "before": null,
+                              "after": "cr"
+                            },
+                            {
+                              "path": "resources/content/schema/user/user-auth.json",
+                              "pointer": "/authorize/aiServiceUpgradePlan.intervalMillis",
+                              "before": null,
+                              "after": "cr"
+                            },
+                            {
+                              "path": "resources/content/schema/user/user-auth.json",
+                              "pointer": "/authorize/aiServiceUpgradePlan.upgradeStrategy",
                               "before": null,
                               "after": "r"
                             }
                           ],
-                          "materializerDynamicProjection": {
-                            "source": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/ai/catalog/AiCatalogLaunchMaterializer.java",
-                            "rootCause": "DockerTransformer stores imageUuid/environment/ports/logConfig in InstanceRecord data.fields; the five-argument WrappedResource constructor did not receive that dynamic value map, so the real role-schema projection omitted required business values.",
-                            "fix": "Pass a fresh LinkedHashMap copy of DataUtils.getFields(instance) to the seven-argument WrappedResource constructor. Keep the existing current-role SchemaFactory, ID formatter, POST and createResponse=false behavior.",
-                            "preservedBusinessValues": [
-                              "native docker imageUuid",
-                              "environment exact scalar including embedded equals",
-                              "fixed native ports",
-                              "logConfig driver/config",
-                              "bean-backed service name"
-                            ],
-                            "visibilityBoundary": "Current native role schema remains authoritative. Hidden environment, read-on-create-only ports/logConfig and unlisted dynamic fields remain absent; no role or Key authority expansion, raw bypass or new environment-input channel.",
-                            "focusedTests": {
-                              "newMethods": [
-                                "dynamicProjectionKeepsRestrictedSchemaAndNonCreateResponseRules",
-                                "realTransformerDynamicFieldsReachNativeRoleSchemaProjection"
-                              ],
-                              "existingAffectedMethods": [
-                                "preparedGraphSeparatesNativeMutationFromAuthorizedPublicReferenceIds"
-                              ],
-                              "tests": 3,
-                              "failures": 0,
-                              "errors": 0,
-                              "skipped": 0,
-                              "evidenceFile": "engine366-materializer-dynamic-fields-focused-20261102.json",
-                              "evidenceSha256": "24ea39c3caf6f6664735e67308246db34a07c59f384cccea48d9e2b171cbd35a",
-                              "usesRealDockerTransformerAndNativeSchemas": true
-                            },
-                            "runtimeAcceptance": "PENDING_MATCHING_ARTIFACT_AND_NATIVE_QA; no live pass claimed"
-                          },
                           "historicalInventoryPreserved": true,
-                          "producerCommit": "NOT_ASSIGNED_UNSIGNED_C03_REVIEW",
                           "previousReview": {
-                            "version": "unreleased-365-catalog-private-native-wire-fix",
+                            "version": "unreleased-366-service-create-native-ports-healthcheck-and-catalog-projection",
                             "status": "SOURCE_REEXTRACTED_NOT_SIGNED_NOT_RUNTIME_ACCEPTANCE",
-                            "baseCommit": "aae91b38e1448ee4739cd4d361480e3fe633d925",
+                            "baseCommit": "259ef59e8110fab71488d5dbd8c9affda4279217",
+                            "sourceCandidate": "9efe87becb752287072e2257c949680fed75282d",
                             "contract": "scripts/api-key-operation-contract.json",
-                            "contractSha256": "fe3148ca74f9373fddc617be7ee518ac4d3618e38eed4038c227cb440c6347f1",
+                            "contractSha256": "8af458ac13a30c611fde008992297ad77b6fb40e237d615b7397e74e4302c820",
                             "sourceInputs": {
                               "algorithm": "c03-source-inputs-v1",
-                              "count": 432,
-                              "sha256": "fdf53022efdab0e56edb292da037216be051643770565c090424124be8b115ea",
+                              "count": 441,
+                              "sha256": "7ce17c8b05ccfba961414808148d8638bf54a9ad3bbc7de00facfcba4b26ac39",
                               "anchors": [
                                 "AbstractSchemaFactory.java",
                                 "AiAliasServiceChange.java",
@@ -2140,6 +2124,7 @@
                                 "AiResourceChangeProcessObserver.java",
                                 "AiResourceViewResourceManager.java",
                                 "AiResourceViewService.java",
+                                "AiServiceCreateChange.java",
                                 "ApiAuditPayload.java",
                                 "ApiAuthenticator.java",
                                 "ApiCookieAuthentication.java",
@@ -2166,12 +2151,20 @@
                                 "GenericWhitelistedProxy.java",
                                 "IaasApiConfig.java",
                                 "NotWritablePostProcessor.java",
+                                "PortBindingAddress.java",
+                                "PortPreflightInputs.java",
+                                "PortPreflightService.java",
+                                "PortSpec.java",
                                 "ProcessAuthorization.java",
                                 "ProcessEventDecorator.java",
                                 "RequestReRouterHandler.java",
                                 "ResourceManagerRequestHandler.java",
                                 "SchemaFactoryImpl.java",
                                 "ServiceConsumeMapDaoImpl.java",
+                                "ServiceCreate.java",
+                                "ServiceCreateValidation.java",
+                                "ServiceDiscoveryServiceImpl.java",
+                                "ServiceValidationFilter.java",
                                 "TokenAuthLookup.java",
                                 "TransformInspect.java"
                               ],
@@ -2191,18 +2184,68 @@
                             "addedTuples": [],
                             "removedTuples": [],
                             "changedTuples": [],
+                            "roleProjectionDelta": [
+                              {
+                                "path": "resources/content/schema/admin/admin-auth.json",
+                                "pointer": "/authorize/aiResourceChangePlan.executionResult",
+                                "before": null,
+                                "after": "r"
+                              },
+                              {
+                                "path": "resources/content/schema/project/project-auth.json",
+                                "pointer": "/authorize/aiResourceChangePlan.executionResult",
+                                "before": null,
+                                "after": "r"
+                              },
+                              {
+                                "path": "resources/content/schema/user/user-auth.json",
+                                "pointer": "/authorize/aiResourceChangePlan.executionResult",
+                                "before": null,
+                                "after": "r"
+                              }
+                            ],
+                            "materializerDynamicProjection": {
+                              "source": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/ai/catalog/AiCatalogLaunchMaterializer.java",
+                              "rootCause": "DockerTransformer stores imageUuid/environment/ports/logConfig in InstanceRecord data.fields; the five-argument WrappedResource constructor did not receive that dynamic value map, so the real role-schema projection omitted required business values.",
+                              "fix": "Pass a fresh LinkedHashMap copy of DataUtils.getFields(instance) to the seven-argument WrappedResource constructor. Keep the existing current-role SchemaFactory, ID formatter, POST and createResponse=false behavior.",
+                              "preservedBusinessValues": [
+                                "native docker imageUuid",
+                                "environment exact scalar including embedded equals",
+                                "fixed native ports",
+                                "logConfig driver/config",
+                                "bean-backed service name"
+                              ],
+                              "visibilityBoundary": "Current native role schema remains authoritative. Hidden environment, read-on-create-only ports/logConfig and unlisted dynamic fields remain absent; no role or Key authority expansion, raw bypass or new environment-input channel.",
+                              "focusedTests": {
+                                "newMethods": [
+                                  "dynamicProjectionKeepsRestrictedSchemaAndNonCreateResponseRules",
+                                  "realTransformerDynamicFieldsReachNativeRoleSchemaProjection"
+                                ],
+                                "existingAffectedMethods": [
+                                  "preparedGraphSeparatesNativeMutationFromAuthorizedPublicReferenceIds"
+                                ],
+                                "tests": 3,
+                                "failures": 0,
+                                "errors": 0,
+                                "skipped": 0,
+                                "evidenceFile": "engine366-materializer-dynamic-fields-focused-20261102.json",
+                                "evidenceSha256": "24ea39c3caf6f6664735e67308246db34a07c59f384cccea48d9e2b171cbd35a",
+                                "usesRealDockerTransformerAndNativeSchemas": true
+                              },
+                              "runtimeAcceptance": "PENDING_MATCHING_ARTIFACT_AND_NATIVE_QA; no live pass claimed"
+                            },
                             "historicalInventoryPreserved": true,
-                            "producerCommit": "NOT_ASSIGNED_UNSIGNED_OVERLAY",
+                            "producerCommit": "NOT_ASSIGNED_UNSIGNED_C03_REVIEW",
                             "previousReview": {
-                              "version": "unreleased-365-native-validation-cleanup-fixes",
+                              "version": "unreleased-365-catalog-private-native-wire-fix",
                               "status": "SOURCE_REEXTRACTED_NOT_SIGNED_NOT_RUNTIME_ACCEPTANCE",
-                              "baseCommit": "a335cf8513d8ddb61d1e90f19a9a70769b8ede04",
+                              "baseCommit": "aae91b38e1448ee4739cd4d361480e3fe633d925",
                               "contract": "scripts/api-key-operation-contract.json",
-                              "contractSha256": "a1b07004f7e6d40c91c60a7cf88bab15d99ea5602f5347333717027098946bcb",
+                              "contractSha256": "fe3148ca74f9373fddc617be7ee518ac4d3618e38eed4038c227cb440c6347f1",
                               "sourceInputs": {
                                 "algorithm": "c03-source-inputs-v1",
                                 "count": 432,
-                                "sha256": "5a8f5d8159d22c989733c92568916e936915a7d5a81724e3f082af3b65523f43",
+                                "sha256": "fdf53022efdab0e56edb292da037216be051643770565c090424124be8b115ea",
                                 "anchors": [
                                   "AbstractSchemaFactory.java",
                                   "AiAliasServiceChange.java",
@@ -2301,17 +2344,17 @@
                               "removedTuples": [],
                               "changedTuples": [],
                               "historicalInventoryPreserved": true,
-                              "producerCommit": "NOT_ASSIGNED_UNSIGNED_WORKTREE",
+                              "producerCommit": "NOT_ASSIGNED_UNSIGNED_OVERLAY",
                               "previousReview": {
-                                "version": "unreleased-364-native-lifecycle-fixes",
+                                "version": "unreleased-365-native-validation-cleanup-fixes",
                                 "status": "SOURCE_REEXTRACTED_NOT_SIGNED_NOT_RUNTIME_ACCEPTANCE",
-                                "baseCommit": "fcc23550a937f473b92e3adf5014bc3fa1096aef",
+                                "baseCommit": "a335cf8513d8ddb61d1e90f19a9a70769b8ede04",
                                 "contract": "scripts/api-key-operation-contract.json",
-                                "contractSha256": "0456695780b3b53bdbd034dd640dc21776b0242b5828f2aff56ab230eb722c6a",
+                                "contractSha256": "a1b07004f7e6d40c91c60a7cf88bab15d99ea5602f5347333717027098946bcb",
                                 "sourceInputs": {
                                   "algorithm": "c03-source-inputs-v1",
                                   "count": 432,
-                                  "sha256": "169fe350bed9358c2d9cbdac24f75c8636258325f2a92305507ad06e79c993e1",
+                                  "sha256": "5a8f5d8159d22c989733c92568916e936915a7d5a81724e3f082af3b65523f43",
                                   "anchors": [
                                     "AbstractSchemaFactory.java",
                                     "AiAliasServiceChange.java",
@@ -2412,15 +2455,15 @@
                                 "historicalInventoryPreserved": true,
                                 "producerCommit": "NOT_ASSIGNED_UNSIGNED_WORKTREE",
                                 "previousReview": {
-                                  "version": "unreleased-363-external-review-before",
+                                  "version": "unreleased-364-native-lifecycle-fixes",
                                   "status": "SOURCE_REEXTRACTED_NOT_SIGNED_NOT_RUNTIME_ACCEPTANCE",
-                                  "baseCommit": "4c69935fa8177e9f9ae675cdd00702a45be72f33",
+                                  "baseCommit": "fcc23550a937f473b92e3adf5014bc3fa1096aef",
                                   "contract": "scripts/api-key-operation-contract.json",
-                                  "contractSha256": "1d0f71fa4913f3725b076ad0675f804e6297af9c7ef4a1036fd4acabd10da2c7",
+                                  "contractSha256": "0456695780b3b53bdbd034dd640dc21776b0242b5828f2aff56ab230eb722c6a",
                                   "sourceInputs": {
                                     "algorithm": "c03-source-inputs-v1",
-                                    "count": 431,
-                                    "sha256": "5bd56f773b6d57827ee04cfb5fb51f3e9ff95969a152edbbbff40abf3bb338fc",
+                                    "count": 432,
+                                    "sha256": "169fe350bed9358c2d9cbdac24f75c8636258325f2a92305507ad06e79c993e1",
                                     "anchors": [
                                       "AbstractSchemaFactory.java",
                                       "AiAliasServiceChange.java",
@@ -2487,6 +2530,7 @@
                                       "EngineContext.java",
                                       "EventBasedProcessHandler.java",
                                       "EventDiagnostics.java",
+                                      "ExternalDeploymentUnitInstance.java",
                                       "ExternalDynamicExtensionHandler.java",
                                       "FileSchemaFactory.java",
                                       "GenericWhitelistedProxy.java",
@@ -2520,15 +2564,15 @@
                                   "historicalInventoryPreserved": true,
                                   "producerCommit": "NOT_ASSIGNED_UNSIGNED_WORKTREE",
                                   "previousReview": {
-                                    "version": "unreleased-362-service-index-cleanup",
+                                    "version": "unreleased-363-external-review-before",
                                     "status": "SOURCE_REEXTRACTED_NOT_SIGNED_NOT_RUNTIME_ACCEPTANCE",
-                                    "baseCommit": "06d5bf0dac57bf3be63fa7ce868c8d5fec2508ce",
+                                    "baseCommit": "4c69935fa8177e9f9ae675cdd00702a45be72f33",
                                     "contract": "scripts/api-key-operation-contract.json",
-                                    "contractSha256": "0c28b642db338e44a8fac584f5502d77b18f591c31e5a28ea744afc850a114fd",
+                                    "contractSha256": "1d0f71fa4913f3725b076ad0675f804e6297af9c7ef4a1036fd4acabd10da2c7",
                                     "sourceInputs": {
                                       "algorithm": "c03-source-inputs-v1",
                                       "count": 431,
-                                      "sha256": "28e69f831778a7355fbcdbcb66a6af18467a15404861492fb4baa57ca64c5048",
+                                      "sha256": "5bd56f773b6d57827ee04cfb5fb51f3e9ff95969a152edbbbff40abf3bb338fc",
                                       "anchors": [
                                         "AbstractSchemaFactory.java",
                                         "AiAliasServiceChange.java",
@@ -2628,14 +2672,15 @@
                                     "historicalInventoryPreserved": true,
                                     "producerCommit": "NOT_ASSIGNED_UNSIGNED_WORKTREE",
                                     "previousReview": {
+                                      "version": "unreleased-362-service-index-cleanup",
                                       "status": "SOURCE_REEXTRACTED_NOT_SIGNED_NOT_RUNTIME_ACCEPTANCE",
-                                      "baseCommit": "48c052d569364e962938f1d2b6442330456113c3",
+                                      "baseCommit": "06d5bf0dac57bf3be63fa7ce868c8d5fec2508ce",
                                       "contract": "scripts/api-key-operation-contract.json",
-                                      "contractSha256": "f7c76b5500654d6e05adf869c50d67d7d376e93119b5a93db933edd4c7d0c7b4",
+                                      "contractSha256": "0c28b642db338e44a8fac584f5502d77b18f591c31e5a28ea744afc850a114fd",
                                       "sourceInputs": {
                                         "algorithm": "c03-source-inputs-v1",
                                         "count": 431,
-                                        "sha256": "ef3f2b2d2fd8b8ec62e6231d8318a7bc9d69dfe6d6949588ca397373d8bb9308",
+                                        "sha256": "28e69f831778a7355fbcdbcb66a6af18467a15404861492fb4baa57ca64c5048",
                                         "anchors": [
                                           "AbstractSchemaFactory.java",
                                           "AiAliasServiceChange.java",
@@ -2733,62 +2778,172 @@
                                       "removedTuples": [],
                                       "changedTuples": [],
                                       "historicalInventoryPreserved": true,
-                                      "producerCommit": "NOT_ASSIGNED_UNSIGNED_WORKTREE"
+                                      "producerCommit": "NOT_ASSIGNED_UNSIGNED_WORKTREE",
+                                      "previousReview": {
+                                        "status": "SOURCE_REEXTRACTED_NOT_SIGNED_NOT_RUNTIME_ACCEPTANCE",
+                                        "baseCommit": "48c052d569364e962938f1d2b6442330456113c3",
+                                        "contract": "scripts/api-key-operation-contract.json",
+                                        "contractSha256": "f7c76b5500654d6e05adf869c50d67d7d376e93119b5a93db933edd4c7d0c7b4",
+                                        "sourceInputs": {
+                                          "algorithm": "c03-source-inputs-v1",
+                                          "count": 431,
+                                          "sha256": "ef3f2b2d2fd8b8ec62e6231d8318a7bc9d69dfe6d6949588ca397373d8bb9308",
+                                          "anchors": [
+                                            "AbstractSchemaFactory.java",
+                                            "AiAliasServiceChange.java",
+                                            "AiAuditQuery.java",
+                                            "AiAuditQueryResourceManager.java",
+                                            "AiAuditQueryRunner.java",
+                                            "AiAuditQueryService.java",
+                                            "AiAuditSourcePage.java",
+                                            "AiAuditSourcePageInput.java",
+                                            "AiCatalogLaunchAccess.java",
+                                            "AiCatalogLaunchAccessTest.java",
+                                            "AiCatalogLaunchBinding.java",
+                                            "AiCatalogLaunchBindingTest.java",
+                                            "AiCatalogLaunchDelegation.java",
+                                            "AiCatalogLaunchDelegationTest.java",
+                                            "AiCatalogLaunchGateway.java",
+                                            "AiCatalogLaunchGraph.java",
+                                            "AiCatalogLaunchHumanInputTest.java",
+                                            "AiCatalogLaunchInput.java",
+                                            "AiCatalogLaunchMaterializer.java",
+                                            "AiCatalogLaunchMaterializerTest.java",
+                                            "AiCatalogLaunchObservation.java",
+                                            "AiCatalogLaunchObservationTest.java",
+                                            "AiCatalogLaunchOptionsResourceManager.java",
+                                            "AiCatalogLaunchOptionsService.java",
+                                            "AiCatalogLaunchOptionsStore.java",
+                                            "AiCatalogLaunchOptionsStoreTest.java",
+                                            "AiCatalogLaunchOwnerContractTest.java",
+                                            "AiCatalogLaunchPlanResourceManager.java",
+                                            "AiCatalogLaunchPlanService.java",
+                                            "AiCatalogLaunchPlanStore.java",
+                                            "AiCatalogLaunchPlanStoreTest.java",
+                                            "AiCatalogLaunchPrivate.java",
+                                            "AiCatalogLaunchPrivateTest.java",
+                                            "AiCatalogLaunchProspectiveParentTest.java",
+                                            "AiCatalogLaunchResponseFilter.java",
+                                            "AiCatalogLaunchRunner.java",
+                                            "AiCatalogLaunchWorkflowTest.java",
+                                            "AiExternalServiceChange.java",
+                                            "AiResourceChangeDescriptor.java",
+                                            "AiResourceChangeDomain.java",
+                                            "AiResourceChangePlanService.java",
+                                            "AiResourceChangePlanStore.java",
+                                            "AiResourceChangeProcessObserver.java",
+                                            "AiResourceViewResourceManager.java",
+                                            "AiResourceViewService.java",
+                                            "ApiAuditPayload.java",
+                                            "ApiAuthenticator.java",
+                                            "ApiCookieAuthentication.java",
+                                            "ApiKeyAuditSink.java",
+                                            "ApiKeyAuthorizationService.java",
+                                            "ApiKeyOperations.java",
+                                            "ApiKeyProcessAuthorization.java",
+                                            "ApiKeyQueryScopes.java",
+                                            "ApiKeyTargetResolver.java",
+                                            "ApiServerConfig.java",
+                                            "AuditLogOutPutFilter.java",
+                                            "AuditServiceImpl.java",
+                                            "CatalogLaunchTransformAuthorization.java",
+                                            "DefaultAuthorizationProvider.java",
+                                            "DefaultObjectMetaDataManager.java",
+                                            "DefaultProcessInstanceImpl.java",
+                                            "DefaultProcessesParser.java",
+                                            "EngineContext.java",
+                                            "EventBasedProcessHandler.java",
+                                            "EventDiagnostics.java",
+                                            "ExternalDynamicExtensionHandler.java",
+                                            "FileSchemaFactory.java",
+                                            "GenericWhitelistedProxy.java",
+                                            "IaasApiConfig.java",
+                                            "NotWritablePostProcessor.java",
+                                            "ProcessAuthorization.java",
+                                            "ProcessEventDecorator.java",
+                                            "RequestReRouterHandler.java",
+                                            "ResourceManagerRequestHandler.java",
+                                            "SchemaFactoryImpl.java",
+                                            "ServiceConsumeMapDaoImpl.java",
+                                            "TokenAuthLookup.java",
+                                            "TransformInspect.java"
+                                          ],
+                                          "markers": [
+                                            "@Type",
+                                            "@Actions",
+                                            " getLinkInternal(",
+                                            " getLink(",
+                                            " resourceActionInternal(",
+                                            " collectionActionInternal(",
+                                            " resourceAction(",
+                                            " collectionAction("
+                                          ]
+                                        },
+                                        "tupleCount": 1396,
+                                        "tupleSha256": "8f1c0fb378663b0b3d272efba2f211cb210eb6f17cb8035aefa33b56feeaf36a",
+                                        "addedTuples": [],
+                                        "removedTuples": [],
+                                        "changedTuples": [],
+                                        "historicalInventoryPreserved": true,
+                                        "producerCommit": "NOT_ASSIGNED_UNSIGNED_WORKTREE"
+                                      }
                                     }
                                   }
                                 }
                               }
-                            }
+                            },
+                            "reviewManifest": "scripts/api-key-operation-review-0.183.366.json",
+                            "reviewManifestSha256": "44e30398885ac2eee8af7aef8bcc576c2b3d90b347e30cef6ecc96469934f0c7"
                           },
-                          "reviewManifest": "scripts/api-key-operation-review-0.183.366.json",
-                          "reviewManifestSha256": "44e30398885ac2eee8af7aef8bcc576c2b3d90b347e30cef6ecc96469934f0c7"
+                          "reviewManifest": "scripts/api-key-operation-review-0.183.367.json",
+                          "reviewManifestSha256": "d4ecd4a95d4d541b5042f410aafcf64342c2d8900a899e93fedb7b640b395669",
+                          "nativeActionOperandLockOrder": {
+                            "owners": [
+                              "aiCatalogStackLaunchPlan",
+                              "aiResourceChangePlan",
+                              "aiServiceUpgradePlan"
+                            ],
+                            "rootCause": "Outer native API write transaction retained a prefetch row lock after application-lock release; concurrent receipt GET inverted lock order.",
+                            "fix": "Native Catalog-launch, resource-change and upgrade action operands use only exact framework request markers and authorized read snapshots. No prefetch observation writes or retained plan/credential row locks precede the action application lock. Ordinary GET observation and final action owner, role, Key revision, source/snapshot, CAS and one-claim checks remain; no timeout, retry, schema or grant expansion. New upgrade plans bind the complete strategy in their private target snapshot so older engines reject them before claim; genuine legacy image-only plans keep classic snapshots and original defaults.",
+                            "lockTimeoutChanges": 0,
+                            "retryChanges": 0,
+                            "removedLocks": 0,
+                            "databaseChanges": 0,
+                            "uiPollingCausalityClaimed": false,
+                            "runtimeAcceptanceClaimed": false
+                          }
                         },
-                        "reviewManifest": "scripts/api-key-operation-review-0.183.367.json",
-                        "reviewManifestSha256": "d4ecd4a95d4d541b5042f410aafcf64342c2d8900a899e93fedb7b640b395669",
-                        "nativeActionOperandLockOrder": {
-                          "owners": [
-                            "aiCatalogStackLaunchPlan",
-                            "aiResourceChangePlan",
-                            "aiServiceUpgradePlan"
-                          ],
-                          "rootCause": "Outer native API write transaction retained a prefetch row lock after application-lock release; concurrent receipt GET inverted lock order.",
-                          "fix": "Native Catalog-launch, resource-change and upgrade action operands use only exact framework request markers and authorized read snapshots. No prefetch observation writes or retained plan/credential row locks precede the action application lock. Ordinary GET observation and final action owner, role, Key revision, source/snapshot, CAS and one-claim checks remain; no timeout, retry, schema or grant expansion. New upgrade plans bind the complete strategy in their private target snapshot so older engines reject them before claim; genuine legacy image-only plans keep classic snapshots and original defaults.",
-                          "lockTimeoutChanges": 0,
-                          "retryChanges": 0,
-                          "removedLocks": 0,
-                          "databaseChanges": 0,
-                          "uiPollingCausalityClaimed": false,
-                          "runtimeAcceptanceClaimed": false
-                        }
+                        "reviewManifest": "scripts/api-key-operation-review-0.183.368.json",
+                        "reviewManifestSha256": "71c1ab8fe2080bfda7a52c9a8349754c0c67b48a9eb16b6181a42ce8a4528d15"
                       },
-                      "reviewManifest": "scripts/api-key-operation-review-0.183.368.json",
-                      "reviewManifestSha256": "71c1ab8fe2080bfda7a52c9a8349754c0c67b48a9eb16b6181a42ce8a4528d15"
+                      "reviewManifest": "scripts/api-key-operation-review-0.183.369.json",
+                      "reviewManifestSha256": "8adb6a02225e5806561146b83a34461eb6d640fddf5a0a8aa552d0ccf81d53c9"
                     },
-                    "reviewManifest": "scripts/api-key-operation-review-0.183.369.json",
-                    "reviewManifestSha256": "8adb6a02225e5806561146b83a34461eb6d640fddf5a0a8aa552d0ccf81d53c9"
+                    "reviewManifest": "scripts/api-key-operation-review-0.183.370.json",
+                    "reviewManifestSha256": "0d2859a40044d1f1085748b9be65192e9df4d20e2967a02eee1b2f967b8fa4ea"
                   },
-                  "reviewManifest": "scripts/api-key-operation-review-0.183.370.json",
-                  "reviewManifestSha256": "0d2859a40044d1f1085748b9be65192e9df4d20e2967a02eee1b2f967b8fa4ea"
+                  "reviewManifest": "scripts/api-key-operation-review-0.183.371.json",
+                  "reviewManifestSha256": "ea469a6e29b2c528f2bc6854b0387fc16efa6de4ffc322a431628b214ca68eaa"
                 },
-                "reviewManifest": "scripts/api-key-operation-review-0.183.371.json",
-                "reviewManifestSha256": "ea469a6e29b2c528f2bc6854b0387fc16efa6de4ffc322a431628b214ca68eaa"
+                "reviewManifest": "scripts/api-key-operation-review-0.183.372.json",
+                "reviewManifestSha256": "2ef2e71ed37802abaa1d3c4e023087da0bcfae7e084f342ba37ed58f54c86f97"
               },
-              "reviewManifest": "scripts/api-key-operation-review-0.183.372.json",
-              "reviewManifestSha256": "2ef2e71ed37802abaa1d3c4e023087da0bcfae7e084f342ba37ed58f54c86f97"
+              "reviewManifest": "scripts/api-key-operation-review-0.183.373.json",
+              "reviewManifestSha256": "20715cd218405d0e53e2c56f14d7568b8e0850bf0ac5f3b0688e52c871d9f280"
             },
-            "reviewManifest": "scripts/api-key-operation-review-0.183.373.json",
-            "reviewManifestSha256": "20715cd218405d0e53e2c56f14d7568b8e0850bf0ac5f3b0688e52c871d9f280"
+            "reviewManifest": "scripts/api-key-operation-review-0.183.374.json",
+            "reviewManifestSha256": "3d8594ef703dc3bedfd600b5226e8980c1bb7a6664abaa3839b8a68bb8400c2e"
           },
-          "reviewManifest": "scripts/api-key-operation-review-0.183.374.json",
-          "reviewManifestSha256": "3d8594ef703dc3bedfd600b5226e8980c1bb7a6664abaa3839b8a68bb8400c2e"
+          "reviewManifest": "scripts/api-key-operation-review-0.183.375.json",
+          "reviewManifestSha256": "52edfa0dc6515f9281e9dbc1330019cad82e51453731ccc059c9f191806c69ad"
         },
-        "reviewManifest": "scripts/api-key-operation-review-0.183.375.json",
-        "reviewManifestSha256": "52edfa0dc6515f9281e9dbc1330019cad82e51453731ccc059c9f191806c69ad"
+        "reviewManifest": "scripts/api-key-operation-review-0.183.376.json",
+        "reviewManifestSha256": "866c1fe4d5185e37cb3c57dca564c7bfe685e3b450fb5ac05aa2dcc9398948b5"
       },
-      "reviewManifest": "scripts/api-key-operation-review-0.183.376.json",
-      "reviewManifestSha256": "866c1fe4d5185e37cb3c57dca564c7bfe685e3b450fb5ac05aa2dcc9398948b5"
+      "reviewManifest": "scripts/api-key-operation-review-0.183.377.json",
+      "reviewManifestSha256": "ab0b7c09f3fa6aa25c10828f825fd63ed2557ad357d1bad69cc7c51f4cb76842"
     },
-    "reviewManifest": "scripts/api-key-operation-review-0.183.377.json",
-    "reviewManifestSha256": "ab0b7c09f3fa6aa25c10828f825fd63ed2557ad357d1bad69cc7c51f4cb76842"
+    "reviewManifest": "scripts/api-key-operation-review-0.183.378.json",
+    "reviewManifestSha256": "43b507913d9c741266d660e91069cc76e0614d1a0fd962501a8ba48a0130f02d"
   }
 }

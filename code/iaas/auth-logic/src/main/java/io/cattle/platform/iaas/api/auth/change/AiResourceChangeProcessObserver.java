@@ -30,11 +30,22 @@ public class AiResourceChangeProcessObserver implements ProcessAuthorizationHook
     @Inject AiResourceChangePlanStore store;
     @Inject ObjectManager objects;
     @Inject ApiKeyTargetResolver targets;
+    @Inject io.cattle.platform.servicediscovery.api.service.ServiceCreateValidation serviceCreateValidation;
 
     /** No HTTP field/header can construct this private, request-identity-bound value. */
     private record Dispatch(ApiRequest request, String id) { }
 
     public <T> T dispatch(ApiRequest request, String id, Supplier<T> operation) {
+        if ("loadBalancerService".equals(request.getType()) && "POST".equals(request.getMethod())
+                && request.getId() == null && request.getAction() == null) {
+            Map<String, Object> approved = store.load(id);
+            try {
+                Object body = store.json.readValue(store.json.writeValueAsString(request.getRequestObject()));
+                if (approved == null || !id.equals(approved.get("operationId")) || !"dispatching".equals(approved.get("status"))
+                        || !"loadBalancerService".equals(approved.get("resourceType")) || !"create".equals(approved.get("operation"))
+                        || !Objects.equals(approved.get("body"), body)) throw new IllegalStateException("Approved TCP create body unavailable");
+            } catch (java.io.IOException invalid) { throw new IllegalStateException("Approved TCP create body unavailable"); }
+        }
         ApiKeyCredentialContext key = ApiKeyCredentialContext.get(request);
         if (key == null) return operation.get();
         Map<String, Object> binding = store.execution(id);
@@ -46,7 +57,7 @@ public class AiResourceChangeProcessObserver implements ProcessAuthorizationHook
                 || number(binding.get("credentialId")) != key.credentialId() || number(binding.get("credentialRevision")) != key.revision()
                 || !Objects.equals(binding.get("credentialKind"), key.kind()) || !requestMatches(binding, request))
             throw new IllegalStateException("Resource-change execution binding unavailable");
-        if ("loadBalancerService".equals(binding.get("resourceType"))) {
+        if ("loadBalancerService".equals(binding.get("resourceType")) && "update_metadata".equals(binding.get("operation"))) {
             Map<String, Object> plan = store.load(id);
             if (plan == null || !(plan.get("parameters") instanceof Map<?, ?> approved) || approved.isEmpty()
                     || !Set.of("name", "description").containsAll(approved.keySet()) || !approved.equals(request.getRequestObject()))
@@ -106,6 +117,11 @@ public class AiResourceChangeProcessObserver implements ProcessAuthorizationHook
     }
 
     @Override public void beforeExecution(LaunchConfiguration config, Map<String, Object> metadata) {
+        if (metadata.get("requestId") instanceof String createId && createId.matches("aichange-[0-9a-f-]{36}")
+                && "loadBalancerService".equals(metadata.get("targetType")) && "POST".equals(metadata.get("requestMethod"))
+                && metadata.get("requestAction") == null && Boolean.TRUE.equals(metadata.get("requestCollection"))
+                && "service".equals(config.getResourceType()) && "service.create".equals(config.getProcessName())
+                && !attestsLoadBalancerCreate(config, metadata)) throw new ProcessAuthorizationDeniedException("OwnerPermissionDenied");
         if (metadata.get("requestId") instanceof String id && id.matches("aichange-[0-9a-f-]{36}")
                 && "loadBalancerService".equals(metadata.get("targetType")) && "PUT".equals(metadata.get("requestMethod"))
                 && "service".equals(config.getResourceType()) && "service.update".equals(config.getProcessName())
@@ -124,7 +140,8 @@ public class AiResourceChangeProcessObserver implements ProcessAuthorizationHook
         for (int attempt = 0; attempt < 3; attempt++) {
             Map<String, Object> binding = store.execution(id);
             if (binding == null || list(binding.get("initial")).isEmpty() || !metadataMatches(binding, metadata)) return;
-            if (AiProjectMetadataChange.metadataBinding(binding) && binding.get("rootProcessId") instanceof Number processId
+            if ((AiProjectMetadataChange.metadataBinding(binding) || "loadBalancerService".equals(binding.get("resourceType"))
+                    && "create".equals(binding.get("operation"))) && binding.get("rootProcessId") instanceof Number processId
                     && processId.longValue() != record.getId()) return;
             if (!provenChild(binding, config, metadata)) return;
             if (store.recordAuthorizationDenied(id, binding) || AiResourceChangePlanStore.AUTHORIZATION_DENIED.equals(store.failure(id))) return;
@@ -437,6 +454,50 @@ public class AiResourceChangeProcessObserver implements ProcessAuthorizationHook
                 return prior.longValue() == record.getId() && store.loadBalancerMetadataExecutionActive(id, binding);
             Map<String, Object> after = new LinkedHashMap<>(binding); after.put("rootProcessId", record.getId());
             if (store.attestLoadBalancerMetadataProcess(id, binding, after)) return true;
+        }
+        return false;
+    }
+
+    private boolean attestsLoadBalancerCreate(LaunchConfiguration config, Map<String, Object> metadata) {
+        if (!(config instanceof ProcessRecord record) || record.getId() == null || record.getId() <= 0
+                || !(metadata.get("requestId") instanceof String id) || !ProcessAuthorization.metadata(config).equals(metadata)) return false;
+        for (int attempt = 0; attempt < 2; attempt++) {
+            Map<String, Object> binding = store.execution(id), plan = store.load(id);
+            if (binding == null || plan == null || !"loadBalancerService".equals(binding.get("resourceType"))
+                    || !"create".equals(binding.get("operation")) || !id.equals(plan.get("operationId"))
+                    || !metadataMatches(binding, metadata) || !provenChild(binding, config, metadata)) return false;
+            Object root = objects.loadResource("service", number(binding.get("rootId")));
+            if (!(root instanceof Service service) || service.getRemoved() != null || list(binding.get("loadBalancerTargets")).isEmpty()
+                    || !(binding.get("loadBalancerParent") instanceof Map<?, ?> parent)
+                    || number(parent.get("id")) != number(binding.get("rootStackId"))
+                    || !Objects.equals(parent.get("uuid"), binding.get("rootStackUuid"))) return false;
+            if (!(plan.get("body") instanceof Map<?, ?> rawBody) || !(rawBody.get("launchConfig") instanceof Map<?, ?> launch)
+                    || !(launch.get("imageUuid") instanceof String image)) return false;
+            Map<String, Object> approvedBody = new LinkedHashMap<>();
+            for (var entry : rawBody.entrySet()) if (entry.getKey() instanceof String name) approvedBody.put(name, entry.getValue());
+            if (!AiLoadBalancerCreateChange.configurationMatches(service, approvedBody, number(parent.get("id")),
+                    serviceCreateValidation.imageUuid(image), target -> targets.parseScopeId("service", target))) return false;
+            for (Object item : list(binding.get("loadBalancerTargets"))) {
+                if (!(item instanceof Map<?, ?> pin)) return false;
+                Service target = objects.loadResource(Service.class, number(pin.get("id")));
+                var stack = objects.loadResource(io.cattle.platform.core.model.Stack.class, number(pin.get("stackId")));
+                if (target == null || target.getRemoved() != null || stack == null || stack.getRemoved() != null
+                        || !ownedRow(target, number(binding.get("accountId"))) || !ownedRow(stack, number(binding.get("accountId")))
+                        || !Objects.equals(pin.get("uuid"), target.getUuid()) || !Objects.equals(pin.get("kind"), target.getKind())
+                        || number(pin.get("stackId")) != number(target.getStackId()) || !Objects.equals(pin.get("stackUuid"), stack.getUuid())) return false;
+            }
+            var persisted = objects.loadResource(io.cattle.platform.core.model.ProcessInstance.class, record.getId());
+            if (persisted == null || persisted.getEndTime() != null || !Objects.equals(persisted.getId(), record.getId())
+                    || !Objects.equals(persisted.getAccountId(), config.getAccountId())
+                    || !Objects.equals(persisted.getProcessName(), config.getProcessName())
+                    || !Objects.equals(persisted.getResourceType(), config.getResourceType())
+                    || !Objects.equals(persisted.getResourceId(), config.getResourceId()) || !Objects.equals(persisted.getData(), config.getData())
+                    || !(persisted.getData().get(ProcessAuthorization.DATA_KEY) instanceof Map<?, ?> raw)
+                    || !metadata.equals(raw) || !metadata.equals(ProcessAuthorization.sanitize(raw))) return false;
+            if (binding.get("rootProcessId") instanceof Number prior)
+                return prior.longValue() == record.getId() && store.loadBalancerCreateExecutionActive(id, binding);
+            Map<String, Object> after = new LinkedHashMap<>(binding); after.put("rootProcessId", record.getId());
+            if (store.attestLoadBalancerCreateProcess(id, binding, after)) return true;
         }
         return false;
     }

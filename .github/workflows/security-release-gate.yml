@@ -59,6 +59,24 @@ jobs:
           import xml.etree.ElementTree as ET
 
           required = {
+              'io.cattle.platform.iaas.api.auth.ai.view.AiApiKeyReadViewTest': {
+                  'all128ConfiguredRulesAndDenialsRemainWhileScopeReadsAreDeduplicatedAndCeilingsStayPartial',
+                  'freshPolicyRevisionFieldAndCredentialRevocationCannotBecomeAConfiguredPolicySnapshot',
+                  'nativeScopeDenialWrongKindAndForeignReadbackStayIncompleteWithoutTargetIdentifiers',
+                  'normalNativeConvertChainReadsLegacyAndRestrictedConfiguredPolicyWithoutSecretsOrListExpansion',
+                  'realDefaultFormatterPreservesWirePreviewAndExactEvaluatorSemanticsWithoutRewritingConfiguredScopes',
+              },
+              'io.cattle.platform.iaas.api.auth.change.AiLoadBalancerCreateChangeTest': {
+                  'actualCreatedConfigurationAndNativeReadinessAreRequiredInsteadOfCreate202OrInactiveCoincidence',
+                  'approvedTcpBodyCannotBeSilentlyStrippedOrRewrittenByTheNativeSchema',
+                  'exactTcpRulesUseNativeLbConfigAndPublicOrInternalPortBindingsWithoutDroppingOrGuessing',
+                  'freshNativeTargetAndStackReadsPreserveRoleKeyRevisionAndCrossProjectKindBoundariesBeforeCreate',
+                  'humanApprovalAndDurableClaimDispatchExactlyOneNativeCreateAndKeepUnknownOperationsNonReplayable',
+                  'ordinaryNativeCreatesRemainUnmodifiedWhileTypedCreateWithoutPrivateBindingCannotEnterTheQueue',
+                  'privateApprovedBodyIsCheckedBeforeCookieCreateWithoutRejectingNativeJsonNumberNormalization',
+                  'realFrameworkReferenceConversionPreservesLongServiceIdsInFullSubmittedBodyAndReceiptButRejectsUnsafeNumbers',
+                  'unsupportedProtocolsCertificatesSelectorsRawConfigurationAndAmbiguousListenersFailClosed',
+              },
               'io.cattle.platform.iaas.api.auth.ai.view.AiProcessDiagnosticsTest': {
                   'registeredNamesAndClosedEnumsReplaceAllPersistedLabelsAndPayloadText',
                   'onlyRegisteredRootHandlersAreProjectedAndEmptyOrOversizedLogsStayUnknown',
@@ -366,6 +384,10 @@ jobs:
                   'queuedNativeServiceUpdateUsesExactLbKindUuidStackAndCapturedProcess',
                   'queuedNativeOwnerRetainsFullLegacySchemaRevisionAndRevocationChecks',
                   'ordinaryNativeV1V2FullAndLegacyCaptureNeverEnterTheAiMandatoryBranch',
+                  'loadBalancerLifecyclePlansKeepHumanApprovalConfigurationCasBoundKeyAndOneDispatch',
+                  'loadBalancerLifecycleReceiptRequiresNativeReadinessStoppedInstancesAndEveryProtectedConfiguration',
+                  'loadBalancerStartStopUseOnlyFreshNativeActionsEmptyBodiesAndOriginalParentKeyCeilings',
+                  'queuedLoadBalancerActivateDeactivateRetainFreshOwnerActionKeyRevisionAndRevocationBounds',
               },
               'io.cattle.platform.iaas.api.auth.change.AiServiceUpgradeLifecycleChangeTest': {
                   'nativeSchemaAdmitsTheSameThreeActionsWithoutAddingCancelRollback',
