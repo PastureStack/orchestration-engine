@@ -8,20 +8,19 @@ Rancher 1.6 ecosystem. It is not affiliated with Rancher Labs or SUSE.
 This fork of [`rancher/cattle`](https://github.com/rancher/cattle) preserves
 upstream history, authorship, licenses, and dependency notices.
 
-## Source candidate: Engine 0.183.380
+## Latest published release: Engine 0.183.380
 
-Read-only Stack graph source is in preparation. The explicit selector retains fresh
-native authority, opaque references and bounded unknown completeness. CI, original
-artifacts, publication and native acceptance are pending; use the published release
-below.
-
-## Latest published release: Engine 0.183.379
-
-[Engine 0.183.379](https://github.com/PastureStack/orchestration-engine/releases/tag/v0.183.379)
+[Engine 0.183.380](https://github.com/PastureStack/orchestration-engine/releases/tag/v0.183.380)
 is published with twelve original assets verified by anonymous checksum readback
 and GitHub's cryptographic immutable-release attestation. Use the
 [Server installation guide](https://github.com/PastureStack/server#quick-start)
 for deployment; an Engine JAR alone is not a Server installation.
+
+The opt-in `get_resource view=stack_graph` reads bounded ordinary-Service links
+through fresh native authority, tenant, endpoint, parent and Key checks. Opaque
+references and unknown completeness are preserved; ordinary detail reads do not
+query the graph unless the selector is supplied. Native Stack graph acceptance
+remains pending.
 
 Non-Global load balancers support a separately human-approved manual scale
 plan while preserving configuration and active/inactive state. Exactly attested
@@ -65,9 +64,9 @@ owner, fresh role and Key limits, human approval and durable receipts. Compatibl
 Web/Bridge and Server components are required. Component publication does not
 establish native workflow or whole-243-group acceptance.
 
-The [published release note](https://github.com/PastureStack/orchestration-engine/releases/tag/v0.183.379)
-records 448 suites / 4,080 tests, zero failures/errors, one inherited skip,
-265 required Java methods (256 carried and 9 new), and 43 Linux build controls
+The [published release note](https://github.com/PastureStack/orchestration-engine/releases/tag/v0.183.380)
+records 450 suites / 4,084 tests, zero failures/errors, one inherited skip,
+269 required Java methods (265 carried and 4 new), and 43 Linux build controls
 with zero skips. Existing security findings remain disclosed. The build workflow
 did not provide SLSA attestations. Four independent AI opt-ins remain default-off.
 
