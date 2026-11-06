@@ -1,0 +1,55 @@
+{
+  "schemaVersion": 1,
+  "version": "0.183.381",
+  "scope": "SOURCE_ONLY_NOT_RUNTIME_ACCEPTANCE",
+  "reviewedBaseCommit": "095ea99605e594ac7ab26452dc7f80d2465ec1e6",
+  "sourceInputs": {
+    "algorithm": "c03-source-inputs-v1",
+    "baseline": {
+      "count": 472,
+      "sha256": "82ce35d6b062095018a546d308a8ae2208348938a54e2cc6b6aa6456da90fc69"
+    },
+    "reviewed": {
+      "count": 472,
+      "sha256": "181e8cbfe3076bb5e211fa23edab89b16e6d4b29f951044aa1411f3c5bc25b63"
+    },
+    "addedAnchors": []
+  },
+  "tupleReview": {
+    "baseline": 1396,
+    "candidate": 1396,
+    "added": 0,
+    "removed": 0,
+    "semanticChanges": 0,
+    "dispositionChanges": 0,
+    "sha256": "8f1c0fb378663b0b3d272efba2f211cb210eb6f17cb8035aefa33b56feeaf36a"
+  },
+  "delta": [
+    {
+      "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiLoadBalancerCreateChange.java",
+      "before": "c50e200b3f3ccddf7f5ec09d2bfda128bbb3e3d32a41480a9f07de8416109204",
+      "after": "418bad174023c68676eceb9ab4ab3511eddef869a36ecc2652afc505e681486f"
+    }
+  ],
+  "roleFieldDelta": [],
+  "authorizationBoundary": "Typed TCP load-balancer create compares exact positive native Number stack and backend references after normal framework conversion. String references still use the unchanged canonical wire-ID parser; raw numeric strings, wrong prefixes and unsafe numbers remain rejected. The same native reference helper preserves strict completion readback. Native role/action grants, HTTP tuples, Key authority, human confirmation and frozen v1 schemas remain unchanged. Source extraction and 49 focused tests with Checkstyle are separate from formal CI, packaged artifacts, publication and native acceptance.",
+  "frozenV1SchemaFilesUnchanged": true,
+  "nativeRoleRouteActionGrantsUnchanged": true,
+  "compiledRoleSchemaProof": "PENDING_ACTUAL_PACKAGED_CLASSES_AND_SCHEMAS",
+  "extractor": {
+    "path": "C:\\Users\\chen21019\\source\\outputs\\webmcp-expansion-20261029\\integration-360-201\\refresh-integrated-operation-contract.py",
+    "sha256": "078ffe48881469fe5eb3cb43a15fa41b480fe70e11bd5f63102ded6b35a6d076"
+  },
+  "historicalProducerAndReviewChainsPreserved": true,
+  "artifactQualificationClaimed": false,
+  "runtimeAcceptanceClaimed": false,
+  "implementationCommit": "64ad7615201b2fe4dd7c83ccea18cf42ce5abd7e",
+  "focusedSourceTests": {
+    "path": "code/iaas/auth-logic/src/test/java/io/cattle/platform/iaas/api/auth/change/AiLoadBalancerCreateChangeTest.java",
+    "gitLfSha256": "19e996378269de3703347c9d20bf1c8d013d735fd37b27613578dcb14994ab0a",
+    "testsPassed": 49,
+    "checkstylePassed": true,
+    "realCanonicalResolverUsed": true,
+    "nativeAcceptanceClaimed": false
+  }
+}

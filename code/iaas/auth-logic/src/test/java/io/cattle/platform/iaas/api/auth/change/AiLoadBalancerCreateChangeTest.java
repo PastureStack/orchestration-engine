@@ -80,25 +80,46 @@ public class AiLoadBalancerCreateChangeTest {
         Map<String, Object> normalized = (Map<String, Object>) request.getRequestObject();
         Map<?, ?> nativeRule = (Map<?, ?>) ((List<?>) ((Map<?, ?>) normalized.get("lbConfig")).get("portRules")).get(0);
         assertEquals(Long.class, nativeRule.get("serviceId").getClass()); assertEquals(9L, nativeRule.get("serviceId"));
-        java.util.function.Function<String, Long> parse = value -> Long.valueOf(value.matches("[0-9]+") ? value : formatter.parseId(value));
-        assertTrue(AiLoadBalancerCreateChange.submittedMatches(approved, normalized, parse, parse));
+        ApiKeyTargetResolver references = references(formatter);
+        java.util.function.Function<String, Long> serviceId = value -> references.parseScopeId("service", value);
+        java.util.function.Function<String, Long> stackId = value -> references.parseScopeId("stack", value);
+        assertEquals("KeyScopeDenied", assertThrows(ClientVisibleException.class, () -> serviceId.apply("9")).getCode());
+        assertEquals("KeyScopeDenied", assertThrows(ClientVisibleException.class, () -> stackId.apply("3")).getCode());
+        assertTrue(AiLoadBalancerCreateChange.submittedMatches(approved, normalized, serviceId, stackId));
         ServiceRecord persisted = new ServiceRecord(); persisted.setName("edge"); persisted.setKind("loadBalancerService");
         persisted.setStackId(3L); persisted.setData(Map.of("fields", normalized));
-        assertTrue(AiLoadBalancerCreateChange.configurationMatches(persisted, approved, 3, "docker:registry.test/lb:1", parse));
-        for (Object id : List.of("1s9", "9", 9, 9L, 9.0D, new java.math.BigDecimal("9.000"))) {
+        assertTrue(AiLoadBalancerCreateChange.configurationMatches(persisted, approved, 3, "docker:registry.test/lb:1", serviceId));
+        for (Object id : List.of("1s9", 9, 9L, 9.0D, new java.math.BigDecimal("9.000"))) {
             Map<String, Object> actual = copyBody(normalized); firstRule(actual).put("serviceId", id);
-            assertTrue(AiLoadBalancerCreateChange.submittedMatches(approved, actual, parse, parse));
+            assertTrue(AiLoadBalancerCreateChange.submittedMatches(approved, actual, serviceId, stackId));
         }
         for (Object id : List.of(0L, -9L, 9.5D, Double.NaN, Double.POSITIVE_INFINITY,
-                new java.math.BigInteger("18446744073709551625"), new java.math.BigDecimal("9.0000000000000001"), "9.0", "-9")) {
+                new java.math.BigInteger("18446744073709551625"), new java.math.BigDecimal("9.0000000000000001"), "9", "9.0", "-9", "1st9")) {
             Map<String, Object> actual = copyBody(normalized); firstRule(actual).put("serviceId", id);
-            assertFalse(AiLoadBalancerCreateChange.submittedMatches(approved, actual, parse, parse));
+            assertFalse(AiLoadBalancerCreateChange.submittedMatches(approved, actual, serviceId, stackId));
             persisted.setData(Map.of("fields", actual));
-            assertFalse(AiLoadBalancerCreateChange.configurationMatches(persisted, approved, 3, "docker:registry.test/lb:1", parse));
+            assertFalse(AiLoadBalancerCreateChange.configurationMatches(persisted, approved, 3, "docker:registry.test/lb:1", serviceId));
+        }
+        for (Object id : List.of("1st3", 3, 3L, 3.0D, new java.math.BigDecimal("3.000"))) {
+            Map<String, Object> actual = copyBody(normalized); actual.put("stackId", id);
+            assertTrue(AiLoadBalancerCreateChange.submittedMatches(approved, actual, serviceId, stackId));
+        }
+        for (Object id : List.of(0L, -3L, 3.5D, Double.NaN, Double.POSITIVE_INFINITY,
+                new java.math.BigInteger("18446744073709551619"), new java.math.BigDecimal("3.0000000000000001"), "3", "3.0", "-3", "1s3")) {
+            Map<String, Object> actual = copyBody(normalized); actual.put("stackId", id);
+            assertFalse(AiLoadBalancerCreateChange.submittedMatches(approved, actual, serviceId, stackId));
         }
         Map<String, Object> raw = input(false), numericRule = new LinkedHashMap<>(rule("1s9", "public", 8080, 80));
         numericRule.put("serviceId", 9L); raw.put("portRules", List.of(numericRule));
         assertThrows(ClientVisibleException.class, () -> descriptor.parameters(raw)); // Raw/model-facing subset remains String-only internally.
+    }
+
+    private static ApiKeyTargetResolver references(io.cattle.platform.api.formatter.DefaultIdFormatter formatter) {
+        ApiKeyTargetResolver references = new ApiKeyTargetResolver();
+        try {
+            var field = ApiKeyTargetResolver.class.getDeclaredField("idFormatter"); field.setAccessible(true); field.set(references, formatter);
+        } catch (ReflectiveOperationException unavailable) { throw new AssertionError(unavailable); }
+        return references;
     }
 
     private static Map<String, Object> copyBody(Map<String, Object> value) throws Exception {
@@ -207,10 +228,10 @@ public class AiLoadBalancerCreateChangeTest {
                 if ("target".equals(mode))
                     ((Map<String, Object>) ((List<?>) ((Map<?, ?>) actual.get("lbConfig")).get("portRules")).get(0)).put("serviceId", "1s10");
                 if ("normalized".equals(mode)) {
-                    actual.put("stackId", "3"); actual.put("scale", 1L);
+                    actual.put("stackId", 3L); actual.put("scale", 1L);
                     launch.put("networkMode", "managed"); launch.put("restartPolicy", Map.of("name", "always", "maximumRetryCount", 0L));
                     for (Object item : (List<?>) ((Map<?, ?>) actual.get("lbConfig")).get("portRules")) {
-                        Map<String, Object> row = (Map<String, Object>) item; row.put("serviceId", "9"); row.put("hostname", null);
+                        Map<String, Object> row = (Map<String, Object>) item; row.put("serviceId", 9L); row.put("hostname", null);
                     }
                 }
                 request.setRequestObject(actual); return null;
@@ -374,12 +395,10 @@ public class AiLoadBalancerCreateChangeTest {
             domain.serviceCreateValidation = mock(ServiceCreateValidation.class);
             when(domain.serviceCreateValidation.imageUuid(anyString())).thenAnswer(call -> call.getArgument(0));
             domain.deploymentReadiness = mock(ServiceDeploymentReadiness.class);
-            domain.targets = mock(ApiKeyTargetResolver.class);
-            when(domain.targets.parseScopeId(anyString(), anyString())).thenAnswer(call ->
-                    Long.parseLong(((String) call.getArgument(1)).replaceFirst("^1(?:st|s)", "")));
             var formatter = new io.cattle.platform.api.formatter.DefaultIdFormatter(); formatter.setSchemaFactory(schemas);
             when(schemas.getBaseType(anyString())).thenAnswer(call -> "stack".equals(call.getArgument(0)) ? "stack" : "service");
             formatter.setTypeMappings(Map.of("service", "s", "stack", "st")); ApiContext.getContext().setIdFormatter(formatter);
+            domain.targets = references(formatter);
             backend.setId(9L); backend.setUuid("backend"); backend.setAccountId(77L); backend.setStackId(3L);
             backend.setKind("service"); backend.setName("db"); backend.setState("active");
             StackRecord stack = new StackRecord(); stack.setId(3L); stack.setUuid("stack"); stack.setAccountId(77L); stack.setKind("stack");
