@@ -64,7 +64,16 @@ public class AiResourceChangePlanService {
                 if (AiResourceChangeDomain.loadBalancerMetadata(descriptor))
                     plan.put("referenceSnapshot", domain.loadBalancerMetadataContext(request, descriptor, resourceId));
                 plan.put("snapshot", targetSnapshot(descriptor, target)); plan.put("parentSnapshot", domain.snapshot(parent));
-                plan.put("targetPath", domain.targetPath(request, target, parent, parameters));
+                if (AiServiceUpgradeLifecycleChange.supports(descriptor)) {
+                    Map<String, Object> reference = domain.upgradeLifecycleContext(request, descriptor, resourceId);
+                    plan.put("referenceSnapshot", reference);
+                    Map<String, Object> identity = new LinkedHashMap<>();
+                    Map<String, Object> snapshot = map(plan.get("snapshot"));
+                    for (String field : List.of("id", "uuid", "accountId", "kind", "stackId")) identity.put(field, snapshot.get(field));
+                    identity.put("stackUuid", reference.get("uuid")); plan.put("lifecycleIdentity", identity);
+                }
+                plan.put("targetPath", AiServiceUpgradeLifecycleChange.supports(descriptor) ? domain.upgradeLifecycleTargetPath(request, descriptor, target)
+                        : domain.targetPath(request, target, parent, parameters));
                 plan.put("changes", domain.changes(descriptor, target, parameters));
                 plan.put("expiresAt", clock.instant().plusSeconds(300).toString());
                 plan.put("confirmationState", "pending"); plan.put("status", "preview"); plan.put("verifiedResult", false);
@@ -159,6 +168,10 @@ public class AiResourceChangePlanService {
                 audit(request, action, plan, true, "ResourceChangeAccepted");
                 plan.put("status", "dispatching"); plan.put("operationId", id); plan.put("acceptedAt", clock.millis());
                 plan.put("messageCode", "ResourceChangeDispatchUncertain");
+                if (AiServiceUpgradeLifecycleChange.supports(descriptor)) {
+                    plan.put("processBaseline", domain.upgradeLifecycleProcessBaseline(target));
+                    if (!"cancel_upgrade".equals(descriptor.operation())) plan.put("retirementSnapshot", domain.upgradeLifecycleRetirementSnapshot(target));
+                }
                 if (!store.claim(plan)) return output(owned(store.load(id), request));
                 try {
                     Object result = domain.dispatch(request, descriptor, text(plan.get("resourceId")), parameters, id);
@@ -190,7 +203,8 @@ public class AiResourceChangePlanService {
     }
 
     private Map<String, Object> targetSnapshot(AiResourceChangeDescriptor descriptor, Object target) {
-        return AiResourceChangeDomain.loadBalancerMetadata(descriptor) ? domain.loadBalancerMetadataSnapshot(target) : domain.snapshot(target);
+        return AiServiceUpgradeLifecycleChange.supports(descriptor) ? domain.upgradeLifecycleSnapshot(target)
+                : AiResourceChangeDomain.loadBalancerMetadata(descriptor) ? domain.loadBalancerMetadataSnapshot(target) : domain.snapshot(target);
     }
 
     private void visibleTarget(ApiRequest request, AiResourceChangeDescriptor descriptor, String id, Object lockedTarget) {
@@ -198,6 +212,9 @@ public class AiResourceChangePlanService {
         // The final normal manager also uses the ambient RR snapshot. Reject an older view before claiming a JSON metadata write.
         if (descriptor.changesArchive() && !domain.snapshot(lockedTarget).equals(domain.snapshot(visible)))
             throw error(409, "ArchiveConcurrentChange");
+        if (AiServiceUpgradeLifecycleChange.supports(descriptor)
+                && !domain.upgradeLifecycleSnapshot(lockedTarget).equals(domain.upgradeLifecycleSnapshot(visible)))
+            throw error(409, "ResourceChangePlanStale");
     }
 
     protected Map<String, Object> owned(Map<String, Object> plan, ApiRequest request) {
@@ -224,14 +241,18 @@ public class AiResourceChangePlanService {
         if (!(plan.get("internalResourceId") instanceof Number)) return;
         AiResourceChangeDescriptor descriptor = descriptor(plan);
         Object target = domain.receiptTarget(request, descriptor, plan);
-        if (domain.complete(descriptor, target, map(plan.get("parameters")), map(plan.get("snapshot")))) {
+        Map<String, Object> before = map(plan.get("snapshot"));
+        String lifecycleOutcome = AiServiceUpgradeLifecycleChange.supports(descriptor) ? domain.upgradeLifecycleProcessOutcome(plan, target) : null;
+        if (AiServiceUpgradeLifecycleChange.supports(descriptor)) before.put("retirementSnapshot", plan.get("retirementSnapshot"));
+        if ((lifecycleOutcome == null || "succeeded".equals(lifecycleOutcome)) && domain.complete(descriptor, target, map(plan.get("parameters")), before)) {
             if (descriptor.createsResource() && "service".equals(descriptor.resourceType()) && map(plan.get("parameters")).containsKey("ports")) {
                 plan.put("executionResult", domain.serviceCreateResult(target));
             }
             plan.put("status", "succeeded"); plan.put("verifiedResult", true); plan.put("messageCode", "ResourceChangeCompleted"); eraseSnapshot(plan);
-        } else if (Set.of("error", "erroring").contains(Objects.toString(ObjectUtils.getState(target), ""))) {
+        } else if ("failed".equals(lifecycleOutcome) || Set.of("error", "erroring").contains(Objects.toString(ObjectUtils.getState(target), ""))) {
             plan.put("status", "failed"); plan.put("messageCode", "ResourceChangeProcessFailed"); eraseSnapshot(plan);
-        } else if ("unknown".equals(status) || "dispatching".equals(status) || clock.millis() - number(plan.get("acceptedAt")) > 600000) {
+        } else if ("unknown".equals(lifecycleOutcome) || "unknown".equals(status) || "dispatching".equals(status)
+                || clock.millis() - number(plan.get("acceptedAt")) > 600000) {
             plan.put("status", "unknown"); plan.put("messageCode", "ResourceChangeDispatchUncertain");
         } else { plan.put("status", "running"); plan.put("messageCode", "ResourceChangeRunning"); }
         store.save(plan);
@@ -285,6 +306,7 @@ public class AiResourceChangePlanService {
 
     private void eraseSnapshot(Map<String, Object> plan) {
         plan.remove("snapshot"); plan.remove("parentSnapshot"); plan.remove("body"); plan.remove("referenceSnapshot");
+        plan.remove("retirementSnapshot");
     }
     private AiResourceChangeDescriptor descriptor(Map<String, Object> plan) {
         return AiResourceChangeDescriptor.require(text(plan.get("resourceType")), text(plan.get("operation")));

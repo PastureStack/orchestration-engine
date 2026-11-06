@@ -752,7 +752,7 @@ public class ApiKeyTargetResolver {
                 || !(binding.get("targetId") instanceof String id)
                 || !Objects.equals(service.getId(), executionResourceId("service", id))
                 || !"upgrade".equals(binding.get("operation"))
-                || !("upgrade".equals(binding.get("requestAction")) || "finishupgrade".equals(binding.get("requestAction")))
+                || !Set.of("upgrade", "finishupgrade", "rollback").contains(Objects.toString(binding.get("requestAction"), ""))
                 || !"POST".equals(binding.get("requestMethod")) || !Boolean.FALSE.equals(binding.get("requestCollection"))
                 || !Boolean.FALSE.equals(binding.get("preview"))) denied("KeyScopeDenied");
         if (!Objects.equals(instance.getAccountId(), service.getAccountId())
@@ -1013,7 +1013,7 @@ public class ApiKeyTargetResolver {
 
     private boolean upgradeBinding(Map<String, Object> binding) {
         return binding != null && "upgrade".equals(binding.get("operation"))
-                && ("upgrade".equals(binding.get("requestAction")) || "finishupgrade".equals(binding.get("requestAction")));
+                && Set.of("upgrade", "finishupgrade", "rollback").contains(Objects.toString(binding.get("requestAction"), ""));
     }
 
     /** The retired service map remains ancestry only for the exact teardown

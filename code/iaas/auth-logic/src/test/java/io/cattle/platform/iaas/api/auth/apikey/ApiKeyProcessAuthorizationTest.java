@@ -459,6 +459,35 @@ public class ApiKeyProcessAuthorizationTest {
         }
         assertNull(ApiContext.getContext());
     }
+    @Test public void rollbackRetirementUsesTheExistingVerifiedServiceChainAndKeepsExplicitChildDenials() {
+        upgradeLifecycle();
+        when(schema.getResourceActions()).thenReturn(Map.of("rollback", mock(Action.class)));
+        metadata.put("requestAction", "rollback"); metadata.put("preview", false);
+        for (String process : List.of("instance.stop", "instance.remove"))
+            hook.beforeExecution(new LaunchConfiguration(process, "instance", "3", 5L, 0, Map.of()), metadata);
+        policy(new ApiKeyPolicy(ApiKeyPolicy.Mode.CUSTOM, ApiKeyPolicy.Effect.DENY, null, List.of(
+                new ApiKeyPolicy.Rule("root", ApiKeyPolicy.Effect.ALLOW, ApiKeyPolicy.Scope.stack("1st8"), Set.of("upgrade")),
+                new ApiKeyPolicy.Rule("child", ApiKeyPolicy.Effect.DENY, ApiKeyPolicy.Scope.resource("container", "1i3"), Set.of("upgrade")))));
+        assertEquals("KeyPolicyDenied", assertThrows(ProcessAuthorizationDeniedException.class,
+                () -> hook.beforeExecution(new LaunchConfiguration("instance.remove", "instance", "3", 5L, 0, Map.of()), metadata)).getCode());
+    }
+
+    @Test public void rollbackMountVolumeEdgeRequiresTheOriginalVerifiedSchedulingProof() {
+        upgradeLifecycle(); metadata.put("requestAction", "rollback"); metadata.put("preview", false);
+        EngineContext engine = EngineContext.getEngineContext(); engine.pushAuthorization(metadata);
+        var frame = engine.pushVerifiedExecution("mount", "7", metadata);
+        ProcessRecord queued;
+        try {
+            var launch = new LaunchConfiguration("volume.deactivate", "volume", "6", 5L, 0, Map.of());
+            ProcessAuthorization.prepare(launch, List.of()); queued = new ProcessRecord(launch, 99L, "server");
+        } finally { engine.popVerifiedExecution(frame); engine.popAuthorization(); }
+        assertNotNull(ProcessAuthorization.verifiedChild(queued));
+        queued.setProcessName("volume.remove"); assertNull(ProcessAuthorization.verifiedChild(queued));
+        var forged = new ProcessRecord(new LaunchConfiguration("volume.deactivate", "volume", "6", 5L, 0,
+                Map.of(ProcessAuthorization.DATA_KEY, metadata)), 100L, "server");
+        assertNull(ProcessAuthorization.verifiedChild(forged));
+    }
+
     @Test public void backgroundProjectAuthorityIsFreshAndCreatesNoRequest() {
         removalLifecycle(); ApiContext.remove();
         when(projectAuthorityDao.hasAccessToProject(eq(5L), eq(5L), eq(false), any())).thenReturn(false);

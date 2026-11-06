@@ -43,6 +43,52 @@ class VexBoundary(unittest.TestCase):
         self.assertEqual(len(document["statements"]), len(vex.RULES))
         self.assertEqual(self.raw, original, "raw evidence must not be mutated")
 
+    def test_native_apt_comparison_qualifies_both_vendor_views_without_masking_unrelated_drift(self):
+        repo = Path(__file__).resolve().parents[2]
+        spec = importlib.util.spec_from_file_location("native_apt_comparison", repo / "scripts/check-apt-fixed-vex.py")
+        apt = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(apt)
+        raw = deepcopy(self.raw)
+        raw.update(ArtifactName="owned-fixture", ArtifactType="container_image", Metadata={"ImageID": "urn:test:image"})
+        section = raw["Results"][0]
+        section.update(Class="lang-pkgs", Target="Python")
+        owned = section["Vulnerabilities"][0]
+        owned["PkgIdentifier"] = {"PURL": "pkg:pypi/" + owned["PkgName"] + "@" + owned["InstalledVersion"], "UID": "aaa"}
+        unrelated = {"VulnerabilityID": "CVE-TEST-UNRELATED", "PkgName": "other", "InstalledVersion": "1.0", "Severity": "MEDIUM"}
+        section["Vulnerabilities"] = [owned, deepcopy(unrelated), deepcopy(unrelated)]
+        native = deepcopy(raw)
+        native["Results"][0]["Vulnerabilities"][0]["PkgIdentifier"]["UID"] = "bbb"
+        original = deepcopy(raw), deepcopy(native)
+        with self.assertRaises(ValueError):
+            apt.output_guard(raw, native)
+        before, raw_vex = vex.apply(raw, self.proof, "urn:test:image")
+        after, native_vex = vex.apply(native, self.proof, "urn:test:image")
+        self.assertEqual(apt.output_guard(before, after), 0)
+        self.assertEqual((len(raw_vex["statements"]), len(native_vex["statements"])), (1, 1))
+        self.assertEqual((raw, native), original)
+        self.assertEqual(after["Results"][0]["Vulnerabilities"], [unrelated, unrelated])
+        for mutation in ("severity", "duplicate", "unknown-uid"):
+            changed = deepcopy(after)
+            rows = changed["Results"][0]["Vulnerabilities"]
+            if mutation == "severity":
+                rows[0]["Severity"] = "HIGH"
+            elif mutation == "duplicate":
+                rows.pop()
+            else:
+                rows[0]["PkgIdentifier"] = {"UID": "bbb"}
+            with self.subTest(mutation=mutation), self.assertRaises(ValueError):
+                apt.output_guard(before, changed)
+        with self.assertRaises(ValueError):
+            vex.apply(native, dict(self.proof, vendorFilesByteCompared=300), "urn:test:image")
+        workflow = (repo / ".github/workflows/security-release-gate.yml").read_text(encoding="utf-8")
+        raw_filter = workflow.index("--output evidence/dapper-image-vulnerabilities.raw-pip-qualified.json")
+        native_filter = workflow.index("--output evidence/dapper-image-vulnerabilities.apt-fixed-pip-qualified.json")
+        comparison = workflow.index("--raw evidence/dapper-image-vulnerabilities.raw-pip-qualified.json")
+        final = workflow.index("cp evidence/dapper-image-vulnerabilities.apt-fixed-pip-qualified.json")
+        self.assertLess(raw_filter, native_filter)
+        self.assertLess(native_filter, comparison)
+        self.assertLess(comparison, final)
+
     def test_invalid_proof_fails_closed(self):
         for key, value in [("verifiedWheelSha256", "0" * 64), ("urllib3", "2.7.0"),
                            ("vendorFilesByteCompared", 300), ("setuptoolsPackageAbsent", False),

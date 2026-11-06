@@ -6,6 +6,7 @@ import static io.cattle.platform.core.model.tables.AccountTable.ACCOUNT;
 import static io.cattle.platform.core.model.tables.CertificateTable.CERTIFICATE;
 import static io.cattle.platform.core.model.tables.ServiceTable.SERVICE;
 import static io.cattle.platform.core.model.tables.StackTable.STACK;
+import static io.cattle.platform.core.model.tables.ProcessInstanceTable.PROCESS_INSTANCE;
 
 import io.cattle.platform.api.auth.Policy;
 import io.cattle.platform.api.utils.ApiUtils;
@@ -58,6 +59,7 @@ public class AiResourceChangeDomain extends AbstractJooqDao {
     private static final String PARENT_READ = "ai.resource.change.parent.read";
     private static final String ALIAS_REFERENCE = "ai.resource.change.alias.reference";
     private static final String LB_METADATA_STACK = "ai.resource.change.lb.metadata.stack";
+    private static final String UPGRADE_LIFECYCLE_STACK = "ai.resource.change.upgrade.lifecycle.stack";
     private record MetadataStackRead(ApiRequest request, String publicId, String nativeId) { }
     private record AliasReference(String type, String publicId, String nativeId) { }
     @Inject ObjectManager objects;
@@ -85,6 +87,10 @@ public class AiResourceChangeDomain extends AbstractJooqDao {
                 && Objects.equals(reference.type(), request.getType()) && (Objects.equals(reference.publicId(), request.getId())
                         || Objects.equals(reference.nativeId(), request.getId()))) return true;
         if (loadBalancerMetadata(descriptor) && request.getAttribute(LB_METADATA_STACK) instanceof MetadataStackRead scope
+                && scope.request() == request && "stack".equals(request.getType()) && "GET".equals(request.getMethod())
+                && request.getAction() == null && (Objects.equals(scope.publicId(), request.getId())
+                        || Objects.equals(scope.nativeId(), request.getId()))) return true;
+        if (AiServiceUpgradeLifecycleChange.supports(descriptor) && request.getAttribute(UPGRADE_LIFECYCLE_STACK) instanceof MetadataStackRead scope
                 && scope.request() == request && "stack".equals(request.getType()) && "GET".equals(request.getMethod())
                 && request.getAction() == null && (Objects.equals(scope.publicId(), request.getId())
                         || Objects.equals(scope.nativeId(), request.getId()))) return true;
@@ -117,6 +123,8 @@ public class AiResourceChangeDomain extends AbstractJooqDao {
         ApiRequest request = domain(original, descriptor, type, publicId, "GET", null, new LinkedHashMap<>());
         if (parent && loadBalancerMetadata(descriptor))
             request.setAttribute(LB_METADATA_STACK, new MetadataStackRead(request, publicId, Long.toString(internalId("stack", publicId))));
+        else if (parent && AiServiceUpgradeLifecycleChange.supports(descriptor))
+            request.setAttribute(UPGRADE_LIFECYCLE_STACK, new MetadataStackRead(request, publicId, Long.toString(internalId("stack", publicId))));
         else if (parent) request.setAttribute(PARENT_READ, true);
         if ("dnsService".equals(descriptor.resourceType()) && !"dnsService".equals(type))
             request.setAttribute(ALIAS_REFERENCE, new AliasReference(type, publicId, Long.toString(internalId(type, publicId))));
@@ -150,6 +158,10 @@ public class AiResourceChangeDomain extends AbstractJooqDao {
             if (boundPlan != null) keys.authorizeBoundDomain(boundPlan, request);
             if (loadBalancerMetadata(descriptor)) {
                 Map<String, Object> context = loadBalancerMetadataContext(original, descriptor, publicId);
+                if (boundPlan != null && !context.equals(boundPlan.get("referenceSnapshot"))) throw error(409, "ResourceChangePlanStale");
+            }
+            if (AiServiceUpgradeLifecycleChange.supports(descriptor)) {
+                Map<String, Object> context = upgradeLifecycleContext(original, descriptor, publicId);
                 if (boundPlan != null && !context.equals(boundPlan.get("referenceSnapshot"))) throw error(409, "ResourceChangePlanStale");
             }
             validateExternalHealthCheck(descriptor, parameters, request);
@@ -238,6 +250,7 @@ public class AiResourceChangeDomain extends AbstractJooqDao {
         return authorized(original, request, () -> {
             validateExternalHealthCheck(descriptor, parameters, request);
             if (loadBalancerMetadata(descriptor)) loadBalancerStack(original, descriptor, publicId);
+            if (AiServiceUpgradeLifecycleChange.supports(descriptor)) upgradeLifecycleStack(original, descriptor, publicId);
             request.setAttribute("apiKey.audit.requestId", planId);
             return processObserver.dispatch(request, planId, () -> {
                 ResourceManager manager = manager(descriptor.resourceType());
@@ -286,7 +299,8 @@ public class AiResourceChangeDomain extends AbstractJooqDao {
         if (project) projectMetadata.authorize(AiProjectMetadataChange.selected(objects.loadResource(Account.class, actor.getAccountId()),
                 actor.getAccountId()), current.policy(), schema, "PUT".equals(request.getMethod()), copyMap(request.getRequestObject()).keySet());
         if (request.getAttribute(DOMAIN) instanceof AiResourceChangeDescriptor descriptor
-                && Set.of("dnsService", "certificate", "host", "project", "loadBalancerService").contains(descriptor.resourceType())) {
+                && (Set.of("dnsService", "certificate", "host", "project", "loadBalancerService").contains(descriptor.resourceType())
+                    || AiServiceUpgradeLifecycleChange.supports(descriptor))) {
             if (request.getAction() != null) {
                 var actions = request.getId() == null ? schema.getCollectionActions() : schema.getResourceActions();
                 if (actions == null || !actions.containsKey(request.getAction())) throw error(403, "PermissionDenied");
@@ -374,6 +388,124 @@ public class AiResourceChangeDomain extends AbstractJooqDao {
         return parent;
     }
 
+    public Map<String, Object> upgradeLifecycleSnapshot(Object target) { return AiServiceUpgradeLifecycleChange.snapshot(target, json); }
+
+    /** Capture both the live generation and the native DAO's old upgrade set at apply, never at preview. */
+    public Map<String, Object> upgradeLifecycleRetirementSnapshot(Object target) {
+        Service service = AiServiceUpgradeLifecycleChange.service(target);
+        List<Map<String, Object>> instances = new ArrayList<>();
+        for (ServiceExposeMap link : objects.find(ServiceExposeMap.class, "serviceId", service.getId(), "removed", null)) {
+            boolean priorUpgrade = Boolean.FALSE.equals(link.getManaged()) && Boolean.TRUE.equals(link.getUpgrade())
+                    && Set.of("activating", "active", "requested").contains(Objects.toString(link.getState(), ""));
+            if (!Boolean.TRUE.equals(link.getManaged()) && !priorUpgrade) continue;
+            if (link.getInstanceId() == null) throw error(409, "ResourceChangePlanStale");
+            Instance instance = objects.loadResource(Instance.class, link.getInstanceId());
+            if (!Objects.equals(link.getServiceId(), service.getId()) || !Objects.equals(link.getAccountId(), service.getAccountId())
+                    || link.getId() == null || link.getUuid() == null || link.getUuid().isBlank() || instance == null
+                    || !Objects.equals(instance.getId(), link.getInstanceId()) || instance.getUuid() == null || instance.getUuid().isBlank()
+                    || !Objects.equals(instance.getAccountId(), service.getAccountId())
+                    || instance.getServiceId() != null && !Objects.equals(instance.getServiceId(), service.getId())
+                    || instance.getStackId() != null && !Objects.equals(instance.getStackId(), service.getStackId()))
+                throw error(409, "ResourceChangePlanStale");
+            instances.add(Map.of("id", instance.getId(), "uuid", instance.getUuid(), "mapId", link.getId(), "mapUuid", link.getUuid()));
+        }
+        return copyMap(Map.of("instances", instances));
+    }
+
+    private boolean upgradeLifecycleRetirementSettled(Service service, Map<String, Object> before) {
+        if (!(before.get("instances") instanceof List<?> instances)) return false;
+        // Rollback can expose another retiring generation after the apply snapshot.
+        // No pending upgrade map may be mistaken for a completely retired child.
+        for (ServiceExposeMap link : objects.find(ServiceExposeMap.class, "serviceId", service.getId(), "removed", null))
+            if (Boolean.TRUE.equals(link.getUpgrade())) return false;
+        for (Object value : instances) {
+            if (!(value instanceof Map<?, ?> row)) return false;
+            long id = number(row.get("id"));
+            Instance instance = objects.loadResource(Instance.class, id);
+            ServiceExposeMap link = objects.loadResource(ServiceExposeMap.class, number(row.get("mapId")));
+            if (instance != null && (!Objects.equals(instance.getUuid(), row.get("uuid"))
+                    || !Objects.equals(instance.getAccountId(), service.getAccountId())
+                    || instance.getServiceId() != null && !Objects.equals(instance.getServiceId(), service.getId())
+                    || instance.getStackId() != null && !Objects.equals(instance.getStackId(), service.getStackId()))) return false;
+            if (link != null && (!Objects.equals(link.getUuid(), row.get("mapUuid"))
+                    || !Objects.equals(link.getServiceId(), service.getId()) || !Objects.equals(link.getInstanceId(), id)
+                    || !Objects.equals(link.getAccountId(), service.getAccountId()))) return false;
+            // A rollback may legitimately reuse the old instance under the same persisted map.
+            if (link != null && link.getRemoved() == null && Boolean.TRUE.equals(link.getManaged()) && !Boolean.TRUE.equals(link.getUpgrade())
+                    && "active".equals(link.getState()) && instance != null && instance.getRemoved() == null) continue;
+            if (instance != null && (instance.getRemoved() == null || !Set.of("removed", "purged").contains(instance.getState()))) return false;
+            if (!attachmentsGone(id)) return false;
+        }
+        return true;
+    }
+
+    /** Latest locking read while the Service and plan are locked; previews never call this. */
+    public long upgradeLifecycleProcessBaseline(Object target) {
+        Service service = AiServiceUpgradeLifecycleChange.service(target);
+        Long latest = create().select(PROCESS_INSTANCE.ID).from(PROCESS_INSTANCE)
+                .where(PROCESS_INSTANCE.RESOURCE_TYPE.eq("service").and(PROCESS_INSTANCE.RESOURCE_ID.eq(service.getId().toString())))
+                .orderBy(PROCESS_INSTANCE.ID.desc()).limit(1).forUpdate().fetchOne(PROCESS_INSTANCE.ID);
+        return latest == null ? 0 : latest;
+    }
+
+    /** A unique normal root process after the locked claim, never just a coincidental terminal state. */
+    public String upgradeLifecycleProcessOutcome(Map<String, Object> plan, Object target) {
+        Service service = AiServiceUpgradeLifecycleChange.service(target);
+        AiResourceChangeDescriptor descriptor = AiResourceChangeDescriptor.require("service", (String) plan.get("operation"));
+        if (!AiServiceUpgradeLifecycleChange.supports(descriptor) || !(plan.get("processBaseline") instanceof Number baseline)
+                || baseline.longValue() < 0) return "unknown";
+        var rows = create().selectFrom(PROCESS_INSTANCE).where(PROCESS_INSTANCE.RESOURCE_TYPE.eq("service")
+                .and(PROCESS_INSTANCE.RESOURCE_ID.eq(service.getId().toString()))
+                .and(PROCESS_INSTANCE.PROCESS_NAME.eq("service." + descriptor.action())).and(PROCESS_INSTANCE.ID.gt(baseline.longValue())))
+                .orderBy(PROCESS_INSTANCE.ID.asc()).limit(2).fetch();
+        if (rows.isEmpty()) return "running";
+        if (rows.size() != 1) return "unknown";
+        var process = rows.getFirst();
+        if (!Objects.equals(process.getAccountId(), service.getAccountId())) return "unknown";
+        Object raw = process.getData() == null ? null : process.getData().get(io.cattle.platform.engine.process.ProcessAuthorization.DATA_KEY);
+        Map<String, Object> metadata = raw instanceof Map<?, ?> values ? copyMap(values) : Map.of();
+        if (plan.get("credentialId") instanceof Number credential) {
+            if (!Objects.equals(metadata.get("requestId"), plan.get("id")) || !"upgrade".equals(metadata.get("operation"))
+                    || !"service".equals(metadata.get("targetType")) || !"POST".equals(metadata.get("requestMethod"))
+                    || !descriptor.action().equals(metadata.get("requestAction")) || !Boolean.FALSE.equals(metadata.get("requestCollection"))
+                    || !Boolean.FALSE.equals(metadata.get("preview")) || number(metadata.get("accountId")) != service.getAccountId()
+                    || number(metadata.get("principalAccountId")) != number(plan.get("actorId"))
+                    || number(metadata.get("policyRevision")) != number(plan.get("credentialRevision"))
+                    || !(metadata.get("keyId") instanceof String keyId)
+                    || !Objects.equals(service.getId().toString(), metadata.get("targetId")) || metadata.containsKey("requestLink")) return "unknown";
+            try {
+                if (targets.parseScopeId("credential", keyId) != credential.longValue()) return "unknown";
+            } catch (ClientVisibleException invalid) { return "unknown"; }
+        } else if (!metadata.isEmpty()) return "unknown";
+        if (process.getEndTime() == null) return "running";
+        return "SUCCESS".equals(process.getResult()) && "DONE".equals(process.getPhase()) && "DONE".equals(process.getExitReason())
+                ? "succeeded" : "failed";
+    }
+
+    public Map<String, Object> upgradeLifecycleContext(ApiRequest request, AiResourceChangeDescriptor descriptor, String publicId) {
+        Object stack = upgradeLifecycleStack(request, descriptor, publicId);
+        Map<String, Object> result = new LinkedHashMap<>();
+        for (String field : List.of("id", "uuid", "accountId", "kind", "name", "state", "removed"))
+            result.put(field, ObjectUtils.getPropertyIgnoreErrors(stack, field));
+        return copyMap(result);
+    }
+
+    public String upgradeLifecycleTargetPath(ApiRequest request, AiResourceChangeDescriptor descriptor, Object target) {
+        return targetPath(request, target, upgradeLifecycleStack(request, descriptor, publicId("service", ObjectUtils.getId(target))), Map.of());
+    }
+
+    private Object upgradeLifecycleStack(ApiRequest request, AiResourceChangeDescriptor descriptor, String publicId) {
+        Service service = AiServiceUpgradeLifecycleChange.service(visible(request, descriptor, publicId));
+        if (service.getStackId() == null) throw error(404, "NotFound");
+        Object parent = read(request, descriptor, "stack", publicId("stack", service.getStackId()), true);
+        if (!(parent instanceof io.cattle.platform.core.model.Stack stack) || stack.getUuid() == null) throw error(404, "NotFound");
+        Service current = objects.loadResource(Service.class, service.getId());
+        if (current == null || current.getRemoved() != null || !"service".equals(current.getKind())
+                || !Objects.equals(current.getUuid(), service.getUuid()) || !Objects.equals(current.getAccountId(), service.getAccountId())
+                || !Objects.equals(current.getStackId(), service.getStackId())) throw error(409, "ResourceChangePlanStale");
+        return parent;
+    }
+
     public Map<String, Object> snapshot(Object target) {
         if (target instanceof Host host) return copyMap(AiHostMetadataChange.snapshot(host));
         if (target instanceof Account project) return copyMap(AiProjectMetadataChange.snapshot(project));
@@ -421,6 +553,9 @@ public class AiResourceChangeDomain extends AbstractJooqDao {
     }
 
     public void ready(AiResourceChangeDescriptor descriptor, Object target, Object parent) {
+        if (AiServiceUpgradeLifecycleChange.supports(descriptor)) {
+            AiServiceUpgradeLifecycleChange.ready(descriptor, target, json); return;
+        }
         Object row = descriptor.createsResource() ? parent : target;
         if (row == null && !descriptor.createsResource()) throw error(404, "NotFound");
         if (row == null) return;
@@ -504,12 +639,27 @@ public class AiResourceChangeDomain extends AbstractJooqDao {
                         throw error(409, "ResourceChangePlanStale");
             }
         }
+        if (AiServiceUpgradeLifecycleChange.supports(descriptor)) {
+            Map<String, Object> identity = copyMap(plan.get("lifecycleIdentity"));
+            Map<String, Object> currentSnapshot = upgradeLifecycleSnapshot(target);
+            for (String field : List.of("id", "uuid", "accountId", "kind", "stackId"))
+                if (!identity.containsKey(field) || !Objects.equals(identity.get(field), currentSnapshot.get(field)))
+                    throw error(409, "ResourceChangePlanStale");
+            Map<String, Object> stack = upgradeLifecycleContext(request, descriptor, (String) plan.get("resourceId"));
+            if (!Objects.equals(identity.get("stackUuid"), stack.get("uuid"))) throw error(409, "ResourceChangePlanStale");
+        }
         return target;
     }
 
     public boolean complete(AiResourceChangeDescriptor descriptor, Object target, Map<String, Object> parameters,
             Map<String, Object> before) {
         if (target == null) return false;
+        if (AiServiceUpgradeLifecycleChange.supports(descriptor)) {
+            if (!AiServiceUpgradeLifecycleChange.configurationComplete(descriptor, target, before, json)) return false;
+            return "cancel_upgrade".equals(descriptor.operation()) || serviceReady((Service) target, true)
+                    && before.get("retirementSnapshot") instanceof Map<?, ?> retirement
+                    && upgradeLifecycleRetirementSettled((Service) target, copyMap(retirement));
+        }
         if ("dnsService".equals(descriptor.resourceType())) {
             Set<Long> expected = new java.util.LinkedHashSet<>();
             if (parameters.get("serviceIds") instanceof List<?> ids) for (Object id : ids) expected.add(internalId("service", (String) id));
@@ -663,6 +813,7 @@ public class AiResourceChangeDomain extends AbstractJooqDao {
     }
 
     public List<Map<String, Object>> changes(AiResourceChangeDescriptor descriptor, Object target, Map<String, Object> parameters) {
+        if (AiServiceUpgradeLifecycleChange.supports(descriptor)) return AiServiceUpgradeLifecycleChange.changes(descriptor, target);
         List<Map<String, Object>> result = new ArrayList<>();
         if (descriptor.changesArchive()) return List.of(change("archived",
                 Boolean.TRUE.equals(DataAccessor.field(target, "archived", Object.class)), "archive".equals(descriptor.operation())));
