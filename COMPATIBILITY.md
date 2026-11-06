@@ -1,11 +1,14 @@
 # Compatibility Contract
 
-## Engine 0.183.380 candidate — not published
+## Engine 0.183.380 published
 
-An explicit get_resource view=stack_graph reads bounded ordinary-Service dependency links through current native authority. Opaque endpoint and parent references are refreshed; cross-project, hidden, unreadable or replaced identities fail closed. No launch configuration, environment, raw relation payload or hidden count is returned. Both completeness fields remain unknown. Ordinary get_resource remains unchanged unless the selector is supplied.
+An explicit `get_resource view=stack_graph` reads bounded ordinary-Service dependency links through current native authority. Opaque endpoint and parent references are refreshed; cross-project, hidden, unreadable or replaced identities fail closed. No launch configuration, environment, raw relation payload or hidden count is returned. Both completeness fields remain unknown. Ordinary `get_resource` remains unchanged unless the selector is supplied.
 
-Three role overlays add only optional view input metadata; no native route/action or Key grant is added. Normal required CI, original artifact/schema qualification, immutable publication and all eight native criteria remain pending. Matching Web221/Bridge0.2.23 and a qualified Server assembly are required; no whole-243 acceptance is claimed.
+Three existing role overlays add only optional `aiResourceView.view` create/read input metadata; no native route, action or Key grant is added.
 
+[The immutable release](https://github.com/PastureStack/orchestration-engine/releases/tag/v0.183.380) contains twelve original assets verified by anonymous bytes/SHA readback and a native attestation covering thirteen subjects. Original CI passed 450 suites / 4,084 tests with zero failures/errors and one inherited skip; all 269 required methods (265 carried and 4 new), 43 named Linux build controls and 13 PIP controls passed. Packaged evidence covers 3 changed and 46 byte-identical published379 class families. All 16 serialized schemas retain published379 bytes, and 175 schema JSON inputs match the source. The final 183-package Dapper table is unchanged. C03 retains 1396 operation tuples across 472 source inputs, with the three optional role-field metadata additions listed separately. Raw/effective findings remain separate; workflow SLSA was not provided.
+
+[Published metadata](https://github.com/PastureStack/orchestration-engine/releases/download/v0.183.380/engine380-release-metadata.json) separates producer `58812e2c1d831fb61a2c45db15318872f33594a4`, normal merge/tag target `43395dc7fa0450055ced497af8ec34aac02709eb` and tested tree `8a5e33e43e4c2c45a4c79d32d5fa4784e5a84254` from this documentation commit. Matching Web221/Bridge0.2.23 and a qualified Server assembly are required. All eight native Stack graph criteria, deployment and whole-243-group completion remain separate and pending.
 
 ## Engine 0.183.379 published
 

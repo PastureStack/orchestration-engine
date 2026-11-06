@@ -1,7 +1,9 @@
-# Orchestration Engine 0.183.380 candidate
+# Orchestration Engine v0.183.380
 
-An explicit get_resource view=stack_graph reads bounded ordinary-Service dependency links through current native authority. Opaque endpoint and parent references are refreshed; cross-project, hidden, unreadable or replaced identities fail closed. No launch configuration, environment, raw relation payload or hidden count is returned. Both completeness fields remain unknown. Ordinary get_resource remains unchanged unless the selector is supplied.
+The explicit stack_graph view reads bounded ordinary-Service dependency links through fresh native authority, tenant, endpoint, parent and Key checks. It keeps opaque references, rejects replaced identities and leaves both completeness fields unknown. Ordinary detail reads do not query the graph unless the selector is supplied.
 
-Three role overlays add only optional view input metadata; no native route/action or Key grant is added. Normal required CI, original artifact/schema qualification, immutable publication and all eight native criteria remain pending. Matching Web221/Bridge0.2.23 and a qualified Server assembly are required; no whole-243 acceptance is claimed.
+The original CI qualified 450 suites and 4084 tests with zero failures/errors and one inherited skip. All 269 required methods passed (265 carried and 4 new), with 43 named Linux build controls and 13 PIP-owner controls. The original JAR, all 183 final packages, 49 class families, 16 serialized schemas and 175 schema JSON inputs were verified. C03 retains 1396 operation tuples across 472 source inputs. Three existing role overlays add only optional aiResourceView.view create/read input metadata; native methods, actions and Key grants remain unchanged.
 
-The required Java regression scope is 269 methods: the existing 265 plus four Stack graph methods. The added source-revalidation method covers UUID and Stack replacement between collection and detail reads, which must reject the entire snapshot before any relationship query. Its focused run and the related hidden-endpoint method pass locally; normal required CI and packaged qualification remain pending.
+Critical/High and available-fix gates passed. Original raw/effective reports and exact no-fix records remain separate. This release streams the qualified original JAR without rebuilding or repeating tests. Native immutable-release crypto and anonymous readback are verified after publication; this workflow does not provide SLSA provenance.
+
+Matching Web/Bridge, Server assembly, deployment and native business acceptance remain pending. No completion of all 243 frontend groups is claimed.
