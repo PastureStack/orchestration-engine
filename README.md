@@ -8,21 +8,18 @@ Rancher 1.6 ecosystem. It is not affiliated with Rancher Labs or SUSE.
 This fork of [`rancher/cattle`](https://github.com/rancher/cattle) preserves
 upstream history, authorship, licenses, and dependency notices.
 
-## Source candidate: Engine 0.183.379
+## Latest published release: Engine 0.183.379
 
-This unpublished candidate adds manual scaling for non-global load balancers,
-with native role/Key checks and configuration/state preservation. An exactly
-bound canceled native Container start records a fixed failed receipt; a stopped
-state alone never establishes failure. Normal CI, original artifacts and release
-qualification are pending. Use the latest published component below.
-
-## Latest published release: Engine 0.183.378
-
-[Engine 0.183.378](https://github.com/PastureStack/orchestration-engine/releases/tag/v0.183.378)
+[Engine 0.183.379](https://github.com/PastureStack/orchestration-engine/releases/tag/v0.183.379)
 is published with twelve original assets verified by anonymous checksum readback
 and GitHub's cryptographic immutable-release attestation. Use the
 [Server installation guide](https://github.com/PastureStack/server#quick-start)
 for deployment; an Engine JAR alone is not a Server installation.
+
+Non-Global load balancers support a separately human-approved manual scale
+plan while preserving configuration and active/inactive state. Exactly attested
+canceled Container-start processes produce a fixed failed receipt; a stopped
+state alone never establishes failure. Native business acceptance remains pending.
 
 API Key details now show configured policy and read-only capability information;
 they do not claim effective grants. Typed TCP load-balancer creation requires
@@ -61,9 +58,9 @@ owner, fresh role and Key limits, human approval and durable receipts. Compatibl
 Web/Bridge and Server components are required. Component publication does not
 establish native workflow or whole-243-group acceptance.
 
-The [published release note](https://github.com/PastureStack/orchestration-engine/releases/tag/v0.183.378)
-records 447 suites / 4,071 tests, zero failures/errors, one inherited skip,
-256 required Java methods (238 carried and 18 new), and 39 Linux build controls
+The [published release note](https://github.com/PastureStack/orchestration-engine/releases/tag/v0.183.379)
+records 448 suites / 4,080 tests, zero failures/errors, one inherited skip,
+265 required Java methods (256 carried and 9 new), and 43 Linux build controls
 with zero skips. Existing security findings remain disclosed. The build workflow
 did not provide SLSA attestations. Four independent AI opt-ins remain default-off.
 
@@ -206,7 +203,7 @@ Before publishing an Engine artifact, run the complete package gate:
 
 ```sh
 bash scripts/check-cattle-jdk25-full-package
-ENGINE_VERSION=0.183.378 bash scripts/build --release
+ENGINE_VERSION=0.183.379 bash scripts/build --release
 bash scripts/check-release-artifact dist/artifacts/cattle.jar
 ```
 

@@ -1,9 +1,9 @@
-# Orchestration Engine 0.183.379 candidate
+# Orchestration Engine v0.183.379
 
-Manual scaling of non-global load balancers uses the native scale field and current parent, role and Key authority. It preserves active/inactive state and the reviewed configuration; it does not activate an inactive load balancer. Ordinary Service scale limits are unchanged.
+Typed manual scaling for non-Global load balancers preserves configuration, identity and inactive state, with fresh native role and Key checks. Container start plans now retain an exact attested root-process cancellation as a terminal failure instead of waiting for an unknown result. The original signed APT plan may retrieve the same verified retained payload through a closed official Launchpad redirect after the existing archive and snapshot transports fail.
 
-An exactly bound canceled Container-start root process records a fixed failed receipt through the native completion observer. Child stop, retries, timeouts and coincidentally stopped state do not establish failure. Existing authorization-denial priority, durable claim, human confirmation and successful-start readback remain in force.
+The original CI qualified 448 suites and 4080 tests with zero failures/errors and one inherited skip. All 265 required methods passed (256 carried and 9 new), with 43 named Linux build controls and 13 PIP-owner controls. The original JAR, all 183 final packages, 49 class families, 16 serialized schemas and 175 schema JSON inputs were verified. C03 retains 1396 operation tuples and unchanged role/field grants across 472 source inputs.
 
-When the original archive and frozen snapshot cannot deliver a package, the build helper can retrieve the same signed-plan bytes from the official Ubuntu primary retained payload. Both redirects and payload identity remain closed; package versions, security policy and the final native APT command are unchanged.
+Critical/High and available-fix gates passed. Original raw/effective reports and exact no-fix records remain separate. This release streams the qualified original JAR without rebuilding or repeating tests. Native immutable-release crypto and anonymous readback are verified after publication; this workflow does not provide SLSA provenance.
 
-This source candidate is not published or natively accepted. Normal required CI, original-JAR/compiled-schema qualification and immutable release verification remain pending. No scheduler root cause or whole-243-group completion is claimed.
+Matching Web/Bridge, Server assembly, deployment and native business acceptance remain pending. No completion of all 243 frontend groups is claimed.
