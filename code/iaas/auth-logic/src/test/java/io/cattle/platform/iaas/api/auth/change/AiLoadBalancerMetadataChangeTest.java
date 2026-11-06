@@ -55,8 +55,11 @@ public class AiLoadBalancerMetadataChangeTest {
         for (String field : List.of("lbConfig", "portRules", "certificateIds", "image", "scale", "action", "data", "launchConfig", "stackId"))
             assertEquals("ResourceChangeInputInvalid", assertThrows(ClientVisibleException.class,
                     () -> descriptor.parameters(Map.of(field, "PRIVATE-CANARY"))).getCode());
-        for (String operation : List.of("create", "start", "stop", "restart", "scale", "remove", "archive", "restore"))
+        for (String operation : List.of("restart", "scale", "remove", "archive", "restore"))
             assertThrows(ClientVisibleException.class, () -> AiResourceChangeDescriptor.require("loadBalancerService", operation));
+        var create = AiResourceChangeDescriptor.require("loadBalancerService", "create");
+        assertEquals("POST", create.method());
+        assertThrows(ClientVisibleException.class, () -> create.parameters(Map.of("name", "safe-name", "stackId", "1st3")));
         assertThrows(ClientVisibleException.class, () -> descriptor.parameters(Map.of()));
         assertThrows(ClientVisibleException.class, () -> descriptor.parameters(Map.of("name", " ")));
     }
@@ -346,6 +349,153 @@ public class AiLoadBalancerMetadataChangeTest {
             assertEquals(77L, ((Number) metadata.get("accountId")).longValue()); assertEquals(42L, ((Number) metadata.get("principalAccountId")).longValue());
             observer.beforeExecution(config, metadata); verifyNoInteractions(observer.store);
             assertEquals(version, request.getSchemaVersion()); assertSame(request, ApiContext.getContext().getApiRequest());
+        }
+    }
+
+    @Test public void loadBalancerStartStopUseOnlyFreshNativeActionsEmptyBodiesAndOriginalParentKeyCeilings() throws Exception {
+        enabled(() -> {
+            var f = new DomainFixture(); realKey(f, full());
+            var action = mock(io.github.ibuildthecloud.gdapi.model.Action.class);
+            when(f.schema.getResourceActions()).thenReturn(Map.of("activate", action, "deactivate", action));
+            for (String operation : List.of("start", "stop")) {
+                var descriptor = AiResourceChangeDescriptor.require("loadBalancerService", operation);
+                assertEquals("POST", descriptor.method()); assertEquals("update", descriptor.keyOperation());
+                assertEquals("start".equals(operation) ? "activate" : "deactivate", descriptor.action());
+                assertEquals(Map.of(), descriptor.parameters(Map.of())); assertEquals(Map.of(), descriptor.body(Map.of()));
+                for (String field : List.of("lbConfig", "launchConfig", "portRules", "ports", "certificateIds", "volumes", "scale", "action"))
+                    assertEquals("ResourceChangeInputInvalid", assertThrows(ClientVisibleException.class,
+                            () -> descriptor.parameters(Map.of(field, "UNAPPROVED"))).getCode());
+                when(f.manager.resourceAction(eq("loadBalancerService"), any())).thenAnswer(call -> {
+                    ApiRequest request = call.getArgument(1); assertEquals("1s7", request.getId());
+                    assertEquals(descriptor.action(), request.getAction()); assertEquals(Map.of(), request.getRequestObject());
+                    assertTrue(AiResourceChangeDomain.trustedDomain(request)); return f.row;
+                });
+                assertEquals(Map.of(), f.domain.prepare(f.request, descriptor, "1s7", Map.of()));
+                assertSame(f.row, f.domain.dispatch(f.request, descriptor, "1s7", Map.of(), "own-plan"));
+                when(f.schema.getResourceActions()).thenReturn(Map.of());
+                assertEquals("PermissionDenied", assertThrows(ClientVisibleException.class,
+                        () -> f.domain.prepare(f.request, descriptor, "1s7", Map.of())).getCode());
+                when(f.schema.getResourceActions()).thenReturn(Map.of("activate", action, "deactivate", action));
+                realKey(f, new ApiKeyPolicy(ApiKeyPolicy.Mode.CUSTOM, ApiKeyPolicy.Effect.DENY, null,
+                        List.of(new ApiKeyPolicy.Rule("lb-only", ApiKeyPolicy.Effect.ALLOW,
+                                ApiKeyPolicy.Scope.resource("service", "1s7"), Set.of("read", "update"))), ApiKeyPolicy.Purpose.AI_BRIDGE));
+                assertEquals("KeyScopeDenied", assertThrows(ClientVisibleException.class,
+                        () -> f.domain.prepare(f.request, descriptor, "1s7", Map.of())).getCode()); realKey(f, full());
+                var before = f.domain.snapshot(f.row); var reference = f.domain.loadBalancerMetadataContext(f.request, descriptor, "1s7");
+                var plan = new LinkedHashMap<String, Object>(Map.of("status", "accepted", "resourceId", "1s7", "internalResourceId", 7L,
+                        "snapshot", before, "referenceSnapshot", reference));
+                when(f.policy.authorizeObject(f.row)).thenReturn(f.row);
+                when(f.domain.objects.loadResource("loadBalancerService", 7L)).thenReturn(f.row);
+                assertSame(f.row, f.domain.receiptTarget(f.request, descriptor, plan));
+                f.stack.setUuid("replacement"); assertEquals("ResourceChangePlanStale", assertThrows(ClientVisibleException.class,
+                        () -> f.domain.receiptTarget(f.request, descriptor, plan)).getCode()); f.stack.setUuid("stack-uuid");
+            }
+            verify(f.manager, times(2)).resourceAction(eq("loadBalancerService"), any());
+            verify(f.manager, never()).create(anyString(), any()); verify(f.manager, never()).update(anyString(), anyString(), any());
+        });
+    }
+
+    @Test public void loadBalancerLifecycleReceiptRequiresNativeReadinessStoppedInstancesAndEveryProtectedConfiguration() {
+        var f = new DomainFixture(); f.domain.deploymentReadiness = mock(io.cattle.platform.servicediscovery.api.service.ServiceDeploymentReadiness.class);
+        when(f.domain.deploymentReadiness.isReady(f.row)).thenReturn(true);
+        io.cattle.platform.object.util.DataAccessor.fields(f.row).withKey("lbConfig").set(Map.of("portRules", List.of(Map.of("protocol",
+                "tcp", "sourcePort", 8080,
+                "targetPort", 80, "serviceId", "9")), "certificateIds", List.of("secret-certificate-reference")));
+        io.cattle.platform.object.util.DataAccessor.fields(f.row).withKey("launchConfig").set(Map.of("imageUuid", "server-lb", "ports",
+                List.of("8080:8080/tcp"),
+                "dataVolumes", List.of("/data"), "volumeDriver", "driver"));
+        var before = f.domain.snapshot(f.row); var start = AiResourceChangeDescriptor.require("loadBalancerService", "start");
+        var stop = AiResourceChangeDescriptor.require("loadBalancerService", "stop");
+        assertTrue(f.domain.complete(start, f.row, Map.of(), before));
+        when(f.domain.deploymentReadiness.isReady(f.row)).thenReturn(false); assertFalse(f.domain.complete(start, f.row, Map.of(), before));
+        when(f.domain.deploymentReadiness.isReady(f.row)).thenReturn(true);
+        for (String field : List.of("lbConfig", "launchConfig", "secondaryLaunchConfigs", "scale", "ports", "certificateIds",
+                "defaultCertificateId", "volumes", "volumeMounts")) {
+            Object original = io.cattle.platform.object.util.DataAccessor.field(f.row, field, Object.class);
+            io.cattle.platform.object.util.DataAccessor.fields(f.row).withKey(field).set(Map.of("changed", true));
+            assertFalse(field, f.domain.complete(start, f.row, Map.of(), before));
+            io.cattle.platform.object.util.DataAccessor.fields(f.row).withKey(field).set(original);
+        }
+        assertFalse(f.domain.complete(start, f.row, Map.of("scale", 2), before));
+        f.row.setUuid("replacement"); assertFalse(f.domain.complete(start, f.row, Map.of(), before)); f.row.setUuid("lb-uuid");
+        var instance = new io.cattle.platform.core.model.tables.records.InstanceRecord(); instance.setId(91L); instance.setAccountId(77L);
+                instance.setState("running");
+        var link = new io.cattle.platform.core.model.tables.records.ServiceExposeMapRecord(); link.setId(92L); link.setInstanceId(91L); link.setManaged(true);
+        when(f.domain.objects.find(io.cattle.platform.core.model.ServiceExposeMap.class, "serviceId", 7L, "removed", null)).thenReturn(List.of(link));
+        when(f.domain.objects.loadResource(io.cattle.platform.core.model.Instance.class, 91L)).thenReturn(instance);
+        before = f.domain.snapshot(f.row); f.row.setState("inactive");
+        assertFalse(f.domain.complete(stop, f.row, Map.of(), before)); instance.setState("stopped");
+        assertTrue(f.domain.complete(stop, f.row, Map.of(), before));
+        f.row.setState("active"); assertTrue(f.domain.complete(start, f.row, Map.of(), before));
+        f.row.setState("activating"); assertFalse(f.domain.complete(start, f.row, Map.of(), before));
+        f.row.setRemoved(new java.util.Date()); assertFalse(f.domain.complete(start, f.row, Map.of(), before));
+    }
+
+    @Test public void loadBalancerLifecyclePlansKeepHumanApprovalConfigurationCasBoundKeyAndOneDispatch() throws Exception {
+        for (String operation : List.of("start", "stop")) {
+            var f = new AiResourceChangePlanServiceTest.Fixture(); f.target.setKind("loadBalancerService"); f.target.setUuid("lb-uuid");
+            f.target.setStackId(3L); f.target.setState("start".equals(operation) ? "inactive" : "active");
+            var owner = new AiResourceChangeDomain(); owner.json = f.json; owner.objects = mock(ObjectManager.class);
+            when(f.domain.snapshot(any())).thenAnswer(call -> owner.snapshot(call.getArgument(0)));
+            when(f.domain.loadBalancerMetadataContext(any(), any(), anyString())).thenReturn(Map.of("uuid", "stack-uuid", "name", "Blue"));
+            doAnswer(call -> { f.dispatched++; return f.target; }).when(f.domain).dispatch(any(), any(), nullable(String.class), anyMap(), anyString());
+            ApiRequest request = f.request(null, true); request.setRequestObject(Map.of("resourceType", "loadBalancerService", "operation", operation,
+                    "resourceId", "1s7", "parameters", Map.of())); f.id = (String) f.service.preview(request).get("id");
+            assertEquals(Map.of("uuid", "stack-uuid", "name", "Blue"), f.documents.get(f.id).get("referenceSnapshot"));
+            assertEquals("ResourceChangeNeedsConfirmation", assertThrows(ClientVisibleException.class, () -> f.apply(true)).getCode());
+            Map<String, Object> originalData = f.target.getData() == null ? null : f.json.readValue(f.json.writeValueAsString(f.target.getData()));
+            io.cattle.platform.object.util.DataAccessor.fields(f.target).withKey("lbConfig").set(Map.of("changed", true));
+            assertEquals("ResourceChangePlanStale", assertThrows(ClientVisibleException.class, f::confirm).getCode());
+            f.target.setData(originalData);
+            f.writeAllowed = false; assertEquals("PermissionDenied", assertThrows(ClientVisibleException.class, f::confirm).getCode());
+            f.writeAllowed = true; f.confirm(); assertEquals("ResourceChangeBoundKeyRequired", assertThrows(ClientVisibleException.class,
+                    () -> f.apply(false)).getCode());
+            assertEquals("accepted", f.apply(true).get("status")); f.apply(true); assertEquals(1, f.claims); assertEquals(1, f.dispatched);
+            f.complete = true; assertEquals(true, f.service.get(f.id, f.request(null, true)).get("verifiedResult"));
+            assertTrue(f.audits.stream().anyMatch(value -> value.startsWith("preview:loadBalancerService:true:")));
+            assertTrue(f.audits.stream().anyMatch(value -> value.startsWith("apply:loadBalancerService:true:")));
+        }
+    }
+
+    @Test public void queuedLoadBalancerActivateDeactivateRetainFreshOwnerActionKeyRevisionAndRevocationBounds() throws Exception {
+        for (String actionName : List.of("activate", "deactivate")) {
+            var owner = mock(Policy.class); when(owner.authorizeObject(any())).thenAnswer(call -> call.getArgument(0));
+            var schemas = mock(SchemaFactory.class); var schema = mock(io.github.ibuildthecloud.gdapi.model.Schema.class);
+            var action = mock(io.github.ibuildthecloud.gdapi.model.Action.class);
+            when(schemas.getSchema("loadBalancerService")).thenReturn(schema); when(schema.getResourceActions()).thenReturn(Map.of(actionName, action));
+            var objects = mock(ObjectManager.class); when(objects.getSchemaFactory()).thenReturn(schemas);
+            var credential = mock(io.cattle.platform.core.model.Credential.class); when(credential.getId()).thenReturn(7L);
+            when(credential.getAccountId()).thenReturn(42L); when(credential.getKind()).thenReturn("apiKey"); when(credential.getState()).thenReturn("active");
+            var row = row(); when(objects.loadResource(io.cattle.platform.core.model.Credential.class, 7L)).thenReturn(credential);
+            when(objects.loadResource("loadBalancerService", 7L)).thenReturn(row); when(objects.loadResource("service", "7")).thenReturn(row);
+            var authenticator = mock(io.cattle.platform.iaas.api.auth.impl.ApiAuthenticator.class);
+            when(authenticator.currentAuthorization(eq(42L), eq(77L), any())).thenReturn(
+                    new io.cattle.platform.iaas.api.auth.impl.ApiAuthenticator.CurrentAuthorization(owner, schemas));
+            var targets = mock(ApiKeyTargetResolver.class); when(targets.parseScopeId("credential", "1c7")).thenReturn(7L);
+            when(targets.resolveObject(anyString(), eq(row), eq(owner))).thenReturn(ApiKeyPolicyEvaluator.Target.stackResource("service",
+                    "1s7", "1a77", "1st3"));
+            var hook = new ApiKeyProcessAuthorization(); inject(hook, "objectManager", objects); inject(hook, "authenticator", authenticator);
+                    inject(hook, "targets", targets);
+            var metadata = new LinkedHashMap<String, Object>(Map.of("keyId", "1c7", "policyRevision", 0L, "principalAccountId", 42L,
+                    "accountId", 77L, "operation", "update", "targetType", "loadBalancerService", "targetId", "7", "requestMethod", "POST",
+                            "requestCollection", false));
+            metadata.put("requestAction", actionName); metadata.put("requestId", UUID.randomUUID().toString());
+            var config = new LaunchConfiguration("service." + actionName, "service", "7", 77L, 0, Map.of());
+            hook.beforeExecution(config, metadata); // Existing legacy virtual Full, without a typed bypass.
+            var codec = new io.cattle.platform.iaas.api.auth.apikey.ApiKeyPolicyCodec();
+            var stored = codec.store(credential, generalFull(), 3); when(credential.getData()).thenReturn(stored); metadata.put("policyRevision", 3L);
+            hook.beforeExecution(config, metadata);
+            when(schema.getResourceActions()).thenReturn(Map.of());
+            assertEquals("OwnerPermissionDenied", assertThrows(ProcessAuthorizationDeniedException.class, () -> hook.beforeExecution(config,
+                    metadata)).getCode());
+            when(schema.getResourceActions()).thenReturn(Map.of(actionName, action)); when(owner.authorizeObject(row)).thenReturn(null);
+            assertEquals("OwnerPermissionDenied", assertThrows(ProcessAuthorizationDeniedException.class, () -> hook.beforeExecution(config,
+                    metadata)).getCode());
+            when(owner.authorizeObject(row)).thenReturn(row); metadata.put("policyRevision", 2L);
+            assertEquals("ApiKeyPolicyChanged", assertThrows(ProcessAuthorizationDeniedException.class, () -> hook.beforeExecution(config,
+                    metadata)).getCode());
+            metadata.put("policyRevision", 3L); when(credential.getState()).thenReturn("removed");
+            assertEquals("ApiKeyRevoked", assertThrows(ProcessAuthorizationDeniedException.class, () -> hook.beforeExecution(config, metadata)).getCode());
         }
     }
 

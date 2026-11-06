@@ -26,6 +26,7 @@ import io.cattle.platform.util.type.CollectionUtils;
 import io.github.ibuildthecloud.gdapi.condition.Condition;
 import io.github.ibuildthecloud.gdapi.condition.ConditionType;
 import io.github.ibuildthecloud.gdapi.context.ApiContext;
+import io.github.ibuildthecloud.gdapi.factory.SchemaFactory;
 import io.github.ibuildthecloud.gdapi.exception.ClientVisibleException;
 import io.github.ibuildthecloud.gdapi.model.ListOptions;
 import io.github.ibuildthecloud.gdapi.model.Pagination;
@@ -41,6 +42,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import java.util.LinkedHashSet;
@@ -219,6 +221,8 @@ public class AiResourceViewService {
                 volumeUsage(domain, id, safe);
             }
             if ("host".equals(type) && domain.getId() != null) hostWorkloads(domain, id, safe);
+            if (Set.of("apiKey", "apiKeyRestricted").contains(type) && domain.getId() != null)
+                safe.put("apiKeyPolicyRead", apiKeyPolicyDetail(domain, resource));
             if ("dnsService".equals(type)) safe.putAll(resourceChanges.aliasViewTargets(domain, id, domain.getId() != null));
             if ("processPool".equals(type) && (!(safe.get("name") instanceof String name) || name.isBlank()))
                 safe.put("name", "Process pool " + id.substring(5, 17));
@@ -247,6 +251,70 @@ public class AiResourceViewService {
         // The native LIKE owner binds this as data. Escape pattern characters
         // so the public substring search keeps its literal-name semantics.
         return "%" + value.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%";
+    }
+
+    private Map<String, Object> apiKeyPolicyDetail(ApiRequest domain, Resource resource) {
+        if (resource == null || !domain.getType().equals(resource.getType()) || !sameId(resource.getId(), domain.getId()))
+            throw error(409, "ResourceViewUnavailable");
+        Policy actor = keyAuthorization.actor(domain);
+        return AiApiKeyReadView.project(resource, domain.getSchemaFactory().getSchema(domain.getType()),
+                actor.getAuthenticatedAsAccountId(), scope -> {
+                    String type = AiApiKeyReadView.type(scope);
+                    return type == null ? null : apiKeyPolicyTarget(domain, type, scope.resourceId(),
+                            scope.kind() == io.cattle.platform.iaas.api.auth.apikey.ApiKeyPolicy.ScopeKind.PROJECT, true);
+                }, () -> apiKeyPolicyTarget(domain, resource.getType(), resource.getId(), false, false));
+    }
+
+    private AiApiKeyReadView.Evidence apiKeyPolicyTarget(ApiRequest domain, String type, String id,
+            boolean projectCeiling, boolean concealUnavailable) {
+        if (id == null || !READ_TYPES.contains(type)) return null;
+        final Long internal;
+        try { internal = Long.parseLong(rawId(id).toString()); if (internal <= 0) return null; }
+        catch (ClientVisibleException | NumberFormatException invalid) { return null; }
+        Object located = objects.loadResource(type, internal);
+        if (located == null || io.cattle.platform.object.util.ObjectUtils.getPropertyIgnoreErrors(located, "removed") != null) return null;
+        Object accountValue = io.cattle.platform.object.util.ObjectUtils.getPropertyIgnoreErrors(located, "accountId");
+        ApiRequest child = new ApiRequest(domain);
+        child.setRequestServletContext(domain.getServletContext()); child.setType(type); child.setId(internal.toString());
+        child.setMethod("GET"); child.setAction(null); child.setLink(null); child.setRequestObject(null);
+        child.setRequestParams(new LinkedHashMap<>()); child.setConditions(new LinkedHashMap<>()); child.setInclude(null);
+        child.setAttribute(DOMAIN_READ_ATTRIBUTE, Boolean.TRUE);
+        ApiKeyCredentialContext key = ApiKeyCredentialContext.get(domain);
+        if (key != null) ApiKeyCredentialContext.attach(child, key);
+        Policy actor = keyAuthorization.actor(child);
+        long account = GLOBAL_TYPES.contains(type) ? actor.getAuthenticatedAsAccountId()
+                : accountValue instanceof Number number && number.longValue() > 0 ? number.longValue() : -1;
+        if (account <= 0) return null;
+        ApiContext context = ApiContext.getContext();
+        ApiRequest previous = context.getApiRequest(); Object previousPolicy = context.getPolicy();
+        try {
+            var authority = authenticator.currentAuthorization(actor.getAuthenticatedAsAccountId(), account, child);
+            child.setSchemaFactory(authority.schemas()); context.setApiRequest(child); context.setPolicy(authority.policy());
+            Schema schema = authority.schemas().getSchema(type);
+            if (schema == null || schema.getResourceMethods() == null || !schema.getResourceMethods().contains("GET")) {
+                if (!concealUnavailable) throw error(403, "OwnerPermissionDenied");
+                return null;
+            }
+            keyAccess.authorize(child, authority.policy());
+            ResourceManager manager = managers.getResourceManagerByType(type);
+            if (manager == null) return null;
+            Object row = manager.getById(type, child.getId(), new ListOptions(child));
+            if (row == null || io.cattle.platform.object.util.ObjectUtils.getPropertyIgnoreErrors(row, "removed") != null) return null;
+            Resource target = manager.convertResponse(row, child);
+            if (target == null || !type.equals(target.getType()) || !sameId(target.getId(), id)) return null;
+            if (!GLOBAL_TYPES.contains(type) && (!AiApiKeyReadView.readable(schema, "accountId")
+                    || !Objects.equals(target.getFields().get("accountId"),
+                            String.valueOf(context.getIdFormatter().formatId("account", account))))) return null;
+            SchemaFactory ceiling = authority.schemas();
+            if (projectCeiling) ceiling = authenticator.currentAuthorization(actor.getAuthenticatedAsAccountId(), internal, child).schemas();
+            return new AiApiKeyReadView.Evidence(target, ceiling);
+        } catch (ClientVisibleException denied) {
+            if (!concealUnavailable || !(denied.getStatus() == 403 || denied.getStatus() == 404)
+                    || !Set.of("KeyScopeDenied", "KeyPolicyDenied", "OwnerPermissionDenied", "NotFound").contains(denied.getCode())) throw denied;
+            return null;
+        } finally {
+            context.setApiRequest(previous); context.setPolicy(previousPolicy);
+        }
     }
 
     /** Same native parent/child owners as processExecutions, with a real bounded child GET. */
