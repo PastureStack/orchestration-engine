@@ -1,22 +1,14 @@
 # Compatibility Contract
 
-## Source candidate: Engine 0.183.379
+## Engine 0.183.379 published
 
-This unpublished candidate adds manual scaling for non-global load balancers,
-with native role/Key checks and configuration/state preservation. An exactly
-bound canceled native Container start records a fixed failed receipt; a stopped
-state alone never establishes failure. Normal CI, original artifacts and release
-qualification are pending. Use the latest published component below.
+Non-Global load balancers support a separately human-approved manual scale plan with fresh native role/Key and parent checks. Active/inactive state and configuration remain bound to the review; an inactive load balancer is not activated. Ordinary Service scale limits remain unchanged.
 
-## Engine 0.183.378 published
+An exact attested canceled Container-start root process records a fixed failed receipt. Child stop, retries, timeouts and coincidentally stopped state do not establish failure. Successful starts retain native state/Host readback. The build transport can retrieve the exact signed-plan payload through a closed official retained-payload redirect after the original archive and snapshot fail; versions and security gates are unchanged.
 
-API Key detail reads project configured policy and native read-only capability information without changing effective authorization or mutation grants. TCP load-balancer creation requires explicit activation intent and 1–16 complete ordered rules. The native Stack/backend identities, exact reviewed configuration and current role/Key authority remain binding. Load-balancer start/stop uses the existing Service lifecycle and verifies preserved configuration.
+[The immutable release](https://github.com/PastureStack/orchestration-engine/releases/tag/v0.183.379) contains twelve original assets verified by anonymous bytes/SHA readback and a native attestation covering thirteen subjects. Original CI passed 448 suites / 4,080 tests with zero failures/errors and one inherited skip; all 265 required methods, 43 named Linux build controls and 13 PIP controls passed. Packaged evidence covers 4 changed and 45 byte-identical published378 class families. The final 183-package Dapper table is unchanged. C03 retains 1396 operation tuples across 472 source inputs, with no new role/field grants. Raw/effective findings remain separate; workflow SLSA was not provided.
 
-The existing native audit Key selector remains supported only on MySQL/MariaDB. H2/HSQLDB retain bounded history and explicitly reject selector requests. Capability metadata grants no authority and errors never trigger an unfiltered retry.
-
-[The immutable release](https://github.com/PastureStack/orchestration-engine/releases/tag/v0.183.378) contains twelve original assets verified by anonymous bytes/SHA readback and a native attestation covering thirteen subjects. Original CI passed 447 suites / 4,071 tests with zero failures/errors and one inherited skip; all 256 required methods, 39 Linux build controls and 13 PIP controls passed. Packaged evidence covers 8 changed/new and 41 byte-identical published377 class families. The final 183-package Dapper table is unchanged. C03 retains 1396 operation tuples, with no new role/field grants. Raw/effective findings remain separate; workflow SLSA was not provided.
-
-[Published metadata](https://github.com/PastureStack/orchestration-engine/releases/download/v0.183.378/engine378-release-metadata.json) separates producer `967d4231a3eb592136d9bccb2cb36e34ce47efb7`, normal merge/tag target `1e7195e5a60376a05b3c27da3bae1590d799a8f5` and tested tree `d5138d3a41408cd1cae89e298baef1400e4f83f1` from this documentation commit. Matching Web218/Bridge0.2.20 and qualified Server assembly are required. Native Key-policy/TCP/LB lifecycle and whole-243-group acceptance remain separate.
+[Published metadata](https://github.com/PastureStack/orchestration-engine/releases/download/v0.183.379/engine379-release-metadata.json) separates producer `51927efe86f63f232327c465a409114171a87f8f`, normal merge/tag target `692d03692165d06b77d387a21c4fb3ff1589e710` and tested tree `3888143b757b148c755780f6e2677c1ec055977f` from this documentation commit. Matching Web220/Bridge0.2.22 and a qualified Server assembly are required. Deployment, native business acceptance and whole-243-group completion remain separate and pending.
 
 ## Engine 0.183.376 published
 
