@@ -1,4 +1,5 @@
 {
+    "collectionFilters": { "keyId": { "modifiers": ["eq"] } },
     "resourceFields": {
         "eventId": { "type": "string", "create": false, "update": false },
         "keyId": { "type": "string", "create": false, "update": false },

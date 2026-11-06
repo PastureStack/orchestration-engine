@@ -36,7 +36,8 @@ final class AiAuditSourcePage {
             "eventType", "resourceType", "resourceId", "authType", "eventId", "keyId", "decision", "outcome",
             "httpStatus", "responseCode", "requestId", "targetType", "targetId", "operation", "policyRevision",
             "phase", "preview", "processId", "processName", "failureCode", "interactionChannel");
-    final String category, type, resourceId, projectId, accountId, marker;
+    final String category, type, resourceId, projectId, accountId, marker, keyId;
+    final boolean capabilitiesOnly;
     final Instant from, to;
     final int limit;
 
@@ -44,8 +45,11 @@ final class AiAuditSourcePage {
         category = (String) input.get("resourceType");
         require(SOURCES.contains(category));
         require(Set.of("type", "resourceType", "resourceId", "sourcePage").containsAll(input.keySet()));
-        require(Set.of("type", "limit", "marker", "projectId", "accountId", "from", "to", "keyKind").containsAll(page.keySet()));
+        require(Set.of("type", "limit", "marker", "projectId", "accountId", "from", "to", "keyKind", "keyId", "capabilitiesOnly").containsAll(page.keySet()));
         require(!page.containsKey("type") || "aiAuditSourcePageInput".equals(page.get("type")));
+        capabilitiesOnly = page.containsKey("capabilitiesOnly");
+        if (capabilitiesOnly) require(Boolean.TRUE.equals(page.get("capabilitiesOnly")) && "auditLog".equals(category)
+                && !input.containsKey("resourceId") && Set.of("type", "capabilitiesOnly").containsAll(page.keySet()));
         String keyKind = text(page, "keyKind", 32);
         require(keyKind == null || "apiKey".equals(category) && Set.of("apiKey", "apiKeyRestricted").contains(keyKind));
         type = keyKind == null ? category : keyKind;
@@ -55,6 +59,8 @@ final class AiAuditSourcePage {
         projectId = text(page, "projectId", 128);
         accountId = text(page, "accountId", 128);
         marker = text(page, "marker", 128);
+        keyId = text(page, "keyId", 128);
+        if (keyId != null) { require("auditLog".equals(category)); number("apiKey", keyId); }
         if (projectId != null) { require(Set.of("apiKey", "auditLog").contains(category)); number("project", projectId); }
         if (accountId != null) { require("auditLog".equals(category)); number("account", accountId); }
         if (marker != null) { require(resourceId == null); number(type, marker); }
@@ -62,7 +68,7 @@ final class AiAuditSourcePage {
         require(size instanceof Number n && n.longValue() == n.doubleValue() && n.longValue() > 0 && n.longValue() <= 1000);
         limit = ((Number) size).intValue();
         String start = text(page, "from", 64), end = text(page, "to", 64);
-        if ("auditLog".equals(category)) {
+        if ("auditLog".equals(category) && !capabilitiesOnly) {
             require(start != null && end != null);
             try { from = OffsetDateTime.parse(start).toInstant(); to = OffsetDateTime.parse(end).toInstant(); }
             catch (java.time.DateTimeException invalid) { throw error(422, "ResourceViewInputInvalid"); }
@@ -78,6 +84,7 @@ final class AiAuditSourcePage {
     }
 
     void configure(ApiRequest domain) {
+        if (capabilitiesOnly) return;
         boolean descending = "auditLog".equals(category);
         domain.setSort(new Sort("id", descending ? Sort.SortOrder.DESC : Sort.SortOrder.ASC, null));
         domain.setPagination(new Pagination("project".equals(category) ? 10001 : limit + 1));
@@ -91,6 +98,8 @@ final class AiAuditSourcePage {
         }
         if (accountId != null)
             domain.getConditions().put("accountId", List.of(new Condition(ConditionType.EQ, number("account", accountId))));
+        if (keyId != null)
+            domain.getConditions().put("keyId", List.of(new Condition(ConditionType.EQ, keyId)));
     }
 
     Map<String, Object> fetch(ResourceManager manager, ApiRequest domain, Policy owner) {
@@ -116,6 +125,37 @@ final class AiAuditSourcePage {
         projected.sort("auditLog".equals(category) ? order.reversed() : order);
         boolean more = projected.size() > limit;
         List<Map<String, Object>> data = projected.subList(0, Math.min(limit, projected.size()));
+        Map<String, Object> output = new LinkedHashMap<>();
+        output.put("id", "aiview-" + UUID.randomUUID()); output.put("resourceType", type); output.put("data", data);
+        output.put("nextMarker", more ? data.getLast().get("id") : null);
+        output.put("nativeAuthority", authority(domain, owner)); output.put("sourcePageResult", true);
+        return output;
+    }
+
+    void requireSupportedSelector(ApiRequest domain) {
+        if (keyId != null && !keySelectorSupported(domain)) throw error(422, "AuditKeySelectorUnsupported");
+    }
+
+    Map<String, Object> capabilities(ApiRequest domain, Policy owner) {
+        Map<String, Object> output = new LinkedHashMap<>();
+        output.put("id", "aiview-" + UUID.randomUUID()); output.put("resourceType", "auditLog");
+        output.put("data", List.of()); output.put("nextMarker", null); output.put("sourcePageResult", true);
+        output.put("nativeCapabilities", Map.of("keyIdSelector", keySelectorSupported(domain)));
+        output.put("nativeAuthority", authority(domain, owner));
+        return output;
+    }
+
+    private static boolean keySelectorSupported(ApiRequest domain) {
+        var schema = domain.getSchemaFactory().getSchema("auditLog");
+        var field = schema == null || schema.getResourceFields() == null ? null : schema.getResourceFields().get("keyId");
+        var filter = schema == null || schema.getCollectionFilters() == null ? null : schema.getCollectionFilters().get("keyId");
+        return schema != null && schema.getCollectionMethods() != null && schema.getCollectionMethods().contains("GET")
+                && field != null && field.isIncludeInList() && !field.isReadOnCreateOnly()
+                && (field.getTransform() == null || field.getTransform().isBlank())
+                && filter != null && List.of("eq").equals(filter.getModifiers());
+    }
+
+    private static Map<String, Object> authority(ApiRequest domain, Policy owner) {
         Map<String, Object> authority = new LinkedHashMap<>();
         authority.put("actorId", wire("account", owner.getAuthenticatedAsAccountId()));
         authority.put("accountId", wire("account", owner.getAccountId()));
@@ -124,11 +164,7 @@ final class AiAuditSourcePage {
             authority.put("credentialId", wire("apiKey", key.credentialId()));
             authority.put("credentialRevision", key.revision()); authority.put("credentialKind", key.kind());
         }
-        Map<String, Object> output = new LinkedHashMap<>();
-        output.put("id", "aiview-" + UUID.randomUUID()); output.put("resourceType", type); output.put("data", data);
-        output.put("nextMarker", more ? data.getLast().get("id") : null);
-        output.put("nativeAuthority", authority); output.put("sourcePageResult", true);
-        return output;
+        return authority;
     }
 
     private Map<String, Object> project(Resource resource, ApiRequest domain) {

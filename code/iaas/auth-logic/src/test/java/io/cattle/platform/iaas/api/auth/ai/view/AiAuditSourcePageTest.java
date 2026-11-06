@@ -121,6 +121,53 @@ public class AiAuditSourcePageTest {
         verifyNoInteractions(f.manager);
     }
 
+    @Test public void auditKeySelectorIsPassedToNativeReadWithoutWeakeningCurrentAuthority() throws Exception {
+        Fixture f = new Fixture("auditLog");
+        Map<String, Object> body = f.body();
+        Map<String, Object> page = new LinkedHashMap<>((Map<String, Object>) body.get("sourcePage"));
+        page.put("keyId", "1c8"); body.put("sourcePage", page);
+        ApiRequest request = f.request(); request.setRequestObject(body); f.service.read(request);
+        var capture = org.mockito.ArgumentCaptor.forClass(ApiRequest.class);
+        verify(f.manager).list(eq("auditLog"), capture.capture());
+        var nativeRequest = capture.getValue();
+        var selected = nativeRequest.getConditions().get("keyId");
+        assertEquals(1, selected.size());
+        assertEquals(io.github.ibuildthecloud.gdapi.condition.ConditionType.EQ, selected.getFirst().getConditionType());
+        assertEquals(List.of("1c8"), selected.getFirst().getValues());
+        assertTrue(nativeRequest.getConditions().containsKey("created"));
+        assertEquals(Boolean.TRUE, nativeRequest.getAttribute(AiResourceViewService.DOMAIN_READ_ATTRIBUTE));
+        assertNotNull(ApiKeyCredentialContext.get(nativeRequest));
+        f.credential.setState("inactive"); clearInvocations(f.manager);
+        assertEquals("ApiKeyRevoked", failure(() -> f.service.read(request))); verifyNoInteractions(f.manager);
+        Fixture denied = new Fixture("auditLog"); denied.policy(true);
+        ApiRequest blocked = denied.request(); Map<String, Object> deniedBody = denied.body();
+        Map<String, Object> deniedPage = new LinkedHashMap<>((Map<String, Object>) deniedBody.get("sourcePage"));
+        deniedPage.put("keyId", "1c8"); deniedBody.put("sourcePage", deniedPage); blocked.setRequestObject(deniedBody);
+        assertTrue(((List<?>) denied.service.read(blocked).get("data")).isEmpty());
+    }
+
+    @Test public void auditKeySelectorRejectsWrongCategoryFormatAndUnknownSourceFields() throws Exception {
+        for (String type : List.of("project", "account", "apiKey")) {
+            Fixture f = new Fixture(type); Map<String, Object> body = f.body();
+            Map<String, Object> page = new LinkedHashMap<>((Map<String, Object>) body.get("sourcePage"));
+            page.put("keyId", "1c8"); body.put("sourcePage", page);
+            ApiRequest request = f.request(); request.setRequestObject(body);
+            assertEquals("ResourceViewInputInvalid", failure(() -> f.service.read(request))); verifyNoInteractions(f.manager);
+        }
+        for (String invalid : List.of("8", "1a8", "1c0", "1c08", "1c8 ", "1c9223372036854775808", "1c8'")) {
+            Fixture f = new Fixture("auditLog"); Map<String, Object> body = f.body();
+            Map<String, Object> page = new LinkedHashMap<>((Map<String, Object>) body.get("sourcePage"));
+            page.put("keyId", invalid); body.put("sourcePage", page);
+            ApiRequest request = f.request(); request.setRequestObject(body);
+            assertEquals("ResourceViewInputInvalid", failure(() -> f.service.read(request))); verifyNoInteractions(f.manager);
+        }
+        Fixture f = new Fixture("auditLog"); Map<String, Object> body = f.body();
+        Map<String, Object> page = new LinkedHashMap<>((Map<String, Object>) body.get("sourcePage"));
+        page.put("keyId", "1c8"); page.put("keyPath", "$.anything"); body.put("sourcePage", page);
+        ApiRequest request = f.request(); request.setRequestObject(body);
+        assertEquals("ResourceViewInputInvalid", failure(() -> f.service.read(request))); verifyNoInteractions(f.manager);
+    }
+
     static String failure(Runnable action) { return assertThrows(ClientVisibleException.class, action::run).getCode(); }
 
     @Test public void newQueryAdmissionIsReadOnlyAndNeverOpensRawAuditOrCredentialRoutes() throws Exception {
@@ -141,6 +188,50 @@ public class AiAuditSourcePageTest {
         when(f.manager.convertResponse(eq(f.row), any())).thenReturn(new ResourceImpl("1c2", "token", Map.of("accountId", "1a1")));
         assertEquals("OwnerPermissionDenied", failure(() -> f.service.read(f.request())));
     }
+    @Test public void fixedAuditCapabilityUsesFreshAuthorityWithoutRowsOrSelectorFallback() throws Exception {
+        Fixture f = new Fixture("auditLog"); ApiRequest request = f.request();
+        request.setRequestObject(Map.of("resourceType", "auditLog", "sourcePage", Map.of("capabilitiesOnly", true)));
+        var result = f.service.read(request);
+        assertEquals(Map.of("keyIdSelector", true), result.get("nativeCapabilities"));
+        assertEquals(List.of(), result.get("data")); assertNull(result.get("nextMarker"));
+        Map<?, ?> authority = (Map<?, ?>) result.get("nativeAuthority");
+        assertEquals("1a1", authority.get("actorId")); assertEquals("1c8", authority.get("credentialId"));
+        assertEquals(3L, authority.get("credentialRevision"));
+        verify(f.manager, never()).list(anyString(), any(ApiRequest.class));
+        verify(f.manager, never()).getById(anyString(), anyString(), any());
+        when(f.schema.getCollectionFilters()).thenReturn(Map.of());
+        assertEquals(Map.of("keyIdSelector", false), f.service.read(request).get("nativeCapabilities"));
+        Map<String, Object> body = f.body(); var page = new LinkedHashMap<>((Map<String, Object>) body.get("sourcePage"));
+        page.put("keyId", "1c8"); body.put("sourcePage", page); request.setRequestObject(body);
+        assertEquals("AuditKeySelectorUnsupported", failure(() -> f.service.read(request)));
+        verify(f.manager, never()).list(anyString(), any(ApiRequest.class));
+        request.setRequestObject(Map.of("resourceType", "auditLog", "sourcePage", Map.of("capabilitiesOnly", true)));
+        when(f.schema.getCollectionMethods()).thenReturn(List.of());
+        assertEquals("OwnerPermissionDenied", failure(() -> f.service.read(request)));
+    }
+
+    @Test public void fixedAuditCapabilityRejectsMixedInputAndKeepsRevisionAndRevocationGuards() throws Exception {
+        Fixture f = new Fixture("auditLog");
+        for (Map<String, Object> page : List.of(Map.<String, Object>of("capabilitiesOnly", false),
+                Map.<String, Object>of("capabilitiesOnly", "true"), Map.<String, Object>of("capabilitiesOnly", true, "limit", 1),
+                Map.<String, Object>of("capabilitiesOnly", true, "keyId", "1c8"),
+                Map.<String, Object>of("capabilitiesOnly", true, "projectId", "1a1"),
+                Map.<String, Object>of("capabilitiesOnly", true, "url", "/schemas/secret"))) {
+            ApiRequest request = f.request(); request.setRequestObject(Map.of("resourceType", "auditLog", "sourcePage", page));
+            assertEquals("ResourceViewInputInvalid", failure(() -> f.service.read(request)));
+        }
+        ApiRequest wrong = f.request(); wrong.setRequestObject(Map.of("resourceType", "project", "sourcePage", Map.of("capabilitiesOnly", true)));
+        assertEquals("ResourceViewInputInvalid", failure(() -> f.service.read(wrong)));
+        wrong.setRequestObject(Map.of("resourceType", "auditLog", "resourceId", "1al2", "sourcePage", Map.of("capabilitiesOnly", true)));
+        assertEquals("ResourceViewInputInvalid", failure(() -> f.service.read(wrong)));
+        ApiRequest request = f.request(); request.setRequestObject(Map.of("resourceType", "auditLog", "sourcePage", Map.of("capabilitiesOnly", true)));
+        when(f.http.getHeader(ApiKeyAiBridgeGuard.EXPECTED_REVISION_HEADER)).thenReturn("4");
+        assertEquals("ApiKeyPolicyChanged", failure(() -> f.service.read(request)));
+        when(f.http.getHeader(ApiKeyAiBridgeGuard.EXPECTED_REVISION_HEADER)).thenReturn("3"); f.credential.setState("inactive");
+        assertEquals("ApiKeyRevoked", failure(() -> f.service.read(request)));
+        verify(f.manager, never()).list(anyString(), any(ApiRequest.class));
+    }
+
     static void set(Object target, String name, Object value) throws Exception {
         var field = target.getClass().getDeclaredField(name); field.setAccessible(true); field.set(target, value);
     }
@@ -166,6 +257,9 @@ public class AiAuditSourcePageTest {
             when(owner.getAuthenticatedAsAccountId()).thenReturn(1L); when(owner.getAccountId()).thenReturn(1L);
             when(owner.authorizeObject(any())).thenAnswer(call -> call.getArgument(0));
             when(schemas.getSchema(anyString())).thenReturn(schema); when(schemas.getBaseType(anyString())).thenAnswer(call -> call.getArgument(0));
+            var keyField = new io.github.ibuildthecloud.gdapi.model.impl.FieldImpl(); keyField.setIncludeInList(true);
+            when(schema.getResourceFields()).thenReturn(Map.of("keyId", keyField));
+            when(schema.getCollectionFilters()).thenReturn(Map.of("keyId", new io.github.ibuildthecloud.gdapi.model.Filter(List.of("eq"))));
             when(schema.getCollectionMethods()).thenReturn(List.of("GET", "POST")); when(schema.getResourceMethods()).thenReturn(List.of("GET"));
             DefaultIdFormatter formatter = new DefaultIdFormatter(); formatter.setSchemaFactory(schemas);
             formatter.setTypeMappings(Map.of("project", "a", "apiKey", "c", "auditLog", "al")); ApiContext.getContext().setIdFormatter(formatter);

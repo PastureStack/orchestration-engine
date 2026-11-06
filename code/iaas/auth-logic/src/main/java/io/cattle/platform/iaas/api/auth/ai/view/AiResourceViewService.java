@@ -155,6 +155,8 @@ public class AiResourceViewService {
         try {
             keyAccess.authorize(domain, authority.policy());
             if (source != null) {
+                if (source.capabilitiesOnly) return source.capabilities(domain, authority.policy());
+                source.requireSupportedSelector(domain);
                 ResourceManager manager = managers.getResourceManagerByType(type);
                 if (manager == null) throw error(404, "NotFound");
                 return source.fetch(manager, domain, authority.policy());

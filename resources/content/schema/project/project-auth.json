@@ -74,6 +74,8 @@
         "aiAuditSourcePageInput.from": "cr",
         "aiAuditSourcePageInput.to": "cr",
         "aiAuditSourcePageInput.keyKind": "cr",
+        "aiAuditSourcePageInput.keyId": "cr",
+        "aiAuditSourcePageInput.capabilitiesOnly": "cr",
         "aiAuditQuery": "cr",
         "aiAuditQuery.keyId": "cr",
         "aiAuditQuery.environmentId": "cr",

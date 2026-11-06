@@ -391,6 +391,23 @@ jobs:
                   'stoppedContainerReadbackVerifiesConfigurationAndNeverClaimsServiceDynamicAllocation',
                   'ordinaryNativeFilterKeepsTheOriginalRequestAndStillParsesBeforeDispatch',
               },
+              'io.cattle.platform.app.AuditKeySelectorAuthorizationIntegrationTest': {
+                  'nativeKeyScopeAndTenantBoundsRemainAndedBeforePagination',
+                  'unsupportedDialectsPreserveOldBoundedReadsAndRejectExplicitSelector',
+              },
+              'io.cattle.platform.app.AuditKeySelectorSchemaAdmissionTest': {
+                  'allThreeRoleOverlaysAdmitOnlyTheClosedInputWithoutAddingResourceMethods',
+              },
+              'io.cattle.platform.iaas.api.auditing.AuditLogKeySelectorTest': {
+                  'fixedJsonPathUsesBoundCanonicalAndLegacyValuesWithExactByteComparison',
+                  'malformedOrUnadmittedSelectorsNeverFallBackAndOtherPathsStayUnchanged',
+              },
+              'io.cattle.platform.iaas.api.auth.ai.view.AiAuditSourcePageTest': {
+                  'auditKeySelectorIsPassedToNativeReadWithoutWeakeningCurrentAuthority',
+                  'auditKeySelectorRejectsWrongCategoryFormatAndUnknownSourceFields',
+                  'fixedAuditCapabilityRejectsMixedInputAndKeepsRevisionAndRevocationGuards',
+                  'fixedAuditCapabilityUsesFreshAuthorityWithoutRowsOrSelectorFallback',
+              },
           }
           suites = []
           observed = {}
