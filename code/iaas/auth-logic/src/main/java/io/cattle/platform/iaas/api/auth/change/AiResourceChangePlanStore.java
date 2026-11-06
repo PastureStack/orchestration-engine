@@ -22,6 +22,7 @@ public class AiResourceChangePlanStore extends AbstractJooqDao {
     static final Field<String> FAILURE = DSL.field(DSL.name("failure_code"), String.class);
     static final String PRIVATE_FAILURE = "_resourceChangeProcessFailure";
     static final String AUTHORIZATION_DENIED = "ResourceChangeAuthorizationDenied";
+    static final String PROCESS_FAILED = "ResourceChangeProcessFailed";
     @Inject JsonMapper json;
 
     public void insert(Map<String, Object> plan) {
@@ -138,24 +139,57 @@ public class AiResourceChangePlanStore extends AbstractJooqDao {
     boolean recordAuthorizationDenied(String id, Map<String, Object> binding) {
         return create().update(TABLE).set(FAILURE, AUTHORIZATION_DENIED)
                 .where(ID.eq(id).and(EXECUTION.eq(encode(binding))).and(STATE.notIn("preview", "cancelled"))
+                        .and(FAILURE.isNull().or(FAILURE.eq(PROCESS_FAILED)))).execute() == 1;
+    }
+
+    static boolean containerStart(Map<String, Object> binding) {
+        return binding != null && "container".equals(binding.get("resourceType"))
+                && "start".equals(binding.get("operation")) && "POST".equals(binding.get("method"))
+                && "start".equals(binding.get("action"));
+    }
+
+    boolean attestContainerStartProcess(String id, Map<String, Object> before, Map<String, Object> after) {
+        if (!containerStart(before) || before.containsKey("rootProcessId")
+                || !(after.get("rootProcessId") instanceof Number process) || process.longValue() <= 0) return false;
+        Map<String, Object> expected = new java.util.LinkedHashMap<>(before);
+        expected.put("rootProcessId", process);
+        if (!expected.equals(after)) return false;
+        return create().update(TABLE).set(EXECUTION, encode(after))
+                .where(ID.eq(id).and(STATE.in("dispatching", "accepted", "running", "unknown"))
+                        .and(FAILURE.isNull()).and(EXECUTION.eq(encode(before)))).execute() == 1;
+    }
+
+    boolean containerStartExecutionActive(String id, Map<String, Object> binding) {
+        return containerStart(binding) && create().fetchCount(TABLE,
+                ID.eq(id).and(STATE.in("dispatching", "accepted", "running", "unknown"))
+                        .and(FAILURE.isNull()).and(EXECUTION.eq(encode(binding)))) == 1;
+    }
+
+    boolean recordContainerStartFailure(String id, Map<String, Object> binding, long processId) {
+        if (!containerStart(binding) || !(binding.get("rootProcessId") instanceof Number root)
+                || root.longValue() != processId || processId <= 0) return false;
+        return create().update(TABLE).set(FAILURE, PROCESS_FAILED)
+                .where(ID.eq(id).and(EXECUTION.eq(encode(binding))).and(STATE.notIn("preview", "cancelled"))
                         .and(FAILURE.isNull())).execute() == 1;
     }
 
     String failure(String id) {
         String value = create().select(FAILURE).from(TABLE).where(ID.eq(id)).fetchOne(FAILURE);
-        if (value != null && !AUTHORIZATION_DENIED.equals(value)) throw new IllegalStateException("Resource-change outcome unavailable");
+        if (value != null && !AUTHORIZATION_DENIED.equals(value) && !PROCESS_FAILED.equals(value))
+            throw new IllegalStateException("Resource-change outcome unavailable");
         return value;
     }
 
     static boolean projectFailure(Map<String, Object> plan) {
-        if (!AUTHORIZATION_DENIED.equals(plan.get(PRIVATE_FAILURE)) || !(plan.get("id") instanceof String id)
+        Object failure = plan.get(PRIVATE_FAILURE);
+        if (!(AUTHORIZATION_DENIED.equals(failure) || PROCESS_FAILED.equals(failure)) || !(plan.get("id") instanceof String id)
                 || !id.matches("aichange-[0-9a-f-]{36}") || !id.equals(plan.get("operationId"))) return false;
-        plan.put("status", "failed"); plan.put("verifiedResult", false); plan.put("messageCode", AUTHORIZATION_DENIED); return true;
+        plan.put("status", "failed"); plan.put("verifiedResult", false); plan.put("messageCode", failure); return true;
     }
 
     private Map<String, Object> withFailure(Map<String, Object> plan, String failure) {
         plan.remove(PRIVATE_FAILURE);
-        if (AUTHORIZATION_DENIED.equals(failure)) plan.put(PRIVATE_FAILURE, failure);
+        if (AUTHORIZATION_DENIED.equals(failure) || PROCESS_FAILED.equals(failure)) plan.put(PRIVATE_FAILURE, failure);
         return plan;
     }
 

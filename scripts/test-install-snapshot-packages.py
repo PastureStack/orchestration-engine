@@ -58,6 +58,7 @@ class SnapshotPackagesTest(unittest.TestCase):
         self.bad.write_bytes(BAD)
         self.apt_log = self.home / 'apt.log'
         self.helper_log = self.home / 'helper.log'
+        self.retained_log = self.home / 'retained.log'
         self.sleep_log = self.home / 'sleep.log'
         self.snapshot_count = self.home / 'snapshot-count'
         self.installed = self.home / 'installed'
@@ -117,13 +118,31 @@ printf '%s\n' "$1" >> "$TEST_SLEEP_LOG"
                 shlex.quote(real_mkdir.as_posix()) + ' "$@"\n')
         helper = self.make_script('apt-helper-mock', r'''#!/bin/sh
 set -eu
-while [ "$1" = -o ]; do shift 2; done
+direct=false
+debug=false
+while [ "$1" = -o ]; do
+    [ "$2" != Acquire::https::AllowRedirect=false ] || direct=true
+    [ "$2" != Debug::Acquire::https=true ] || debug=true
+    shift 2
+done
 [ "$1" = download-file ] && [ "$#" = 4 ] || exit 92
 [ "${3%/*}" = "$(cat "$TEST_CHOWN_LOG")" ] || exit 96
 printf '%s|%s\n' "$2" "$4" >> "$TEST_HELPER_LOG"
 case "$2" in
     https://archive.ubuntu.com/ubuntu/*) mode=$TEST_ARCHIVE_MODE ;;
     https://snapshot.ubuntu.com/ubuntu/*) mode=$TEST_SNAPSHOT_MODE ;;
+    https://launchpad.net/ubuntu/+archive/primary/+files/*)
+        [ "$direct" = true ] && [ "$debug" = true ] || exit 98
+        printf '%s\n' "$2" >> "$TEST_RETAINED_LOG"
+        printf 'Answer for: %s\nHTTP/1.1 %s Fixed\r\nLocation: %s\r\n' "$2" "$TEST_RETAINED_STATUS" "$TEST_RETAINED_LOCATION" >&2
+        case "$TEST_RETAINED_HEADER" in
+            duplicate) printf 'Location: %s\r\n' "$TEST_RETAINED_LOCATION" >&2 ;;
+            folded) printf ' continuation\r\n' >&2 ;;
+            oversized) printf '%09000d' 0 >&2 ;;
+        esac
+        printf '\r\n' >&2
+        exit 100 ;;
+    https://launchpadlibrarian.net/*) [ "$direct" = true ] && [ "$debug" = false ] || exit 98; mode=$TEST_RETAINED_MODE ;;
     *) exit 93 ;;
 esac
 case "$mode" in
@@ -154,6 +173,11 @@ esac
                 ('/usr/lib/apt/apt-helper', shlex.quote(helper.as_posix()))):
             self.assertEqual(1, script.count(old))
             script = script.replace(old, new)
+        if os.name == 'nt':
+            # Windows sh has no RLIMIT_FSIZE. Production Linux keeps this cap;
+            # the fixture still exercises the post-read bound and closed parser.
+            self.assertEqual(1, script.count('ulimit -f 32 || exit 1'))
+            script = script.replace('ulimit -f 32 || exit 1', ':')
         self.script = self.home / 'install-snapshot-packages'
         self.script.write_text(script, encoding='utf-8', newline='\n')
 
@@ -177,9 +201,10 @@ esac
             return '/' + value[0].lower() + value[2:]
         return value
 
-    def run_helper(self, *, apt_config=None, archive='ok', snapshot='ok', plan_status=0, args=None, corrupt_local=None):
+    def run_helper(self, *, apt_config=None, archive='ok', snapshot='ok', plan_status=0, args=None, corrupt_local=None,
+                   retained='fail', retained_status=503, retained_location=None, retained_header='normal'):
         for path in (self.apt_log, self.helper_log, self.sleep_log,
-                     self.snapshot_count, self.installed, self.chown_log, self.config_log):
+                     self.snapshot_count, self.installed, self.chown_log, self.config_log, self.retained_log):
             path.unlink(missing_ok=True)
         paths = [self.shell_path(self.bin), self.shell_path(Path(SH).resolve().parent)]
         paths.extend(['/usr/bin', '/bin'] if os.name == 'nt' else [os.environ['PATH']])
@@ -191,6 +216,9 @@ esac
             TEST_SLEEP_LOG=self.sleep_log.as_posix(), TEST_SNAPSHOT_COUNT=self.snapshot_count.as_posix(),
             TEST_GOOD_PAYLOAD=self.good.as_posix(), TEST_BAD_PAYLOAD=self.bad.as_posix(),
             TEST_ARCHIVE_MODE=archive, TEST_SNAPSHOT_MODE=snapshot, TEST_PLAN_STATUS=str(plan_status),
+            TEST_RETAINED_MODE=retained, TEST_RETAINED_STATUS=str(retained_status),
+            TEST_RETAINED_LOCATION=retained_location or 'https://launchpadlibrarian.net/123/' + POOL.rsplit('/', 1)[1],
+            TEST_RETAINED_HEADER=retained_header, TEST_RETAINED_LOG=self.retained_log.as_posix(),
             TEST_CORRUPT_LOCAL='' if corrupt_local is None else self.shell_path(corrupt_local))
         if apt_config is not None:
             env['APT_CONFIG'] = self.shell_path(apt_config)
@@ -499,6 +527,62 @@ esac
         self.assertEqual(self.args, calls[0][-len(self.args):])
         self.assertEqual(self.args, calls[1][-len(self.args):])
 
+    def test_retained_payload_keeps_archive_snapshot_order_and_exact_official_303_without_following(self):
+        leaf = POOL.rsplit('/', 1)[1]
+        result = self.run_helper(archive='fail', snapshot='fail', retained='ok', retained_status=303)
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertEqual([f'https://archive.ubuntu.com/ubuntu/{POOL}|SHA256:{HASH}'] +
+                         [f'{SNAPSHOT}{POOL}|SHA256:{HASH}'] * 4 +
+                         [f'https://launchpad.net/ubuntu/+archive/primary/+files/{leaf}|SHA256:{HASH}',
+                          f'https://launchpadlibrarian.net/123/{leaf}|SHA256:{HASH}'], self.downloads())
+        self.assertEqual(['1', '2', '3'], self.sleeps())
+        self.assertEqual(['https://launchpad.net/ubuntu/+archive/primary/+files/' + leaf],
+                         self.retained_log.read_text().splitlines())
+        self.assertEqual(GOOD, (self.cache / leaf).read_bytes())
+        self.assertIn('--no-download', self.apt_calls()[1])
+        self.assertEqual(self.args, self.apt_calls()[1][-len(self.args):])
+
+    def test_retained_redirect_rejects_other_hosts_paths_protocols_statuses_and_unbounded_headers(self):
+        leaf = POOL.rsplit('/', 1)[1]
+        locations = [f'http://launchpadlibrarian.net/123/{leaf}', f'https://other.invalid/123/{leaf}',
+                     f'https://launchpadlibrarian.net.other.invalid/123/{leaf}',
+                     f'https://user@launchpadlibrarian.net/123/{leaf}', f'https://launchpadlibrarian.net:443/123/{leaf}',
+                     f'https://launchpadlibrarian.net/0/{leaf}', f'https://launchpadlibrarian.net/abc/{leaf}',
+                     f'https://launchpadlibrarian.net/123/extra/{leaf}',
+                     f'https://launchpadlibrarian.net/123/{leaf}?x=1', f'https://launchpadlibrarian.net/123/{leaf}#x',
+                     'https://launchpadlibrarian.net/123/other_1_amd64.deb']
+        cases = [dict(retained_location=value) for value in locations]
+        cases += [dict(retained_status=value) for value in (200, 301, 302, 307, 308)]
+        cases += [dict(retained_header=value) for value in ('duplicate', 'folded', 'oversized')]
+        for options in cases:
+            with self.subTest(options=options):
+                settings = dict(archive='fail', snapshot='fail', retained='ok', retained_status=303)
+                settings.update(options)
+                result = self.run_helper(**settings)
+                self.assert_rejected(result)
+                self.assertEqual(6, len(self.downloads()))
+                self.assertEqual(1, len(self.apt_calls()))
+                self.assertFalse(list(self.cache.glob('*.deb')))
+
+    def test_retained_payload_keeps_signed_size_sha_failed_marker_and_no_redirect_gate(self):
+        for mode in ('bad', 'failed', 'failed-ok', 'fail'):
+            with self.subTest(mode=mode):
+                self.assert_rejected(self.run_helper(archive='fail', snapshot='fail', retained=mode, retained_status=303))
+                self.assertEqual(7, len(self.downloads()))
+                self.assertEqual(1, len(self.apt_calls()))
+        self.write_plan(self.uri_line(size=len(GOOD) + 1))
+        self.assert_rejected(self.run_helper(archive='fail', snapshot='fail', retained='ok', retained_status=303))
+        self.assertFalse(list(self.cache.glob('*.deb')))
+
+    def test_retained_metadata_is_never_requested_before_original_success_or_after_snapshot_integrity_failure(self):
+        for archive, snapshot, success in [('ok', 'fail', True), ('fail', 'ok', True), ('fail', 'bad', False)]:
+            with self.subTest(archive=archive, snapshot=snapshot):
+                (self.cache / POOL.rsplit('/', 1)[1]).unlink(missing_ok=True)
+                result = self.run_helper(archive=archive, snapshot=snapshot, retained='ok', retained_status=303)
+                if success: self.assertEqual(0, result.returncode, result.stderr)
+                else: self.assert_rejected(result)
+                self.assertFalse(self.retained_log.exists())
+
     def test_official_transport_failure_falls_back_only_to_original_snapshot(self):
         result = self.run_helper(archive='fail')
         self.assertEqual(0, result.returncode, result.stderr)
@@ -531,7 +615,8 @@ esac
         result = self.run_helper(archive='fail', snapshot='fail')
         self.assert_rejected(result)
         self.assertEqual([f'https://archive.ubuntu.com/ubuntu/{POOL}|SHA256:{HASH}'] +
-                         [f'{SNAPSHOT}{POOL}|SHA256:{HASH}'] * 4, self.downloads())
+                         [f'{SNAPSHOT}{POOL}|SHA256:{HASH}'] * 4 +
+                         [f'https://launchpad.net/ubuntu/+archive/primary/+files/{POOL.rsplit("/", 1)[1]}|SHA256:{HASH}'], self.downloads())
         self.assertEqual(['1', '2', '3'], self.sleeps())
         self.assertEqual(1, len(self.apt_calls()))
         self.assertFalse(list(self.cache.glob('*.deb')))

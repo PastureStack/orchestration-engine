@@ -433,7 +433,11 @@ public class AiResourceChangeDomain extends AbstractJooqDao {
     }
 
     static boolean loadBalancerOwned(AiResourceChangeDescriptor descriptor) {
-        return loadBalancerMetadata(descriptor) || loadBalancerLifecycle(descriptor);
+        return loadBalancerMetadata(descriptor) || loadBalancerLifecycle(descriptor) || loadBalancerScale(descriptor);
+    }
+
+    static boolean loadBalancerScale(AiResourceChangeDescriptor descriptor) {
+        return "loadBalancerService".equals(descriptor.resourceType()) && "scale".equals(descriptor.operation());
     }
 
     /** Only this new metadata plan uses a closed scalar snapshot; other Service/Stack snapshots stay unchanged. */
@@ -653,11 +657,14 @@ public class AiResourceChangeDomain extends AbstractJooqDao {
         if (row == null && !descriptor.createsResource()) throw error(404, "NotFound");
         if (row == null) return;
         String state = ObjectUtils.getState(row);
+        if (loadBalancerScale(descriptor) && !Set.of("active", "inactive").contains(state == null ? "" : state))
+            throw error(409, "ResourceChangeTargetBusy");
         if (!Set.of("active", "inactive", "running", "stopped").contains(state == null ? "" : state))
             throw error(409, "ResourceChangeTargetBusy");
         if (!descriptor.createsResource() && !"stack".equals(descriptor.resourceType())) {
             if ("start".equals(descriptor.operation()) && !(descriptor.serviceResource() ? "inactive" : "stopped").equals(state)
-                    || Set.of("stop", "restart", "scale").contains(descriptor.operation())
+                    || (Set.of("stop", "restart").contains(descriptor.operation())
+                        || "scale".equals(descriptor.operation()) && !loadBalancerScale(descriptor))
                     && !(descriptor.serviceResource() ? "active" : "running").equals(state))
                 throw error(409, "ResourceChangeTargetBusy");
         }
@@ -789,6 +796,20 @@ public class AiResourceChangeDomain extends AbstractJooqDao {
         if ("project".equals(descriptor.resourceType()) && "update_metadata".equals(descriptor.operation()) && !"active".equals(state)) return false;
         if ("update_metadata".equals(descriptor.operation())) return parameters.entrySet().stream()
                 .allMatch(entry -> Objects.equals(entry.getValue(), ObjectUtils.getPropertyIgnoreErrors(target, entry.getKey())));
+        if (loadBalancerScale(descriptor)) {
+            if (!(target instanceof Service service) || !"loadBalancerService".equals(service.getKind())) return false;
+            Map<String, Object> current = snapshot(service);
+            for (String field : List.of("id", "uuid", "accountId", "kind", "stackId", "name", "description", "state"))
+                if (!before.containsKey(field) || !Objects.equals(before.get(field), current.get(field))) return false;
+            Map<String, Object> previousConfig = copyMap(before.get("loadBalancerConfiguration"));
+            Map<String, Object> currentConfig = copyMap(current.get("loadBalancerConfiguration"));
+            if (!previousConfig.containsKey("scale") || !currentConfig.containsKey("scale")
+                    || !Objects.equals(parameters.get("scale"), DataAccessor.fieldInteger(service, "scale"))) return false;
+            currentConfig.put("scale", previousConfig.get("scale"));
+            if (!previousConfig.equals(currentConfig)) return false;
+            return "active".equals(state) ? serviceReady(service, true) && retiredInstancesSettled(service, before)
+                    : "inactive".equals(state) && serviceReady(service, false) && priorInstancesStopped(service, before);
+        }
         if ("scale".equals(descriptor.operation())) return "active".equals(state)
                 && Objects.equals(parameters.get("scale"), DataAccessor.fieldInteger(target, "scale")) && serviceReady((Service) target, true)
                 && retiredInstancesSettled((Service) target, before);

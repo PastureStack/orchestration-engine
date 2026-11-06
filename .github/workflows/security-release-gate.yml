@@ -388,6 +388,10 @@ jobs:
                   'loadBalancerLifecycleReceiptRequiresNativeReadinessStoppedInstancesAndEveryProtectedConfiguration',
                   'loadBalancerStartStopUseOnlyFreshNativeActionsEmptyBodiesAndOriginalParentKeyCeilings',
                   'queuedLoadBalancerActivateDeactivateRetainFreshOwnerActionKeyRevisionAndRevocationBounds',
+                  'loadBalancerManualScaleUsesUiMinimumNativeIntAndOriginalServiceLimits',
+                  'loadBalancerManualScalePreservesConfigurationIdentityAndInactiveState',
+                  'loadBalancerManualScaleNativePrepareIsZeroWriteAndKeepsFreshFieldParentKeyAndCrossIdCeilings',
+                  'loadBalancerManualScalePlansKeepApprovalPrivateConfigCasAuditAndOneClaim',
               },
               'io.cattle.platform.iaas.api.auth.change.AiServiceUpgradeLifecycleChangeTest': {
                   'nativeSchemaAdmitsTheSameThreeActionsWithoutAddingCancelRollback',
@@ -429,6 +433,13 @@ jobs:
                   'auditKeySelectorRejectsWrongCategoryFormatAndUnknownSourceFields',
                   'fixedAuditCapabilityRejectsMixedInputAndKeepsRevisionAndRevocationGuards',
                   'fixedAuditCapabilityUsesFreshAuthorityWithoutRowsOrSelectorFallback',
+              },
+              'io.cattle.platform.iaas.api.auth.change.AiContainerStartFailureObserverTest': {
+                  'exactCanceledRootReportsFixedFailureWithoutInferringItFromStoppedState',
+                  'retriesInflightAndChildStopCancellationNeverBecomeStartFailure',
+                  'foreignIdentityMetadataAndDuplicateRootCannotPoisonTheReceipt',
+                  'fixedFailureWinsLateSuccessSaveAndAuthorizationDenialRemainsMoreSpecific',
+                  'successStillRequiresOriginalFreshReadbackAndOrdinaryNativeStartIsUnchanged',
               },
           }
           suites = []

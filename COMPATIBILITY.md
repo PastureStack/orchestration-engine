@@ -1,5 +1,13 @@
 # Compatibility Contract
 
+## Source candidate: Engine 0.183.379
+
+This unpublished candidate adds manual scaling for non-global load balancers,
+with native role/Key checks and configuration/state preservation. An exactly
+bound canceled native Container start records a fixed failed receipt; a stopped
+state alone never establishes failure. Normal CI, original artifacts and release
+qualification are pending. Use the latest published component below.
+
 ## Engine 0.183.378 published
 
 API Key detail reads project configured policy and native read-only capability information without changing effective authorization or mutation grants. TCP load-balancer creation requires explicit activation intent and 1–16 complete ordered rules. The native Stack/backend identities, exact reviewed configuration and current role/Key authority remain binding. Load-balancer start/stop uses the existing Service lifecycle and verifies preserved configuration.

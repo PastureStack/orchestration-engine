@@ -117,6 +117,11 @@ public class AiResourceChangeProcessObserver implements ProcessAuthorizationHook
     }
 
     @Override public void beforeExecution(LaunchConfiguration config, Map<String, Object> metadata) {
+        if (metadata.get("requestId") instanceof String containerId && containerId.matches("aichange-[0-9a-f-]{36}")
+                && "instance".equals(config.getResourceType()) && "instance.start".equals(config.getProcessName())
+                && "container".equals(metadata.get("targetType")) && "start".equals(metadata.get("requestAction"))
+                && !attestContainerStart(config, metadata))
+            throw new IllegalStateException("Resource-change execution binding unavailable");
         if (metadata.get("requestId") instanceof String createId && createId.matches("aichange-[0-9a-f-]{36}")
                 && "loadBalancerService".equals(metadata.get("targetType")) && "POST".equals(metadata.get("requestMethod"))
                 && metadata.get("requestAction") == null && Boolean.TRUE.equals(metadata.get("requestCollection"))
@@ -131,6 +136,11 @@ public class AiResourceChangeProcessObserver implements ProcessAuthorizationHook
     }
 
     @Override public void afterExecution(LaunchConfiguration config, Map<String, Object> metadata, ExitReason reason) {
+        // CANCELED is a terminating native result. Retry/timeout/changed state are not outcomes.
+        if (reason == ExitReason.CANCELED) {
+            containerStartCanceled(config, metadata);
+            return;
+        }
         if (reason != ExitReason.AUTHORIZATION_DENIED || !(config instanceof ProcessRecord record)
                 || record.getId() == null || record.getId() <= 0
                 || record.getEndTime() == null && !ExitReason.AUTHORIZATION_DENIED.name().equals(
@@ -148,6 +158,57 @@ public class AiResourceChangeProcessObserver implements ProcessAuthorizationHook
         }
         // Completion delivery is retried by the existing engine SPI, without
         // re-running the failed process or dispatching another domain request.
+        throw new IllegalStateException("Resource-change outcome unavailable");
+    }
+
+    private boolean attestContainerStart(LaunchConfiguration config, Map<String, Object> metadata) {
+        if (!(config instanceof ProcessRecord record) || record.getId() == null || record.getId() <= 0
+                || !ProcessAuthorization.metadata(config).equals(metadata)
+                || !(metadata.get("requestId") instanceof String id) || !id.matches("aichange-[0-9a-f-]{36}")) return false;
+        for (int attempt = 0; attempt < 2; attempt++) {
+            Map<String, Object> binding = store.execution(id);
+            if (!containerStartRoot(binding, config, metadata)) return false;
+            var persisted = objects.loadResource(io.cattle.platform.core.model.ProcessInstance.class, record.getId());
+            if (persisted == null || persisted.getEndTime() != null || !Objects.equals(persisted.getId(), record.getId())
+                    || !Objects.equals(persisted.getAccountId(), config.getAccountId())
+                    || !Objects.equals(persisted.getProcessName(), config.getProcessName())
+                    || !Objects.equals(persisted.getResourceType(), config.getResourceType())
+                    || !Objects.equals(persisted.getResourceId(), config.getResourceId()) || persisted.getData() == null
+                    || !(persisted.getData().get(ProcessAuthorization.DATA_KEY) instanceof Map<?, ?> raw)
+                    || !metadata.equals(raw) || !metadata.equals(ProcessAuthorization.sanitize(raw))) return false;
+            if (binding.get("rootProcessId") instanceof Number prior)
+                return prior.longValue() == record.getId() && store.containerStartExecutionActive(id, binding);
+            Map<String, Object> after = new LinkedHashMap<>(binding); after.put("rootProcessId", record.getId());
+            if (store.attestContainerStartProcess(id, binding, after)) return true;
+        }
+        return false;
+    }
+
+    private boolean containerStartRoot(Map<String, Object> binding, LaunchConfiguration config, Map<String, Object> metadata) {
+        if (!AiResourceChangePlanStore.containerStart(binding) || !"instance".equals(config.getResourceType())
+                || !"instance.start".equals(config.getProcessName())
+                || !Long.toString(number(binding.get("rootId"))).equals(config.getResourceId())
+                || !metadataMatches(binding, metadata) || !provenChild(binding, config, metadata)) return false;
+        Object root = objects.loadResource("instance", number(binding.get("rootId")));
+        return root instanceof io.cattle.platform.core.model.Instance instance && "container".equals(instance.getKind())
+                && list(binding.get("initial")).contains(initialIdentity(config, root));
+    }
+
+    private void containerStartCanceled(LaunchConfiguration config, Map<String, Object> metadata) {
+        if (!(config instanceof ProcessRecord record) || record.getId() == null || record.getId() <= 0
+                || !ProcessAuthorization.metadata(config).equals(metadata)
+                || !(metadata.get("requestId") instanceof String id) || !id.matches("aichange-[0-9a-f-]{36}")) return;
+        Object pending = record.getData() == null ? null : record.getData().get(ProcessAuthorization.COMPLETION_PENDING_KEY);
+        if (pending != null && !ExitReason.CANCELED.name().equals(pending)) return;
+        for (int attempt = 0; attempt < 3; attempt++) {
+            Map<String, Object> binding = store.execution(id);
+            if (!containerStartRoot(binding, config, metadata) || !(binding.get("rootProcessId") instanceof Number root)
+                    || root.longValue() != record.getId()) return;
+            if (store.recordContainerStartFailure(id, binding, record.getId())) return;
+            String failure = store.failure(id);
+            if (AiResourceChangePlanStore.PROCESS_FAILED.equals(failure) || AiResourceChangePlanStore.AUTHORIZATION_DENIED.equals(failure)) return;
+        }
+        // The engine's completion-pending delivery retries only this callback, never the start.
         throw new IllegalStateException("Resource-change outcome unavailable");
     }
 
