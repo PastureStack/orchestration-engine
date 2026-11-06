@@ -8,17 +8,19 @@ Rancher 1.6 ecosystem. It is not affiliated with Rancher Labs or SUSE.
 This fork of [`rancher/cattle`](https://github.com/rancher/cattle) preserves
 upstream history, authorship, licenses, and dependency notices.
 
-## Next candidate: Engine 0.183.376
+## Latest published release: Engine 0.183.376
 
-Container port mappings are in [source and CI preparation](docs/releases/orchestration-engine-0.183.376.md). Creation remains stopped and verifies configuration only; a live binding needs a separately approved start. Publication and native acceptance are pending. Use the published release below.
-
-## Latest published release: Engine 0.183.375
-
-[Engine 0.183.375](https://github.com/PastureStack/orchestration-engine/releases/tag/v0.183.375)
+[Engine 0.183.376](https://github.com/PastureStack/orchestration-engine/releases/tag/v0.183.376)
 is published with twelve original assets verified by anonymous checksum readback
 and GitHub's cryptographic immutable-release attestation. Use the
 [Server installation guide](https://github.com/PastureStack/server#quick-start)
 for deployment; an Engine JAR alone is not a Server installation.
+
+Standalone Container create plans now review and preserve native port mappings.
+Creation leaves the Container stopped and verifies saved configuration; a live
+binding requires a separate approved start. Service port allocation and health
+checks retain their existing behavior. Native Container port acceptance remains
+pending.
 
 A selected Project stays readable during its normal metadata update. New
 writes still require active state, and only the original captured process may
@@ -40,9 +42,9 @@ owner, fresh role and Key limits, human approval and durable receipts. Compatibl
 Web/Bridge and Server components are required. Component publication does not
 establish native workflow or whole-243-group acceptance.
 
-The [published release note](https://github.com/PastureStack/orchestration-engine/releases/tag/v0.183.375)
-records 441 suites / 4,037 tests, zero failures/errors, one inherited skip,
-222 required Java methods (219 carried and 3 new), and 39 Linux build controls
+The [published release note](https://github.com/PastureStack/orchestration-engine/releases/tag/v0.183.376)
+records 442 suites / 4,044 tests, zero failures/errors, one inherited skip,
+229 required Java methods (222 carried and 7 new), and 39 Linux build controls
 with zero skips. Existing security findings remain disclosed. The build workflow
 did not provide SLSA attestations. Four independent AI opt-ins remain default-off.
 

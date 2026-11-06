@@ -1,13 +1,14 @@
 # Compatibility Contract
 
-## Engine 0.183.376 candidate — not published
+## Engine 0.183.376 published
 
-Standalone Container creation now accepts a bounded list of native port specifications through the existing typed plan. The native Instance parser and current port-availability checks run before confirmation and apply, without creating a Container during preview. The exact mappings are shown to the human reviewer. Name, image, description, command and entry point retain their existing behavior.
+Standalone Container creation accepts bounded native port specifications through the existing typed plan. Preview reuses the Instance parser and live availability checks without creating a Container. Exact mappings stay bound to human review, current role/Key authority and durable apply. Name, image, description, command and entry point remain supported.
 
-Create leaves the Container stopped. Successful readback proves its saved mapping configuration, not a live host binding or reservation. Starting it requires a separate approved plan. Service fixed/dynamic port allocation and health checks remain unchanged; environment, volumes, arbitrary launch configuration and other advanced Container fields remain outside this typed subset.
+Create leaves the Container stopped and verifies saved configuration, without reserving a port or proving a live binding. Start requires a separate approved plan. Existing Service allocation and health checks remain unchanged; advanced Container fields remain outside this typed subset.
 
-Current native roles, live Key scope/revision, human confirmation and durable operation claims remain authoritative. All 222 prior required methods remain registered, with seven new Container port methods (229 total). Local focused source controls passed; required CI, original artifact qualification, publication and designated native acceptance are pending. No whole-family or whole-243-group completion is claimed.
+[The immutable release](https://github.com/PastureStack/orchestration-engine/releases/tag/v0.183.376) contains twelve original assets verified by anonymous bytes/SHA readback and a native attestation covering thirteen subjects. Original CI passed 442 suites / 4,044 tests with zero failures/errors and one inherited skip; all 229 required methods, 39 Linux build controls and 13 PIP controls passed. Packaged evidence covers 6 changed and 39 byte-identical published375 class families. The final 183-package Dapper table is unchanged. Raw/effective findings remain separate; workflow SLSA was not provided.
 
+[Published metadata](https://github.com/PastureStack/orchestration-engine/releases/download/v0.183.376/engine376-release-metadata.json) separates producer `074cf58498d69bf89e2a0395f14c59c8cc847ac1`, normal merge/tag target `687c520d3263429c90c8c42fa7e8d5e9c06af59d` and tested tree `c705f95bd6b5f8c524bc62012ab2e833d8df7b76` from this documentation commit. Matching published Web216/Bridge0.2.18 and a qualified Server assembly are required. Native Container port acceptance and whole-243-group completion are not established by component publication.
 
 ## Engine 0.183.375 published
 
