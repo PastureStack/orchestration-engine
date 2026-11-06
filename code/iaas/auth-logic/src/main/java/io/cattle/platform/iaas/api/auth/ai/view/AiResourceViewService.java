@@ -104,7 +104,7 @@ public class AiResourceViewService {
     @Inject ServiceDao services;
     @Inject AiProcessDiagnostics processDiagnostics;
 
-    private record AuthorizedTarget(Resource resource, boolean serviceIdsReadable, boolean missingPersistedStack, String instanceUuid) { }
+    private record AuthorizedTarget(Resource resource, boolean serviceIdsReadable, boolean missingPersistedStack, String instanceUuid, String nativeUuid) { }
 
     public Map<String, Object> read(ApiRequest request) {
         Map<String, Object> input = input(request);
@@ -203,7 +203,8 @@ public class AiResourceViewService {
         }
         List<Map<String, Object>> visible = new ArrayList<>();
         for (Object row : rows) {
-            Resource resource = Set.of("volume", "host").contains(type) && domain.getId() != null
+            boolean graph = "stack_graph".equals(input.get("view"));
+            Resource resource = (Set.of("volume", "host").contains(type) || graph) && domain.getId() != null
                     ? coreDetail(row, domain) : manager.convertResponse(row, domain);
             if (resource == null) throw error(503, "ResourceViewUnavailable");
             String id = "processPool".equals(type) ? poolId(resource.getFields()) : resource.getId();
@@ -214,6 +215,10 @@ public class AiResourceViewService {
                     ? processDiagnostics.project(id, resource.getFields()) : project(type, id, resource.getFields());
             if ("processInstance".equals(type) && domain.getId() != null)
                 safe.putAll(processDetail(domain, resource));
+            if (graph) {
+                if (!(row instanceof Stack stack)) throw error(503, "ResourceViewUnavailable");
+                safe.put("stackGraph", stackGraph(domain, stack));
+            }
             if ("volume".equals(type) && domain.getId() != null) {
                 for (String field : List.of("isHostPath", "isNative", "sizeMb")) scalar(safe, resource.getFields(), field);
                 if (resource.getFields().get("created") instanceof java.util.Date created) safe.put("created", created);
@@ -315,6 +320,140 @@ public class AiResourceViewService {
         } finally {
             context.setApiRequest(previous); context.setPolicy(previousPolicy);
         }
+    }
+
+    /** Opt-in ordinary-Service links only. Candidate rows are never an authority or a completeness oracle. */
+    private Map<String, Object> stackGraph(ApiRequest domain, Stack root) {
+        long account = ApiUtils.getPolicy().getAccountId();
+        Account project = objects.loadResource(Account.class, account);
+        if (project == null || project.getUuid() == null || project.getRemoved() != null || !"project".equals(project.getKind())
+                || root.getId() == null || root.getUuid() == null || root.getAccountId() != account || root.getRemoved() != null
+                || services == null) throw error(503, "ResourceViewUnavailable");
+        String projectUuid = project.getUuid();
+        Map<Long, AuthorizedTarget> parents = new LinkedHashMap<>(), nodes = new LinkedHashMap<>();
+        AuthorizedTarget parent = usageTarget(domain, "stack", root.getId().toString());
+        if (parent == null || !Objects.equals(root.getUuid(), parent.nativeUuid())) throw error(409, "ResourceViewUnavailable");
+        parents.put(root.getId(), parent);
+        List<Long> sourceIds = new ArrayList<>();
+        for (Service service : stackGraphSources(domain, root.getId())) {
+            if (sourceIds.size() == 16) break;
+            if (service == null || service.getId() == null || service.getUuid() == null || service.getRemoved() != null
+                    || !Long.valueOf(account).equals(service.getAccountId()) || !root.getId().equals(service.getStackId())
+                    || !"service".equals(service.getKind())) throw error(503, "ResourceViewUnavailable");
+            if (Set.of("removed", "purging", "purged").contains(Objects.toString(service.getState(), ""))) continue;
+            AuthorizedTarget target = stackGraphTarget(domain, service.getId(), parents);
+            if (target == null) continue;
+            if (!Objects.equals(service.getUuid(), target.nativeUuid())
+                    || !sameId(target.resource().getFields().get("stackId"), root.getId())) throw error(409, "ResourceViewUnavailable");
+            if (nodes.put(service.getId(), target) != null) throw error(503, "ResourceViewUnavailable");
+            sourceIds.add(service.getId());
+        }
+        List<ServiceDao.GraphLink> candidates = services.getStackGraphLinks(account, root.getId(), sourceIds);
+        if (candidates == null || candidates.size() > 33) throw error(503, "ResourceViewUnavailable");
+        List<Map<String, Object>> edges = new ArrayList<>();
+        Set<String> seen = new LinkedHashSet<>();
+        for (ServiceDao.GraphLink link : candidates) {
+            if (link == null || !sourceIds.contains(link.serviceId()) || link.consumedServiceId() <= 0) continue;
+            if (!nodes.containsKey(link.consumedServiceId())) {
+                if (nodes.size() >= 32) continue;
+                AuthorizedTarget target = stackGraphTarget(domain, link.consumedServiceId(), parents);
+                if (target == null) continue;
+                nodes.put(link.consumedServiceId(), target);
+            }
+            String pair = link.serviceId() + ":" + link.consumedServiceId();
+            if (edges.size() < 32 && seen.add(pair)) edges.add(Map.of("sourceId", nodes.get(link.serviceId()).resource().getId(),
+                    "targetId", nodes.get(link.consumedServiceId()).resource().getId(), "relationship", "service-link"));
+        }
+        // UUID/account/parent replacements invalidate the whole snapshot, not just one dangling edge.
+        for (var entry : nodes.entrySet()) {
+            Service current = objects.loadResource(Service.class, entry.getKey());
+            if (current == null || current.getRemoved() != null || !Long.valueOf(account).equals(current.getAccountId())
+                    || !"service".equals(current.getKind()) || !Objects.equals(current.getUuid(), entry.getValue().nativeUuid())
+                    || !sameId(entry.getValue().resource().getFields().get("stackId"), current.getStackId()))
+                throw error(409, "ResourceViewUnavailable");
+        }
+        for (var entry : parents.entrySet()) {
+            Stack current = objects.loadResource(Stack.class, entry.getKey());
+            if (current == null || current.getRemoved() != null || !Long.valueOf(account).equals(current.getAccountId())
+                    || !Objects.equals(current.getUuid(), entry.getValue().nativeUuid())) throw error(409, "ResourceViewUnavailable");
+        }
+        AuthorizedTarget last = usageTarget(domain, "stack", root.getId().toString());
+        Account currentProject = objects.loadResource(Account.class, account);
+        if (last == null || !Objects.equals(root.getUuid(), last.nativeUuid()) || currentProject == null
+                || !Long.valueOf(account).equals(currentProject.getId()) || !"project".equals(currentProject.getKind())
+                || currentProject.getRemoved() != null || !Objects.equals(projectUuid, currentProject.getUuid()))
+            throw error(409, "ResourceViewUnavailable");
+        List<Map<String, Object>> projected = new ArrayList<>();
+        String accountId = Objects.toString(ApiContext.getContext().getIdFormatter().formatId("project", account));
+        if (accountId.length() > 128) throw error(503, "ResourceViewUnavailable");
+        for (AuthorizedTarget target : nodes.values()) {
+            var fields = target.resource().getFields();
+            String name = (String) fields.get("name"), state = (String) fields.get("state");
+            projected.add(Map.of("id", target.resource().getId(), "type", "service", "accountId", accountId,
+                    "name", name.substring(0, Math.min(256, name.length())), "nameTruncated", name.length() > 256, "state", state));
+        }
+        // Fixed bounds imply <192 KiB even with six-byte JSON escaping. Hidden candidate counts never affect metadata.
+        return Map.of("subset", "ordinary-service-links", "completeness", "unknown", "permissionCompleteness", "unknown",
+                "nodeLimit", 32, "edgeLimit", 32, "limitReached", projected.size() == 32 || edges.size() == 32,
+                "nodes", projected, "edges", edges);
+    }
+
+    private List<Service> stackGraphSources(ApiRequest domain, long stackId) {
+        ApiRequest child = new ApiRequest(domain);
+        child.setRequestServletContext(domain.getServletContext()); child.setType("service"); child.setId(null);
+        child.setMethod("GET"); child.setAction(null); child.setLink(null); child.setRequestObject(null);
+        child.setRequestParams(new LinkedHashMap<>()); child.setConditions(new LinkedHashMap<>()); child.setInclude(null);
+        child.getConditions().put("stackId", List.of(new Condition(ConditionType.EQ, stackId)));
+        child.setSort(new Sort("id", Sort.SortOrder.ASC, null)); child.setPagination(new Pagination(17));
+        child.setAttribute(DOMAIN_READ_ATTRIBUTE, Boolean.TRUE);
+        ApiKeyCredentialContext key = ApiKeyCredentialContext.get(domain);
+        if (key != null) ApiKeyCredentialContext.attach(child, key);
+        Policy actor = keyAuthorization.actor(child);
+        ApiContext context = ApiContext.getContext();
+        ApiRequest previous = context.getApiRequest(); Object previousPolicy = context.getPolicy();
+        try {
+            var authority = authenticator.currentAuthorization(actor.getAuthenticatedAsAccountId(), actor.getAccountId(), child);
+            child.setSchemaFactory(authority.schemas()); context.setApiRequest(child); context.setPolicy(authority.policy());
+            Schema schema = authority.schemas().getSchema("service");
+            if (schema == null || schema.getCollectionMethods() == null || !schema.getCollectionMethods().contains("GET")
+                    || !readable(schema, "linkedServices")) return List.of();
+            keyAccess.authorize(child, authority.policy());
+            ResourceManager manager = managers.getResourceManagerByType("service");
+            if (manager == null) return List.of();
+            Object listed = manager.list("service", child);
+            if (!(listed instanceof List<?> rows) || rows.size() > 17) throw error(503, "ResourceViewUnavailable");
+            List<Service> result = new ArrayList<>();
+            for (Object row : rows) {
+                if (!(row instanceof Service service)) throw error(503, "ResourceViewUnavailable");
+                result.add(service);
+            }
+            return result;
+        } catch (ClientVisibleException denied) {
+            if (!Set.of("KeyScopeDenied", "KeyPolicyDenied", "OwnerPermissionDenied", "NotFound").contains(denied.getCode())) throw denied;
+            return List.of();
+        } finally { context.setApiRequest(previous); context.setPolicy(previousPolicy); }
+    }
+
+    private AuthorizedTarget stackGraphTarget(ApiRequest domain, long id, Map<Long, AuthorizedTarget> parents) {
+        AuthorizedTarget target = usageTarget(domain, "service", Long.toString(id));
+        if (target == null || target.nativeUuid() == null || target.resource().getId().length() > 128
+                || !(target.resource().getFields().get("name") instanceof String name)
+                || name.isBlank() || !(target.resource().getFields().get("state") instanceof String state) || state.isBlank()
+                || state.length() > 64 || Set.of("removed", "purging", "purged").contains(state)) return null;
+        Object parentValue = target.resource().getFields().get("stackId");
+        if (!(parentValue instanceof String || parentValue instanceof Number)) return null;
+        String parentId = parentValue.toString();
+        long stackId;
+        try { stackId = Long.parseLong(rawId(parentId).toString()); }
+        catch (NumberFormatException invalid) { return null; }
+        if (stackId <= 0) return null;
+        AuthorizedTarget parent = parents.get(stackId);
+        if (parent == null) {
+            parent = usageTarget(domain, "stack", parentId);
+            if (parent == null || parent.nativeUuid() == null) return null;
+            parents.put(stackId, parent);
+        }
+        return target;
     }
 
     /** Same native parent/child owners as processExecutions, with a real bounded child GET. */
@@ -567,7 +706,8 @@ public class AiResourceViewService {
             boolean readable = relation != null && relation.isIncludeInList() && !relation.isReadOnCreateOnly()
                     && (relation.getTransform() == null || relation.getTransform().isBlank());
             return new AuthorizedTarget(resource, "container".equals(type) && readable,
-                    row instanceof Instance instance && instance.getStackId() == null, row instanceof Instance instance ? instance.getUuid() : null);
+                    row instanceof Instance instance && instance.getStackId() == null, row instanceof Instance instance ? instance.getUuid() : null,
+                    row instanceof Service service ? service.getUuid() : row instanceof Stack stack ? stack.getUuid() : null);
         } catch (ClientVisibleException denied) {
             if (!Set.of("KeyScopeDenied", "KeyPolicyDenied", "OwnerPermissionDenied", "NotFound").contains(denied.getCode())) throw denied;
             return null;
@@ -600,7 +740,7 @@ public class AiResourceViewService {
                 : "host".equals(request.getType()) ? List.of("name", "description", "state", "kind", "created", "hostname",
                         "agentIpAddress", "dockerVersion", "memTotal", "cpuCount", "agentState", "memory", "milliCpu", "localStorageMb")
                 : "container".equals(request.getType()) ? List.of("name", "state", "stackId")
-                : "service".equals(request.getType()) ? List.of("stackId") : List.of("name");
+                : "service".equals(request.getType()) ? List.of("name", "state", "stackId") : List.of("name", "state");
         // Reuse the exact role-schema Field accessors and native wrapping rules
         // (including aliases and reference formatting),
         // with a bounded field subset. No full DTO/output augmentation runs.
@@ -672,7 +812,7 @@ public class AiResourceViewService {
 
     private static Map<String, Object> input(ApiRequest request) {
         Map<String, Object> input = CollectionUtils.toMap(request.getRequestObject());
-        if (!Set.of("type", "resourceType", "resourceId", "query", "marker", "parentId", "sourcePage").containsAll(input.keySet())
+        if (!Set.of("type", "resourceType", "resourceId", "query", "marker", "parentId", "sourcePage", "view").containsAll(input.keySet())
                 || !(input.get("resourceType") instanceof String type) || !READ_TYPES.contains(type)) throw error(422, "ResourceViewInputInvalid");
         for (String key : List.of("resourceId", "marker", "parentId")) {
             Object value = input.get(key);
@@ -681,6 +821,8 @@ public class AiResourceViewService {
         if (input.containsKey("query") && (!(input.get("query") instanceof String query) || query.length() > 256)) throw error(422, "ResourceViewInputInvalid");
         if (input.get("resourceId") != null && (input.get("marker") != null || input.get("query") != null || input.get("parentId") != null))
             throw error(422, "ResourceViewInputInvalid");
+        if (input.containsKey("view") && (!"stack_graph".equals(input.get("view")) || !"stack".equals(type)
+                || input.get("resourceId") == null || input.containsKey("sourcePage"))) throw error(422, "ResourceViewInputInvalid");
         return input;
     }
 

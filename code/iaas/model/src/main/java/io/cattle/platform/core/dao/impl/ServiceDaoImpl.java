@@ -214,6 +214,26 @@ public class ServiceDaoImpl extends AbstractJooqDao implements ServiceDao {
     }
 
     @Override
+    public List<GraphLink> getStackGraphLinks(long accountId, long stackId, List<Long> authorizedSourceIds) {
+        if (accountId <= 0 || stackId <= 0 || authorizedSourceIds == null || authorizedSourceIds.size() > 16
+                || authorizedSourceIds.stream().anyMatch(id -> id == null || id <= 0)) throw new IllegalArgumentException("Invalid graph source");
+        if (authorizedSourceIds.isEmpty()) return List.of();
+        var source = SERVICE.as("graph_source");
+        var target = SERVICE.as("graph_target");
+        return create().select(SERVICE_CONSUME_MAP.SERVICE_ID, SERVICE_CONSUME_MAP.CONSUMED_SERVICE_ID)
+                .from(SERVICE_CONSUME_MAP)
+                .join(source).on(source.ID.eq(SERVICE_CONSUME_MAP.SERVICE_ID))
+                .join(target).on(target.ID.eq(SERVICE_CONSUME_MAP.CONSUMED_SERVICE_ID))
+                .where(SERVICE_CONSUME_MAP.SERVICE_ID.in(authorizedSourceIds)
+                        .and(SERVICE_CONSUME_MAP.ACCOUNT_ID.eq(accountId)).and(SERVICE_CONSUME_MAP.REMOVED.isNull())
+                        .and(source.ACCOUNT_ID.eq(accountId)).and(source.STACK_ID.eq(stackId))
+                        .and(source.KIND.eq("service")).and(source.REMOVED.isNull())
+                        .and(target.ACCOUNT_ID.eq(accountId)).and(target.KIND.eq("service")).and(target.REMOVED.isNull()))
+                .orderBy(SERVICE_CONSUME_MAP.ID.asc()).limit(33)
+                .fetch(row -> new GraphLink(row.get(SERVICE_CONSUME_MAP.SERVICE_ID), row.get(SERVICE_CONSUME_MAP.CONSUMED_SERVICE_ID)));
+    }
+
+    @Override
     public List<Certificate> getLoadBalancerServiceCertificates(Service lbService) {
         List<? extends Long> certIds = DataAccessor.fields(lbService)
                 .withKey(LoadBalancerConstants.FIELD_LB_CERTIFICATE_IDS).withDefault(Collections.EMPTY_LIST)

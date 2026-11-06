@@ -18,7 +18,7 @@ public class AiResourceSchemaAuthorizationTest {
             for (String type : List.of("aiResourceView", "aiResourceChangePlan")) {
                 SchemaImpl schema = effective(role, type);
                 assertNotNull(role + ":" + type, schema); assertTrue(schema.isCreate());
-                List<String> inputs = "aiResourceView".equals(type) ? List.of("resourceType", "resourceId", "query", "marker", "parentId", "sourcePage")
+                List<String> inputs = "aiResourceView".equals(type) ? List.of("resourceType", "resourceId", "query", "marker", "parentId", "sourcePage", "view")
                         : List.of("resourceType", "operation", "resourceId", "parameters");
                 for (String field : inputs) assertTrue(role + ":" + type + ":" + field, schema.getResourceFields().get(field).isCreate());
                 for (var entry : schema.getResourceFields().entrySet()) if (!inputs.contains(entry.getKey())) assertFalse(entry.getKey(),
@@ -39,7 +39,8 @@ public class AiResourceSchemaAuthorizationTest {
     @Test public void syntheticTypesDoNotAddAnArbitraryTransportAndTheNewMutationFlagDefaultsOff() throws Exception {
         Path root = root();
         assertTrue(Files.readString(root.resolve("resources/content/cattle-global.properties")).contains("api.ai.resource.change.enabled=false"));
-        Map<?, ?> definition = new JacksonJsonMapper().readValue(Files.readString(root.resolve("resources/content/schema/base/aiResourceChangePlan.json")), Map.class);
+        Map<?, ?> definition = new JacksonJsonMapper().readValue(
+                Files.readString(root.resolve("resources/content/schema/base/aiResourceChangePlan.json")), Map.class);
         Map<?, ?> fields = (Map<?, ?>) definition.get("resourceFields");
         for (String forbidden : List.of("url", "method", "headers", "requestBody", "snapshot", "credentialId", "actorId", "accountId"))
                 assertFalse(forbidden, fields.containsKey(forbidden));

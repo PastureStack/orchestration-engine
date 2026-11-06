@@ -441,6 +441,14 @@ jobs:
                   'fixedFailureWinsLateSuccessSaveAndAuthorizationDenialRemainsMoreSpecific',
                   'successStillRequiresOriginalFreshReadbackAndOrdinaryNativeStartIsUnchanged',
               },
+              'io.cattle.platform.core.dao.impl.StackGraphDaoTest': {
+                  'boundedGraphCandidatesKeepBothTenantAndStackJoinsWithoutPayloadsOrWrites',
+              },
+              'io.cattle.platform.iaas.api.auth.ai.view.AiStackGraphReadTest': {
+                  'graphOptInKeepsBothNativeEndpointsParentsAndHiddenCandidateCountsPrivate',
+                  'graphRejectsWrongSelectorReadDenialRevocationAndLateUuidReplacementWithoutFallback',
+                  'graphRejectsSourceUuidAndStackReplacementBetweenNativeReads',
+              },
           }
           suites = []
           observed = {}

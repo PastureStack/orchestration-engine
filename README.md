@@ -8,6 +8,13 @@ Rancher 1.6 ecosystem. It is not affiliated with Rancher Labs or SUSE.
 This fork of [`rancher/cattle`](https://github.com/rancher/cattle) preserves
 upstream history, authorship, licenses, and dependency notices.
 
+## Source candidate: Engine 0.183.380
+
+Read-only Stack graph source is in preparation. The explicit selector retains fresh
+native authority, opaque references and bounded unknown completeness. CI, original
+artifacts, publication and native acceptance are pending; use the published release
+below.
+
 ## Latest published release: Engine 0.183.379
 
 [Engine 0.183.379](https://github.com/PastureStack/orchestration-engine/releases/tag/v0.183.379)
@@ -203,7 +210,7 @@ Before publishing an Engine artifact, run the complete package gate:
 
 ```sh
 bash scripts/check-cattle-jdk25-full-package
-ENGINE_VERSION=0.183.379 bash scripts/build --release
+ENGINE_VERSION=0.183.380 bash scripts/build --release
 bash scripts/check-release-artifact dist/artifacts/cattle.jar
 ```
 
