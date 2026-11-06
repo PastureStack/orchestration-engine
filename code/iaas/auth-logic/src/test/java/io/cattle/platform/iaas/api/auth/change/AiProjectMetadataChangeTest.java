@@ -216,6 +216,69 @@ public class AiProjectMetadataChangeTest {
         }
     }
 
+    @Test public void updatingActiveProjectIsReadableWithoutAdmittingAnotherMetadataWriteOrPrematureReceipt() {
+        var dao = new io.cattle.platform.core.dao.impl.AccountDaoImpl(); var f = new Fixture();
+        f.project.setState("updating-active");
+        assertTrue(dao.isActiveAccount(f.project));
+        assertThrows(ClientVisibleException.class, () -> AiProjectMetadataChange.selected(f.project, 77));
+        assertSame(f.project, f.domain.visible(f.request, descriptor(), "77"));
+        assertThrows(ClientVisibleException.class, () -> f.domain.prepare(f.request, descriptor(), "77", Map.of("name", "next")));
+        assertFalse(f.domain.complete(descriptor(), f.project, Map.of("name", f.project.getName()), Map.of()));
+        f.project.setState("active"); assertTrue(f.domain.complete(descriptor(), f.project, Map.of("name", f.project.getName()), Map.of()));
+        f.project.setState("updating-active"); f.actor.setState("updating-active");
+        assertFalse(dao.isActiveAccount(f.actor)); assertThrows(ClientVisibleException.class, () -> f.domain.actor(f.request));
+        f.actor.setState("active"); assertThrows(ClientVisibleException.class, () -> f.domain.visible(f.request, descriptor(), "88"));
+        for (String state : List.of("inactive", "updating-inactive", "removing", "removed", "purged", "error")) {
+            f.project.setState(state); assertFalse(dao.isActiveAccount(f.project));
+            assertThrows(ClientVisibleException.class, () -> f.domain.visible(f.request, descriptor(), "77"));
+        }
+        f.project.setState("updating-active"); f.project.setRemoved(new Date()); assertFalse(dao.isActiveAccount(f.project));
+        assertThrows(ClientVisibleException.class, () -> f.domain.visible(f.request, descriptor(), "77"));
+        f.project.setRemoved(null); f.project.setKind("user"); assertFalse(dao.isActiveAccount(f.project));
+        assertThrows(ClientVisibleException.class, () -> f.domain.visible(f.request, descriptor(), "77"));
+        assertNull(f.global.authorizeObject(f.project)); verify(f.manager, never()).update(anyString(), anyString(), any());
+    }
+
+    @Test public void capturedProjectAccountUpdateRevalidatesItsOriginalProcessInNativeUpdatingActiveState() throws Exception {
+        try (var f = new ProcessFixture(true)) {
+            f.fixture.project.setState("updating-active"); f.before(f.execution, f.metadata);
+            assertEquals(991L, ((Number) f.store.execution(f.id).get("rootProcessId")).longValue());
+            f.before(f.execution, f.metadata); assertEquals(1, f.scheduled.get()); assertFalse(f.store.claim(f.plan));
+            assertEquals(77L, ((Number) f.metadata.get("accountId")).longValue());
+            assertEquals(42L, ((Number) f.metadata.get("principalAccountId")).longValue());
+            f.observerDenied(f.insertProcess(992), f.metadata);
+            String uuid = f.fixture.project.getUuid(); f.fixture.project.setUuid("replacement"); f.observerDenied(f.execution, f.metadata);
+            f.fixture.project.setUuid(uuid); f.fixture.project.setState("updating-inactive"); f.observerDenied(f.execution, f.metadata);
+            f.fixture.project.setState("updating-active"); f.fixture.project.setRemoved(new Date()); f.observerDenied(f.execution, f.metadata);
+            f.fixture.project.setRemoved(null); when(f.fixture.dao.isProjectOwner(anyLong(), anyLong(), anyBoolean(), anySet())).thenReturn(false);
+            f.denied("OwnerPermissionDenied", f.execution, f.metadata);
+            when(f.fixture.dao.isProjectOwner(anyLong(), anyLong(), anyBoolean(), anySet())).thenReturn(true);
+            when(f.fixture.schema.getResourceMethods()).thenReturn(List.of("GET")); f.denied("OwnerPermissionDenied", f.execution, f.metadata);
+            when(f.fixture.schema.getResourceMethods()).thenReturn(List.of("GET", "PUT"));
+            f.credential.setState("removed"); f.denied("ApiKeyRevoked", f.execution, f.metadata);
+            assertNull(f.fixture.global.authorizeObject(f.fixture.project)); assertEquals(1, f.scheduled.get());
+        }
+    }
+
+    @Test public void deniedOriginalProjectUpdateRecordsTerminalFailureWhileForeignProcessCannotCompleteIt() throws Exception {
+        try (var f = new ProcessFixture(true)) {
+            f.before(f.execution, f.metadata); f.fixture.project.setState("updating-active");
+            var plan = f.store.load(f.id); plan.put("status", "accepted"); plan.put("operationId", f.id);
+            plan.put("dispatchAcknowledged", true); f.store.save(plan);
+            var foreign = f.insertProcess(992); foreign.setEndTime(new Date());
+            f.observer.afterExecution(foreign, f.metadata, io.cattle.platform.engine.process.ExitReason.AUTHORIZATION_DENIED);
+            assertNull(f.store.failure(f.id));
+            f.credential.setState("removed"); f.denied("ApiKeyRevoked", f.execution, f.metadata);
+            f.execution.setEndTime(new Date());
+            f.observer.afterExecution(f.execution, f.metadata, io.cattle.platform.engine.process.ExitReason.AUTHORIZATION_DENIED);
+            assertEquals(AiResourceChangePlanStore.AUTHORIZATION_DENIED, f.store.failure(f.id));
+            var failed = f.store.load(f.id); var service = new AiResourceChangePlanService(); service.store = f.store;
+            service.observe(failed, f.fixture.request); assertEquals("failed", failed.get("status"));
+            assertEquals(false, failed.get("verifiedResult")); assertEquals(AiResourceChangePlanStore.AUTHORIZATION_DENIED, failed.get("messageCode"));
+            assertFalse(f.store.claim(f.plan)); assertEquals(1, f.scheduled.get());
+        }
+    }
+
     private static final class ProcessFixture implements AutoCloseable {
         final java.sql.Connection connection;
         final org.jooq.DSLContext sql;

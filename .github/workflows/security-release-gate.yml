@@ -340,6 +340,9 @@ jobs:
                   'selectedProjectReadAndPreflightUseFreshGlobalNativeOwnerThenRestoreSelectedContext',
                   'typedProjectProcessCannotFallbackWhenDurableBindingIsMissingOrMismatched',
                   'unknownProjectExecutionKeepsOnlyItsOriginalDurableProcessWithoutReplayOrTerminalAuthority',
+                  'updatingActiveProjectIsReadableWithoutAdmittingAnotherMetadataWriteOrPrematureReceipt',
+                  'capturedProjectAccountUpdateRevalidatesItsOriginalProcessInNativeUpdatingActiveState',
+                  'deniedOriginalProjectUpdateRecordsTerminalFailureWhileForeignProcessCannotCompleteIt',
               },
               'io.cattle.platform.iaas.api.auditing.AiServiceUpgradeAuditTest': {
                   'bindingReasonDetailSurvivesJsonOutboxReplayAndCanonicalProjectionAsClientEvidence',
