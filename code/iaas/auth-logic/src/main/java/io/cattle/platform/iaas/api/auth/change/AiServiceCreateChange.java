@@ -1,10 +1,7 @@
 package io.cattle.platform.iaas.api.auth.change;
 
 import io.cattle.platform.core.model.Service;
-import io.cattle.platform.core.util.PortBindingAddress;
-import io.cattle.platform.core.util.PortSpec;
 import io.cattle.platform.object.util.DataAccessor;
-import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -13,21 +10,14 @@ import java.util.Set;
 
 /** The reviewed Service-create subset; raw launch configuration and environment stay outside it. */
 final class AiServiceCreateChange {
-    static final int MAX_PORTS = 64;
+    static final int MAX_PORTS = AiCreatePorts.MAX_PORTS;
     private static final Set<String> HEALTH_FIELDS = Set.of("port", "requestLine", "responseTimeout", "interval",
             "healthyThreshold", "unhealthyThreshold", "initializingTimeout", "reinitializingTimeout", "strategy");
 
     private AiServiceCreateChange() { }
 
     static List<String> ports(Object value) {
-        if (!(value instanceof List<?> values) || values.size() > MAX_PORTS) throw invalid();
-        List<String> result = new ArrayList<>();
-        for (Object item : values) {
-            if (!(item instanceof String text) || text.isEmpty() || text.length() > 128 || text.indexOf('\0') >= 0) throw invalid();
-            port(text); // Preserve the native parser's specific, safe validation code.
-            result.add(text);
-        }
-        return List.copyOf(result);
+        return AiCreatePorts.parameters(value);
     }
 
     static Map<String, Object> healthCheck(Object value) {
@@ -71,7 +61,7 @@ final class AiServiceCreateChange {
             if (!Objects.equals(target, value)) return false;
         }
         try {
-            return portsMatch(wanted.get("ports"), actual.get("ports"))
+            return AiCreatePorts.assignedMatch(wanted.get("ports"), actual.get("ports"))
                     && Objects.equals(canonicalHealth(wanted.get("healthCheck")), canonicalHealth(actual.get("healthCheck")));
         } catch (IllegalArgumentException | io.github.ibuildthecloud.gdapi.exception.ClientVisibleException invalidReadback) {
             return false;
@@ -84,46 +74,6 @@ final class AiServiceCreateChange {
                 && first.longValue() == second.longValue();
     }
 
-    private record BoundPort(String bind, Integer publicPort, int privatePort, String protocol) { }
-
-    private static boolean portsMatch(Object expected, Object actual) {
-        List<BoundPort> wanted = new ArrayList<>(canonicalPorts(expected));
-        List<BoundPort> remaining = new ArrayList<>(canonicalPorts(actual));
-        if (wanted.size() != remaining.size()) return false;
-        for (int i = 0; i < remaining.size(); i++) for (int j = i + 1; j < remaining.size(); j++) {
-            BoundPort left = remaining.get(i), right = remaining.get(j);
-            if (left.publicPort() != null && left.publicPort().equals(right.publicPort())
-                    && left.protocol().equals(right.protocol()) && PortBindingAddress.overlaps(left.bind(), right.bind())) return false;
-        }
-        // ServiceCreate retains fixed mappings first, then allocates every unspecified public port.
-        // Match fixed entries first so a random request cannot consume a specifically approved mapping.
-        wanted.sort(java.util.Comparator.comparing(port -> port.publicPort() == null));
-        for (BoundPort port : wanted) {
-            int match = -1;
-            for (int i = 0; i < remaining.size(); i++) {
-                BoundPort candidate = remaining.get(i);
-                if (candidate.publicPort() != null && candidate.publicPort() >= 1 && candidate.publicPort() <= 65535
-                        && (port.publicPort() == null || port.publicPort().equals(candidate.publicPort()))
-                        && port.privatePort() == candidate.privatePort() && port.protocol().equals(candidate.protocol())
-                        && port.bind().equals(candidate.bind())) { match = i; break; }
-            }
-            if (match < 0) return false;
-            remaining.remove(match);
-        }
-        return remaining.isEmpty();
-    }
-
-    private static List<BoundPort> canonicalPorts(Object value) {
-        if (value == null) return List.of();
-        List<BoundPort> result = new ArrayList<>();
-        for (String text : ports(value)) {
-            PortSpec spec = port(text);
-            result.add(new BoundPort(PortBindingAddress.normalize(spec.getIpAddress()), spec.getPublicPort(),
-                    spec.getPrivatePort(), spec.getProtocol()));
-        }
-        return result;
-    }
-
     private static Map<String, Object> canonicalHealth(Object value) {
         if (value == null) return null;
         if (!(value instanceof Map<?, ?> input)) throw invalid();
@@ -134,11 +84,6 @@ final class AiServiceCreateChange {
             if (entry.getValue() != null) fields.put(key, entry.getValue());
         }
         return healthCheck(fields);
-    }
-
-    private static PortSpec port(String text) {
-        try { return new PortSpec(text); }
-        catch (NumberFormatException invalidNativeNumber) { throw AiResourceChangeDescriptor.error(PortSpec.WRONG_FORMAT); }
     }
 
     private static io.github.ibuildthecloud.gdapi.exception.ClientVisibleException invalid() {

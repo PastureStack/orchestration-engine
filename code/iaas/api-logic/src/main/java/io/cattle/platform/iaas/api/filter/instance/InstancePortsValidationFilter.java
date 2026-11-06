@@ -8,6 +8,7 @@ import io.cattle.platform.docker.constants.DockerInstanceConstants;
 import io.cattle.platform.core.addon.PortPreflightInput;
 import io.cattle.platform.iaas.api.port.PortPreflightInputs;
 import io.cattle.platform.iaas.api.port.PortPreflightService;
+import io.cattle.platform.iaas.api.port.InstanceCreatePortValidation;
 import io.cattle.platform.iaas.api.filter.common.AbstractDefaultResourceManagerFilter;
 import io.cattle.platform.api.utils.ApiUtils;
 import io.cattle.platform.object.ObjectManager;
@@ -24,7 +25,7 @@ import java.util.Map;
 
 import jakarta.inject.Inject;
 
-public class InstancePortsValidationFilter extends AbstractDefaultResourceManagerFilter {
+public class InstancePortsValidationFilter extends AbstractDefaultResourceManagerFilter implements InstanceCreatePortValidation {
 
     @Inject
     PortPreflightService portPreflightService;
@@ -44,6 +45,12 @@ public class InstancePortsValidationFilter extends AbstractDefaultResourceManage
 
     @Override
     public Object create(String type, ApiRequest request, ResourceManager next) {
+        validateCreatePorts(request);
+        return super.create(type, request, next);
+    }
+
+    @Override
+    public void validateCreatePorts(ApiRequest request) {
         List<?> ports = DataUtils.getFieldFromRequest(request, InstanceConstants.FIELD_PORTS, List.class);
         if (ports != null) {
             for (Object port : ports) {
@@ -57,7 +64,6 @@ public class InstancePortsValidationFilter extends AbstractDefaultResourceManage
             assertPortsAvailable(request, ports, null);
         }
 
-        return super.create(type, request, next);
     }
 
     @Override

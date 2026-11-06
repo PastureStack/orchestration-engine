@@ -382,6 +382,15 @@ jobs:
                   'rollbackRetirementUsesTheExistingVerifiedServiceChainAndKeepsExplicitChildDenials',
                   'rollbackMountVolumeEdgeRequiresTheOriginalVerifiedSchedulingProof',
               },
+              'io.cattle.platform.iaas.api.auth.change.AiContainerCreatePortsTest': {
+                  'sharedNativePortBoundaryKeepsFullCreateFieldsAndRejectsUnrelatedConfiguration',
+                  'realNativePreflightPreservesNameImageAndArgumentsWithoutCreateOrPortAllocation',
+                  'nativeRoleFieldAndKeyDenialsCannotDropPortsOrUseAnotherWriteRoute',
+                  'nativeDuplicateConflictAndLostAvailabilityRejectBeforeClaimAtConfirmationAndApply',
+                  'exactPortsReviewNeedsHumanConfirmationAndTheExistingDurableClaimRemainsIdempotent',
+                  'stoppedContainerReadbackVerifiesConfigurationAndNeverClaimsServiceDynamicAllocation',
+                  'ordinaryNativeFilterKeepsTheOriginalRequestAndStillParsesBeforeDispatch',
+              },
           }
           suites = []
           observed = {}

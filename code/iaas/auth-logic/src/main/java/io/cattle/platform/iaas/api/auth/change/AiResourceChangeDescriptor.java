@@ -24,7 +24,7 @@ public record AiResourceChangeDescriptor(String resourceType, String operation, 
             add(result, type, "update_metadata", "PUT", null, "update", Set.of("name", "description"));
             add(result, type, "create", "POST", null, "create", "stack".equals(type) ? Set.of("name", "description")
                     : "service".equals(type) ? Set.of("name", "description", "image", "scale", "stackId", "command", "entryPoint", "ports", "healthCheck")
-                    : Set.of("name", "description", "image", "command", "entryPoint"));
+                    : Set.of("name", "description", "image", "command", "entryPoint", "ports"));
         }
         add(result, "service", "scale", "PUT", null, "update", Set.of("scale"));
         add(result, "service", "finish_upgrade", "POST", "finishupgrade", "upgrade", Set.of());
@@ -96,7 +96,7 @@ public record AiResourceChangeDescriptor(String resourceType, String operation, 
                         || image.contains("@") && !image.matches(".+@sha256:[0-9a-fA-F]{64}")) throw error("ResourceChangeInputInvalid");
             }
             case "stackId" -> string(content, 1, 128, false);
-            case "ports" -> content = AiServiceCreateChange.ports(content);
+            case "ports" -> content = AiCreatePorts.parameters(content);
             case "healthCheck" -> content = AiServiceCreateChange.healthCheck(content);
             case "command", "entryPoint" -> {
                 if (!(content instanceof List<?> values) || values.size() > 64) throw error("ResourceChangeInputInvalid");
