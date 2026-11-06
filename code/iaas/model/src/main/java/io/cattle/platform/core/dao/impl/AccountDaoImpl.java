@@ -122,7 +122,8 @@ public class AccountDaoImpl extends AbstractCoreDao implements AccountDao {
     public boolean isActiveAccount(Account account) {
         List<String> goodStates = Arrays.asList(CommonStatesConstants.ACTIVATING, CommonStatesConstants.ACTIVE,
                 ServiceConstants.STATE_UPGRADING);
-        return goodStates.contains(account.getState());
+        return goodStates.contains(account.getState()) || "project".equals(account.getKind()) && account.getRemoved() == null
+                && CommonStatesConstants.UPDATING_ACTIVE.equals(account.getState());
     }
 
     @Override

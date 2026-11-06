@@ -17,8 +17,18 @@ public class AiProjectMetadataChange {
     @Inject ProjectAccessService projectAccess;
 
     public static Account selected(Object value, long selectedProject) {
+        return selected(value, selectedProject, false);
+    }
+
+    /** A normal active Project update remains readable; this supplies no new write authority. */
+    public static Account selectedReadable(Object value, long selectedProject) {
+        return selected(value, selectedProject, true);
+    }
+
+    private static Account selected(Object value, long selectedProject, boolean updating) {
         if (!(value instanceof Account project) || project.getId() == null || project.getId() != selectedProject
-                || !"project".equals(project.getKind()) || project.getRemoved() != null || !"active".equals(project.getState())
+                || !"project".equals(project.getKind()) || project.getRemoved() != null
+                || !("active".equals(project.getState()) || updating && "updating-active".equals(project.getState()))
                 || project.getUuid() == null || project.getUuid().isBlank()) throw new ClientVisibleException(404, "NotFound");
         return project;
     }

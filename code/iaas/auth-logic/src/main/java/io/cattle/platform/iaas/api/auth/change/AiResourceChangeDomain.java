@@ -105,7 +105,8 @@ public class AiResourceChangeDomain extends AbstractJooqDao {
         Account actor = policy == null ? null : objects.loadResource(Account.class, policy.getAuthenticatedAsAccountId());
         Account account = policy == null ? null : objects.loadResource(Account.class, policy.getAccountId());
         if (actor == null || actor.getRemoved() != null || !"active".equals(actor.getState())
-                || account == null || account.getRemoved() != null || !"active".equals(account.getState())
+                || account == null || account.getRemoved() != null
+                || !("active".equals(account.getState()) || "updating-active".equals(account.getState()))
                 || !"project".equals(account.getKind())) throw error(403, "PermissionDenied");
         return policy;
     }
@@ -131,7 +132,7 @@ public class AiResourceChangeDomain extends AbstractJooqDao {
         long selectedProject = "project".equals(type) ? actor(original).getAccountId() : -1;
         return authorized(original, request, () -> {
             Object row = manager(type).getById(type, request.getId(), new ListOptions(request));
-            if ("project".equals(type)) return AiProjectMetadataChange.selected(row, selectedProject);
+            if ("project".equals(type)) return AiProjectMetadataChange.selectedReadable(row, selectedProject);
             if (row == null || ObjectUtils.getRemoved(row) != null || !matchesResourceType(type, row)
                     || !Objects.equals(ObjectUtils.getAccountId(row), ApiUtils.getPolicy().getAccountId())) throw error(404, "NotFound");
             return row;
@@ -296,8 +297,12 @@ public class AiResourceChangeDomain extends AbstractJooqDao {
         request.setSchemaFactory(current.schemas());
         Schema schema = current.schemas().getSchema(request.getType());
         if (schema == null) throw error(403, "PermissionDenied");
-        if (project) projectMetadata.authorize(AiProjectMetadataChange.selected(objects.loadResource(Account.class, actor.getAccountId()),
-                actor.getAccountId()), current.policy(), schema, "PUT".equals(request.getMethod()), copyMap(request.getRequestObject()).keySet());
+        if (project) {
+            Object selected = objects.loadResource(Account.class, actor.getAccountId());
+            Account account = "GET".equals(request.getMethod()) ? AiProjectMetadataChange.selectedReadable(selected, actor.getAccountId())
+                    : AiProjectMetadataChange.selected(selected, actor.getAccountId());
+            projectMetadata.authorize(account, current.policy(), schema, "PUT".equals(request.getMethod()), copyMap(request.getRequestObject()).keySet());
+        }
         if (request.getAttribute(DOMAIN) instanceof AiResourceChangeDescriptor descriptor
                 && (Set.of("dnsService", "certificate", "host", "project", "loadBalancerService").contains(descriptor.resourceType())
                     || AiServiceUpgradeLifecycleChange.supports(descriptor))) {
@@ -608,7 +613,7 @@ public class AiResourceChangeDomain extends AbstractJooqDao {
     public Object receiptTarget(ApiRequest request, AiResourceChangeDescriptor descriptor, Map<String, Object> plan) {
         Object target = load(descriptor.resourceType(), number(plan.get("internalResourceId")));
         if ("project".equals(descriptor.resourceType())) {
-            AiProjectMetadataChange.selected(target, actor(request).getAccountId());
+            AiProjectMetadataChange.selectedReadable(target, actor(request).getAccountId());
             return visible(request, descriptor, (String) plan.get("resourceId"));
         }
         Policy actor = actor(request);
@@ -676,6 +681,7 @@ public class AiResourceChangeDomain extends AbstractJooqDao {
                 && Set.of("removed", "purged").contains(state) && removalSettled(descriptor.resourceType(), target)
                 && priorInstancesRemoved(before);
         if (ObjectUtils.getRemoved(target) != null) return false;
+        if ("project".equals(descriptor.resourceType()) && "update_metadata".equals(descriptor.operation()) && !"active".equals(state)) return false;
         if ("update_metadata".equals(descriptor.operation())) return parameters.entrySet().stream()
                 .allMatch(entry -> Objects.equals(entry.getValue(), ObjectUtils.getPropertyIgnoreErrors(target, entry.getKey())));
         if ("scale".equals(descriptor.operation())) return "active".equals(state)

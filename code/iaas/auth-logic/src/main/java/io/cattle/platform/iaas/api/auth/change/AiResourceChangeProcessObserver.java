@@ -124,6 +124,8 @@ public class AiResourceChangeProcessObserver implements ProcessAuthorizationHook
         for (int attempt = 0; attempt < 3; attempt++) {
             Map<String, Object> binding = store.execution(id);
             if (binding == null || list(binding.get("initial")).isEmpty() || !metadataMatches(binding, metadata)) return;
+            if (AiProjectMetadataChange.metadataBinding(binding) && binding.get("rootProcessId") instanceof Number processId
+                    && processId.longValue() != record.getId()) return;
             if (!provenChild(binding, config, metadata)) return;
             if (store.recordAuthorizationDenied(id, binding) || AiResourceChangePlanStore.AUTHORIZATION_DENIED.equals(store.failure(id))) return;
         }
@@ -498,7 +500,7 @@ public class AiResourceChangeProcessObserver implements ProcessAuthorizationHook
     }
     private static boolean ownedRoot(Map<String, Object> binding, Object row) {
         if (!AiProjectMetadataChange.metadataBinding(binding)) return ownedRow(row, number(binding.get("accountId")));
-        try { return AiProjectMetadataChange.selected(row, number(binding.get("accountId"))) != null; }
+        try { return AiProjectMetadataChange.selectedReadable(row, number(binding.get("accountId"))) != null; }
         catch (io.github.ibuildthecloud.gdapi.exception.ClientVisibleException denied) { return false; }
     }
     private static boolean ownedRow(Object row, long account) {
