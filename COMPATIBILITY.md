@@ -1,12 +1,16 @@
 # Compatibility Contract
 
-## Engine 0.183.374 candidate — not published
+## Engine 0.183.374 published
 
 Existing ordinary Services can finish an upgrade, roll back, or cancel an upgrade through the existing typed resource plan. Each action uses empty parameters, fresh native role/schema/Key upgrade checks, explicit human approval, private phase/configuration CAS and one normal native action.
 
 Completion requires the matching native process and configuration/readiness readback. Finish and rollback also wait for exact old-generation instances and attachments to retire; rollback may reuse an original instance only under its unchanged native map and UUID. Cancellation verifies only the canceled-upgrade checkpoint and does not complete an upgrade or rollback. cancel_rollback remains unsupported: this Engine has no corresponding native capability.
 
-No generic HTTP transport, raw configuration input, new child permission or native role/action grant is introduced. The 208 prior required methods remain registered, with 11 new focused methods (219 total). Normal CI, original artifact qualification, matching Web/Bridge and Server integration, native business acceptance and weak-model/layout acceptance remain separate. This source change publishes no component and claims no whole-group or whole-243 completion. Existing package security findings and policy remain unchanged.
+[The immutable release](https://github.com/PastureStack/orchestration-engine/releases/tag/v0.183.374) contains twelve original assets verified by anonymous bytes/SHA readback and a native GitHub attestation covering the assets and signed tag. Original CI passed 441 suites / 4,034 tests with zero failures/errors and one inherited skip; all 219 required methods (208 carried and 11 new), 39 Linux build controls and 13 PIP boundary controls passed. The final 183-package Dapper table is byte-identical to published373. Raw scanner findings and exact package-scoped qualification remain separate; existing effective findings are retained. Workflow SLSA was not provided.
+
+No generic HTTP transport, raw configuration input, new child permission or native role/action grant is introduced. Matching Web/Bridge and Server integration, native lifecycle acceptance and weak-model/layout acceptance remain separate. Publication claims no whole-group or whole-243 completion.
+
+[Published metadata](https://github.com/PastureStack/orchestration-engine/releases/download/v0.183.374/engine374-release-metadata.json) identifies artifact producer `0d9247fd1f62a9692efd9d35024b6a9191a53a0f`, normal merge/tag target `36b83b0f9d3dc147a02903b0b34b4dbf4adc3bdb` and tested tree `123da219cc27d909ae50bd2992d7a85b9acb8f86`. This documentation commit is separate from the artifact producer.
 
 ## Engine 0.183.373 published
 
