@@ -1,12 +1,22 @@
 # Compatibility Contract
 
-## Upcoming Engine 0.183.385 source candidate
+## Engine 0.183.385 published
 
 Matching Web Console 1.6.225 / Bridge 0.2.27 adds ordinary Stack Group editing
-through the existing human-reviewed metadata plan. Native PUT and field
-capabilities, live Key policy, resource/project identity and configuration CAS
-remain binding. System/catalog Stacks are outside this typed subset. Normal
-CI, immutable publication and native acceptance are pending.
+through the existing human-reviewed metadata plan. Native PUT/field capability,
+live Key policy, resource/project identity and configuration CAS remain binding;
+system/catalog Stacks remain outside this subset. Logical local Volume creation
+verifies native inactive state without allocation. Safe validation guidance
+preserves approved field names without disclosing private native values/text.
+
+Original CI passed 473 suites / 4,229 tests, with zero
+failures/errors and 1 inherited skip; all 415 required
+methods passed across 72 packaged class roots. Twelve public assets
+passed anonymous SHA256 readback and native cryptographic release verification.
+The explicit container_logs view returns bounded untrusted application text
+under native LOGS authority; ordinary safe resource views remain metadata-only.
+Publication does not establish Server deployment, designated native workflow
+acceptance or complete frontend coverage. See the current release note.
 
 ## Engine 0.183.384 published
 
