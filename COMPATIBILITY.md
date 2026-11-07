@@ -1,23 +1,22 @@
 # Compatibility Contract
 
-## Engine 0.183.386 candidate
+## Engine 0.183.386 published
 
-This source candidate adds ordinary Service named dependency replacements using
+This release adds ordinary Service named dependency replacements using
 native target/name pair identity, preserves legacy null/wildcard native callers,
 and accepts the existing bounded HTTP health request line on ExternalService
 creation. A dedicated exact LB scale PUT/process attestation fixes the deployed
 385 metadata-only frame collision; metadata, live Key/RBAC, UUID/Stack identity,
 CAS, human confirmation, cancel and verified terminal-readback gates remain.
 
-The source-only assembly retains 415 required cases and registers 10 new cases
-(425 total). Pure C03 extraction covers 490 inputs with the same 1,396 HTTP tuples
-and zero role/route/operation grant delta. Planned packaged roots are 74: 13
-current and 61 carried from published385. These are source plans, not current CI,
-compiled schema/class evidence, immutable publication or native acceptance.
-Security gates and original evidence requirements remain. A matching Web Console
-and a qualified Server assembly must be verified separately. No deployed result
-or complete workflow coverage is inferred. See the
-[386 candidate note](docs/releases/orchestration-engine-0.183.386.md).
+Original JDK 25 CI passed 475 suites / 4,241 tests with zero failures/errors and
+one inherited skip. All 427 required methods passed (415 retained, 12 new).
+Packaged evidence covers 74 roots: 14 current and 60 byte-identical carry roots.
+C03 covers 490 inputs with the same 1,396 HTTP tuples and zero role/route/operation
+grant delta. All 16 serialized schemas and 175 schema JSON inputs are preserved.
+Twelve public assets passed anonymous SHA256 readback and immutable cryptographic
+release verification. Matching Web Console and Server native acceptance remain
+separate. See the [release note](docs/releases/orchestration-engine-0.183.386.md).
 
 
 ## Engine 0.183.385 published
