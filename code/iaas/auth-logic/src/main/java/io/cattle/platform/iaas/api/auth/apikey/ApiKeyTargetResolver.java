@@ -429,15 +429,19 @@ public class ApiKeyTargetResolver {
 
     /** IDs only, captured from native rows. This is not an authorization decision. */
     public Map<String, String> aliasSchedulingReferences(LaunchConfiguration execution, Map<String, Object> binding, Policy owner) {
-        if (!"dnsService".equals(binding.get("targetType")) || !"serviceConsumeMap".equals(execution.getResourceType())) return Map.of();
-        Service service = objectManager.loadResource(Service.class, executionResourceId("dnsService", Objects.toString(binding.get("targetId"), "")));
+        if (!("dnsService".equals(binding.get("targetType"))
+                || "service".equals(binding.get("targetType")) && ProcessAuthorization.aliasLinkRequest(binding))
+                || !"serviceConsumeMap".equals(execution.getResourceType())) return Map.of();
+        Service service = objectManager.loadResource(Service.class,
+                executionResourceId((String) binding.get("targetType"), Objects.toString(binding.get("targetId"), "")));
         ServiceConsumeMap map = objectManager.loadResource(ServiceConsumeMap.class, executionResourceId("serviceConsumeMap", execution.getResourceId()));
-        if (service == null || map == null || !"dnsService".equals(service.getKind()) || service.getStackId() == null
+        if (service == null || map == null || !Objects.equals(binding.get("targetType"), service.getKind()) || service.getStackId() == null
                 || !Objects.equals(service.getAccountId(), owner.getAccountId()) || !Objects.equals(map.getAccountId(), service.getAccountId())
                 || !Objects.equals(map.getServiceId(), service.getId())
                 || !io.cattle.platform.iaas.api.auth.change.AiAliasServiceChange.simpleLink(map)) return Map.of();
         Service consumed = objectManager.loadResource(Service.class, map.getConsumedServiceId());
-        if (consumed == null || consumed.getStackId() == null || !Objects.equals(consumed.getAccountId(), service.getAccountId())) return Map.of();
+        if (consumed == null || consumed.getStackId() == null || !Objects.equals(consumed.getAccountId(), service.getAccountId())
+                || "service".equals(binding.get("targetType")) && !"service".equals(consumed.getKind())) return Map.of();
         Stack stack = objectManager.loadResource(Stack.class, service.getStackId());
         Stack consumedStack = objectManager.loadResource(Stack.class, consumed.getStackId());
         if (stack == null || consumedStack == null || !Objects.equals(stack.getAccountId(), service.getAccountId())
@@ -450,8 +454,9 @@ public class ApiKeyTargetResolver {
 
     public AliasDependency resolveAliasServiceDependency(Object root, Object resource, Policy owner,
             io.github.ibuildthecloud.gdapi.factory.SchemaFactory schemas, LaunchConfiguration execution, Map<String, Object> binding) {
-        if (!(root instanceof Service supplied) || !"dnsService".equals(supplied.getKind())
-                || !(resource instanceof ServiceConsumeMap suppliedMap)) return null;
+        if (!(root instanceof Service supplied) || !(resource instanceof ServiceConsumeMap suppliedMap)
+                || !("dnsService".equals(supplied.getKind()) || "service".equals(supplied.getKind())
+                    && ProcessAuthorization.aliasLinkRequest(binding))) return null;
         if (!binding.equals(ProcessAuthorization.metadata(execution)) || !"serviceConsumeMap".equals(execution.getResourceType()))
             denied("KeyScopeDenied");
         boolean link = ProcessAuthorization.aliasLinkExecution(execution, binding) && ProcessAuthorization.executionBound(execution);
@@ -474,7 +479,7 @@ public class ApiKeyTargetResolver {
         Service service = cleanupProjection(Service.class, supplied, owner, "uuid", "accountId", "stackId", "kind");
         ServiceConsumeMap map = cleanupProjection(ServiceConsumeMap.class, suppliedMap, owner,
                 "uuid", "accountId", "serviceId", "consumedServiceId", "name", "consumedService", "data");
-        if (!Objects.equals(service.getId(), executionResourceId("dnsService", Objects.toString(binding.get("targetId"), "")))
+        if (!Objects.equals(service.getId(), executionResourceId((String) binding.get("targetType"), Objects.toString(binding.get("targetId"), "")))
                 || !Objects.equals(map.getServiceId(), service.getId()) || !Objects.equals(map.getAccountId(), service.getAccountId())
                 || !io.cattle.platform.iaas.api.auth.change.AiAliasServiceChange.simpleLink(map)
                 || Objects.equals(map.getConsumedServiceId(), service.getId()) || service.getStackId() == null
@@ -482,7 +487,8 @@ public class ApiKeyTargetResolver {
             denied("KeyScopeDenied");
         Service consumed = liveResource(Service.class, map.getConsumedServiceId(), owner);
         if (!Objects.equals(consumed.getAccountId(), service.getAccountId()) || consumed.getUuid() == null
-                || !Set.of("service", "dnsService", "externalService", "loadBalancerService").contains(consumed.getKind())) denied("KeyScopeDenied");
+                || !Set.of("service", "dnsService", "externalService", "loadBalancerService").contains(consumed.getKind())
+                || "service".equals(binding.get("targetType")) && !"service".equals(consumed.getKind())) denied("KeyScopeDenied");
         Schema readable = schemas == null ? null : schemas.getSchema(consumed.getKind());
         if (readable == null || readable.getResourceMethods() == null || !readable.getResourceMethods().contains("GET"))
             denied("OwnerPermissionDenied");

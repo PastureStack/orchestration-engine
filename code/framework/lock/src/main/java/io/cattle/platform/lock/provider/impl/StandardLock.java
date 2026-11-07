@@ -21,6 +21,7 @@ public class StandardLock implements Lock {
     volatile Thread owner = null;
     long ownerCount = 0;
     boolean acquired = false;
+    private volatile boolean checkedReleaseFailed;
 
     public StandardLock(LockDefinition lockDefinition, java.util.concurrent.locks.Lock lock) {
         this.lockDefinition = lockDefinition;
@@ -32,6 +33,7 @@ public class StandardLock implements Lock {
 
     @Override
     public boolean tryLock() {
+        requireKnownOwner();
         log.trace("Try Lock Attempt [{}]", timeout);
         boolean result = lock.tryLock();
         log.trace("Try Lock [{}] result [{}]", lockDefinition, result);
@@ -49,6 +51,7 @@ public class StandardLock implements Lock {
 
     @Override
     public void lock() throws FailedToAcquireLockException {
+        requireKnownOwner();
         log.trace("Lock Attempt [{}], timeout [{}]", lockDefinition, timeout);
         try {
             if (!doLock()) {
@@ -64,7 +67,12 @@ public class StandardLock implements Lock {
         log.trace("Lock [{}] owner", lockDefinition);
     }
 
-    protected void incrementOwner() {
+    protected synchronized void incrementOwner() {
+        if (checkedReleaseFailed) {
+            var failure = new FailedToAcquireLockException(lockDefinition);
+            try { lock.unlock(); } catch (RuntimeException | Error cleanup) { failure.addSuppressed(cleanup); }
+            throw failure;
+        }
         acquired = true;
         ownerCount++;
         if (owner == null) {
@@ -96,6 +104,7 @@ public class StandardLock implements Lock {
 
     @Override
     public void unlock() {
+        if (checkedReleaseFailed) return;
         try {
             if (Thread.currentThread() == owner) {
                 log.trace("Unlock [{}] owner", lockDefinition);
@@ -108,6 +117,26 @@ public class StandardLock implements Lock {
             log.trace("Failed to unlock [{}], may not own lock", lockDefinition, t);
         }
     }
+
+    private void requireKnownOwner() {
+        if (checkedReleaseFailed) throw new FailedToAcquireLockException(lockDefinition);
+    }
+
+    /** Keep pre-release owner bookkeeping, but quarantine uncertain checked failures before a new owner can enter. */
+    @Override
+    public synchronized void unlockChecked() {
+        if (checkedReleaseFailed) throw new IllegalStateException("Native checked release is quarantined");
+        if (Thread.currentThread() != owner) throw new IllegalMonitorStateException("Checked release requires its lock owner");
+        long previousCount = ownerCount;
+        decrementOwner();
+        try {
+            lock.unlock();
+        } catch (RuntimeException | Error failure) {
+            ownerCount = previousCount; owner = Thread.currentThread(); checkedReleaseFailed = true;
+            throw failure;
+        }
+    }
+
 
     @Override
     public LockDefinition getLockDefinition() {

@@ -18,7 +18,8 @@ public final class ProcessAuthorization {
     public static final String CAPTURED_EXECUTION_KEY = "_apiKeyCapturedExecution";
     private static final Set<String> FIELDS = Set.of("keyId", "policyRevision", "principalAccountId", "accountId",
             "requestId", "operation", "targetType", "targetId", "preview", "requestMethod", "requestAction", "requestLink",
-            "requestCollection", "projectCreation", "aliasServiceUuid", "aliasMapUuid", "aliasConsumedServiceId", "aliasConsumedServiceUuid",
+            "requestCollection", "projectCreation", "ordinaryServiceLinks", "aliasServiceUuid", "aliasMapUuid",
+            "aliasConsumedServiceId", "aliasConsumedServiceUuid",
             "aliasStackId", "aliasStackUuid", "aliasConsumedStackId", "aliasConsumedStackUuid", "projectUpdateUuid", "projectUpdateFields");
 
     private ProcessAuthorization() { }
@@ -34,7 +35,8 @@ public final class ProcessAuthorization {
                             && Set.copyOf(fields).size() == fields.size()) result.put(name, List.copyOf(fields));
                     continue;
                 }
-                if ((name.equals("requestCollection") || name.equals("projectCreation")) && !(value instanceof Boolean)) {
+                if ((name.equals("requestCollection") || name.equals("projectCreation") || name.equals("ordinaryServiceLinks"))
+                        && !(value instanceof Boolean)) {
                     continue;
                 }
                 if (value instanceof String text) {
@@ -260,7 +262,9 @@ public final class ProcessAuthorization {
 
     /** A normal Alias link action schedules these native maps directly, without an Instance or a fabricated Service frame. */
     public static boolean aliasLinkRequest(Map<String, Object> binding) {
-        return binding != null && "dnsService".equals(binding.get("targetType")) && "POST".equals(binding.get("requestMethod"))
+        return binding != null && ("dnsService".equals(binding.get("targetType"))
+                || "service".equals(binding.get("targetType")) && Boolean.TRUE.equals(binding.get("ordinaryServiceLinks")))
+                && "POST".equals(binding.get("requestMethod"))
                 && "setservicelinks".equals(binding.get("requestAction")) && "update".equals(binding.get("operation"))
                 && Boolean.FALSE.equals(binding.get("requestCollection")) && Boolean.FALSE.equals(binding.get("preview"))
                 && !binding.containsKey("requestLink");

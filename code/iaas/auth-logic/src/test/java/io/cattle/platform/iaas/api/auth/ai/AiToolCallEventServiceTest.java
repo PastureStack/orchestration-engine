@@ -42,6 +42,19 @@ public class AiToolCallEventServiceTest {
         verify(f.objects, never()).persist(any());
     }
 
+    @Test public void portConflictPublicReasonKeepsTheExistingNativeInvalidInputAuditContract() {
+        Fixture f = new Fixture();
+        Map<String, Object> start = f.service.report(f.request("preview_resource_change", "start", "pending", "NONE", null));
+        String correlation = (String) start.get("requestId");
+        assertEquals(true, f.service.report(f.request("preview_resource_change", "result", "rejected", "INVALID_INPUT", correlation)).get("accepted"));
+        assertEquals("INVALID_INPUT", f.events.getLast().reason()); assertNull(f.events.getLast().reasonDetail());
+        assertTrue(f.events.getLast().valid()); assertEquals(2, f.events.size());
+        assertEquals("AiToolEventInvalid", rejected(() -> f.service.report(f.request("preview_resource_change", "result", "rejected", "PORT_CONFLICT", correlation))));
+        ApiRequest wrongDetail = f.request("preview_resource_change", "result", "rejected", "INVALID_INPUT", correlation);
+        CollectionUtils.toMap(wrongDetail.getRequestObject()).put("reasonDetail", "PORT_CONFLICT");
+        assertEquals("AiToolEventInvalid", rejected(() -> f.service.report(wrongDetail))); assertEquals(2, f.events.size());
+    }
+
     @Test public void invalidReasonDetailsNeverReachDurableSink() {
         Fixture f = new Fixture();
         for (Object value : java.util.Arrays.asList(null, 1, Map.of("reason", "PRIVATE"), List.of("PRIVATE"), "", "PRIVATE", "x".repeat(20000))) {

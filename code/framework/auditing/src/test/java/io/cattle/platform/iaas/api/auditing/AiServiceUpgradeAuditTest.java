@@ -54,6 +54,21 @@ public class AiServiceUpgradeAuditTest {
         }
     }
 
+    @Test public void invalidInputPortConflictAuditPersistsWithoutInventingAReasonDetail() throws Exception {
+        List<Map<?, ?>> delivered = new ArrayList<>(); List<Object[]> envelopes = new ArrayList<>();
+        AuditServiceImpl service = service(delivered, envelopes);
+        String id = "aitool-11111111-1111-1111-1111-111111111111";
+        ApiRequest request = new ApiRequest(null, null); request.setRequestObject(Map.of("reason", "PORT_CONFLICT", "launchConfig", "PRIVATE"));
+        service.recordClientToolEvent(request, policy(), new ClientToolAuditEvent(id, "preview_resource_change", "result", "rejected", "INVALID_INPUT", id));
+        assertEquals(1, delivered.size());
+        assertEquals("INVALID_INPUT", delivered.getFirst().get("clientReportedReason"));
+        assertFalse(delivered.getFirst().containsKey("clientReportedReasonDetail"));
+        assertFalse(delivered.toString().contains("PORT_CONFLICT")); assertFalse(delivered.toString().contains("PRIVATE"));
+        assertThrows(IllegalArgumentException.class, () -> service.recordClientToolEvent(request, policy(),
+                new ClientToolAuditEvent(id, "preview_resource_change", "result", "rejected", "INVALID_INPUT", id, "PORT_CONFLICT")));
+        assertEquals(1, delivered.size());
+    }
+
     @Test public void bindingReasonDetailSurvivesJsonOutboxReplayAndCanonicalProjectionAsClientEvidence() throws Exception {
         List<Map<?, ?>> delivered = new ArrayList<>(); List<Object[]> envelopes = new ArrayList<>();
         AuditServiceImpl service = service(delivered, envelopes); AuditLogDao working = service.auditLogDao;

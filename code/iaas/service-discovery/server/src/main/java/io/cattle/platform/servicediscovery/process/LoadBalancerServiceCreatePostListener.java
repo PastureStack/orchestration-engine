@@ -11,7 +11,6 @@ import io.cattle.platform.engine.handler.ProcessPostListener;
 import io.cattle.platform.engine.process.ProcessInstance;
 import io.cattle.platform.engine.process.ProcessState;
 import io.cattle.platform.json.JsonMapper;
-import io.cattle.platform.lock.LockCallbackNoReturn;
 import io.cattle.platform.lock.LockManager;
 import io.cattle.platform.object.util.DataAccessor;
 import io.cattle.platform.process.common.handler.AbstractObjectProcessLogic;
@@ -57,41 +56,37 @@ public class LoadBalancerServiceCreatePostListener extends AbstractObjectProcess
     public HandlerResult handle(ProcessState state, ProcessInstance process) {
         Service service = (Service) state.getResource();
         if (service.getKind().equalsIgnoreCase(ServiceConstants.KIND_LOAD_BALANCER_SERVICE)) {
-            lockManager.lock(new ServiceDiscoveryServiceSetLinksLock(service), new LockCallbackNoReturn() {
-                @Override
-                public void doWithLockNoResult() {
-                    Set<Long> newServiceIds = new HashSet<>();
-                    Set<Long> oldServiceIds = new HashSet<>();
-                    List<Service> targetServices = objectManager.find(Service.class, SERVICE.ACCOUNT_ID, service.getAccountId(),
-                            SERVICE.REMOVED, null);
-                    setLoadBalancerServiceLinkedServicesIds(state, process, service, oldServiceIds, newServiceIds, targetServices);
+            ServiceDiscoveryServiceSetLinksLock.withLock(lockManager, service.getId(), () -> {
+                Set<Long> newServiceIds = new HashSet<>();
+                Set<Long> oldServiceIds = new HashSet<>();
+                List<Service> targetServices = objectManager.find(Service.class, SERVICE.ACCOUNT_ID, service.getAccountId(),
+                        SERVICE.REMOVED, null);
+                setLoadBalancerServiceLinkedServicesIds(state, process, service, oldServiceIds, newServiceIds, targetServices);
 
-                    oldServiceIds.removeAll(newServiceIds);
-                    for (Long newServiceId : newServiceIds) {
-                        addServiceLink(service, newServiceId);
-                    }
-
-                    for (Long oldServiceId : oldServiceIds) {
-                        removeServiceLink(service, oldServiceId);
-                    }
+                oldServiceIds.removeAll(newServiceIds);
+                for (Long newServiceId : newServiceIds) {
+                    addServiceLink(service, newServiceId);
                 }
+
+                for (Long oldServiceId : oldServiceIds) {
+                    removeServiceLink(service, oldServiceId);
+                }
+                return null;
             });
         } else {
             List<Service> targetServices = Arrays.asList(service);
             List<Service> lbServices = objectManager.find(Service.class, SERVICE.ACCOUNT_ID, service.getAccountId(),
                     SERVICE.REMOVED, null, SERVICE.KIND, ServiceConstants.KIND_LOAD_BALANCER_SERVICE);
             for (Service lbService : lbServices) {
-                lockManager.lock(new ServiceDiscoveryServiceSetLinksLock(lbService), new LockCallbackNoReturn() {
-                    @Override
-                    public void doWithLockNoResult() {
-                        Set<Long> newServiceIds = new HashSet<>();
-                        setLoadBalancerServiceLinkedServicesIds(state, process, lbService, new HashSet<Long>(),
-                                newServiceIds,
-                                targetServices);
-                        for (Long newServiceId : newServiceIds) {
-                            addServiceLink(lbService, newServiceId);
-                        }
+                ServiceDiscoveryServiceSetLinksLock.withLock(lockManager, lbService.getId(), () -> {
+                    Set<Long> newServiceIds = new HashSet<>();
+                    setLoadBalancerServiceLinkedServicesIds(state, process, lbService, new HashSet<Long>(),
+                            newServiceIds,
+                            targetServices);
+                    for (Long newServiceId : newServiceIds) {
+                        addServiceLink(lbService, newServiceId);
                     }
+                    return null;
                 });
             }
         }

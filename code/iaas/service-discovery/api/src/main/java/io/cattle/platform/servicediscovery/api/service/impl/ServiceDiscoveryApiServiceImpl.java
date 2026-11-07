@@ -23,6 +23,10 @@ import io.cattle.platform.core.model.VolumeTemplate;
 import io.cattle.platform.core.util.LBMetadataUtil.LBConfigMetadataStyle;
 import io.cattle.platform.docker.constants.DockerInstanceConstants;
 import io.cattle.platform.json.JsonMapper;
+import io.cattle.platform.lock.LockManager;
+import io.cattle.platform.engine.process.ProcessStateTransitionGuard;
+import java.util.function.Supplier;
+import io.cattle.platform.servicediscovery.api.lock.ServiceDiscoveryServiceSetLinksLock;
 import io.cattle.platform.object.ObjectManager;
 import io.cattle.platform.object.process.ObjectProcessManager;
 import io.cattle.platform.object.util.DataAccessor;
@@ -63,7 +67,7 @@ import org.yaml.snakeyaml.nodes.Tag;
 import org.yaml.snakeyaml.representer.Representer;
 
 @Named
-public class ServiceDiscoveryApiServiceImpl implements ServiceDiscoveryApiService {
+public class ServiceDiscoveryApiServiceImpl implements ServiceDiscoveryApiService, ProcessStateTransitionGuard {
 
     private static final String COMPOSE_DNS_SERVICE_IMAGE = "ghcr.io/pasturestack/internal-dns";
     private static final String COMPOSE_LOAD_BALANCER_SERVICE_IMAGE =
@@ -91,6 +95,9 @@ public class ServiceDiscoveryApiServiceImpl implements ServiceDiscoveryApiServic
     @Inject
     DataDao dataDao;
 
+    @Inject
+    LockManager lockManager;
+
     private final static String COMPOSE_PREFIX = "version: '2'\r\n";
     private final static String UID = "uid";
     private final static String GID = "gid";
@@ -102,22 +109,31 @@ public class ServiceDiscoveryApiServiceImpl implements ServiceDiscoveryApiServic
     
     @Override
     public void addServiceLink(Service service, ServiceLink serviceLink) {
-        consumeMapDao.createServiceLink(service, serviceLink);
+        ServiceDiscoveryServiceSetLinksLock.withLock(lockManager, service.getId(), () -> {
+            consumeMapDao.createServiceLink(service, serviceLink); return null;
+        });
     }
 
     @Override
     public void removeServiceLink(Service service, ServiceLink serviceLink) {
-        ServiceConsumeMap map = null;
-        if (serviceLink.getServiceId() != null) {
-            map = consumeMapDao.findMapToRemove(service.getId(), serviceLink.getServiceId());
-        } else {
-            map = consumeMapDao.findMapToRemove(service.getId(), serviceLink.getService());
-        }
-
-        if (map != null) {
-            objectProcessManager.scheduleProcessInstance(ServiceConstants.PROCESS_SERVICE_CONSUME_MAP_REMOVE,
+        ServiceDiscoveryServiceSetLinksLock.withLock(lockManager, service.getId(), () -> {
+            // Mutation reads are current even when API validation established an older RR snapshot.
+            ServiceConsumeMap map = consumeMapDao.findConsumedMapsForMutation(service.getId()).stream()
+                    .filter(row -> serviceLink.getServiceId() != null ? serviceLink.getServiceId().equals(row.getConsumedServiceId())
+                            : java.util.Objects.equals(serviceLink.getService(), row.getConsumedService()))
+                    .findFirst().orElse(null);
+            if (map != null) objectProcessManager.scheduleProcessInstance(ServiceConstants.PROCESS_SERVICE_CONSUME_MAP_REMOVE,
                     map, null);
-        }
+            return null;
+        });
+    }
+
+    @Override
+    public boolean transition(Object resource, String stateField, String newState, Supplier<Boolean> next) {
+        if (!"state".equals(stateField) || !(resource instanceof ServiceConsumeMap map) || map.getServiceId() == null) return next.get();
+        // This existing hook covers initial scheduling and final removal, including non-API owners.
+        // A process mutex may already be held, so return STATE_CHANGED on contention instead of waiting.
+        return Boolean.TRUE.equals(ServiceDiscoveryServiceSetLinksLock.tryWithLock(lockManager, map.getServiceId(), next));
     }
 
     @Override

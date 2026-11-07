@@ -269,6 +269,7 @@ jobs:
               },
               'io.cattle.platform.iaas.api.auth.change.AiResourceChangePlanServiceTest': {
                   'nativeAndDirectDenialsKeepOnlyTheirStatusAndCodeBeforeAnyPlanIsStored',
+                  'ordinaryLinkConfirmationAndApplyCasIncludeSourceParentMapAndConsumedUuid',
               },
               'io.cattle.platform.iaas.api.auth.change.AiExternalServiceChangeTest': {
                   'tcpCreateCopiesOnlyTheApprovedFieldsAndKeepsNativeTcpMarkerPrivate',
@@ -365,10 +366,12 @@ jobs:
               'io.cattle.platform.iaas.api.auditing.AiServiceUpgradeAuditTest': {
                   'bindingReasonDetailSurvivesJsonOutboxReplayAndCanonicalProjectionAsClientEvidence',
                   'privateProjectCaptureKeepsSelectedAuditScopeForPrimaryAndQueueOutcomes',
+                  'invalidInputPortConflictAuditPersistsWithoutInventingAReasonDetail',
               },
               'io.cattle.platform.iaas.api.auth.ai.AiToolCallEventServiceTest': {
                   'bindingDetailCapabilityKeepsLegacyConstructorAndDurableReadonlyAcksCompatible',
                   'invalidReasonDetailsNeverReachDurableSink',
+                  'portConflictPublicReasonKeepsTheExistingNativeInvalidInputAuditContract',
               },
               'io.cattle.platform.iaas.api.auth.ai.view.AiProjectCollectionOwnerTest': {
                   'adminNativeFullAndLegacySeeNonMembershipProjectsWithoutWideningMemberOrReadonly',
@@ -469,6 +472,69 @@ jobs:
                   'legacyVerifiedFramesWithoutProcessNamesKeepTheirExistingChildProof',
                   'nativeAgentSetupProofRecordsAncestryWithoutDomainAuthorization',
                   'nativeAgentCleanupProofRequiresTheExactNativeParentProcess',
+              },
+              'io.cattle.platform.iaas.api.auth.ai.view.AiRegistryLifecycleViewTest': {
+                  'registryEndpointSearchRetainsBoundedNativeRoleAndKeyQueryWithoutInventingNameMatches',
+              },
+              'io.cattle.platform.iaas.api.auth.apikey.ApiKeyAliasServiceDependencyTest': {
+                  'legacyRevisionZeroRetainsNativeQueuedAuthorizationAndFreshReadCeilings',
+                  'ordinaryQueuedCapabilityRequiresThePrivateTypedOwnerAndCannotComeFromPayload',
+                  'typedOrdinaryLinksCaptureExactNativeMapsAndRecheckLiveAuthority',
+              },
+              'io.cattle.platform.iaas.api.auth.apikey.ApiKeyRegistryLifecycleTest': {
+                  'aRegistryGrantCannotExecuteAnotherPoolIdKindOrUuidEvenForFullAndLegacyKeys',
+                  'liveReadonlyRoleReadCeilingKeyRevisionRevocationExpiryAndExplicitDeniesRemainBinding',
+                  'nativeStoragePoolRootUsesTheExactRegistryRoleAndRealCanonicalIdParser',
+              },
+              'io.cattle.platform.iaas.api.auth.change.AiAliasServiceObserverTest': {
+                  'invalidOrdinaryRevisionsCannotCaptureOrProjectAnotherOperationOutcome',
+                  'legacyRevisionZeroCapturesItsRealInitialMapAndProjectsTerminalAuthorizationDenial',
+                  'ordinaryLinkCallbacksBindOnlyTheSameOperationSourceAndCompleteTargetIdentity',
+                  'persistedOrdinaryIdentityNumbersMustBePositiveExactNativeIntegers',
+              },
+              'io.cattle.platform.iaas.api.auth.change.AiOrdinaryServiceLinksTest': {
+                  'beforeSetIsCollectedFromAllNativeMapsAndComplexOrOversizedSetsReject',
+                  'completionReadsTheActualSettledSetAndPreservesStateConfigurationAndInstanceStarts',
+                  'nativeIdentityPinsNeverTruncateFractionalNonFiniteOverflowOrStringValues',
+                  'nativePlanInputSchemaAdmitsOnlyTheNewTypedOperationWithoutExposingPrivatePins',
+                  'ordinaryDependencyLinksUseOnlyTheClosedNativeSetAction',
+                  'revisionZeroIsAnExactNonnegativeIntegerWhileEntityIdsStayPositive',
+                  'terminalReceiptsEraseConfigurationButFreshlyAuthorizeBothReviewedSides',
+              },
+              'io.cattle.platform.iaas.api.auth.change.AiRegistryLifecycleChangeTest': {
+                  'actualRegistryIdentityAndFullConfigurationArePreservedAcrossStateChanges',
+                  'addressProjectionIsExplicitAndNeverInventsANameOrExposesCredentialText',
+                  'nativeGetAndTerminalReadReauthorizeTheExactRegistryIdUuidKindOwnerAndCurrentReadSchema',
+                  'onlyEmptyRegistryStartAndStopReachTheNativeActions',
+                  'registryConfirmationAndApplyCasRejectChangedUuidStateAndConfigurationBeforeDispatch',
+                  'registryConfirmationRemainsHumanOnlyBoundKeyIsFreshAndAcceptedOrUnknownApplyNeverReplays',
+              },
+              'io.cattle.platform.iaas.api.auth.change.AiRegistryLifecycleObserverTest': {
+                  'changedUuidConfigurationKindOrPersistedProcessCannotBorrowTheApprovedRegistryExecution',
+                  'nativeAuthorizationDenialProjectsOnlyToTheSameCapturedOperationWithoutPrivateConfiguration',
+                  'serializedNativeStoragePoolExecutionPinsOneExactProcessForLegacyRevisionZero',
+              },
+              'io.cattle.platform.iaas.api.auth.change.AiServiceLinksCasLockTest': {
+                  'nativeClearOrReplaceWinningTheSharedMutexMakesTypedApplyStaleBeforeClaim',
+                  'sharedNativeMutexCoversTheRealSpringCommitAndRollbackTailWithoutLeaking',
+                  'singularNativeAddOrRemoveWinningTheSameMutexAlsoMakesTypedApplyStale',
+                  'singularNativeOwnersCannotMutateBetweenTypedFreshCasAndDispatch',
+                  'typedCasHoldsTheOriginalNativeMutexAndTheNormalHandlerReentersIt',
+              },
+              'io.cattle.platform.iaas.api.auth.change.AiServiceLinksCurrentReadTest': {
+                  'endpointRowsUseOneSortedOrderAndARealRemovingOrReboundTargetRejectsBeforeCas',
+                  'nativeUpgradeRowThenLinksCannotDeadlockTypedLinksThenEndpointRows',
+                  'shippedSpringReadSuspendsAnOldRrViewAndRejectsAnAlreadyScheduledMapRemoval',
+              },
+              'io.cattle.platform.servicediscovery.api.service.impl.ServiceLinksStateMutationGuardTest': {
+                  'descendingNestedSourcesRetryInsteadOfDeadlockingAnAscendingWriter',
+                  'everyMapRemovalStateUsesTheSharedMutexAndRetriesWithoutTerminalDenial',
+              },
+              'io.cattle.platform.servicediscovery.dao.impl.ServiceLinksMutationCurrentReadTest': {
+                  'bulkCloneTakesEverySourceMutexInSortedOrderBeforeAnyEdge',
+                  'directCloneDaoWaitsForTheWholeSetOwnerBeforeTakingItsEdgeLock',
+                  'mutationUsesCurrentRowsWhilePreMutexValidationRemainsNonLocking',
+                  'originalLbListenerAlsoRetriesDescendingSourceContentionThroughTheCommonOwner',
               },
           }
           suites = []

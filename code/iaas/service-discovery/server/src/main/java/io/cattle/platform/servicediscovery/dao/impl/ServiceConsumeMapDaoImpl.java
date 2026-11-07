@@ -17,11 +17,11 @@ import io.cattle.platform.core.model.tables.records.InstanceRecord;
 import io.cattle.platform.core.model.tables.records.ServiceConsumeMapRecord;
 import io.cattle.platform.db.jooq.dao.impl.AbstractJooqDao;
 import io.cattle.platform.json.JsonMapper;
-import io.cattle.platform.lock.LockCallback;
 import io.cattle.platform.lock.LockManager;
 import io.cattle.platform.object.ObjectManager;
 import io.cattle.platform.object.process.ObjectProcessManager;
 import io.cattle.platform.servicediscovery.api.dao.ServiceConsumeMapDao;
+import io.cattle.platform.servicediscovery.api.lock.ServiceDiscoveryServiceSetLinksLock;
 import io.cattle.platform.servicediscovery.deployment.impl.lock.ServiceLinkLock;
 import io.cattle.platform.util.type.CollectionUtils;
 
@@ -210,13 +210,9 @@ public class ServiceConsumeMapDaoImpl extends AbstractJooqDao implements Service
 
     @Override
     public ServiceConsumeMap createServiceLink(final Service service, final ServiceLink serviceLink) {
-        return lockManager.lock(new ServiceLinkLock(service.getId(), serviceLink.getServiceId(), serviceLink.getService()),
-                new LockCallback<ServiceConsumeMap>() {
-            @Override
-                    public ServiceConsumeMap doWithLock() {
-                return createServiceLinkImpl(service, serviceLink);
-            }
-        });
+        return ServiceDiscoveryServiceSetLinksLock.withLock(lockManager, service.getId(), () ->
+                lockManager.lock(new ServiceLinkLock(service.getId(), serviceLink.getServiceId(), serviceLink.getService()),
+                        () -> createServiceLinkImpl(service, serviceLink)));
     }
 
     protected ServiceConsumeMap createServiceLinkImpl(Service service, ServiceLink serviceLink) {
@@ -233,17 +229,10 @@ public class ServiceConsumeMapDaoImpl extends AbstractJooqDao implements Service
             }
         }
 
-        ServiceConsumeMap map = null;
-        if (serviceLink.getServiceId() != null) {
-            map = findNonRemovedMap(service.getId(), serviceLink.getServiceId(),
-                    serviceLink.getName());
-        } else {
-            map = findNonRemovedMap(service.getId(), serviceLink.getService(),
-                    serviceLink.getName());
-        }
+        ServiceConsumeMap map = findNonRemovedMapForMutation(service.getId(), serviceLink);
 
         if (map == null) {
-            Map<Object,Object> properties = CollectionUtils.asMap(
+            Map<Object, Object> properties = CollectionUtils.asMap(
                     (Object)SERVICE_CONSUME_MAP.SERVICE_ID,
                     service.getId(), SERVICE_CONSUME_MAP.CONSUMED_SERVICE_ID, serviceLink.getServiceId(),
                     SERVICE_CONSUME_MAP.ACCOUNT_ID, service.getAccountId(),
@@ -264,31 +253,49 @@ public class ServiceConsumeMapDaoImpl extends AbstractJooqDao implements Service
 
     @Override
     public List<ServiceConsumeMap> createServiceLinks(List<ServiceLink> serviceLinks) {
-        List<ServiceConsumeMap> result = new ArrayList<>();
-
-        for (ServiceLink serviceLink : serviceLinks) {
-            Service service = objectManager.loadResource(Service.class, serviceLink.getConsumingServiceId());
-            if (service == null) {
-                continue;
+        java.util.Set<Long> sources = new java.util.TreeSet<>();
+        for (ServiceLink link : serviceLinks) sources.add(link.getConsumingServiceId());
+        return ServiceDiscoveryServiceSetLinksLock.withLocks(lockManager, sources, () -> {
+            List<ServiceConsumeMap> result = new ArrayList<>();
+            for (ServiceLink serviceLink : serviceLinks) {
+                Service service = objectManager.loadResource(Service.class, serviceLink.getConsumingServiceId());
+                if (service == null) continue;
+                ServiceConsumeMap created = createServiceLink(service, serviceLink);
+                if (created != null) result.add(created);
             }
-            ServiceConsumeMap created = createServiceLink(service, serviceLink);
-            if (created != null) {
-                result.add(created);
-            }
-        }
+            return result;
+        });
+    }
 
-        return result;
+    private ServiceConsumeMap findNonRemovedMapForMutation(long serviceId, ServiceLink link) {
+        // The native owner already holds SETLINKS, then the original per-edge lock.
+        // Keep public validation reads non-locking; only mutation needs a current read.
+        org.jooq.Condition condition = SERVICE_CONSUME_MAP.SERVICE_ID.eq(serviceId).and(SERVICE_CONSUME_MAP.REMOVED.isNull());
+        condition = condition.and(link.getServiceId() != null ? SERVICE_CONSUME_MAP.CONSUMED_SERVICE_ID.eq(link.getServiceId())
+                : SERVICE_CONSUME_MAP.CONSUMED_SERVICE.eq(link.getService()));
+        if (link.getName() != null) condition = condition.and(SERVICE_CONSUME_MAP.NAME.eq(link.getName()));
+        ServiceConsumeMap found = null;
+        for (ServiceConsumeMap row : create().selectFrom(SERVICE_CONSUME_MAP).where(condition).forUpdate().fetchInto(ServiceConsumeMapRecord.class))
+            if (!CommonStatesConstants.REMOVING.equalsIgnoreCase(row.getState())) found = row;
+        return found;
     }
 
     @Override
     public List<? extends ServiceConsumeMap> findConsumedMapsToRemove(long serviceId) {
+        return create().selectFrom(SERVICE_CONSUME_MAP).where(SERVICE_CONSUME_MAP.SERVICE_ID.eq(serviceId)
+                .and(SERVICE_CONSUME_MAP.REMOVED.isNull().or(SERVICE_CONSUME_MAP.STATE.eq(CommonStatesConstants.REMOVING))))
+                .fetchInto(ServiceConsumeMapRecord.class);
+    }
+
+    @Override
+    public List<? extends ServiceConsumeMap> findConsumedMapsForMutation(long serviceId) {
         return create()
                 .selectFrom(SERVICE_CONSUME_MAP)
                 .where(
                         SERVICE_CONSUME_MAP.SERVICE_ID.eq(serviceId)
                                 .and((SERVICE_CONSUME_MAP.REMOVED.isNull().
-                                        or(SERVICE_CONSUME_MAP.STATE.eq(CommonStatesConstants.REMOVING))))).
-                fetchInto(ServiceConsumeMapRecord.class);
+                                        or(SERVICE_CONSUME_MAP.STATE.eq(CommonStatesConstants.REMOVING)))))
+                .forUpdate().fetchInto(ServiceConsumeMapRecord.class);
     }
 
     @Override

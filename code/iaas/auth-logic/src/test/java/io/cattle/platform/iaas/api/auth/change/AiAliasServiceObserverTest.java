@@ -84,6 +84,77 @@ public class AiAliasServiceObserverTest {
         }
     }
 
+    @Test public void ordinaryLinkCallbacksBindOnlyTheSameOperationSourceAndCompleteTargetIdentity() throws Exception {
+        for (String invalid : List.of("none", "map", "target", "parent", "kind", "stack-uuid", "root-stack-uuid", "map-uuid", "cancel"))
+            try (Fixture f = new Fixture("update_links", "service")) {
+                ProcessRecord child = f.child(); assertTrue(ProcessAuthorization.executionBound(child));
+                assertEquals(true, ProcessAuthorization.metadata(child).get("ordinaryServiceLinks"));
+                switch (invalid) {
+                case "map" -> f.map.setServiceId(99L);
+                case "target" -> f.target.setUuid("replacement");
+                case "parent" -> f.target.setStackId(8L);
+                case "kind" -> f.alias.setKind("dnsService");
+                case "stack-uuid" -> f.targetStack.setUuid("replacement");
+                case "root-stack-uuid" -> f.objects.loadResource(Stack.class, 8L).setUuid("replacement");
+                case "map-uuid" -> f.map.setUuid("replacement");
+                default -> { }
+                }
+                f.observer.afterExecution(child, ProcessAuthorization.metadata(child),
+                        invalid.equals("cancel") ? ExitReason.CANCELED : ExitReason.AUTHORIZATION_DENIED);
+                if (invalid.equals("none")) {
+                    assertEquals(AiResourceChangePlanStore.AUTHORIZATION_DENIED, f.store.failure(f.id));
+                    assertEquals(false, new AiResourceChangePlanService().output(f.store.load(f.id)).get("verifiedResult"));
+                } else assertNull(invalid, f.store.failure(f.id));
+            }
+    }
+
+    @Test public void persistedOrdinaryIdentityNumbersMustBePositiveExactNativeIntegers() throws Exception {
+        for (Object invalid : List.of(8.5, Double.NaN, new java.math.BigInteger("9223372036854775808"), "8", 0, -1))
+            try (Fixture f = new Fixture("update_links", "service")) {
+                ProcessRecord child = f.child(); Map<String, Object> before = f.store.execution(f.id);
+                Map<String, Object> after = new LinkedHashMap<>(before); after.put("rootStackId", invalid);
+                assertTrue(f.store.attest(f.id, before, after));
+                f.observer.afterExecution(child, ProcessAuthorization.metadata(child), ExitReason.AUTHORIZATION_DENIED);
+                assertNull(String.valueOf(invalid), f.store.failure(f.id));
+            }
+    }
+
+    @Test public void legacyRevisionZeroCapturesItsRealInitialMapAndProjectsTerminalAuthorizationDenial() throws Exception {
+        try (Fixture f = new Fixture("update_links", "service", 0L, "apiKey")) {
+            ProcessRecord child = f.child();
+            assertEquals(0L, ((Number) ProcessAuthorization.metadata(child).get("policyRevision")).longValue());
+            assertTrue(ProcessAuthorization.executionBound(child));
+            assertFalse(((List<?>) f.store.execution(f.id).get("initial")).isEmpty());
+            f.observer.afterExecution(child, ProcessAuthorization.metadata(child), ExitReason.AUTHORIZATION_DENIED);
+            assertEquals(AiResourceChangePlanStore.AUTHORIZATION_DENIED, f.store.failure(f.id));
+            Map<String, Object> result = new AiResourceChangePlanService().output(f.store.load(f.id));
+            assertEquals("failed", result.get("status")); assertEquals(false, result.get("verifiedResult"));
+            assertEquals(f.id, result.get("operationId")); assertFalse(result.toString().contains("PRIVATE"));
+        }
+    }
+
+    @Test public void invalidOrdinaryRevisionsCannotCaptureOrProjectAnotherOperationOutcome() throws Exception {
+        for (Object invalid : List.of(-1, -0.5, 0.5, Double.NaN, Double.POSITIVE_INFINITY,
+                new java.math.BigInteger("9223372036854775808"), "0")) {
+            try (Fixture f = new Fixture("update_links", "service", 0L, "apiKey")) {
+                Map<String, Object> before = f.store.execution(f.id), after = new LinkedHashMap<>(before);
+                after.put("credentialRevision", invalid); assertTrue(f.store.attest(f.id, before, after));
+                assertThrows(String.valueOf(invalid), IllegalStateException.class, f::child);
+                assertTrue(((List<?>) f.store.execution(f.id).get("initial")).isEmpty());
+            }
+            try (Fixture f = new Fixture("update_links", "service", 0L, "apiKey")) {
+                ProcessRecord child = f.child(); Map<String, Object> before = f.store.execution(f.id);
+                var matches = AiResourceChangeProcessObserver.class.getDeclaredMethod("metadataMatches", Map.class, Map.class);
+                matches.setAccessible(true); Map<String, Object> metadata = new LinkedHashMap<>(ProcessAuthorization.metadata(child));
+                metadata.put("policyRevision", invalid); assertEquals(false, matches.invoke(f.observer, before, metadata));
+                Map<String, Object> after = new LinkedHashMap<>(before); after.put("credentialRevision", invalid);
+                assertTrue(f.store.attest(f.id, before, after));
+                f.observer.afterExecution(child, ProcessAuthorization.metadata(child), ExitReason.AUTHORIZATION_DENIED);
+                assertNull(String.valueOf(invalid), f.store.failure(f.id));
+            }
+        }
+    }
+
     private static class Fixture implements AutoCloseable {
         final String id = "aichange-" + UUID.randomUUID(); final Connection connection;
         final JacksonJsonMapper json = new JacksonJsonMapper(); final AiResourceChangePlanStore store = new AiResourceChangePlanStore();
@@ -93,7 +164,9 @@ public class AiAliasServiceObserverTest {
         final ServiceRecord alias = new ServiceRecord(), target = new ServiceRecord(); final ServiceConsumeMapRecord map = new ServiceConsumeMapRecord();
         final StackRecord targetStack = new StackRecord(); final ApiRequest request = new ApiRequest(null, null);
         final String operation;
-        Fixture(String operation) throws Exception {
+        Fixture(String operation) throws Exception { this(operation, "dnsService"); }
+        Fixture(String operation, String kind) throws Exception { this(operation, kind, 3L, "apiKeyRestricted"); }
+        Fixture(String operation, String kind, long revision, String credentialKind) throws Exception {
             this.operation = operation;
             connection = DriverManager.getConnection("jdbc:h2:mem:alias-" + UUID.randomUUID() + ";DATABASE_TO_LOWER=TRUE");
             connection.createStatement().execute("CREATE TABLE ai_resource_change_plan(id VARCHAR(64) PRIMARY KEY,state VARCHAR(32),"
@@ -105,7 +178,7 @@ public class AiAliasServiceObserverTest {
             formatter.setTypeMappings(Map.of("service", "s", "serviceConsumeMap", "scm", "stack", "st", "credential", "c"));
             inject(targets, "objectManager", objects); inject(targets, "idFormatter", formatter); inject(hook, "targets", targets);
             when(owner.getAccountId()).thenReturn(5L); when(owner.getAuthenticatedAsAccountId()).thenReturn(10L);
-            alias.setId(2L); alias.setUuid("alias"); alias.setAccountId(5L); alias.setStackId(8L); alias.setKind("dnsService"); alias.setState("inactive");
+            alias.setId(2L); alias.setUuid("alias"); alias.setAccountId(5L); alias.setStackId(8L); alias.setKind(kind); alias.setState("inactive");
             target.setId(9L); target.setUuid("target"); target.setAccountId(5L); target.setStackId(9L); target.setKind("service"); target.setState("active");
             map.setId(7L); map.setUuid("map"); map.setAccountId(5L); map.setServiceId(2L); map.setConsumedServiceId(9L);
             map.setState(operation.equals("remove") ? "active" : "requested");
@@ -121,19 +194,21 @@ public class AiAliasServiceObserverTest {
             Map<String, Object> edge = Map.of("id", 7L, "uuid", "map", "accountId", 5L, "serviceId", 2L,
                     "consumedServiceId", 9L, "consumedUuid", "target");
             Map<String, Object> plan = new LinkedHashMap<>(Map.of("id", id, "actorId", 10L, "accountId", 5L,
-                    "credentialId", 7L, "credentialRevision", 3L, "credentialKind", "apiKeyRestricted", "resourceType", "dnsService",
+                    "credentialId", 7L, "credentialRevision", revision, "credentialKind", credentialKind, "resourceType", kind,
                     "operation", operation, "status", "preview"));
             plan.put("internalResourceId", 2L); plan.put("resourceId", "1s2"); plan.put("expiresAt", "2030-01-01T00:00:00Z");
             plan.put("confirmationState", "approved"); plan.put("parameters", operation.equals("remove") ? Map.of() : Map.of("serviceIds", List.of("1s9")));
-            plan.put("snapshot", Map.of("aliasLinks", operation.equals("remove") ? List.of(edge) : List.of()));
+            plan.put("snapshot", Map.of("uuid", "alias", "stackId", 8L, "linkStackUuid", "stack",
+                    "aliasLinks", operation.equals("remove") ? List.of(edge) : List.of()));
             plan.put("referenceSnapshot", Map.of("before", operation.equals("remove") ? List.of(ref) : List.of(),
                     "after", operation.equals("remove") ? List.of() : List.of(ref)));
             store.insert(plan); plan.put("status", "dispatching"); plan.put("operationId", id); assertTrue(store.claim(plan));
-            request.setType("dnsService"); request.setId("2"); request.setMethod(operation.equals("remove") ? "DELETE" : "POST");
+            request.setType(kind); request.setId("2");
+            if ("service".equals(kind)) request.setAttribute("ai.resource.change.domain.descriptor", AiResourceChangeDescriptor.require(kind, operation)); request.setMethod(operation.equals("remove") ? "DELETE" : "POST");
             request.setAction(operation.equals("remove") ? null : "setservicelinks");
             ApiContext.newContext().setPolicy(owner); ApiContext.getContext().setApiRequest(request); ApiContext.getContext().setIdFormatter(formatter);
             var policy = new ApiKeyPolicy(ApiKeyPolicy.Mode.CUSTOM, ApiKeyPolicy.Effect.DENY, null, List.of());
-            ApiKeyCredentialContext.attach(request, new ApiKeyCredentialContext(7, 10, "apiKeyRestricted", 3, policy));
+            ApiKeyCredentialContext.attach(request, new ApiKeyCredentialContext(7, 10, credentialKind, revision, revision == 0 ? null : policy));
             request.setAttribute("apiKey.audit.requestId", id); request.setAttribute("apiKey.audit.keyId", "1c7");
             request.setAttribute("apiKey.audit.decision", "ALLOW");
             request.setAttribute("apiKey.audit.operation", operation.equals("remove") ? "delete" : "update");

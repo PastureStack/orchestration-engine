@@ -128,6 +128,13 @@
         </tx:attributes>
     </tx:advice>
 
+    <!-- Only the typed Service link owner reads fresh state here, retaining its native mutation mutex and locked endpoints. -->
+    <tx:advice id="ServiceLinksCurrentReadAdvice" transaction-manager="CoreTransactionManager">
+        <tx:attributes>
+            <tx:method name="currentServiceLinksState" propagation="REQUIRES_NEW" isolation="READ_COMMITTED" read-only="true" />
+        </tx:attributes>
+    </tx:advice>
+
     <tx:advice id="ApiDelegateAdvice" transaction-manager="CoreTransactionManager">
         <tx:attributes>
             <!--
@@ -152,6 +159,8 @@
     </tx:advice>
 
     <aop:config>
+        <aop:advisor advice-ref="ServiceLinksCurrentReadAdvice"
+            pointcut="execution(* io.cattle.platform.iaas.api.auth.change.AiResourceChangeDomain.currentServiceLinksState(..))" />
         <aop:advisor advice-ref="ArchiveEligibilityReadAdvice"
             pointcut="execution(* io.cattle.platform.servicediscovery.api.filter.ArchiveEligibilityRead.validate(..))" />
         <aop:advisor advice-ref="GenericResourceDaoImplAdvice"

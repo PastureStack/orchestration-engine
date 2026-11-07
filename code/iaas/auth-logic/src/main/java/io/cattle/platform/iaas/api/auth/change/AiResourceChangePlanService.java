@@ -10,6 +10,7 @@ import io.cattle.platform.lock.LockCallback;
 import io.cattle.platform.lock.LockManager;
 import io.cattle.platform.lock.definition.AbstractBlockingLockDefintion;
 import io.cattle.platform.object.util.ObjectUtils;
+import io.cattle.platform.servicediscovery.api.lock.ServiceDiscoveryServiceSetLinksLock;
 import io.github.ibuildthecloud.gdapi.exception.ClientVisibleException;
 import io.github.ibuildthecloud.gdapi.request.ApiRequest;
 import io.github.ibuildthecloud.gdapi.util.RequestUtils;
@@ -59,7 +60,7 @@ public class AiResourceChangePlanService {
                 plan.put("resourceId", resourceId); plan.put("internalResourceId", target == null ? null : ObjectUtils.getId(target));
                 plan.put("actorId", actor.getAuthenticatedAsAccountId()); plan.put("accountId", actor.getAccountId());
                 plan.put("parameters", parameters); plan.put("body", body);
-                if ("dnsService".equals(descriptor.resourceType()) && Set.of("update_targets", "remove").contains(descriptor.operation()))
+                if (AiAliasServiceChange.referenceOperation(descriptor))
                     plan.put("referenceSnapshot", domain.aliasReferenceSnapshot(request, descriptor, resourceId, parameters));
                 if (AiLoadBalancerCreateChange.supports(descriptor))
                     plan.put("referenceSnapshot", domain.loadBalancerCreateReferences(request, descriptor, parameters));
@@ -137,71 +138,89 @@ public class AiResourceChangePlanService {
             Map<String, Object> loaded = store.loadForUpdate(id);
             if (loaded == null) throw error(404, "NotFound");
             AiResourceChangeDescriptor descriptor = descriptor(loaded);
-            Object target = loaded.get("internalResourceId") instanceof Number targetId ? domain.lock(descriptor.resourceType(), targetId.longValue()) : null;
-            Map<String, Object> parameters = map(loaded.get("parameters"));
-            Object parent = descriptor.requiresStackParent()
-                    ? domain.lock("stack", domain.internalId("stack", text(parameters.get("stackId")))) : null;
-            Map<String, Object> plan = owned(loaded, request);
-            if ("apply".equals(action) && !"preview".equals(plan.get("status"))) {
-                if (plan.get("operationId") == null) throw error(409, "ResourceChangeCancelled");
-                observe(plan, request); audit(request, action, plan, true, "ResourceChangeExistingOperation"); return output(plan);
-            }
-            if (!"preview".equals(plan.get("status"))) throw error(409, "ResourceChangeCancelled");
-            if ("cancel".equals(action)) {
-                audit(request, action, plan, true, "ResourceChangeCancelled");
-                plan.put("confirmationState", "cancelled"); plan.put("status", "cancelled"); plan.put("messageCode", "ResourceChangeCancelled");
-                eraseSnapshot(plan); store.save(plan); return output(plan);
-            }
-            requireEnabled();
-            if (!clock.instant().isBefore(java.time.Instant.parse(text(plan.get("expiresAt"))))) throw error(409, "ResourceChangePlanExpired");
-            if (!targetSnapshot(descriptor, target).equals(plan.get("snapshot")) || !parentSnapshot(descriptor, parent).equals(plan.get("parentSnapshot")))
-                throw error(409, "ResourceChangePlanStale");
-            if (!descriptor.createsResource()) visibleTarget(request, descriptor, text(plan.get("resourceId")), target);
-            domain.parent(request, descriptor, parameters); domain.ready(descriptor, target, parent);
-            if (!domain.prepare(request, descriptor, text(plan.get("resourceId")), parameters, plan).equals(plan.get("body")))
-                throw error(409, "ResourceChangePlanStale");
-            Supplier<Map<String, Object>> change = () -> {
-                if ("confirm".equals(action)) {
-                    audit(request, action, plan, true, "ResourceChangeConfirmed");
-                    plan.put("confirmationState", "approved"); plan.put("messageCode", "ResourceChangeReady"); store.save(plan); return output(plan);
+            return withServiceLinksLock(descriptor, loaded, () -> {
+                Object target = AiAliasServiceChange.ordinaryLinks(descriptor) ? domain.lockServiceLinkTargets(loaded)
+                        : loaded.get("internalResourceId") instanceof Number targetId ? domain.lock(descriptor.resourceType(), targetId.longValue()) : null;
+                Map<String, Object> parameters = map(loaded.get("parameters"));
+                Object parent = descriptor.requiresStackParent()
+                        ? domain.lock("stack", domain.internalId("stack", text(parameters.get("stackId")))) : null;
+                Map<String, Object> plan = owned(loaded, request);
+                if ("apply".equals(action) && !"preview".equals(plan.get("status"))) {
+                    if (plan.get("operationId") == null) throw error(409, "ResourceChangeCancelled");
+                    observe(plan, request); audit(request, action, plan, true, "ResourceChangeExistingOperation"); return output(plan);
                 }
-                if (!"approved".equals(plan.get("confirmationState"))) throw error(409, "ResourceChangeNeedsConfirmation");
-                if (plan.containsKey("credentialId") && ApiKeyCredentialContext.get(request) == null) throw error(403, "ResourceChangeBoundKeyRequired");
-                audit(request, action, plan, true, "ResourceChangeAccepted");
-                plan.put("status", "dispatching"); plan.put("operationId", id); plan.put("acceptedAt", clock.millis());
-                plan.put("messageCode", "ResourceChangeDispatchUncertain");
-                if (AiServiceUpgradeLifecycleChange.supports(descriptor)) {
-                    plan.put("processBaseline", domain.upgradeLifecycleProcessBaseline(target));
-                    if (!"cancel_upgrade".equals(descriptor.operation())) plan.put("retirementSnapshot", domain.upgradeLifecycleRetirementSnapshot(target));
+                if (!"preview".equals(plan.get("status"))) throw error(409, "ResourceChangeCancelled");
+                if ("cancel".equals(action)) {
+                    audit(request, action, plan, true, "ResourceChangeCancelled");
+                    plan.put("confirmationState", "cancelled"); plan.put("status", "cancelled"); plan.put("messageCode", "ResourceChangeCancelled");
+                    eraseSnapshot(plan); store.save(plan); return output(plan);
                 }
-                if (!store.claim(plan)) return output(owned(store.load(id), request));
-                try {
-                    Object result = domain.dispatch(request, descriptor, text(plan.get("resourceId")), parameters, id);
-                    if (descriptor.createsResource()) {
-                        Object createdId = ObjectUtils.getId(result);
-                        long numericId = createdId instanceof Number numeric ? numeric.longValue()
-                                : domain.internalId(descriptor.resourceType(), text(createdId));
-                        if (numericId <= 0) throw new IllegalStateException("Created resource identity unavailable");
-                        if (Set.of("service", "loadBalancerService").contains(descriptor.resourceType())) {
-                            Object uuid = ObjectUtils.getPropertyIgnoreErrors(result, "uuid");
-                            if (!(uuid instanceof String identity) || identity.isBlank())
-                                throw new IllegalStateException("Created Service identity unavailable");
-                            plan.put("createdResourceUuid", uuid);
-                        }
-                        plan.put("internalResourceId", numericId); plan.put("resourceId", domain.publicId(descriptor.resourceType(), numericId));
+                requireEnabled();
+                if (!clock.instant().isBefore(java.time.Instant.parse(text(plan.get("expiresAt"))))) throw error(409, "ResourceChangePlanExpired");
+                if (AiAliasServiceChange.ordinaryLinks(descriptor)) {
+                    Map<String, Object> current = domain.currentServiceLinksState(request, plan, target);
+                    if (!Objects.equals(current.get("snapshot"), plan.get("snapshot")) || !Objects.equals(current.get("body"), plan.get("body")))
+                        throw error(409, "ResourceChangePlanStale");
+                } else {
+                    if (!targetSnapshot(descriptor, target).equals(plan.get("snapshot"))
+                            || !parentSnapshot(descriptor, parent).equals(plan.get("parentSnapshot")))
+                        throw error(409, "ResourceChangePlanStale");
+                    if (!descriptor.createsResource()) visibleTarget(request, descriptor, text(plan.get("resourceId")), target);
+                    domain.parent(request, descriptor, parameters); domain.ready(descriptor, target, parent);
+                    if (!domain.prepare(request, descriptor, text(plan.get("resourceId")), parameters, plan).equals(plan.get("body")))
+                        throw error(409, "ResourceChangePlanStale");
+                }
+                Supplier<Map<String, Object>> change = () -> {
+                    if ("confirm".equals(action)) {
+                        audit(request, action, plan, true, "ResourceChangeConfirmed");
+                        plan.put("confirmationState", "approved"); plan.put("messageCode", "ResourceChangeReady"); store.save(plan); return output(plan);
                     }
-                    plan.put("dispatchAcknowledged", true);
-                    plan.put("status", "accepted"); plan.put("messageCode", "ResourceChangeAccepted");
-                } catch (RuntimeException uncertain) {
-                    // A domain manager can schedule work before its response fails.
-                    // The durable claim is never reset and this operation never replays.
-                    plan.put("status", "unknown"); plan.put("messageCode", "ResourceChangeDispatchUncertain");
-                    plan.put("dispatchAcknowledged", false);
-                }
-                store.save(plan); return output(plan);
-            };
-            return descriptor.changesArchive() ? domain.withArchiveChange(descriptor, target, change) : change.get();
+                    if (!"approved".equals(plan.get("confirmationState"))) throw error(409, "ResourceChangeNeedsConfirmation");
+                    if (plan.containsKey("credentialId") && ApiKeyCredentialContext.get(request) == null) throw error(403, "ResourceChangeBoundKeyRequired");
+                    audit(request, action, plan, true, "ResourceChangeAccepted");
+                    plan.put("status", "dispatching"); plan.put("operationId", id); plan.put("acceptedAt", clock.millis());
+                    plan.put("messageCode", "ResourceChangeDispatchUncertain");
+                    if (AiServiceUpgradeLifecycleChange.supports(descriptor)) {
+                        plan.put("processBaseline", domain.upgradeLifecycleProcessBaseline(target));
+                        if (!"cancel_upgrade".equals(descriptor.operation())) plan.put("retirementSnapshot", domain.upgradeLifecycleRetirementSnapshot(target));
+                    }
+                    if (!store.claim(plan)) return output(owned(store.load(id), request));
+                    try {
+                        Object result = domain.dispatch(request, descriptor, text(plan.get("resourceId")), parameters, id);
+                        if (descriptor.createsResource()) {
+                            Object createdId = ObjectUtils.getId(result);
+                            long numericId = createdId instanceof Number numeric ? numeric.longValue()
+                                    : domain.internalId(descriptor.resourceType(), text(createdId));
+                            if (numericId <= 0) throw new IllegalStateException("Created resource identity unavailable");
+                            if (Set.of("service", "loadBalancerService").contains(descriptor.resourceType())) {
+                                Object uuid = ObjectUtils.getPropertyIgnoreErrors(result, "uuid");
+                                if (!(uuid instanceof String identity) || identity.isBlank())
+                                    throw new IllegalStateException("Created Service identity unavailable");
+                                plan.put("createdResourceUuid", uuid);
+                            }
+                            plan.put("internalResourceId", numericId); plan.put("resourceId", domain.publicId(descriptor.resourceType(), numericId));
+                        }
+                        plan.put("dispatchAcknowledged", true);
+                        plan.put("status", "accepted"); plan.put("messageCode", "ResourceChangeAccepted");
+                    } catch (RuntimeException uncertain) {
+                        // A domain manager can schedule work before its response fails.
+                        // The durable claim is never reset and this operation never replays.
+                        plan.put("status", "unknown"); plan.put("messageCode", "ResourceChangeDispatchUncertain");
+                        plan.put("dispatchAcknowledged", false);
+                    }
+                    store.save(plan); return output(plan);
+                };
+                return descriptor.changesArchive() ? domain.withArchiveChange(descriptor, target, change) : change.get();
+            });
         }));
+    }
+
+    private <T> T withServiceLinksLock(AiResourceChangeDescriptor descriptor, Map<String, Object> plan, Supplier<T> action) {
+        if (!AiAliasServiceChange.ordinaryLinks(descriptor)) return action.get();
+        long id = AiAliasServiceChange.nativeId(plan.get("internalResourceId"));
+        if (id < 1) throw error(409, "ResourceChangePlanStale");
+        // Same native owner lock, before Service rows; the normal handler reenters this key.
+        return ServiceDiscoveryServiceSetLinksLock.withLock(locks, id, action);
     }
 
     private Map<String, Object> parentSnapshot(AiResourceChangeDescriptor descriptor, Object parent) {
@@ -209,7 +228,8 @@ public class AiResourceChangePlanService {
     }
 
     private Map<String, Object> targetSnapshot(AiResourceChangeDescriptor descriptor, Object target) {
-        return AiServiceUpgradeLifecycleChange.supports(descriptor) ? domain.upgradeLifecycleSnapshot(target)
+        return AiAliasServiceChange.ordinaryLinks(descriptor) ? domain.serviceLinksSnapshot(target)
+                : AiServiceUpgradeLifecycleChange.supports(descriptor) ? domain.upgradeLifecycleSnapshot(target)
                 : AiResourceChangeDomain.loadBalancerMetadata(descriptor) ? domain.loadBalancerMetadataSnapshot(target) : domain.snapshot(target);
     }
 
@@ -220,6 +240,8 @@ public class AiResourceChangePlanService {
             throw error(409, "ArchiveConcurrentChange");
         if (AiServiceUpgradeLifecycleChange.supports(descriptor)
                 && !domain.upgradeLifecycleSnapshot(lockedTarget).equals(domain.upgradeLifecycleSnapshot(visible)))
+            throw error(409, "ResourceChangePlanStale");
+        if (AiRegistryLifecycleChange.supports(descriptor) && !domain.snapshot(lockedTarget).equals(domain.snapshot(visible)))
             throw error(409, "ResourceChangePlanStale");
     }
 
@@ -312,7 +334,18 @@ public class AiResourceChangePlanService {
     }
 
     private void eraseSnapshot(Map<String, Object> plan) {
-        plan.remove("snapshot"); plan.remove("parentSnapshot"); plan.remove("body"); plan.remove("referenceSnapshot");
+        if ("registry".equals(plan.get("resourceType")) && plan.get("snapshot") instanceof Map<?, ?> registrySnapshot) {
+            Map<String, Object> identity = new LinkedHashMap<>();
+            for (String field : List.of("id", "uuid", "accountId", "kind")) identity.put(field, registrySnapshot.get(field));
+            plan.put("registryIdentity", identity);
+        }
+        if (AiAliasServiceChange.ordinaryLinks(descriptor(plan))) {
+            Map<String, Object> identity = new LinkedHashMap<>(), snapshot = map(plan.get("snapshot"));
+            for (String field : List.of("id", "uuid", "accountId", "kind", "stackId", "linkStackUuid"))
+                if (snapshot.containsKey(field)) identity.put(field, snapshot.get(field));
+            if (!identity.isEmpty()) plan.put("linkIdentity", identity);
+        } else plan.remove("referenceSnapshot");
+        plan.remove("snapshot"); plan.remove("parentSnapshot"); plan.remove("body");
         plan.remove("retirementSnapshot");
     }
     private AiResourceChangeDescriptor descriptor(Map<String, Object> plan) {

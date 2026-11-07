@@ -65,6 +65,8 @@ public class ApiKeyProcessAuthorization implements ProcessAuthorizationHook {
         if (key.policy() != null && key.policy().getMode() == ApiKeyPolicy.Mode.CUSTOM
                 && targets.isAliasServiceLinkAction(request)) targetType = "dnsService";
         metadata.put("targetType", targetType);
+        if (io.cattle.platform.iaas.api.auth.change.AiResourceChangeDomain.trustedOrdinaryLinks(request))
+            metadata.put("ordinaryServiceLinks", true);
         metadata.put("targetId", request.getId() == null ? config.getResourceId() : request.getId());
         Long createdProjectId = ProjectCreationScope.currentProjectId();
         if (createdProjectId != null && "project".equals(request.getType()) && request.getId() == null
@@ -102,6 +104,12 @@ public class ApiKeyProcessAuthorization implements ProcessAuthorizationHook {
             if (root == null || child == null || !schemaAllows(current.schemas().getSchema(type), metadata)) {
                 denied("OwnerPermissionDenied");
             }
+            if ("registry".equals(type) && java.util.Set.of("activate", "deactivate").contains(
+                    optionalText(metadata, "requestAction") == null ? "" : optionalText(metadata, "requestAction"))
+                    && (!io.cattle.platform.iaas.api.auth.change.AiRegistryLifecycleChange.queuedRoot(root, child, config, metadata)
+                        || current.schemas().getSchema(type).getResourceMethods() == null
+                        || !current.schemas().getSchema(type).getResourceMethods().contains("GET")))
+                denied("KeyScopeDenied");
             if (authorizedProjectCreation(config, metadata, policy, current.policy(), root, child)) return;
             if (projectUpdate) {
                 if (projectAccess == null) denied("OwnerPermissionDenied");
