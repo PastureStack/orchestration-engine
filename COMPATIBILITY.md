@@ -1,5 +1,32 @@
 # Compatibility Contract
 
+## Engine 0.183.383 published
+
+[The immutable release](https://github.com/PastureStack/orchestration-engine/releases/tag/v0.183.383)
+adds ordinary-Service `update_links` and Registry activation/deactivation to the
+existing typed, human-reviewed workflow. Complete-set consistency, native
+identity, current account permissions and the owner's live Key policy are
+rechecked at execution. Native Service writers retain a common lock order
+through transaction completion; bulk acquisition is iterative, and uncertain
+checked release keeps the same native mutex isolated. Registry credentials and
+private configuration are excluded from public projections.
+
+Original CI passed 460 suites / 4,145 tests, with zero failures/errors and one
+inherited skip. All 330 required methods, 43 Linux and 13 PIP controls passed.
+Packaged evidence covers 20 current and 39 byte-identical carried class families,
+all 16 serialized schemas and 175 schema JSON inputs. C03 retains 1,396 HTTP
+operation tuples across 479 source inputs; native role grants are unchanged.
+Twelve public assets passed anonymous bytes/SHA256 verification and immutable
+release verification covered thirteen cryptographic subjects. Raw and qualified
+findings remain separate; existing registered no-fix findings stay tracked.
+
+[Published metadata](https://github.com/PastureStack/orchestration-engine/releases/download/v0.183.383/engine383-release-metadata.json)
+binds producer `63c6a19c1d03172297c400ab3ad98bde3ed0da08`, tested tree
+`bd905df5ce50f215cd92c0b562755f9b6496ca23` and normal merge/tag target
+`201545a47dcfe9bb5bf81b2499deb5725c8c209c`. Matching Web Console 1.6.223 /
+Bridge 0.2.25 and a qualified Server assembly are required. Component publication
+does not establish platform-native role/Key/CAS or complete frontend acceptance.
+
 ## Engine 0.183.380 published
 
 An explicit `get_resource view=stack_graph` reads bounded ordinary-Service dependency links through current native authority. Opaque endpoint and parent references are refreshed; cross-project, hidden, unreadable or replaced identities fail closed. No launch configuration, environment, raw relation payload or hidden count is returned. Both completeness fields remain unknown. Ordinary `get_resource` remains unchanged unless the selector is supplied.
