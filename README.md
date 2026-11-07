@@ -10,18 +10,18 @@ upstream history, authorship, licenses, and dependency notices.
 
 ## Current component
 
-[Engine **0.183.384**](https://github.com/PastureStack/orchestration-engine/releases/tag/v0.183.384)
-is published. It adds typed Service ports/health-check configuration upgrades,
-builtin-local logical Volume creation and bounded Container application logs.
-It also corrects native load-balancer image dependency admission and keeps
-CAS-stale Service-link plans visible for authorized human cancellation. See the
-[release note](docs/releases/orchestration-engine-0.183.384.md) for verified
-component evidence and the remaining native acceptance boundaries.
+[Engine **0.183.385**](https://github.com/PastureStack/orchestration-engine/releases/tag/v0.183.385)
+is published, paired with Web Console **1.6.225** / Bridge **0.2.27**. Ordinary
+Stack Group editing uses the existing human-reviewed metadata plan and native
+field, role, Key and configuration-consistency checks. Logical local Volume
+creation verifies the native inactive, unallocated record; native validation
+guidance retains only approved field names, never private native values or text.
+See the [release note](docs/releases/orchestration-engine-0.183.385.md).
 
 Deploy through the [Server installation guide](https://github.com/PastureStack/server#quick-start)
-using the current qualified matching component assembly; an Engine JAR alone is
-not a Server installation. Component publication does not establish native
-workflow or complete WebMCP coverage.
+using the current qualified matching assembly. Component publication is separate
+from Server deployment and native workflow acceptance; supported WebMCP
+workflows remain partial.
 
 ## Optional AI resource workflows
 
@@ -184,7 +184,7 @@ Before publishing an Engine artifact, run the complete package gate:
 
 ```sh
 bash scripts/check-cattle-jdk25-full-package
-ENGINE_VERSION=0.183.384 bash scripts/build --release
+ENGINE_VERSION=0.183.385 bash scripts/build --release
 bash scripts/check-release-artifact dist/artifacts/cattle.jar
 ```
 
