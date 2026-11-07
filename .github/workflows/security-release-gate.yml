@@ -59,6 +59,15 @@ jobs:
           import xml.etree.ElementTree as ET
 
           required = {
+              'io.cattle.platform.iaas.api.auth.change.AiStackGroupChangeTest': {
+                  'groupAllowsNativeEditableOrdinaryNonemptyStatesButRejectsSystemCatalogAndRemovedStacks',
+                  'groupCompletionRequiresExactRequestedFieldsAndPreservesAllOtherConfiguration',
+                  'groupParametersPreserveNativeTextNullAndEmptyWithoutExtendingOtherWorkflows',
+                  'groupPlanRetainsHumanConfirmationAndDetectsGroupAndParentUuidDriftBeforeDispatch',
+                  'groupSnapshotAndTerminalReceiptRequireCurrentReadableFieldRoleAndExactIdentity',
+                  'groupSnapshotBindsNativeColumnIdentityProjectAndConfigurationWithoutCopyingSecrets',
+                  'groupStillRequiresNativePutFieldCeilingAndCurrentBoundKeyBeforeDispatch',
+              },
               'io.cattle.platform.iaas.api.auth.ai.view.AiApiKeyReadViewTest': {
                   'all128ConfiguredRulesAndDenialsRemainWhileScopeReadsAreDeduplicatedAndCeilingsStayPartial',
                   'freshPolicyRevisionFieldAndCredentialRevocationCannotBecomeAConfiguredPolicySnapshot',

@@ -21,7 +21,8 @@ public record AiResourceChangeDescriptor(String resourceType, String operation, 
                     : "stack".equals(type) ? "deactivateservices" : "deactivate", "update", Set.of());
             if (!"stack".equals(type)) add(result, type, "restart", "POST", "restart", "update", Set.of());
             add(result, type, "remove", "DELETE", null, "delete", Set.of());
-            add(result, type, "update_metadata", "PUT", null, "update", Set.of("name", "description"));
+            add(result, type, "update_metadata", "PUT", null, "update", "stack".equals(type)
+                    ? Set.of("name", "description", "group") : Set.of("name", "description"));
             add(result, type, "create", "POST", null, "create", "stack".equals(type) ? Set.of("name", "description")
                     : "service".equals(type) ? Set.of("name", "description", "image", "scale", "stackId", "command", "entryPoint", "ports", "healthCheck")
                     : Set.of("name", "description", "image", "command", "entryPoint", "ports"));
@@ -100,6 +101,7 @@ public record AiResourceChangeDescriptor(String resourceType, String operation, 
             switch (field) {
             case "name" -> string(content, 1, 255, false);
             case "description" -> { if (content != null) string(content, 0, 1024, true); }
+            case "group" -> AiStackGroupChange.value(content);
             case "image" -> {
                 string(content, 1, 512, false);
                 String image = (String) content;

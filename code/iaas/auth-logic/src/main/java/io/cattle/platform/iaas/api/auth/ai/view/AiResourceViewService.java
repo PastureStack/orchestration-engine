@@ -73,7 +73,7 @@ public class AiResourceViewService {
     private static final List<String> COMMON_FIELDS = List.of("name", "description", "state", "kind", "created", "healthState");
     private static final Map<String, List<String>> FIELDS = Map.ofEntries(
             Map.entry("project", List.of("orchestration")),
-            Map.entry("stack", List.of("archived")),
+            Map.entry("stack", List.of("archived", "group")),
             Map.entry("service", List.of("scale", "stackId", "archived")),
             Map.entry("loadBalancerService", List.of("scale", "stackId", "archived")),
             Map.entry("dnsService", List.of("stackId", "archived")), Map.entry("externalService", List.of("stackId", "archived")),

@@ -48,9 +48,9 @@ public class AiResourceChangePlanService {
             Object parent = descriptor.requiresStackParent()
                     ? domain.lock("stack", domain.internalId("stack", text(parameters.get("stackId")))) : null;
             Policy actor = domain.actor(request);
-            if (target != null) visibleTarget(request, descriptor, resourceId, target);
+            if (target != null) visibleTarget(request, descriptor, resourceId, target, parameters);
             if (parent != null) domain.parent(request, descriptor, parameters);
-            domain.ready(descriptor, target, parent);
+            domain.ready(descriptor, target, parent, parameters);
             Map<String, Object> body = domain.prepare(request, descriptor, resourceId, parameters);
             Supplier<Map<String, Object>> save = () -> locked("actor-" + actor.getAuthenticatedAsAccountId(), () -> {
                 store.prune(clock.millis());
@@ -67,7 +67,7 @@ public class AiResourceChangePlanService {
                     plan.put("referenceSnapshot", domain.loadBalancerCreateReferences(request, descriptor, parameters));
                 if (AiResourceChangeDomain.loadBalancerOwned(descriptor))
                     plan.put("referenceSnapshot", domain.loadBalancerMetadataContext(request, descriptor, resourceId));
-                plan.put("snapshot", targetSnapshot(descriptor, target)); plan.put("parentSnapshot", parentSnapshot(descriptor, parent));
+                plan.put("snapshot", targetSnapshot(request, descriptor, target, parameters)); plan.put("parentSnapshot", parentSnapshot(descriptor, parent));
                 if (AiServiceUpgradeLifecycleChange.supports(descriptor)) {
                     Map<String, Object> reference = domain.upgradeLifecycleContext(request, descriptor, resourceId);
                     plan.put("referenceSnapshot", reference);
@@ -174,11 +174,11 @@ public class AiResourceChangePlanService {
                     if (!Objects.equals(current.get("snapshot"), plan.get("snapshot")) || !Objects.equals(current.get("body"), plan.get("body")))
                         throw error(409, "ResourceChangePlanStale");
                 } else {
-                    if (!targetSnapshot(descriptor, target).equals(plan.get("snapshot"))
+                    if (!targetSnapshot(request, descriptor, target, parameters).equals(plan.get("snapshot"))
                             || !parentSnapshot(descriptor, parent).equals(plan.get("parentSnapshot")))
                         throw error(409, "ResourceChangePlanStale");
-                    if (!descriptor.createsResource()) visibleTarget(request, descriptor, text(plan.get("resourceId")), target);
-                    domain.parent(request, descriptor, parameters); domain.ready(descriptor, target, parent);
+                    if (!descriptor.createsResource()) visibleTarget(request, descriptor, text(plan.get("resourceId")), target, parameters);
+                    domain.parent(request, descriptor, parameters); domain.ready(descriptor, target, parent, parameters);
                     if (!domain.prepare(request, descriptor, text(plan.get("resourceId")), parameters, plan).equals(plan.get("body")))
                         throw error(409, "ResourceChangePlanStale");
                 }
@@ -244,14 +244,20 @@ public class AiResourceChangePlanService {
         return AiLoadBalancerCreateChange.supports(descriptor) ? domain.loadBalancerCreateParentSnapshot(parent) : domain.snapshot(parent);
     }
 
-    private Map<String, Object> targetSnapshot(AiResourceChangeDescriptor descriptor, Object target) {
+    private Map<String, Object> targetSnapshot(ApiRequest request, AiResourceChangeDescriptor descriptor, Object target,
+            Map<String, Object> parameters) {
+        if (AiStackGroupChange.supports(descriptor, parameters)) return domain.stackGroupSnapshot(request, target);
         return AiAliasServiceChange.ordinaryLinks(descriptor) ? domain.serviceLinksSnapshot(target)
                 : AiServiceUpgradeLifecycleChange.supports(descriptor) ? domain.upgradeLifecycleSnapshot(target)
                 : AiResourceChangeDomain.loadBalancerMetadata(descriptor) ? domain.loadBalancerMetadataSnapshot(target) : domain.snapshot(target);
     }
 
-    private void visibleTarget(ApiRequest request, AiResourceChangeDescriptor descriptor, String id, Object lockedTarget) {
+    private void visibleTarget(ApiRequest request, AiResourceChangeDescriptor descriptor, String id, Object lockedTarget,
+            Map<String, Object> parameters) {
         Object visible = domain.visible(request, descriptor, id);
+        if (AiStackGroupChange.supports(descriptor, parameters)
+                && !domain.stackGroupSnapshot(request, lockedTarget).equals(domain.stackGroupSnapshot(request, visible)))
+            throw error(409, "ResourceChangePlanStale");
         // The final normal manager also uses the ambient RR snapshot. Reject an older view before claiming a JSON metadata write.
         if (descriptor.changesArchive() && !domain.snapshot(lockedTarget).equals(domain.snapshot(visible)))
             throw error(409, "ArchiveConcurrentChange");
@@ -366,6 +372,8 @@ public class AiResourceChangePlanService {
                 if (snapshot.containsKey(field)) identity.put(field, snapshot.get(field));
             if (!identity.isEmpty()) plan.put("linkIdentity", identity);
         } else plan.remove("referenceSnapshot");
+        if (plan.get("snapshot") instanceof Map<?, ?> && AiStackGroupChange.supports(descriptor(plan), map(plan.get("parameters"))))
+            plan.put("stackGroupIdentity", AiStackGroupChange.identity(map(plan.get("snapshot"))));
         plan.remove("snapshot"); plan.remove("parentSnapshot"); plan.remove("body");
         plan.remove("retirementSnapshot");
     }
