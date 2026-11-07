@@ -30,7 +30,9 @@ jobs:
           set -euo pipefail
           test -z "$(git status --porcelain)"
           git merge-base --is-ancestor origin/main HEAD
-          test "$(git rev-list --count origin/main..HEAD)" -eq 1
+          # A reviewed candidate may contain several signed follow-up commits.
+          # Publication verifies the complete signed interval and tested tree.
+          test "$(git rev-list --count origin/main..HEAD)" -ge 1
           project_version="$(sed -n 's/^[[:space:]]*<version>\([^<]*\)<\/version>[[:space:]]*$/\1/p' code/meta-parent/pom.xml | head -n 1)"
           build_version="$(sed -n 's/^ENGINE_VERSION=${ENGINE_VERSION:-\([^}]*\)}$/\1/p' scripts/build)"
           [[ "$project_version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]
