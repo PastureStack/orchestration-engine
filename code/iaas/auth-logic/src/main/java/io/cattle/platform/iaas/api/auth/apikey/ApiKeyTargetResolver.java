@@ -438,7 +438,9 @@ public class ApiKeyTargetResolver {
         if (service == null || map == null || !Objects.equals(binding.get("targetType"), service.getKind()) || service.getStackId() == null
                 || !Objects.equals(service.getAccountId(), owner.getAccountId()) || !Objects.equals(map.getAccountId(), service.getAccountId())
                 || !Objects.equals(map.getServiceId(), service.getId())
-                || !io.cattle.platform.iaas.api.auth.change.AiAliasServiceChange.simpleLink(map)) return Map.of();
+                || !("service".equals(binding.get("targetType")) && ProcessAuthorization.aliasLinkRequest(binding)
+                    ? io.cattle.platform.iaas.api.auth.change.AiNamedServiceLinks.localLink(map)
+                    : io.cattle.platform.iaas.api.auth.change.AiAliasServiceChange.simpleLink(map))) return Map.of();
         Service consumed = objectManager.loadResource(Service.class, map.getConsumedServiceId());
         if (consumed == null || consumed.getStackId() == null || !Objects.equals(consumed.getAccountId(), service.getAccountId())
                 || "service".equals(binding.get("targetType")) && !"service".equals(consumed.getKind())) return Map.of();
@@ -447,9 +449,12 @@ public class ApiKeyTargetResolver {
         if (stack == null || consumedStack == null || !Objects.equals(stack.getAccountId(), service.getAccountId())
                 || !Objects.equals(consumedStack.getAccountId(), service.getAccountId()) || service.getUuid() == null || map.getUuid() == null
                 || consumed.getUuid() == null || stack.getUuid() == null || consumedStack.getUuid() == null) return Map.of();
-        return Map.of("aliasServiceUuid", service.getUuid(), "aliasMapUuid", map.getUuid(), "aliasConsumedServiceId", consumed.getId().toString(),
+        Map<String, String> references = new LinkedHashMap<>(Map.of("aliasServiceUuid", service.getUuid(), "aliasMapUuid", map.getUuid(), "aliasConsumedServiceId", consumed.getId().toString(),
                 "aliasConsumedServiceUuid", consumed.getUuid(), "aliasStackId", stack.getId().toString(), "aliasStackUuid", stack.getUuid(),
-                "aliasConsumedStackId", consumedStack.getId().toString(), "aliasConsumedStackUuid", consumedStack.getUuid());
+                "aliasConsumedStackId", consumedStack.getId().toString(), "aliasConsumedStackUuid", consumedStack.getUuid()));
+        // Old plain-map frames retain their exact reference shape; named frames additionally pin the alias.
+        if (map.getName() != null && !map.getName().isEmpty()) references.put("aliasMapName", map.getName());
+        return Map.copyOf(references);
     }
 
     public AliasDependency resolveAliasServiceDependency(Object root, Object resource, Policy owner,
@@ -469,7 +474,8 @@ public class ApiKeyTargetResolver {
         Map<String, String> references = aliasSchedulingReferences(execution, binding, owner);
         if (references.isEmpty()) denied("KeyScopeDenied");
         if (link) {
-            if (references.entrySet().stream().anyMatch(entry -> !Objects.equals(entry.getValue(), binding.get(entry.getKey())))) denied("KeyScopeDenied");
+            if (references.entrySet().stream().anyMatch(entry -> !Objects.equals(entry.getValue(), binding.get(entry.getKey())))
+                    || !Objects.equals(references.get("aliasMapName"), binding.get("aliasMapName"))) denied("KeyScopeDenied");
         } else {
             var frame = EngineContext.getEngineContext().currentVerifiedExecution();
             if (proof.references().isEmpty() && frame != null) ProcessAuthorization.bindVerifiedChildReferences(execution, references);
@@ -481,7 +487,9 @@ public class ApiKeyTargetResolver {
                 "uuid", "accountId", "serviceId", "consumedServiceId", "name", "consumedService", "data");
         if (!Objects.equals(service.getId(), executionResourceId((String) binding.get("targetType"), Objects.toString(binding.get("targetId"), "")))
                 || !Objects.equals(map.getServiceId(), service.getId()) || !Objects.equals(map.getAccountId(), service.getAccountId())
-                || !io.cattle.platform.iaas.api.auth.change.AiAliasServiceChange.simpleLink(map)
+                || !("service".equals(binding.get("targetType")) && ProcessAuthorization.aliasLinkRequest(binding)
+                    ? io.cattle.platform.iaas.api.auth.change.AiNamedServiceLinks.localLink(map)
+                    : io.cattle.platform.iaas.api.auth.change.AiAliasServiceChange.simpleLink(map))
                 || Objects.equals(map.getConsumedServiceId(), service.getId()) || service.getStackId() == null
                 || link && service.getRemoved() != null || map.getRemoved() != null && !"serviceconsumemap.remove".equals(execution.getProcessName()))
             denied("KeyScopeDenied");

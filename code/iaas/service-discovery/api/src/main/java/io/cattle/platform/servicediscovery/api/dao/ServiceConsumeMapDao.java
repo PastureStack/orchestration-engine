@@ -67,6 +67,9 @@ public interface ServiceConsumeMapDao {
 
     ServiceConsumeMap createServiceLink(Service service, ServiceLink serviceLink);
 
+    /** Exact native ServiceLink identity for full-set replacement only. */
+    ServiceConsumeMap createServiceLinkExactPair(Service service, ServiceLink serviceLink);
+
     List<ServiceConsumeMap> createServiceLinks(List<ServiceLink> serviceLink);
 
     List<? extends Service> findLinkedServices(long serviceId);

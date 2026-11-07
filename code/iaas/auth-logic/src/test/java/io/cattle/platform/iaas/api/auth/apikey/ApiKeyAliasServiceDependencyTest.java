@@ -348,4 +348,35 @@ public class ApiKeyAliasServiceDependencyTest {
             record.setData(json.readValue(json.writeValueAsString(record.getData()))); return record;
         }
     }
+
+    @Test public void namedOrdinaryLinksPinAliasToTheSameVerifiedFrameAndKeepAllCurrentCeilings() throws Exception {
+        for (String invalid : List.of("renamed", "plain", "target-uuid", "owner", "revoked", "revision")) {
+            Fixture f = new Fixture(); f.ordinaryLinks(); f.map.setName("Db.Main");
+            f.request.setRequestObject(Map.of("serviceLinks", List.of(Map.of("serviceId", "1s9", "name", "Db.Main"))));
+            ProcessRecord job = f.linkJob(); var metadata = ProcessAuthorization.metadata(job);
+            assertEquals("Db.Main", metadata.get("aliasMapName")); assertEquals(true, metadata.get("ordinaryServiceLinks"));
+            f.hook.beforeExecution(job, metadata);
+            switch (invalid) {
+            case "renamed" -> f.map.setName("Db.Other");
+            case "plain" -> f.map.setName(null);
+            case "target-uuid" -> f.target.setUuid("replaced");
+            case "owner" -> f.map.setAccountId(99L);
+            case "revoked" -> f.key.setState("inactive");
+            case "revision" -> f.key.setData(new ApiKeyPolicyCodec().store(f.key, f.policy, 2));
+            default -> throw new AssertionError(invalid);
+            }
+            assertThrows(invalid, ProcessAuthorizationDeniedException.class, () -> f.hook.beforeExecution(job, metadata));
+        }
+    }
+
+    @Test public void plainFrameReferenceShapeAndUntrustedNativeCallBoundaryStayUnchanged() throws Exception {
+        Fixture f = new Fixture(); f.ordinaryLinks(); ProcessRecord job = f.linkJob();
+        var metadata = ProcessAuthorization.metadata(job); assertFalse(metadata.containsKey("aliasMapName"));
+        f.hook.beforeExecution(job, metadata); f.map.setName("unexpected");
+        assertThrows(ProcessAuthorizationDeniedException.class, () -> f.hook.beforeExecution(job, metadata));
+        Fixture untrusted = new Fixture(); untrusted.ordinaryLinks(); untrusted.map.setName("named");
+        untrusted.request.setAttribute("ai.resource.change.domain.descriptor", null);
+        assertFalse(io.cattle.platform.iaas.api.auth.change.AiResourceChangeDomain.trustedOrdinaryLinks(untrusted.request));
+    }
+
 }

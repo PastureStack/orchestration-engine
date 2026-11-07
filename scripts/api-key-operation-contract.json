@@ -9,8 +9,8 @@
   "scope": "Declared v1/v2 and source handler/process union; source-only review, not current artifact packaging, live role/state availability or asynchronous completion.",
   "sourceInputs": {
     "algorithm": "c03-source-inputs-v1",
-    "count": 488,
-    "sha256": "f547c586d45da8e28930d68584713b9c6b143b6ff1138143e148d2bd253a8912",
+    "count": 490,
+    "sha256": "3c51cd656b6e9480194cb7ab7f36a562824c6ac3ad571370855400c9ed3552b5",
     "anchors": [
       "AbstractObjectManager.java",
       "AbstractSchemaFactory.java",
@@ -61,6 +61,7 @@
       "AiExternalServiceChange.java",
       "AiHostMetadataChange.java",
       "AiLoadBalancerCreateChange.java",
+      "AiNamedServiceLinks.java",
       "AiProcessDiagnostics.java",
       "AiProjectMetadataChange.java",
       "AiRegistryLifecycleChange.java",
@@ -134,6 +135,7 @@
       "ServiceCreateValidation.java",
       "ServiceDao.java",
       "ServiceDaoImpl.java",
+      "ServiceDiscoveryApiService.java",
       "ServiceDiscoveryApiServiceImpl.java",
       "ServiceDiscoveryServiceImpl.java",
       "ServiceDiscoveryServiceSetLinksLock.java",
@@ -292,44 +294,79 @@
   "tupleCount": 1396,
   "tupleSha256": "8f1c0fb378663b0b3d272efba2f211cb210eb6f17cb8035aefa33b56feeaf36a",
   "extensionReview": {
-    "version": "unreleased-385-stack-group",
-    "status": "SOURCE_ONLY_NOT_RUNTIME_ACCEPTANCE",
-    "scope": "Ordinary Stack update_metadata adds only exact native group text or null. No tag normalization, empty-Stack constraint, new action/HTTP route, role/native field grant or Key bypass. Existing human preview/confirm, native PUT validation/manager and Key ceiling remain. Stack/project UUID, native group and configuration digest bind CAS; group plans do not copy configuration material. Terminal receipts recheck current authority and exact identity. Source review is not compiled artifact or native acceptance.",
+    "version": "unreleased-386-links-http-lb-scale",
+    "status": "SOURCE_ONLY_NOT_CURRENT_CI_ARTIFACT_OR_RUNTIME_ACCEPTANCE",
+    "scope": "Ordinary named dependency replacement, native ExternalService HTTP requestLine and dedicated LB scale execution attestation. No new route, role, operation mapping, parameter raw-ID admission or automatic dispatch. Source-only extraction retains all 1396 HTTP tuples exactly.",
     "sourceInputChanges": [
       {
-        "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/ai/view/AiResourceViewService.java",
-        "before": "0ac2097cc679340736374e7517a3d6a1c94fc146434a9ac8625d9eefbd3c6228",
-        "after": "2de14905e4bd27065b1655f528cb64923b42711f0a8d26c7dc58afb9f1109481"
+        "path": "code/framework/engine/src/main/java/io/cattle/platform/engine/process/ProcessAuthorization.java",
+        "before": "2be41a897b3960acbf81617b8f1236b5450791063d93a8dd9cfb226b473d34b0",
+        "after": "c7ee36073ba3a56a75243c778dcc255d1200222b9ee8fbc19cf557623ac33ee5"
+      },
+      {
+        "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/apikey/ApiKeyTargetResolver.java",
+        "before": "9c08d3d8988e9a4a4c7ce17875e380e271d5c669218e8db874d0d8451413f0a2",
+        "after": "547612c212f888bfb642604aa7ff7d29ecc0008d64779c46d263acc2452625a7"
+      },
+      {
+        "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiExternalServiceChange.java",
+        "before": "4475ebc7215960f69ebaf5c5c925a3c2f4b933975efb9205aba16f80d30eaf47",
+        "after": "e2249037bb18a217b055fc2c2399bc1e82494bc0ece0ebf2d95e5438deb1d118"
+      },
+      {
+        "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiNamedServiceLinks.java",
+        "before": null,
+        "after": "e01c33991ef947615af36dd29e7f067be6250a121ad3cd296942507a6d39997d"
       },
       {
         "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiResourceChangeDescriptor.java",
-        "before": "8b67cc5bbef6aaa559653150e016c28f23dfc3377c25f47c51584b15073ce250",
-        "after": "c978c0c9479f1f19168e766988c9ae6666aad9bcbc3702232f339d34f84d0d7d"
+        "before": "c978c0c9479f1f19168e766988c9ae6666aad9bcbc3702232f339d34f84d0d7d",
+        "after": "b8a84fb8946e18c7b69b8e94d232ec272a7c1c184bc21ac3d1d8fed62130b6af"
       },
       {
         "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiResourceChangeDomain.java",
-        "before": "977d6c699d26fca757aabd213fd0a5404710cd21d0f6e84cd01b025c004ccbc8",
-        "after": "ab63d628bcc1ffc30de7615b20171ac7e16ab901f34d5cfbc42dfbf34b349f7b"
+        "before": "ab63d628bcc1ffc30de7615b20171ac7e16ab901f34d5cfbc42dfbf34b349f7b",
+        "after": "7dc3fffbb4c33e7408bc5ba7c157e076e31af13648723a128278cd12a005b10b"
       },
       {
-        "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiResourceChangePlanService.java",
-        "before": "46bc0f8946fd54449a455c68c641bed457eff7772a12ea80366455c25904b3f8",
-        "after": "857ec937288a36c2e823888b02cd8e90632bc8b86679a8702ee9d985a0a6e20f"
+        "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiResourceChangePlanStore.java",
+        "before": "e298ee82c3e75f89bfee17003c6019c57fe8ab9b2e3b4bdf38743cd650ba330b",
+        "after": "6cbda0bf67546cee8e10050301b06b7e47503b288127093609ed13eba69349b0"
       },
       {
-        "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiStackGroupChange.java",
+        "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiResourceChangeProcessObserver.java",
+        "before": "321fc82810927cb389dffa8ec9d0892ce70262307d389b75e44506ed7f93059a",
+        "after": "7e94cc0635d7faead4bcf1a3bcbb6255a92cae1f29849a88ce6e27632cd254be"
+      },
+      {
+        "path": "code/iaas/service-discovery/api/src/main/java/io/cattle/platform/servicediscovery/api/action/SetServiceLinksActionHandler.java",
+        "before": "59e4870e6612fad45b81dedb577fb0f651b72eafb7e5fc54754d08fa62ff08e1",
+        "after": "9771a055a52c4d76ec1b34657c58ea105391854e0535991505b588f2d7d7152c"
+      },
+      {
+        "path": "code/iaas/service-discovery/api/src/main/java/io/cattle/platform/servicediscovery/api/dao/ServiceConsumeMapDao.java",
+        "before": "930b97d85cf89ae0510c5e0e9dbe0dd7cd816a75b0a83cfd677415730c350fe7",
+        "after": "0fbdb9d9d3cef47f7db394127dcbc24d500cc2c8b15bd7c40ec956fd6d4f85c5"
+      },
+      {
+        "path": "code/iaas/service-discovery/api/src/main/java/io/cattle/platform/servicediscovery/api/service/ServiceDiscoveryApiService.java",
         "before": null,
-        "after": "eed8acdc9402a9e5f3b4e04b086c475da5ea3f6cf994f3359b7302b690c3dde6"
+        "after": "8771322c0d54a2713f302feeafcc1972bcb4f8f8cf387e0336f8701d21cdb5db"
       },
       {
-        "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiVolumeCreateChange.java",
-        "before": "df8218ae115a6772b599c51fcad8f0fd6398884ad0c267798a17bc171e7e87d0",
-        "after": "784963fb087377899b51bdb24477db5519d4e58f4bda0f0d9047b8f38f794872"
+        "path": "code/iaas/service-discovery/api/src/main/java/io/cattle/platform/servicediscovery/api/service/impl/ServiceDiscoveryApiServiceImpl.java",
+        "before": "cfb19be9f89c7dd3504cd4a833c1dacb523f37a45048f52b9a4ec253664a6ac5",
+        "after": "4d378362ed3c3f67496e96ecb33d62f7d0a658634c5719e7a5dc4ef9457e627d"
+      },
+      {
+        "path": "code/iaas/service-discovery/server/src/main/java/io/cattle/platform/servicediscovery/dao/impl/ServiceConsumeMapDaoImpl.java",
+        "before": "30433d56aa112cb3cb0a7d26bf410e0340264bebbb4652e4654f07cb9919a884",
+        "after": "153ddbeebbcc22109da13e258ae7524015a15a8dec5bf2ee05a9f6be8a7f772f"
       }
     ],
     "roleFieldDelta": [],
-    "reviewManifest": "scripts/api-key-operation-review-0.183.385.json",
-    "reviewManifestSha256": "dc6befa18cc4ef896ef6118d57571945ef6c72060d9d94dadaa96f185fffc82b",
+    "reviewManifest": "scripts/api-key-operation-review-0.183.386.json",
+    "reviewManifestSha256": "e73822db10a6da34bd2485c46e90699bcf0ba224d0771b74197ea49bff88db26",
     "nativeVolumeInactiveFix": {
       "scope": "SOURCE_ONLY_NOT_RUNTIME_ACCEPTANCE",
       "previousSourceInputs": {
@@ -3048,7 +3085,10 @@
         ]
       }
     ]
-  }
+  },
+    "previousReviewManifest": "scripts/api-key-operation-review-0.183.385.json",
+    "previousReviewManifestSha256": "dc6befa18cc4ef896ef6118d57571945ef6c72060d9d94dadaa96f185fffc82b",
+    "prior385FixRecordsAreHistorical": true
   },
   "tuples": [
     ["account","collection","GET","","","read"],

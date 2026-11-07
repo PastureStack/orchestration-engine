@@ -197,4 +197,60 @@ public class AiOrdinaryServiceLinksTest {
         }
         boolean complete(Map<String, Object> before) { return domain.complete(descriptor, service, Map.of("serviceIds", List.of("1s9")), before); }
     }
+
+    @Test public void namedLinksUseNativePairIdentityAndLeaveLegacyBranchClosed() {
+        var descriptor = AiResourceChangeDescriptor.require("service", "update_links");
+        var a = new java.util.LinkedHashMap<String, Object>(); a.put("serviceId", "1s9"); a.put("name", null);
+        var b = Map.<String, Object>of("serviceId", "1s9", "name", "Db.Main");
+        var c = Map.<String, Object>of("serviceId", "1s10", "name", "Db.Main");
+        var input = Map.<String, Object>of("links", List.of(a, b, c));
+        assertEquals(Map.of("serviceLinks", List.of(a, b, c)), descriptor.body(descriptor.parameters(input)));
+        assertEquals(List.of("1s9", "1s10"), AiNamedServiceLinks.targetIds(descriptor.parameters(input)));
+        assertEquals(Map.of("serviceLinks", List.of()), descriptor.body(descriptor.parameters(Map.of("links", List.of()))));
+        assertEquals(new io.cattle.platform.core.addon.ServiceLink(9L, null, null).getUuid(),
+                new io.cattle.platform.core.addon.ServiceLink(9L, "", null).getUuid());
+        for (Map<String, Object> invalid : List.of(Map.<String, Object>of("links", List.of(a), "serviceIds", List.of("1s9")),
+                Map.<String, Object>of("links", List.of(a, Map.of("serviceId", "1s9", "name", ""))),
+                Map.<String, Object>of("links", java.util.Collections.nCopies(17, b)),
+                Map.<String, Object>of("links", List.of(Map.of("serviceRef", "1s9", "name", "db"))),
+                Map.<String, Object>of("links", List.of(Map.of("serviceId", "1s9", "name", "db", "ports", List.of("80"))))))
+            assertThrows(io.github.ibuildthecloud.gdapi.exception.ClientVisibleException.class, () -> descriptor.parameters(invalid));
+        assertThrows(io.github.ibuildthecloud.gdapi.exception.ClientVisibleException.class,
+                () -> AiResourceChangeDescriptor.require("dnsService", "update_targets").parameters(input));
+        for (String invalid : List.of("PRIVATE value", ".db", "db.", "db..read", "-db", "db-", "db--read", "x".repeat(64), "x\r\nHost: secret", "x\u0000"))
+            assertThrows(invalid, io.github.ibuildthecloud.gdapi.exception.ClientVisibleException.class,
+                    () -> descriptor.parameters(Map.of("links", List.of(Map.of("serviceId", "1s9", "name", invalid)))));
+        var f = new Fixture(); f.map.setName("Db.Main");
+        assertThrows(io.github.ibuildthecloud.gdapi.exception.ClientVisibleException.class, () -> f.domain.ready(f.descriptor, f.service, null));
+        f.domain.ready(f.descriptor, f.service, null, descriptor.parameters(Map.of("links", List.of(b))));
+        assertFalse(f.complete(f.domain.serviceLinksSnapshot(f.service)));
+    }
+
+    @Test public void namedLinksAddRenameRemoveClearAndPreserveCurrentServiceConfiguration() {
+        var f = new Fixture(); f.map.setName("old");
+        var before = f.domain.serviceLinksSnapshot(f.service);
+        var wanted = Map.<String, Object>of("links", List.of(Map.of("serviceId", "1s9", "name", "new")));
+        assertFalse(f.domain.complete(f.descriptor, f.service, wanted, before));
+        f.map.setName("new"); assertTrue(f.domain.complete(f.descriptor, f.service, wanted, before));
+        var second = new ServiceConsumeMapRecord(); second.setId(8L); second.setUuid("second-map"); second.setAccountId(5L);
+        second.setServiceId(2L); second.setConsumedServiceId(9L); second.setName("other"); second.setState("active");
+        when(f.domain.objects.find(ServiceConsumeMap.class, "serviceId", 2L)).thenReturn(List.of(f.map, second));
+        var both = Map.<String, Object>of("links", List.of(Map.of("serviceId", "1s9", "name", "new"), Map.of("serviceId", "1s9", "name", "other")));
+        assertTrue(f.domain.complete(f.descriptor, f.service, both, before));
+        assertFalse(f.domain.complete(f.descriptor, f.service, wanted, before));
+        second.setRemoved(new Date(1)); second.setState("removing"); assertFalse(f.domain.complete(f.descriptor, f.service, wanted, before));
+        second.setState("removed"); assertTrue(f.domain.complete(f.descriptor, f.service, wanted, before));
+        f.service.setData(Map.of("fields", Map.of("launchConfig", Map.of("imageUuid", "changed"))));
+        assertFalse(f.domain.complete(f.descriptor, f.service, wanted, before)); f.service.setData(null);
+        f.instance.setStartCount(2L); assertFalse(f.domain.complete(f.descriptor, f.service, wanted, before)); f.instance.setStartCount(1L);
+        f.map.setRemoved(new Date(1)); f.map.setState("removed");
+        assertTrue(f.domain.complete(f.descriptor, f.service, Map.of("links", List.of()), before));
+        f.map.setRemoved(null); f.map.setState("active"); f.map.setName(null);
+        var plain = new java.util.LinkedHashMap<String, Object>(); plain.put("serviceId", "1s9"); plain.put("name", "");
+        assertTrue(f.domain.complete(f.descriptor, f.service, Map.of("links", List.of(plain)), before));
+        var snapshot = f.domain.serviceLinksSnapshot(f.service); f.map.setName("changed");
+        assertNotEquals(snapshot, f.domain.serviceLinksSnapshot(f.service));
+        f.target.setUuid("replacement"); assertNotEquals(snapshot, f.domain.serviceLinksSnapshot(f.service));
+    }
+
 }

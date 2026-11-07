@@ -95,6 +95,25 @@ public class AiResourceChangePlanStore extends AbstractJooqDao {
                 ID.eq(id).and(STATE.in("dispatching", "accepted", "running", "unknown")).and(FAILURE.isNull()).and(EXECUTION.eq(encode(binding)))) == 1;
     }
 
+    boolean loadBalancerScaleExecutionActive(String id, Map<String, Object> binding) {
+        return loadBalancerScale(binding) && create().fetchCount(TABLE,
+                ID.eq(id).and(STATE.in("dispatching", "accepted", "running", "unknown")).and(FAILURE.isNull()).and(EXECUTION.eq(encode(binding)))) == 1;
+    }
+
+    boolean attestLoadBalancerScaleProcess(String id, Map<String, Object> before, Map<String, Object> after) {
+        if (!loadBalancerScale(before) || before.containsKey("rootProcessId")
+                || !(after.get("rootProcessId") instanceof Number process) || process.longValue() <= 0) return false;
+        return create().update(TABLE).set(EXECUTION, encode(after))
+                .where(ID.eq(id).and(STATE.in("dispatching", "accepted", "running", "unknown")).and(FAILURE.isNull())
+                        .and(EXECUTION.eq(encode(before)))).execute() == 1;
+    }
+
+    static boolean loadBalancerScale(Map<String, Object> binding) {
+        return binding != null && "loadBalancerService".equals(binding.get("resourceType"))
+                && "scale".equals(binding.get("operation")) && "PUT".equals(binding.get("method"))
+                && binding.get("action") == null && "update".equals(binding.get("keyOperation"));
+    }
+
     boolean registryLifecycleExecutionActive(String id, Map<String, Object> binding) {
         return registryLifecycle(binding) && create().fetchCount(TABLE, ID.eq(id)
                 .and(STATE.in("dispatching", "accepted", "running", "unknown")).and(FAILURE.isNull()).and(EXECUTION.eq(encode(binding)))) == 1;

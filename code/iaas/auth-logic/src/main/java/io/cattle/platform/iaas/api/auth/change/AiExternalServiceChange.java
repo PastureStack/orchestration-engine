@@ -17,7 +17,7 @@ import java.util.Set;
 
 /** A closed adapter to the existing External Service owner, with no network I/O. */
 public final class AiExternalServiceChange {
-    private static final Set<String> TCP_HEALTH_FIELDS = Set.of("port", "interval", "responseTimeout", "healthyThreshold", "unhealthyThreshold");
+    private static final Set<String> TCP_HEALTH_FIELDS = Set.of("port", "interval", "responseTimeout", "healthyThreshold", "unhealthyThreshold", "requestLine");
     private AiExternalServiceChange() { }
 
     public static Map<String, Object> parameters(String operation, Set<String> allowed, Object value) {
@@ -55,7 +55,7 @@ public final class AiExternalServiceChange {
             result.put("launchConfig", new LinkedHashMap<>());
             if (parameters.containsKey("healthCheck")) {
                 Map<String, Object> health = new LinkedHashMap<>(tcpHealthCheck(parameters.get("healthCheck")));
-                health.put("requestLine", null); result.put("healthCheck", health);
+                health.putIfAbsent("requestLine", null); result.put("healthCheck", health);
             }
         }
         return result;
@@ -66,6 +66,11 @@ public final class AiExternalServiceChange {
         if (!(value instanceof Map<?, ?> input) || !TCP_HEALTH_FIELDS.containsAll(input.keySet()) || !input.containsKey("port")) invalid();
         Map<String, Object> result = new LinkedHashMap<>();
         for (var entry : ((Map<?, ?>) value).entrySet()) {
+            if ("requestLine".equals(entry.getKey())) {
+                if (!(entry.getValue() instanceof String line) || line.length() > 1024
+                        || line.indexOf(0) >= 0 || line.indexOf('\r') >= 0 || line.indexOf('\n') >= 0) invalid();
+                result.put("requestLine", entry.getValue()); continue;
+            }
             if (!(entry.getValue() instanceof Number)) invalid();
             int integer;
             try { integer = new BigDecimal(entry.getValue().toString()).intValueExact(); }
@@ -79,7 +84,7 @@ public final class AiExternalServiceChange {
     /** Native schema metadata may add recreate/type/nulls, but cannot change the approved TCP fields. */
     static boolean healthCheckMatches(Object expected, Object actual) {
         if (expected == null) return actual == null;
-        if (!(actual instanceof Map<?, ?> input) || input.get("requestLine") != null
+        if (!(actual instanceof Map<?, ?> input)
                 || input.get("strategy") != null && !"recreate".equals(input.get("strategy"))
                 || input.get("type") != null && !"instanceHealthCheck".equals(input.get("type"))) return false;
         Map<String, Object> fields = new LinkedHashMap<>();

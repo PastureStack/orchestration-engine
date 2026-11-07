@@ -215,7 +215,18 @@ public class ServiceConsumeMapDaoImpl extends AbstractJooqDao implements Service
                         () -> createServiceLinkImpl(service, serviceLink)));
     }
 
+    @Override
+    public ServiceConsumeMap createServiceLinkExactPair(final Service service, final ServiceLink serviceLink) {
+        return ServiceDiscoveryServiceSetLinksLock.withLock(lockManager, service.getId(), () ->
+                lockManager.lock(new ServiceLinkLock(service.getId(), serviceLink.getServiceId(), serviceLink.getService()),
+                        () -> createServiceLinkImpl(service, serviceLink, true)));
+    }
+
     protected ServiceConsumeMap createServiceLinkImpl(Service service, ServiceLink serviceLink) {
+        return createServiceLinkImpl(service, serviceLink, false);
+    }
+
+    private ServiceConsumeMap createServiceLinkImpl(Service service, ServiceLink serviceLink, boolean exactPair) {
         Service linkFrom = objectManager.reload(service);
         if (linkFrom == null || linkFrom.getRemoved() != null
                 || linkFrom.getState().equalsIgnoreCase(CommonStatesConstants.REMOVING)) {
@@ -229,7 +240,7 @@ public class ServiceConsumeMapDaoImpl extends AbstractJooqDao implements Service
             }
         }
 
-        ServiceConsumeMap map = findNonRemovedMapForMutation(service.getId(), serviceLink);
+        ServiceConsumeMap map = findNonRemovedMapForMutation(service.getId(), serviceLink, exactPair);
 
         if (map == null) {
             Map<Object, Object> properties = CollectionUtils.asMap(
@@ -267,13 +278,15 @@ public class ServiceConsumeMapDaoImpl extends AbstractJooqDao implements Service
         });
     }
 
-    private ServiceConsumeMap findNonRemovedMapForMutation(long serviceId, ServiceLink link) {
+    private ServiceConsumeMap findNonRemovedMapForMutation(long serviceId, ServiceLink link, boolean exactPair) {
         // The native owner already holds SETLINKS, then the original per-edge lock.
         // Keep public validation reads non-locking; only mutation needs a current read.
         org.jooq.Condition condition = SERVICE_CONSUME_MAP.SERVICE_ID.eq(serviceId).and(SERVICE_CONSUME_MAP.REMOVED.isNull());
         condition = condition.and(link.getServiceId() != null ? SERVICE_CONSUME_MAP.CONSUMED_SERVICE_ID.eq(link.getServiceId())
                 : SERVICE_CONSUME_MAP.CONSUMED_SERVICE.eq(link.getService()));
-        if (link.getName() != null) condition = condition.and(SERVICE_CONSUME_MAP.NAME.eq(link.getName()));
+        if (exactPair && (link.getName() == null || link.getName().isEmpty()))
+            condition = condition.and(SERVICE_CONSUME_MAP.NAME.isNull().or(SERVICE_CONSUME_MAP.NAME.eq("")));
+        else if (link.getName() != null) condition = condition.and(SERVICE_CONSUME_MAP.NAME.eq(link.getName()));
         ServiceConsumeMap found = null;
         for (ServiceConsumeMap row : create().selectFrom(SERVICE_CONSUME_MAP).where(condition).forUpdate().fetchInto(ServiceConsumeMapRecord.class))
             if (!CommonStatesConstants.REMOVING.equalsIgnoreCase(row.getState())) found = row;

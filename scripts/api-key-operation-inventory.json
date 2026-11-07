@@ -220,17 +220,17 @@
     "defaultProcesses": "ebf41ab873c349656c307511712674e0db434a9c4986e08d03ec35d92bdcd6a7"
   },
   "currentSourceReview": {
-    "version": "unreleased-385-stack-group",
+    "version": "unreleased-386-links-http-lb-scale",
     "status": "SOURCE_REEXTRACTED_NOT_ARTIFACT_OR_RUNTIME_ACCEPTANCE",
-    "baseCommit": "6ead99132f575b05c564f94882f59088f19e7511",
+    "baseCommit": "1bd87ed39b0ccae7852c7407003692f35ecf83da",
     "sourceCandidate": "STAGED_NOT_COMMITTED",
     "producerCommit": null,
     "contract": "scripts/api-key-operation-contract.json",
-    "contractSha256": "1f0bead30bfe5dd9ebf76b1a60f20f96c52952bb0e4129f36bbc02641fc83734",
+    "contractSha256": "6dfe8870f61a5c3899b593748c321340016dca330429d0b01b731104d48a8469",
     "sourceInputs": {
       "algorithm": "c03-source-inputs-v1",
-      "count": 488,
-      "sha256": "f547c586d45da8e28930d68584713b9c6b143b6ff1138143e148d2bd253a8912",
+      "count": 490,
+      "sha256": "3c51cd656b6e9480194cb7ab7f36a562824c6ac3ad571370855400c9ed3552b5",
       "anchors": [
         "AbstractObjectManager.java",
         "AbstractSchemaFactory.java",
@@ -281,6 +281,7 @@
         "AiExternalServiceChange.java",
         "AiHostMetadataChange.java",
         "AiLoadBalancerCreateChange.java",
+        "AiNamedServiceLinks.java",
         "AiProcessDiagnostics.java",
         "AiProjectMetadataChange.java",
         "AiRegistryLifecycleChange.java",
@@ -354,6 +355,7 @@
         "ServiceCreateValidation.java",
         "ServiceDao.java",
         "ServiceDaoImpl.java",
+        "ServiceDiscoveryApiService.java",
         "ServiceDiscoveryApiServiceImpl.java",
         "ServiceDiscoveryServiceImpl.java",
         "ServiceDiscoveryServiceSetLinksLock.java",
@@ -389,8 +391,8 @@
     "changedTuples": [],
     "roleFieldDelta": [],
     "historicalInventoryPreserved": true,
-    "reviewManifest": "scripts/api-key-operation-review-0.183.385.json",
-    "reviewManifestSha256": "dc6befa18cc4ef896ef6118d57571945ef6c72060d9d94dadaa96f185fffc82b",
+    "reviewManifest": "scripts/api-key-operation-review-0.183.386.json",
+    "reviewManifestSha256": "e73822db10a6da34bd2485c46e90699bcf0ba224d0771b74197ea49bff88db26",
     "nativeVolumeInactiveFix": {
       "scope": "SOURCE_ONLY_NOT_RUNTIME_ACCEPTANCE",
       "previousSourceInputs": {
@@ -4272,6 +4274,9 @@
     },
     "reviewManifest": "scripts/api-key-operation-review-0.183.384.json",
     "reviewManifestSha256": "4d4f025af1215f0673505646189beed6e8fe4449c573804bdc899dbb611a4b5d"
-  }
+  },
+    "previousReviewManifest": "scripts/api-key-operation-review-0.183.385.json",
+    "previousReviewManifestSha256": "dc6befa18cc4ef896ef6118d57571945ef6c72060d9d94dadaa96f185fffc82b",
+    "prior385FixRecordsAreHistorical": true
   }
 }

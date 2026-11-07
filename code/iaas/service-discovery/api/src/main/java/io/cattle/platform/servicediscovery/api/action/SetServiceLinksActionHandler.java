@@ -110,7 +110,7 @@ public class SetServiceLinksActionHandler implements ActionHandler {
 
     private void createNewServiceMaps(Service service, Map<String, ServiceLink> newServiceLinks) {
         for (ServiceLink newServiceLink : newServiceLinks.values()) {
-            sdService.addServiceLink(service, newServiceLink);
+            sdService.addServiceLinkExactPair(service, newServiceLink);
         }
     }
 
@@ -126,7 +126,7 @@ public class SetServiceLinksActionHandler implements ActionHandler {
         }
 
         for (ServiceLink linkToRemove : linksToRemove) {
-            sdService.removeServiceLink(service, linkToRemove);
+            sdService.removeServiceLinkExactPair(service, linkToRemove);
         }
     }
 }

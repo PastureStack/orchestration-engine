@@ -177,4 +177,34 @@ public class ServiceLinksMutationCurrentReadTest {
         assertEquals(Long.valueOf(8), dao.createServiceLink(source, new ServiceLink(9L, null, null)).getId());
         assertEquals(2, queries.size()); verify(dao.objectManager, never()).create(eq(ServiceConsumeMap.class), anyMap());
     }
+
+    @Test public void fullSetExactPairCreateKeepsLegacyNullLookupAndSupportsAliasToPlain() {
+        var dataSource = new org.h2.jdbcx.JdbcDataSource(); dataSource.setURL("jdbc:h2:mem:named-pair-" + java.util.UUID.randomUUID() + ";DB_CLOSE_DELAY=-1");
+        var sql = DSL.using(dataSource, SQLDialect.H2); sql.createSchema("cattle").execute();
+        sql.createTable(SERVICE_CONSUME_MAP).columns(SERVICE_CONSUME_MAP.fields()).execute();
+        for (var entry : java.util.Map.of(7L, "red", 8L, "blue").entrySet()) sql.insertInto(SERVICE_CONSUME_MAP)
+                .set(SERVICE_CONSUME_MAP.ID, entry.getKey()).set(SERVICE_CONSUME_MAP.KIND, "serviceConsumeMap")
+                .set(SERVICE_CONSUME_MAP.UUID, "named-" + entry.getKey()).set(SERVICE_CONSUME_MAP.SERVICE_ID, 2L)
+                .set(SERVICE_CONSUME_MAP.CONSUMED_SERVICE_ID, 9L).set(SERVICE_CONSUME_MAP.NAME, entry.getValue())
+                .set(SERVICE_CONSUME_MAP.STATE, "active").execute();
+        var dao = new ServiceConsumeMapDaoImpl(); dao.setConfiguration(new DefaultConfiguration().set(dataSource).set(SQLDialect.H2));
+        dao.objectManager = mock(ObjectManager.class); var locks = new LockManagerImpl(); locks.setLockProvider(new InMemoryLockProvider()); dao.lockManager = locks;
+        var source = new ServiceRecord(); source.setId(2L); source.setState("active");
+        var target = new ServiceRecord(); target.setId(9L); target.setState("active");
+        when(dao.objectManager.reload(source)).thenReturn(source); when(dao.objectManager.loadResource(Service.class, 9L)).thenReturn(target);
+        var legacy = dao.createServiceLink(source, new ServiceLink(9L, null, null));
+        assertTrue(java.util.Set.of(7L, 8L).contains(legacy.getId()));
+        assertEquals(Long.valueOf(7), dao.createServiceLinkExactPair(source, new ServiceLink(9L, "red", null)).getId());
+        assertEquals(Long.valueOf(8), dao.createServiceLinkExactPair(source, new ServiceLink(9L, "blue", null)).getId());
+        var plain = new ServiceConsumeMapRecord(); plain.setId(10L); plain.setServiceId(2L); plain.setConsumedServiceId(9L); plain.setState("active");
+        when(dao.objectManager.convertToPropertiesFor(eq(ServiceConsumeMap.class), anyMap())).thenAnswer(call -> call.getArgument(1));
+        when(dao.objectManager.create(eq(ServiceConsumeMap.class), anyMap())).thenReturn(plain);
+        assertSame(plain, dao.createServiceLinkExactPair(source, new ServiceLink(9L, null, null)));
+        verify(dao.objectManager, times(1)).create(eq(ServiceConsumeMap.class), anyMap());
+        sql.insertInto(SERVICE_CONSUME_MAP).set(SERVICE_CONSUME_MAP.ID, 10L).set(SERVICE_CONSUME_MAP.KIND, "serviceConsumeMap")
+                .set(SERVICE_CONSUME_MAP.UUID, "plain").set(SERVICE_CONSUME_MAP.SERVICE_ID, 2L)
+                .set(SERVICE_CONSUME_MAP.CONSUMED_SERVICE_ID, 9L).set(SERVICE_CONSUME_MAP.STATE, "active").execute();
+        assertEquals(Long.valueOf(10), dao.createServiceLinkExactPair(source, new ServiceLink(9L, "", null)).getId());
+    }
+
 }
