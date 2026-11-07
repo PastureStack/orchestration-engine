@@ -40,6 +40,7 @@ public class TypedResourceAuditContractTest {
             types.add(((AiResourceChangeDescriptor) entry).resourceType());
         }
         assertTrue(types.contains("host"));
+        assertTrue(types.contains("registry"));
         List<Map<?, ?>> delivered = new ArrayList<>(); AuditServiceImpl owner = owner(delivered);
         ApiRequest request = new ApiRequest(null, null); request.setType("aiResourceChangePlan"); request.setMethod("POST");
         request.setRequestObject(Map.of("name", "PRIVATE-NAME", "description", "PRIVATE-DESCRIPTION",
@@ -64,7 +65,7 @@ public class TypedResourceAuditContractTest {
         }
         assertEquals(types.size() * 2, delivered.size());
         int count = delivered.size();
-        for (String unknown : List.of("plugin", "Host", "secret", "host/credentials")) {
+        for (String unknown : List.of("plugin", "Host", "secret", "host/credentials", "storagePool", "storageDriver")) {
             assertThrows(IllegalArgumentException.class, () -> owner.recordResourceChangeDecision(request, actor,
                     "preview", receipt, unknown, 10L, true, "ResourceChangePreviewCreated"));
         }

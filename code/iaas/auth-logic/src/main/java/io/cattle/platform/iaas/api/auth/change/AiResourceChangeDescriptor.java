@@ -27,6 +27,7 @@ public record AiResourceChangeDescriptor(String resourceType, String operation, 
                     : Set.of("name", "description", "image", "command", "entryPoint", "ports"));
         }
         add(result, "service", "scale", "PUT", null, "update", Set.of("scale"));
+        add(result, "service", "update_links", "POST", "setservicelinks", "update", Set.of("serviceIds"));
         add(result, "service", "finish_upgrade", "POST", "finishupgrade", "upgrade", Set.of());
         add(result, "service", "rollback", "POST", "rollback", "upgrade", Set.of());
         add(result, "service", "cancel_upgrade", "POST", "cancelupgrade", "upgrade", Set.of());
@@ -61,6 +62,8 @@ public record AiResourceChangeDescriptor(String resourceType, String operation, 
         add(result, "certificate", "update_metadata", "PUT", null, "update", Set.of("name", "description"));
         add(result, "host", "update_metadata", "PUT", null, "update", Set.of("name", "description"));
         add(result, "project", "update_metadata", "PUT", null, "update", Set.of("name", "description"));
+        for (String operation : Set.of("start", "stop"))
+            add(result, "registry", operation, "POST", "start".equals(operation) ? "activate" : "deactivate", "update", Set.of());
         return Map.copyOf(result);
     }
 
@@ -84,6 +87,7 @@ public record AiResourceChangeDescriptor(String resourceType, String operation, 
 
     public Map<String, Object> parameters(Object value) {
         if (AiLoadBalancerCreateChange.supports(this)) return AiLoadBalancerCreateChange.parameters(parameterNames, value);
+        if (AiAliasServiceChange.ordinaryLinks(this)) return AiAliasServiceChange.parameters(operation, parameterNames, value);
         if ("dnsService".equals(resourceType)) return AiAliasServiceChange.parameters(operation, parameterNames, value);
         if ("externalService".equals(resourceType)) return AiExternalServiceChange.parameters(operation, parameterNames, value);
         if (!(value instanceof Map<?, ?> input) || input.size() > parameterNames.size()) throw error("ResourceChangeInputInvalid");
@@ -139,6 +143,7 @@ public record AiResourceChangeDescriptor(String resourceType, String operation, 
 
     public Map<String, Object> body(Map<String, Object> parameters) {
         if (AiLoadBalancerCreateChange.supports(this)) return AiLoadBalancerCreateChange.body(parameters);
+        if (AiAliasServiceChange.ordinaryLinks(this)) return AiAliasServiceChange.body(operation, parameters);
         if (changesArchive()) return new LinkedHashMap<>(Map.of("archived", "archive".equals(operation)));
         if ("externalService".equals(resourceType)) return AiExternalServiceChange.body(operation, parameters);
         if ("dnsService".equals(resourceType)) return AiAliasServiceChange.body(operation, parameters);

@@ -16,6 +16,10 @@ Agent lifecycle while preserving compatibility with legacy verified process
 frames. See the [release note](docs/releases/orchestration-engine-0.183.382.md)
 for changes, verification and upgrade boundaries.
 
+Source candidate 0.183.383 adds reviewed Service dependency-link replacement and
+Registry activation/deactivation. See its [candidate note](docs/releases/orchestration-engine-0.183.383.md)
+for boundaries and pending qualification.
+
 Deploy through the [Server installation guide](https://github.com/PastureStack/server#quick-start)
 using a qualified matching component assembly; an Engine JAR alone is not a
 Server installation. Component publication does not establish native workflow

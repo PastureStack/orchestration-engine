@@ -95,6 +95,23 @@ public class AiResourceChangePlanStore extends AbstractJooqDao {
                 ID.eq(id).and(STATE.in("dispatching", "accepted", "running", "unknown")).and(FAILURE.isNull()).and(EXECUTION.eq(encode(binding)))) == 1;
     }
 
+    boolean registryLifecycleExecutionActive(String id, Map<String, Object> binding) {
+        return registryLifecycle(binding) && create().fetchCount(TABLE, ID.eq(id)
+                .and(STATE.in("dispatching", "accepted", "running", "unknown")).and(FAILURE.isNull()).and(EXECUTION.eq(encode(binding)))) == 1;
+    }
+
+    boolean attestRegistryLifecycleProcess(String id, Map<String, Object> before, Map<String, Object> after) {
+        if (!registryLifecycle(before) || before.containsKey("rootProcessId")) return false;
+        return create().update(TABLE).set(EXECUTION, encode(after)).where(ID.eq(id)
+                .and(STATE.in("dispatching", "accepted", "running", "unknown")).and(FAILURE.isNull()).and(EXECUTION.eq(encode(before)))).execute() == 1;
+    }
+
+    private static boolean registryLifecycle(Map<String, Object> binding) {
+        return binding != null && "registry".equals(binding.get("resourceType")) && "POST".equals(binding.get("method"))
+                && ("start".equals(binding.get("operation")) && "activate".equals(binding.get("action"))
+                    || "stop".equals(binding.get("operation")) && "deactivate".equals(binding.get("action")));
+    }
+
     boolean attestLoadBalancerMetadataProcess(String id, Map<String, Object> before, Map<String, Object> after) {
         if (!loadBalancerMetadata(before) || before.containsKey("rootProcessId")) return false;
         return create().update(TABLE).set(EXECUTION, encode(after))
@@ -202,6 +219,12 @@ public class AiResourceChangePlanStore extends AbstractJooqDao {
         binding.put("resourceType", descriptor.resourceType()); binding.put("operation", descriptor.operation());
         binding.put("method", descriptor.method()); binding.put("action", descriptor.action()); binding.put("keyOperation", descriptor.keyOperation());
         binding.put("rootId", plan.get("internalResourceId")); binding.put("initial", new java.util.ArrayList<>());
+        if (AiRegistryLifecycleChange.supports(descriptor) && plan.get("snapshot") instanceof Map<?, ?> snapshot) {
+            Map<String, Object> values = new java.util.LinkedHashMap<>();
+            for (var entry : snapshot.entrySet()) if (entry.getKey() instanceof String key) values.put(key, entry.getValue());
+            binding.put("rootUuid", snapshot.get("uuid"));
+            binding.put("registryConfiguration", AiRegistryLifecycleChange.configuration(values));
+        }
         if ("project".equals(descriptor.resourceType())) {
             binding.put("metadataFields", descriptor.parameters(plan.get("parameters")).keySet().stream().sorted().toList());
             if (!AiProjectMetadataChange.metadataBinding(binding) || !(plan.get("snapshot") instanceof Map<?, ?> snapshot)
@@ -220,7 +243,11 @@ public class AiResourceChangePlanStore extends AbstractJooqDao {
             Object parent = plan.get("parentSnapshot");
             binding.put("loadBalancerParent", pins(List.of(parent), List.of("id", "uuid", "accountId", "kind")).getFirst());
         }
-        if ("dnsService".equals(descriptor.resourceType())) {
+        if ("dnsService".equals(descriptor.resourceType()) || AiAliasServiceChange.ordinaryLinks(descriptor)) {
+            if (AiAliasServiceChange.ordinaryLinks(descriptor) && plan.get("snapshot") instanceof Map<?, ?> source) {
+                binding.put("rootUuid", source.get("uuid")); binding.put("rootStackId", source.get("stackId"));
+                binding.put("rootStackUuid", source.get("linkStackUuid"));
+            }
             Object references = plan.get("referenceSnapshot") instanceof Map<?, ?> snapshot ? snapshot.get("after") : null;
             binding.put("aliasReferences", pins(references, List.of("id", "uuid", "accountId", "stackId", "stackUuid", "kind")));
             Object previous = plan.get("referenceSnapshot") instanceof Map<?, ?> snapshot ? snapshot.get("before") : null;

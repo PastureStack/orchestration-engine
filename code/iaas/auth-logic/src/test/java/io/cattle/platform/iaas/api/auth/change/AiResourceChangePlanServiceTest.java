@@ -303,6 +303,21 @@ public class AiResourceChangePlanServiceTest {
         assertEquals(0, f.claims); assertEquals(0, f.dispatched);
     }
 
+    @Test public void ordinaryLinkConfirmationAndApplyCasIncludeSourceParentMapAndConsumedUuid() {
+        for (String field : List.of("uuid", "linkStackUuid", "mapUuid", "consumedUuid")) {
+            Fixture f = new Fixture(); Map<String, Object> state = new LinkedHashMap<>(Map.of("uuid", "source", "linkStackUuid", "stack", "mapUuid", "map", "consumedUuid", "target"));
+            when(f.domain.serviceLinksSnapshot(any())).thenAnswer(call -> new LinkedHashMap<>(state));
+            when(f.domain.aliasReferenceSnapshot(any(), any(), anyString(), anyMap())).thenReturn(Map.of("before", List.of(), "after", List.of()));
+            ApiRequest request = f.request(null, false); request.setId(null);
+            request.setRequestObject(Map.of("resourceType", "service", "operation", "update_links", "resourceId", "1s7", "parameters", Map.of("serviceIds", List.of())));
+            f.id = (String) f.service.preview(request).get("id");
+            Object original = state.put(field, "replacement");
+            assertCode(409, "ResourceChangePlanStale", f::confirm); assertEquals(0, f.claims);
+            state.put(field, original); f.confirm(); state.put(field, "replacement");
+            assertCode(409, "ResourceChangePlanStale", () -> f.apply(false)); assertEquals(0, f.claims); assertEquals(0, f.dispatched);
+        }
+    }
+
     private static void assertCode(int status, String code, Runnable action) {
         var error = assertThrows(ClientVisibleException.class, action::run); assertEquals(status, error.getStatus()); assertEquals(code, error.getCode());
     }
@@ -324,6 +339,13 @@ public class AiResourceChangePlanServiceTest {
             when(domain.actor(any())).thenReturn(policy); when(domain.internalId(anyString(), anyString())).thenReturn(7L);
             when(domain.lock(anyString(), anyLong())).thenReturn(target); when(domain.visible(any(), any(), anyString())).thenReturn(target);
             when(domain.receiptTarget(any(), any(), anyMap())).thenReturn(target);
+            when(domain.lockServiceLinkTargets(anyMap())).thenAnswer(call -> domain.lock("service", 7L));
+            when(domain.currentServiceLinksState(any(), anyMap(), any())).thenAnswer(call -> {
+                Map<String, Object> plan = call.getArgument(1);
+                return Map.of("snapshot", domain.serviceLinksSnapshot(call.getArgument(2)),
+                        "body", domain.prepare(call.getArgument(0), AiResourceChangeDescriptor.require("service", "update_links"),
+                                (String) plan.get("resourceId"), (Map<String, Object>) plan.get("parameters"), plan));
+            });
             when(domain.snapshot(any())).thenAnswer(call -> {
                 if (call.getArgument(0) == null) return Map.of();
                 ServiceRecord row = call.getArgument(0);

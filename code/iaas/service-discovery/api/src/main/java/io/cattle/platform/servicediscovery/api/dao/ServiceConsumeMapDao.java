@@ -25,6 +25,9 @@ public interface ServiceConsumeMapDao {
      */
     List<? extends ServiceConsumeMap> findConsumedMapsToRemove(long serviceId);
 
+    /** Current locking read, called only after the native source mutation mutex is held. */
+    List<? extends ServiceConsumeMap> findConsumedMapsForMutation(long serviceId);
+
     /**
      * Lists maps to remove consuming service passed by serviceId
      * 

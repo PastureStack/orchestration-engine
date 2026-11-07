@@ -30,6 +30,7 @@ public class AiResourceChangeProcessObserver implements ProcessAuthorizationHook
     @Inject AiResourceChangePlanStore store;
     @Inject ObjectManager objects;
     @Inject ApiKeyTargetResolver targets;
+    @Inject io.cattle.platform.json.JsonMapper json;
     @Inject io.cattle.platform.servicediscovery.api.service.ServiceCreateValidation serviceCreateValidation;
 
     /** No HTTP field/header can construct this private, request-identity-bound value. */
@@ -50,7 +51,7 @@ public class AiResourceChangeProcessObserver implements ProcessAuthorizationHook
         if (key == null) return operation.get();
         Map<String, Object> binding = store.execution(id);
         Policy owner = ApiUtils.getPolicy();
-        if (binding == null || !id.equals(binding.get("id")) || !id.equals(request.getAttribute("apiKey.audit.requestId"))
+        if (binding == null || !ordinaryIdentity(binding) || !id.equals(binding.get("id")) || !id.equals(request.getAttribute("apiKey.audit.requestId"))
                 || !"ALLOW".equals(request.getAttribute("apiKey.audit.decision"))
                 || number(binding.get("actorId")) != owner.getAuthenticatedAsAccountId()
                 || authorizationAccount(binding) != owner.getAccountId()
@@ -77,7 +78,7 @@ public class AiResourceChangeProcessObserver implements ProcessAuthorizationHook
         if (request == null || !(request.getAttribute(ATTRIBUTE) instanceof Dispatch scope) || scope.request() != request) return Map.of();
         for (int attempt = 0; attempt < 3; attempt++) {
             Map<String, Object> binding = store.execution(scope.id());
-            if (binding == null || !requestMatches(binding, request)) return Map.of();
+            if (binding == null || !ordinaryIdentity(binding) || !requestMatches(binding, request)) return Map.of();
             String nativeType = nativeType((String) binding.get("resourceType"));
             Long rootId = binding.get("rootId") instanceof Number id ? id.longValue() : null;
             if (rootId == null) {
@@ -86,6 +87,8 @@ public class AiResourceChangeProcessObserver implements ProcessAuthorizationHook
             }
             if (rootId == null) return Map.of();
             Object root = objects.loadResource(nativeType, rootId);
+            if ("registry".equals(binding.get("resourceType")) && (!Objects.equals(binding.get("rootUuid"), uuid(root))
+                    || !registryConfiguration(binding, root))) return Map.of();
             if (!ownedRoot(binding, root) || !resourceKind(binding, root)
                     || !Objects.equals(ObjectUtils.getId(root), rootId)
                     || !(AiProjectMetadataChange.metadataBinding(binding) ? config.getAccountId() == null
@@ -96,11 +99,16 @@ public class AiResourceChangeProcessObserver implements ProcessAuthorizationHook
                     || !initialEdge(binding, rootId, config, initial)) return Map.of();
             Map<String, Object> after = new LinkedHashMap<>(binding);
             if (binding.get("rootUuid") != null && !Objects.equals(binding.get("rootUuid"), uuid(root))) return Map.of();
+            if ("service".equals(binding.get("resourceType")) && "update_links".equals(binding.get("operation"))
+                    && AiAliasServiceChange.nativeId(binding.get("rootStackId"))
+                        != AiAliasServiceChange.nativeId(ObjectUtils.getPropertyIgnoreErrors(root, "stackId"))) return Map.of();
             after.put("rootId", rootId); after.put("rootUuid", uuid(root));
             after.put("rootStackId", ObjectUtils.getPropertyIgnoreErrors(root, "stackId"));
-            if (Set.of("dnsService", "loadBalancerService").contains(binding.get("resourceType"))) {
+            if (Set.of("dnsService", "loadBalancerService").contains(binding.get("resourceType"))
+                    || "service".equals(binding.get("resourceType")) && "update_links".equals(binding.get("operation"))) {
                 var stack = objects.loadResource(io.cattle.platform.core.model.Stack.class, number(after.get("rootStackId")));
-                if (!ownedRow(stack, number(binding.get("accountId")))) return Map.of();
+                if (!ownedRow(stack, number(binding.get("accountId")))
+                        || binding.get("rootStackUuid") != null && !Objects.equals(binding.get("rootStackUuid"), uuid(stack))) return Map.of();
                 after.put("rootStackUuid", uuid(stack));
             }
             if (!binding.containsKey("managed")) {
@@ -117,6 +125,9 @@ public class AiResourceChangeProcessObserver implements ProcessAuthorizationHook
     }
 
     @Override public void beforeExecution(LaunchConfiguration config, Map<String, Object> metadata) {
+        if ("registry".equals(metadata.get("targetType")) && metadata.get("requestId") instanceof String registryId
+                && registryId.matches("aichange-[0-9a-f-]{36}") && !attestsRegistryLifecycle(config, metadata))
+            throw new ProcessAuthorizationDeniedException("OwnerPermissionDenied");
         if (metadata.get("requestId") instanceof String containerId && containerId.matches("aichange-[0-9a-f-]{36}")
                 && "instance".equals(config.getResourceType()) && "instance.start".equals(config.getProcessName())
                 && "container".equals(metadata.get("targetType")) && "start".equals(metadata.get("requestAction"))
@@ -150,7 +161,8 @@ public class AiResourceChangeProcessObserver implements ProcessAuthorizationHook
         for (int attempt = 0; attempt < 3; attempt++) {
             Map<String, Object> binding = store.execution(id);
             if (binding == null || list(binding.get("initial")).isEmpty() || !metadataMatches(binding, metadata)) return;
-            if ((AiProjectMetadataChange.metadataBinding(binding) || "loadBalancerService".equals(binding.get("resourceType"))
+            if ((AiProjectMetadataChange.metadataBinding(binding) || "registry".equals(binding.get("resourceType"))
+                    || "loadBalancerService".equals(binding.get("resourceType"))
                     && "create".equals(binding.get("operation"))) && binding.get("rootProcessId") instanceof Number processId
                     && processId.longValue() != record.getId()) return;
             if (!provenChild(binding, config, metadata)) return;
@@ -213,6 +225,7 @@ public class AiResourceChangeProcessObserver implements ProcessAuthorizationHook
     }
 
     private boolean provenChild(Map<String, Object> binding, LaunchConfiguration config, Map<String, Object> metadata) {
+        if (!ordinaryIdentity(binding)) return false;
         long accountId = number(binding.get("accountId"));
         Object root = objects.loadResource(nativeType((String) binding.get("resourceType")), number(binding.get("rootId")));
         Object child = objects.loadResource(config.getResourceType(), config.getResourceId());
@@ -222,7 +235,8 @@ public class AiResourceChangeProcessObserver implements ProcessAuthorizationHook
                 || !Objects.equals(uuid(root), binding.get("rootUuid"))
                 || !Objects.equals(ObjectUtils.getPropertyIgnoreErrors(root, "stackId"), binding.get("rootStackId") instanceof Number stack
                         ? stack.longValue() : null)) return false;
-        if (Set.of("dnsService", "loadBalancerService").contains(binding.get("resourceType"))) {
+        if (Set.of("dnsService", "loadBalancerService").contains(binding.get("resourceType"))
+                || "service".equals(binding.get("resourceType")) && "update_links".equals(binding.get("operation"))) {
             var stack = objects.loadResource(io.cattle.platform.core.model.Stack.class, number(binding.get("rootStackId")));
             if (!ownedRow(stack, accountId) || !Objects.equals(uuid(stack), binding.get("rootStackUuid"))) return false;
         }
@@ -380,12 +394,17 @@ public class AiResourceChangeProcessObserver implements ProcessAuthorizationHook
     }
 
     private static boolean resourceKind(Map<String, Object> binding, Object root) {
+        if ("registry".equals(binding.get("resourceType"))) return AiRegistryLifecycleChange.registry(root);
+        if ("service".equals(binding.get("resourceType")) && "update_links".equals(binding.get("operation")))
+            return root instanceof Service service && "service".equals(service.getKind());
         return !Set.of("externalService", "dnsService", "loadBalancerService").contains(String.valueOf(binding.get("resourceType")))
                 || root instanceof Service service && Objects.equals(binding.get("resourceType"), service.getKind());
     }
 
     private boolean aliasMap(Map<String, Object> binding, io.cattle.platform.core.model.ServiceConsumeMap map, LaunchConfiguration config) {
-        if (!"dnsService".equals(binding.get("resourceType")) || !"serviceConsumeMap".equals(config.getResourceType())
+        if (!("dnsService".equals(binding.get("resourceType"))
+                || "service".equals(binding.get("resourceType")) && "update_links".equals(binding.get("operation")))
+                || !"serviceConsumeMap".equals(config.getResourceType())
                 || !ownedRow(map, number(binding.get("accountId"))) || number(map.getServiceId()) != number(binding.get("rootId"))
                 || !AiAliasServiceChange.simpleLink(map)) return false;
         Service consumed = objects.loadResource(Service.class, map.getConsumedServiceId());
@@ -398,7 +417,7 @@ public class AiResourceChangeProcessObserver implements ProcessAuthorizationHook
                 && number(pin.get("stackId")) == number(consumed.getStackId()) && Objects.equals(pin.get("kind"), consumed.getKind())
                 && Objects.equals(pin.get("stackUuid"), aliasIdentity(binding, map).get("aliasConsumedStackUuid"))) pinned = true;
         if (!pinned) return false;
-        if ("serviceconsumemap.create".equals(config.getProcessName()) && "update_targets".equals(binding.get("operation"))) {
+        if ("serviceconsumemap.create".equals(config.getProcessName()) && Set.of("update_targets", "update_links").contains(binding.get("operation"))) {
             if (map.getRemoved() != null || !Set.of("requested", "activating", "active").contains(String.valueOf(map.getState()))) return false;
             for (Object value : list(binding.get("aliasReferences"))) if (value instanceof Map<?, ?> pin
                     && number(pin.get("id")) == number(consumed.getId()) && Objects.equals(pin.get("uuid"), consumed.getUuid())
@@ -406,7 +425,7 @@ public class AiResourceChangeProcessObserver implements ProcessAuthorizationHook
             return false;
         }
         if (!"serviceconsumemap.remove".equals(config.getProcessName())
-                || !Set.of("update_targets", "remove").contains(String.valueOf(binding.get("operation")))
+                || !Set.of("update_targets", "update_links", "remove").contains(String.valueOf(binding.get("operation")))
                 || !Set.of("active", "removing", "removed").contains(String.valueOf(map.getState()))) return false;
         for (Object value : list(binding.get("aliasLinks"))) if (value instanceof Map<?, ?> pin
                 && number(pin.get("id")) == number(map.getId()) && Objects.equals(pin.get("uuid"), map.getUuid())
@@ -420,10 +439,11 @@ public class AiResourceChangeProcessObserver implements ProcessAuthorizationHook
     private Map<String, String> aliasIdentity(Map<String, Object> binding, io.cattle.platform.core.model.ServiceConsumeMap map) {
         Service root = objects.loadResource(Service.class, number(binding.get("rootId")));
         Service consumed = objects.loadResource(Service.class, map.getConsumedServiceId());
-        if (!ownedRow(root, number(binding.get("accountId"))) || !"dnsService".equals(root.getKind())
+        if (!ownedRow(root, number(binding.get("accountId"))) || !Objects.equals(binding.get("resourceType"), root.getKind())
                 || !ownedRow(consumed, number(binding.get("accountId"))) || Objects.equals(root.getId(), consumed.getId())
                 || root.getStackId() == null || consumed.getStackId() == null
-                || !Set.of("service", "dnsService", "externalService", "loadBalancerService").contains(String.valueOf(consumed.getKind()))) return Map.of();
+                || !Set.of("service", "dnsService", "externalService", "loadBalancerService").contains(String.valueOf(consumed.getKind()))
+                || "service".equals(binding.get("resourceType")) && !"service".equals(consumed.getKind())) return Map.of();
         var stack = objects.loadResource(io.cattle.platform.core.model.Stack.class, root.getStackId());
         var consumedStack = objects.loadResource(io.cattle.platform.core.model.Stack.class, consumed.getStackId());
         if (!ownedRow(stack, number(binding.get("accountId"))) || !ownedRow(consumedStack, number(binding.get("accountId")))) return Map.of();
@@ -433,6 +453,11 @@ public class AiResourceChangeProcessObserver implements ProcessAuthorizationHook
     }
 
     private boolean metadataMatches(Map<String, Object> binding, Map<String, Object> metadata) {
+        if ("service".equals(binding.get("resourceType")) && "update_links".equals(binding.get("operation"))) {
+            for (String field : List.of("principalAccountId", "accountId"))
+                if (AiAliasServiceChange.nativeId(metadata.get(field)) < 1) return false;
+            if (AiAliasServiceChange.nativeRevision(metadata.get("policyRevision")) < 0) return false;
+        }
         try {
             if (targets.parseScopeId("credential", (String) metadata.get("keyId")) != number(binding.get("credentialId"))) return false;
         } catch (RuntimeException invalid) { return false; }
@@ -457,7 +482,8 @@ public class AiResourceChangeProcessObserver implements ProcessAuthorizationHook
     }
 
     private boolean initialEdge(Map<String, Object> binding, long rootId, LaunchConfiguration config, Object initial) {
-        if ("dnsService".equals(binding.get("resourceType")) && "POST".equals(binding.get("method"))
+        if (("dnsService".equals(binding.get("resourceType")) || "service".equals(binding.get("resourceType"))
+                && "update_links".equals(binding.get("operation"))) && "POST".equals(binding.get("method"))
                 && "setservicelinks".equals(binding.get("action")) && initial instanceof io.cattle.platform.core.model.ServiceConsumeMap map)
             return aliasMap(binding, map, config);
         if (nativeType((String) binding.get("resourceType")).equals(config.getResourceType())
@@ -475,12 +501,45 @@ public class AiResourceChangeProcessObserver implements ProcessAuthorizationHook
         case "DELETE" -> "remove";
         default -> binding.get("action") == null ? "create" : ((String) binding.get("action")).toLowerCase(java.util.Locale.ROOT);
         };
-        return nativeType((String) binding.get("resourceType")) + "." + suffix;
+        return ("registry".equals(binding.get("resourceType")) ? "storagepool" : nativeType((String) binding.get("resourceType"))) + "." + suffix;
     }
 
     private static String nativeType(String type) {
-        return "project".equals(type) ? "account" : "container".equals(type) ? "instance"
+        return "registry".equals(type) ? "storagePool" : "project".equals(type) ? "account" : "container".equals(type) ? "instance"
                 : Set.of("externalService", "dnsService", "loadBalancerService").contains(type) ? "service" : type;
+    }
+    private boolean registryConfiguration(Map<String, Object> binding, Object root) {
+        if (!AiRegistryLifecycleChange.registry(root) || !(binding.get("registryConfiguration") instanceof Map<?, ?> expected)) return false;
+        try {
+            Map<String, Object> current = json.readValue(json.writeValueAsString(
+                    AiRegistryLifecycleChange.snapshot((io.cattle.platform.core.model.StoragePool) root)));
+            return expected.equals(AiRegistryLifecycleChange.configuration(current));
+        } catch (java.io.IOException unavailable) { throw new IllegalStateException("Resource-change execution binding unavailable", unavailable); }
+    }
+    private boolean attestsRegistryLifecycle(LaunchConfiguration config, Map<String, Object> metadata) {
+        if (!(config instanceof ProcessRecord record) || record.getId() == null || record.getId() <= 0
+                || !metadata.equals(ProcessAuthorization.metadata(config)) || config.getData() == null) return false;
+        Set<String> reserved = Set.of("old", ProcessAuthorization.DATA_KEY, ProcessAuthorization.CAPTURED_EXECUTION_KEY,
+                ProcessAuthorization.VERIFIED_CHILD_KEY, ProcessAuthorization.COMPLETION_PENDING_KEY);
+        if (!reserved.containsAll(config.getData().keySet())) return false;
+        String id = (String) metadata.get("requestId");
+        for (int attempt = 0; attempt < 2; attempt++) {
+            Map<String, Object> binding = store.execution(id);
+            if (binding == null || !"registry".equals(binding.get("resourceType")) || !metadataMatches(binding, metadata)
+                    || !provenChild(binding, config, metadata)
+                    || !registryConfiguration(binding, objects.loadResource("storagePool", number(binding.get("rootId"))))) return false;
+            var persisted = objects.loadResource(io.cattle.platform.core.model.ProcessInstance.class, record.getId());
+            if (persisted == null || persisted.getEndTime() != null || !Objects.equals(persisted.getId(), record.getId())
+                    || !Objects.equals(persisted.getAccountId(), config.getAccountId()) || !Objects.equals(persisted.getData(), config.getData())
+                    || !Objects.equals(persisted.getProcessName(), config.getProcessName())
+                    || !Objects.equals(persisted.getResourceType(), config.getResourceType())
+                    || !Objects.equals(persisted.getResourceId(), config.getResourceId())) return false;
+            if (binding.get("rootProcessId") instanceof Number processId)
+                return processId.longValue() == record.getId() && store.registryLifecycleExecutionActive(id, binding);
+            Map<String, Object> after = new LinkedHashMap<>(binding); after.put("rootProcessId", record.getId());
+            if (store.attestRegistryLifecycleProcess(id, binding, after)) return true;
+        }
+        return false;
     }
     private boolean attestsLoadBalancerMetadata(LaunchConfiguration config, Map<String, Object> metadata) {
         if (!(metadata.get("requestId") instanceof String id) || !id.matches("aichange-[0-9a-f-]{36}")
@@ -645,6 +704,22 @@ public class AiResourceChangeProcessObserver implements ProcessAuthorizationHook
     private static List<?> list(Object value) { return value instanceof List<?> values ? values : List.of(); }
     private static List<Long> services(Map<String, Object> binding) {
         return list(binding.get("services")).stream().map(AiResourceChangeProcessObserver::number).toList();
+    }
+    private static boolean ordinaryIdentity(Map<String, Object> binding) {
+        if (!("service".equals(binding.get("resourceType")) && "update_links".equals(binding.get("operation")))) return true;
+        for (String field : List.of("rootId", "rootStackId", "actorId", "accountId", "credentialId"))
+            if (AiAliasServiceChange.nativeId(binding.get(field)) < 1) return false;
+        if (AiAliasServiceChange.nativeRevision(binding.get("credentialRevision")) < 0) return false;
+        for (String field : List.of("aliasReferences", "aliasBeforeReferences", "aliasLinks")) {
+            if (!(binding.get(field) instanceof List<?> pins) || pins.size() > AiAliasServiceChange.MAX_TARGETS) return false;
+            for (Object value : pins) {
+                if (!(value instanceof Map<?, ?> pin)) return false;
+                for (String id : field.equals("aliasLinks") ? List.of("id", "accountId", "serviceId", "consumedServiceId")
+                        : List.of("id", "accountId", "stackId"))
+                    if (AiAliasServiceChange.nativeId(pin.get(id)) < 1) return false;
+            }
+        }
+        return true;
     }
     private static long number(Object value) { return value instanceof Number number ? number.longValue() : -1; }
     private static Long numeric(String value) {

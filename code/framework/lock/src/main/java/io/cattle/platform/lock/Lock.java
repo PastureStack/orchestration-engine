@@ -11,6 +11,9 @@ public interface Lock {
 
     void unlock();
 
+    /** Report release failures where supported; legacy providers retain their existing unlock contract. */
+    default void unlockChecked() { unlock(); }
+
     LockDefinition getLockDefinition();
 
 }

@@ -7,7 +7,6 @@ import io.cattle.platform.core.constants.ServiceConstants;
 import io.cattle.platform.core.model.Service;
 import io.cattle.platform.core.model.ServiceConsumeMap;
 import io.cattle.platform.json.JsonMapper;
-import io.cattle.platform.lock.LockCallbackNoReturn;
 import io.cattle.platform.lock.LockManager;
 import io.cattle.platform.object.ObjectManager;
 import io.cattle.platform.object.util.DataAccessor;
@@ -65,15 +64,12 @@ public class SetServiceLinksActionHandler implements ActionHandler {
 
         validateLinks(newServiceLinks);
         if (newServiceLinks != null) {
-            lockManager.lock(new ServiceDiscoveryServiceSetLinksLock(service), new LockCallbackNoReturn() {
-                @Override
-                public void doWithLockNoResult() {
-                    // remove old listeners set
-                    removeOldServiceMaps(service, newServiceLinks);
-
-                    // create a new set
-                    createNewServiceMaps(service, newServiceLinks);
-                }
+            ServiceDiscoveryServiceSetLinksLock.withLock(lockManager, service.getId(), () -> {
+                // remove old listeners set
+                removeOldServiceMaps(service, newServiceLinks);
+                // create a new set
+                createNewServiceMaps(service, newServiceLinks);
+                return null;
             });
         }
 
@@ -119,7 +115,7 @@ public class SetServiceLinksActionHandler implements ActionHandler {
     }
 
     private void removeOldServiceMaps(Service service, Map<String, ServiceLink> newServiceLinks) {
-        List<? extends ServiceConsumeMap> existingMaps = consumeMapDao.findConsumedMapsToRemove(service.getId());
+        List<? extends ServiceConsumeMap> existingMaps = consumeMapDao.findConsumedMapsForMutation(service.getId());
         List<ServiceLink> linksToRemove = new ArrayList<>();
 
         for (ServiceConsumeMap existingMap : existingMaps) {

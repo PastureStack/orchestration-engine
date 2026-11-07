@@ -12,6 +12,8 @@ import io.cattle.platform.engine.context.EngineContext;
 import io.cattle.platform.engine.manager.impl.ProcessRecord;
 import io.cattle.platform.engine.process.*;
 import io.cattle.platform.iaas.api.auth.impl.ApiAuthenticator;
+import io.cattle.platform.iaas.api.auth.change.AiResourceChangeDescriptor;
+import io.cattle.platform.iaas.api.auth.change.AiResourceChangeDomain;
 import io.cattle.platform.iaas.api.auth.projects.ProjectAccessService;
 import io.cattle.platform.json.JacksonJsonMapper;
 import io.cattle.platform.object.ObjectManager;
@@ -205,6 +207,74 @@ public class ApiKeyAliasServiceDependencyTest {
         assertFalse(ProcessAuthorization.executionBound(new ProcessRecord(fake, 103L, "server")));
     }
 
+    @Test public void typedOrdinaryLinksCaptureExactNativeMapsAndRecheckLiveAuthority() throws Exception {
+        for (String invalid : List.of("none", "revoked", "revision", "read-role", "read-deny", "map-deny", "owner", "parent", "uuid", "target-uuid", "kind", "stack-uuid")) {
+            Fixture f = new Fixture(); f.ordinaryLinks(); ProcessRecord job = f.linkJob();
+            Map<String, Object> metadata = ProcessAuthorization.metadata(job);
+            assertEquals(true, metadata.get("ordinaryServiceLinks")); assertEquals("service", metadata.get("targetType"));
+            assertTrue(ProcessAuthorization.executionBound(job)); assertEquals("map-uuid", metadata.get("aliasMapUuid"));
+            switch (invalid) {
+            case "revoked" -> f.key.setState("inactive");
+            case "revision" -> f.key.setData(new ApiKeyPolicyCodec().store(f.key, f.policy, 2));
+            case "read-role" -> when(f.targetSchema.getResourceMethods()).thenReturn(List.of());
+            case "read-deny", "map-deny" -> {
+                var scope = ApiKeyPolicy.Scope.resource(invalid.equals("read-deny") ? "service" : "serviceConsumeMap",
+                        invalid.equals("read-deny") ? "1s9" : "1scm7");
+                List<ApiKeyPolicy.Rule> rules = new ArrayList<>(f.policy.getRules());
+                rules.add(new ApiKeyPolicy.Rule("deny", ApiKeyPolicy.Effect.DENY, scope,
+                        Set.of(invalid.equals("read-deny") ? "read" : "update")));
+                f.key.setData(new ApiKeyPolicyCodec().store(f.key, new ApiKeyPolicy(ApiKeyPolicy.Mode.CUSTOM,
+                        ApiKeyPolicy.Effect.DENY, null, rules), 1));
+            }
+            case "owner" -> f.map.setAccountId(99L);
+            case "parent" -> f.alias.setStackId(9L);
+            case "uuid" -> f.map.setUuid("replacement");
+            case "target-uuid" -> f.target.setUuid("replacement");
+            case "kind" -> f.target.setKind("dnsService");
+            case "stack-uuid" -> f.objects.loadResource(Stack.class, 8L).setUuid("replacement");
+            default -> { }
+            }
+            if (invalid.equals("none")) f.hook.beforeExecution(job, metadata);
+            else assertThrows(invalid, ProcessAuthorizationDeniedException.class, () -> f.hook.beforeExecution(job, metadata));
+        }
+    }
+
+    @Test public void ordinaryQueuedCapabilityRequiresThePrivateTypedOwnerAndCannotComeFromPayload() throws Exception {
+        Fixture f = new Fixture(); f.baseServiceRoute(); f.alias.setKind("service");
+        assertFalse(AiResourceChangeDomain.trustedOrdinaryLinks(f.request));
+        f.request.setAttribute("ai.resource.change.domain.descriptor", "service/update_links");
+        f.request.setRequestObject(Map.of("ordinaryServiceLinks", true, "serviceLinks", List.of(Map.of("serviceId", "1s9"))));
+        ProcessRecord nativeJob = f.linkJob();
+        assertFalse(ProcessAuthorization.metadata(nativeJob).containsKey("ordinaryServiceLinks"));
+        assertFalse(ProcessAuthorization.metadata(nativeJob).containsKey("aliasMapUuid"));
+        f.ordinaryLinks(); assertTrue(AiResourceChangeDomain.trustedOrdinaryLinks(f.request));
+        f.request.setAction("activate"); assertFalse(AiResourceChangeDomain.trustedOrdinaryLinks(f.request));
+        assertFalse(ProcessAuthorization.aliasLinkRequest(Map.of("targetType", "service", "ordinaryServiceLinks", "true")));
+    }
+
+    @Test public void legacyRevisionZeroRetainsNativeQueuedAuthorizationAndFreshReadCeilings() throws Exception {
+        Fixture f = new Fixture(); f.ordinaryLinks(); f.key.setKind("apiKey"); f.key.setData(null);
+        ApiKeyCredentialContext.attach(f.request, new ApiKeyCredentialContext(1, 10, "apiKey", 0, null));
+        assertEquals(0L, new ApiKeyPolicyCodec().revision(f.key));
+        ProcessRecord job = f.linkJob(); Map<String, Object> metadata = ProcessAuthorization.metadata(job);
+        assertEquals(0L, ((Number) metadata.get("policyRevision")).longValue());
+        assertTrue(ProcessAuthorization.executionBound(job)); assertEquals("map-uuid", metadata.get("aliasMapUuid"));
+        f.hook.beforeExecution(job, metadata);
+        var keys = new io.cattle.platform.iaas.api.auth.ai.AiKeyAuthorization();
+        for (String field : List.of("objects", "authenticator", "targets")) {
+            var member = keys.getClass().getDeclaredField(field); member.setAccessible(true);
+            member.set(keys, field.equals("objects") ? f.objects : field.equals("authenticator") ? f.hook.authenticator : f.resolver);
+        }
+        var read = new ApiRequest(null, f.schemas); read.setType("service"); read.setId("2"); read.setMethod("GET");
+        ApiKeyCredentialContext.attach(read, new ApiKeyCredentialContext(1, 10, "apiKey", 0, null));
+        assertSame(f.owner, keys.actor(read));
+        f.key.setState("inactive");
+        assertThrows(ClientVisibleException.class, () -> keys.actor(read));
+        assertThrows(ProcessAuthorizationDeniedException.class, () -> f.hook.beforeExecution(job, metadata));
+        f.key.setState("active"); when(f.owner.authorizeObject(f.alias)).thenReturn(null);
+        assertThrows(ProcessAuthorizationDeniedException.class, () -> f.hook.beforeExecution(job, metadata));
+    }
+
     private static class Fixture {
         final ObjectManager objects = mock(ObjectManager.class); final Policy owner = mock(Policy.class);
         final ApiKeyTargetResolver resolver = new ApiKeyTargetResolver(); final ApiKeyProcessAuthorization hook = new ApiKeyProcessAuthorization();
@@ -266,6 +336,11 @@ public class ApiKeyAliasServiceDependencyTest {
             when(objects.loadResource("service", 2L)).thenReturn(alias);
             var actions = aliasSchema.getResourceActions();
             when(targetSchema.getResourceActions()).thenReturn(actions);
+        }
+        void ordinaryLinks() {
+            baseServiceRoute(); alias.setKind("service");
+            request.setAttribute("ai.resource.change.domain.descriptor", AiResourceChangeDescriptor.require("service", "update_links"));
+            request.setRequestObject(Map.of("serviceLinks", List.of(Map.of("serviceId", "1s9"))));
         }
         ProcessRecord linkJob() throws Exception {
             authorize(); var config = new LaunchConfiguration("serviceconsumemap.create", "serviceConsumeMap", "7", 5L, 0, Map.of());

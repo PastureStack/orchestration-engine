@@ -174,7 +174,7 @@ public class AiResourceViewService {
         ResourceManager manager = managers.getResourceManagerByType(type);
         if (manager == null) throw error(404, "NotFound");
         String query = ((String) input.getOrDefault("query", "")).toLowerCase(Locale.ROOT);
-        if (domain.getId() == null && !query.isEmpty() && DATABASE_NAME_COLLECTIONS.contains(type)) {
+        if (domain.getId() == null && !query.isEmpty() && DATABASE_NAME_COLLECTIONS.contains(type) && !"registry".equals(type)) {
             // Retain native tenant/Key restrictions and bounded pagination. A
             // name search must not page through unrelated rows before filtering.
             domain.getConditions().put("name", List.of(new Condition(ConditionType.LIKE, namePattern(query))));
@@ -244,12 +244,17 @@ public class AiResourceViewService {
         List<Map<String, Object>> page = visible.subList(0, Math.min(50, visible.size()));
         String next = hasMore ? (String) page.getLast().get("id") : null;
         if (Set.of("service", "loadBalancerService", "dnsService", "externalService").contains(type)) enrichParents(domain, page);
-        List<Map<String, Object>> matching = page.stream().filter(row -> query.isEmpty()
-                || ((String) row.getOrDefault("name", "")).toLowerCase(Locale.ROOT).contains(query)).toList();
+        List<Map<String, Object>> matching = page.stream().filter(row -> matchesQuery(type, row, query)).toList();
         Map<String, Object> output = new LinkedHashMap<>();
         output.put("id", "aiview-" + UUID.randomUUID()); output.put("resourceType", type);
         output.put("data", matching); output.put("nextMarker", next);
         return output;
+    }
+
+    private static boolean matchesQuery(String type, Map<String, Object> row, String query) {
+        if (query.isEmpty() || Objects.toString(row.get("name"), "").toLowerCase(Locale.ROOT).contains(query)) return true;
+        return "registry".equals(type) && row.get("serverAddress") instanceof String address
+                && address.toLowerCase(Locale.ROOT).contains(query);
     }
 
     static String namePattern(String value) {
@@ -786,6 +791,10 @@ public class AiResourceViewService {
         if ("processInstance".equals(type)) return Map.of("id", id, "type", type, "name", "unknown");
         Map<String, Object> safe = new LinkedHashMap<>(); safe.put("id", id); safe.put("type", type);
         for (String field : COMMON_FIELDS) scalar(safe, fields, field);
+        if ("registry".equals(type)) {
+            String address = io.cattle.platform.iaas.api.auth.change.AiRegistryLifecycleChange.address(fields.get("serverAddress"));
+            safe.put("serverAddress", address); safe.put("addressStatus", address == null ? "unknown" : "known");
+        }
         for (String field : FIELDS.getOrDefault(type, List.of())) {
             if ("archived".equals(field)) safe.put(field, Boolean.TRUE.equals(fields.get(field)));
             else scalar(safe, fields, field);

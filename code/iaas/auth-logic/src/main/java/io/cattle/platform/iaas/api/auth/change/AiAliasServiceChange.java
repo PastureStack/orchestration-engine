@@ -11,10 +11,37 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 
-/** Closed Alias adapter over the normal DNS Service and set-service-links owners. */
+/** Closed local link sets over the normal DNS Service and Service owners. */
 public final class AiAliasServiceChange {
     public static final int MAX_TARGETS = 16;
     private AiAliasServiceChange() { }
+
+    public static boolean ordinaryLinks(AiResourceChangeDescriptor descriptor) {
+        return "service".equals(descriptor.resourceType()) && "update_links".equals(descriptor.operation());
+    }
+
+    public static boolean changesTargets(AiResourceChangeDescriptor descriptor) {
+        return ordinaryLinks(descriptor) || "dnsService".equals(descriptor.resourceType()) && "update_targets".equals(descriptor.operation());
+    }
+
+    public static boolean referenceOperation(AiResourceChangeDescriptor descriptor) {
+        return ordinaryLinks(descriptor) || "dnsService".equals(descriptor.resourceType())
+                && Set.of("update_targets", "remove").contains(descriptor.operation());
+    }
+
+    /** Native rows and persisted identity pins only; wire strings use the normal scope-ID parser. */
+    public static long nativeId(Object value) { return nativeInteger(value, 1); }
+
+    /** Legacy credentials have revision zero; revisions are not entity IDs. */
+    public static long nativeRevision(Object value) { return nativeInteger(value, 0); }
+
+    private static long nativeInteger(Object value, long minimum) {
+        if (!(value instanceof Number number)) return -1;
+        if ((number instanceof Double || number instanceof Float)
+                && (!Double.isFinite(number.doubleValue()) || Math.abs(number.doubleValue()) > 9007199254740991D)) return -1;
+        try { long id = new java.math.BigDecimal(number.toString()).longValueExact(); return id >= minimum ? id : -1; }
+        catch (ArithmeticException | NumberFormatException invalid) { return -1; }
+    }
 
     public static Map<String, Object> parameters(String operation, Set<String> allowed, Object value) {
         if (!(value instanceof Map<?, ?> input) || !allowed.containsAll(input.keySet())) invalid();
@@ -37,13 +64,13 @@ public final class AiAliasServiceChange {
             result.put(field, item);
         }
         if ("create".equals(operation) && (!result.containsKey("name") || !result.containsKey("stackId"))
-                || "update_targets".equals(operation) && !result.containsKey("serviceIds")
+                || Set.of("update_targets", "update_links").contains(operation) && !result.containsKey("serviceIds")
                 || "update_metadata".equals(operation) && result.isEmpty()) invalid();
         return result;
     }
 
     public static Map<String, Object> body(String operation, Map<String, Object> parameters) {
-        if ("update_targets".equals(operation)) {
+        if (Set.of("update_targets", "update_links").contains(operation)) {
             List<Map<String, Object>> links = new ArrayList<>();
             for (Object id : (List<?>) parameters.get("serviceIds")) links.add(Map.of("serviceId", id));
             return new LinkedHashMap<>(Map.of("serviceLinks", links));
@@ -61,7 +88,8 @@ public final class AiAliasServiceChange {
 
     public static boolean complete(String operation, Service service, Map<String, Object> parameters,
             Set<Long> expected, List<? extends ServiceConsumeMap> maps) {
-        if (!"dnsService".equals(service.getKind()) || maps == null) return false;
+        if (!("dnsService".equals(service.getKind()) || "service".equals(service.getKind()) && "update_links".equals(operation))
+                || maps == null) return false;
         Set<Long> active = new LinkedHashSet<>(); boolean settled = true;
         for (ServiceConsumeMap map : maps) {
             if (!Objects.equals(map.getServiceId(), service.getId()) || !Objects.equals(map.getAccountId(), service.getAccountId())) return false;
@@ -79,7 +107,7 @@ public final class AiAliasServiceChange {
         case "create" -> "inactive".equals(service.getState()) && active.isEmpty();
         case "start" -> "active".equals(service.getState()) && settled;
         case "stop" -> "inactive".equals(service.getState()) && settled;
-        case "update_targets" -> Set.of("active", "inactive").contains(String.valueOf(service.getState()))
+        case "update_targets", "update_links" -> Set.of("active", "inactive").contains(String.valueOf(service.getState()))
                 && settled && expected != null && expected.equals(active);
         case "update_metadata" -> parameters.entrySet().stream().allMatch(entry ->
                 Objects.equals(entry.getValue(), ObjectUtils.getPropertyIgnoreErrors(service, entry.getKey())));
