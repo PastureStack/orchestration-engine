@@ -50,7 +50,9 @@ public class AiResourceChangeValidationFieldTest {
             assertNull(safe.getMessage()); assertNull(safe.getDetail()); UUID.fromString(safe.getId()); assertNotEquals(nativeError.getId(), safe.getId());
             String wire = f.json.writeValueAsString(safe);
             assertFalse(wire.contains(PRIVATE)); assertFalse(wire.contains("\"value\""));
-            assertEquals(List.of("preview:aiResourceChangePlan:false:InvalidReference"), f.audits);
+            assertEquals(List.of("preview:service:false:InvalidReference"), f.audits);
+            verify(f.audit).recordResourceChangeDecision(any(), eq(f.policy), eq("preview"), startsWith("aichange-"),
+                    eq("service"), eq(7L), eq(false), eq("InvalidReference"));
             assertFalse(f.audits.toString().contains("serviceId")); assertFalse(f.audits.toString().contains(PRIVATE)); noEffect(f);
         }
     }
@@ -61,7 +63,9 @@ public class AiResourceChangeValidationFieldTest {
             var denied = preview(f, new ClientVisibleException(new ValidationErrorImpl("InvalidReference", field, PRIVATE, PRIVATE)), schemas());
             assertNull(denied.getApiError()); assertEquals(422, denied.getStatus()); assertEquals("InvalidReference", denied.getCode());
             assertEquals("InvalidReference", denied.getMessage()); assertNull(denied.getDetail());
-            assertEquals(List.of("preview:aiResourceChangePlan:false:InvalidReference"), f.audits); noEffect(f);
+            assertEquals(List.of("preview:service:false:InvalidReference"), f.audits);
+            verify(f.audit).recordResourceChangeDecision(any(), eq(f.policy), eq("preview"), startsWith("aichange-"),
+                    eq("service"), eq(7L), eq(false), eq("InvalidReference")); noEffect(f);
         }
     }
     @Test public void unavailableOrUnboundedSchemaMetadataCannotExposeAValidationPathOrPayload() {
