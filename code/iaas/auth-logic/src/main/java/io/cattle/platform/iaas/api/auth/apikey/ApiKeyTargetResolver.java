@@ -449,7 +449,8 @@ public class ApiKeyTargetResolver {
         if (stack == null || consumedStack == null || !Objects.equals(stack.getAccountId(), service.getAccountId())
                 || !Objects.equals(consumedStack.getAccountId(), service.getAccountId()) || service.getUuid() == null || map.getUuid() == null
                 || consumed.getUuid() == null || stack.getUuid() == null || consumedStack.getUuid() == null) return Map.of();
-        Map<String, String> references = new LinkedHashMap<>(Map.of("aliasServiceUuid", service.getUuid(), "aliasMapUuid", map.getUuid(), "aliasConsumedServiceId", consumed.getId().toString(),
+        Map<String, String> references = new LinkedHashMap<>(Map.of("aliasServiceUuid", service.getUuid(), "aliasMapUuid", map.getUuid(),
+                "aliasConsumedServiceId", consumed.getId().toString(),
                 "aliasConsumedServiceUuid", consumed.getUuid(), "aliasStackId", stack.getId().toString(), "aliasStackUuid", stack.getUuid(),
                 "aliasConsumedStackId", consumedStack.getId().toString(), "aliasConsumedStackUuid", consumedStack.getUuid()));
         // Old plain-map frames retain their exact reference shape; named frames additionally pin the alias.

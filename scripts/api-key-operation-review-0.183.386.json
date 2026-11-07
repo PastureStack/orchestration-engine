@@ -11,7 +11,7 @@
     },
     "reviewed": {
       "count": 490,
-      "sha256": "a800e90ed317d598fbae0f70c252782be1c491dba60b598c6cd9f57740fffd91"
+      "sha256": "d1e4d02cf3d0c1ff06c5d20db93aa208f4cd491cc532e2a71c32fa072e7657e5"
     },
     "addedAnchors": [
       "AiNamedServiceLinks.java",
@@ -35,7 +35,7 @@
     {
       "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/apikey/ApiKeyTargetResolver.java",
       "before": "9c08d3d8988e9a4a4c7ce17875e380e271d5c669218e8db874d0d8451413f0a2",
-      "after": "547612c212f888bfb642604aa7ff7d29ecc0008d64779c46d263acc2452625a7"
+      "after": "db1668fa5043fbd8a07cfef15223dbc2c274a963a93669d32ba9d6efcb728be3"
     },
     {
       "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiExternalServiceChange.java",
@@ -327,5 +327,22 @@
     "runtimePass": false,
     "producerCommit": null,
     "currentCi": null
+  },
+  "styleWhitespaceRebind": {
+    "scope": "SOURCE_ONLY_WHITESPACE_REBIND_NOT_CURRENT_CI",
+    "oldFingerprint": "a800e90ed317d598fbae0f70c252782be1c491dba60b598c6cd9f57740fffd91",
+    "newFingerprint": "d1e4d02cf3d0c1ff06c5d20db93aa208f4cd491cc532e2a71c32fa072e7657e5",
+    "selectedSourceDelta": [
+      {
+        "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/apikey/ApiKeyTargetResolver.java",
+        "before": "547612c212f888bfb642604aa7ff7d29ecc0008d64779c46d263acc2452625a7",
+        "after": "db1668fa5043fbd8a07cfef15223dbc2c274a963a93669d32ba9d6efcb728be3"
+      }
+    ],
+    "nonWhitespaceBytesEqual": true,
+    "requiredMethods": 427,
+    "tuples": 1396,
+    "zeroRoleDelta": true,
+    "testsReexecuted": 0
   }
 }

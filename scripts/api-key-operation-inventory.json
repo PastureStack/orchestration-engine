@@ -226,11 +226,11 @@
     "sourceCandidate": "STAGED_NOT_COMMITTED",
     "producerCommit": null,
     "contract": "scripts/api-key-operation-contract.json",
-    "contractSha256": "24f2a5eadcdea3e8fcf312fbbbf5dc2ce78d48c8e004167e6eb4a6f7c22804ea",
+    "contractSha256": "a6685e36bb0d6e7187dc965daaed368b804c5687caac6555c9fd3e105cfee27d",
     "sourceInputs": {
       "algorithm": "c03-source-inputs-v1",
       "count": 490,
-      "sha256": "a800e90ed317d598fbae0f70c252782be1c491dba60b598c6cd9f57740fffd91",
+      "sha256": "d1e4d02cf3d0c1ff06c5d20db93aa208f4cd491cc532e2a71c32fa072e7657e5",
       "anchors": [
         "AbstractObjectManager.java",
         "AbstractSchemaFactory.java",
@@ -392,7 +392,7 @@
     "roleFieldDelta": [],
     "historicalInventoryPreserved": true,
     "reviewManifest": "scripts/api-key-operation-review-0.183.386.json",
-    "reviewManifestSha256": "81852f8d28d687076166a6984d5938b30a812ad6966b5534ba8d5c86aa938a67",
+    "reviewManifestSha256": "c1fd50ca77abe94ed5136175a802a02c3915d2aa4488a0b1feedf2e381f98ebe",
     "nativeVolumeInactiveFix": {
       "scope": "SOURCE_ONLY_NOT_RUNTIME_ACCEPTANCE",
       "previousSourceInputs": {
@@ -530,6 +530,23 @@
       "runtimePass": false,
       "producerCommit": null,
       "currentCi": null
+    },
+    "styleWhitespaceRebind": {
+      "scope": "SOURCE_ONLY_WHITESPACE_REBIND_NOT_CURRENT_CI",
+      "oldFingerprint": "a800e90ed317d598fbae0f70c252782be1c491dba60b598c6cd9f57740fffd91",
+      "newFingerprint": "d1e4d02cf3d0c1ff06c5d20db93aa208f4cd491cc532e2a71c32fa072e7657e5",
+      "selectedSourceDelta": [
+        {
+          "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/apikey/ApiKeyTargetResolver.java",
+          "before": "547612c212f888bfb642604aa7ff7d29ecc0008d64779c46d263acc2452625a7",
+          "after": "db1668fa5043fbd8a07cfef15223dbc2c274a963a93669d32ba9d6efcb728be3"
+        }
+      ],
+      "nonWhitespaceBytesEqual": true,
+      "requiredMethods": 427,
+      "tuples": 1396,
+      "zeroRoleDelta": true,
+      "testsReexecuted": 0
     },
     "previousReview": {
     "version": "unreleased-384-typed-config-local-volume-bounded-logs",
