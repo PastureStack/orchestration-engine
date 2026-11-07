@@ -62,10 +62,48 @@ public class AiResourceChangePlanServiceTest {
             String code = failure.getApiError() == null ? failure.getCode() : failure.getApiError().getCode();
             assertEquals(status, denied.getStatus()); assertEquals(code, denied.getCode());
             assertEquals(code, denied.getMessage()); assertNull(denied.getDetail()); assertNull(denied.getApiError());
-            assertEquals(List.of("preview:aiResourceChangePlan:false:" + code), f.audits);
+            assertEquals(List.of("preview:service:false:" + code), f.audits);
             assertFalse(f.audits.toString().contains("PRIVATE"));
             assertTrue(f.documents.isEmpty()); assertEquals(0, f.claims); assertEquals(0, f.dispatched);
             verify(f.domain, never()).dispatch(any(), any(), nullable(String.class), anyMap(), anyString());
+        }
+    }
+
+    @Test public void deniedPreviewAuditsOnlyTheCurrentNativeVisibleTarget() {
+        Fixture f = new Fixture();
+        ServiceRecord locked = new ServiceRecord(); locked.setId(999L); locked.setAccountId(88L);
+        when(f.domain.lock(anyString(), anyLong())).thenReturn(locked);
+        when(f.domain.prepare(any(), any(), nullable(String.class), anyMap()))
+                .thenThrow(new ClientVisibleException(403, "KeyPolicyDenied", "PRIVATE", "PRIVATE"));
+        assertCode(403, "KeyPolicyDenied", () -> f.preview(true));
+        verify(f.domain).visible(any(), any(), eq("1s7"));
+        verify(f.audit).recordResourceChangeDecision(any(), any(), eq("preview"), anyString(), eq("service"),
+                eq(7L), eq(false), eq("KeyPolicyDenied"));
+        verify(f.audit, never()).recordResourceChangeDecision(any(), any(), anyString(), anyString(), anyString(), eq(999L),
+                anyBoolean(), anyString());
+        assertTrue(f.documents.isEmpty()); assertEquals(0, f.claims); assertEquals(0, f.dispatched);
+        assertFalse(f.audits.toString().contains("PRIVATE"));
+    }
+
+    @Test public void unreadableAndEarlyInvalidPreviewsNeverAttestTheRequestedTarget() {
+        for (String code : List.of("KeyScopeDenied", "NotFound", "PermissionDenied", "ResourceChangeInputInvalid")) {
+            Fixture f = new Fixture();
+            int status = "NotFound".equals(code) ? 404 : "ResourceChangeInputInvalid".equals(code) ? 422 : 403;
+            if ("ResourceChangeInputInvalid".equals(code)) {
+                ApiRequest invalid = f.request(null, true); invalid.setId(null);
+                invalid.setRequestObject(Map.of("resourceType", "service", "operation", "update_metadata",
+                        "parameters", Map.of("description", "PRIVATE")));
+                assertCode(status, code, () -> f.service.preview(invalid));
+                verify(f.domain, never()).visible(any(), any(), anyString());
+            } else {
+                when(f.domain.visible(any(), any(), anyString())).thenThrow(new ClientVisibleException(status, code));
+                assertCode(status, code, () -> f.preview(true));
+            }
+            verify(f.audit).recordResourceChangeDecision(any(), any(), eq("preview"), anyString(), eq("aiResourceChangePlan"),
+                    isNull(), eq(false), eq(code));
+            verify(f.domain, never()).prepare(any(), any(), nullable(String.class), anyMap());
+            assertTrue(f.documents.isEmpty()); assertEquals(0, f.claims); assertEquals(0, f.dispatched);
+            assertFalse(f.audits.toString().contains("PRIVATE"));
         }
     }
 

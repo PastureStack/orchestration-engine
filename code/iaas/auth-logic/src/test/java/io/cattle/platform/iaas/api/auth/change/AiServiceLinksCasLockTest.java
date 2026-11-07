@@ -451,10 +451,16 @@ public class AiServiceLinksCasLockTest {
                 return rows;
             });
             var service = mock(ServiceDiscoveryApiService.class); inject(nativeHandler, "sdService", service);
-            doAnswer(call -> { mutate(((ServiceLink) call.getArgument(1)).getServiceId(), false); return null; })
-                    .when(service).removeServiceLinkExactPair(eq(base.target), any());
-            doAnswer(call -> { mutate(((ServiceLink) call.getArgument(1)).getServiceId(), true); return null; })
-                    .when(service).addServiceLinkExactPair(eq(base.target), any());
+            org.mockito.stubbing.Answer<Void> removeLink = call -> {
+                mutate(((ServiceLink) call.getArgument(1)).getServiceId(), false); return null;
+            };
+            doAnswer(removeLink).when(service).removeServiceLink(eq(base.target), any());
+            doAnswer(removeLink).when(service).removeServiceLinkExactPair(eq(base.target), any());
+            org.mockito.stubbing.Answer<Void> addLink = call -> {
+                mutate(((ServiceLink) call.getArgument(1)).getServiceId(), true); return null;
+            };
+            doAnswer(addLink).when(service).addServiceLink(eq(base.target), any());
+            doAnswer(addLink).when(service).addServiceLinkExactPair(eq(base.target), any());
             when(base.domain.serviceLinksSnapshot(any())).thenAnswer(call -> base.copy(Map.of("links", links.get().stream().sorted().toList())));
             when(base.domain.aliasReferenceSnapshot(any(), any(), anyString(), anyMap())).thenReturn(Map.of("before", List.of(), "after", List.of()));
             when(base.domain.lock(eq("service"), eq(7L))).thenAnswer(call -> {
@@ -470,9 +476,11 @@ public class AiServiceLinksCasLockTest {
         ServiceDiscoveryApiServiceImpl nativeApiOwner() throws Exception {
             var owner = new ServiceDiscoveryApiServiceImpl(); var maps = mock(ServiceConsumeMapDao.class);
             inject(owner, "lockManager", base.service.locks); inject(owner, "consumeMapDao", maps);
-            when(maps.createServiceLinkExactPair(eq(base.target), any())).thenAnswer(call -> {
+            org.mockito.stubbing.Answer<ServiceConsumeMap> createLink = call -> {
                 probeMutation(); mutate(((ServiceLink) call.getArgument(1)).getServiceId(), true); return null;
-            });
+            };
+            doAnswer(createLink).when(maps).createServiceLink(eq(base.target), any());
+            doAnswer(createLink).when(maps).createServiceLinkExactPair(eq(base.target), any());
             when(maps.findConsumedMapsForMutation(7L)).thenAnswer(call -> {
                 probeMutation(); List<ServiceConsumeMap> rows = new ArrayList<>();
                 for (long id : links.get()) { var map = new ServiceConsumeMapRecord(); map.setServiceId(7L); map.setConsumedServiceId(id); rows.add(map); }

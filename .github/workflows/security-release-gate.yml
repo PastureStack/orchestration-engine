@@ -296,6 +296,8 @@ jobs:
                   'staleInboxExceptionNeverRescuesRoleKeyTargetOrOtherConflicts',
                   'nativeAndDirectDenialsKeepOnlyTheirStatusAndCodeBeforeAnyPlanIsStored',
                   'ordinaryLinkConfirmationAndApplyCasIncludeSourceParentMapAndConsumedUuid',
+                  'deniedPreviewAuditsOnlyTheCurrentNativeVisibleTarget',
+                  'unreadableAndEarlyInvalidPreviewsNeverAttestTheRequestedTarget',
               },
               'io.cattle.platform.iaas.api.auth.change.AiExternalServiceChangeTest': {
                   'createReceiptRequiresExactTcpReadbackAndOmittedHealthCheckStaysNone',
