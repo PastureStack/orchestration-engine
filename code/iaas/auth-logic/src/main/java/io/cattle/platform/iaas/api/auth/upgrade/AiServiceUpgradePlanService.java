@@ -21,6 +21,7 @@ import io.cattle.platform.core.model.InstanceLink;
 import io.cattle.platform.db.jooq.dao.impl.AbstractJooqDao;
 import io.cattle.platform.iaas.api.auth.apikey.ApiKeyCredentialContext;
 import io.cattle.platform.iaas.api.auth.ai.AiKeyAuthorization;
+import io.cattle.platform.iaas.api.auth.change.AiServiceCreateChange;
 import io.cattle.platform.json.JsonMapper;
 import io.cattle.platform.lock.LockCallback;
 import io.cattle.platform.lock.LockManager;
@@ -60,7 +61,7 @@ public class AiServiceUpgradePlanService extends AbstractJooqDao {
     public static final String PLAN_ATTRIBUTE = "ai.service.upgrade.plan";
     public static final String SNAPSHOT_ATTRIBUTE = "ai.service.upgrade.snapshot";
     static final String ORIGINAL_PREVIEW_REJECTED = AiServiceUpgradePlanService.class.getName() + ".originalPreviewRejected";
-    private static final Set<String> PREVIEW_INPUTS = Set.of("serviceId", "image", "type", "startFirst", "batchSize", "intervalMillis");
+    private static final Set<String> PREVIEW_INPUTS = Set.of("serviceId", "image", "type", "startFirst", "batchSize", "intervalMillis", "ports", "healthCheck");
     // JSON/JavaScript's exact integer boundary, not a native product maximum.
     private static final long MAX_SAFE_INTEGER = 9007199254740991L;
     @Inject AiServiceUpgradePlanStore store;
@@ -85,8 +86,10 @@ public class AiServiceUpgradePlanService extends AbstractJooqDao {
                 Map<String, Object> input = input(request, PREVIEW_INPUTS);
                 String serviceId = text(input.get("serviceId"));
                 String image = text(input.get("image"));
-                if (serviceId == null || image == null || image.length() > 512 || image.matches(".*\\s.*")
-                        || image.contains("://") || image.equals("docker:")) throw error(422, "UpgradeInputInvalid");
+                if (serviceId == null || input.containsKey("image") && (image == null || image.length() > 512 || image.matches(".*\\s.*")
+                        || image.contains("://") || image.equals("docker:"))) throw error(422, "UpgradeInputInvalid");
+                Map<String, Object> changes = configurationValues(input);
+                if (image == null && changes.isEmpty()) throw error(422, "UpgradeInputInvalid");
                 Map<String, Object> strategy = strategyValues(input);
                 Service target = target(serviceId, request, true);
                 requireReady(target);
@@ -96,8 +99,22 @@ public class AiServiceUpgradePlanService extends AbstractJooqDao {
                 for (Object item : secondaries(target)) {
                     if (ServiceConstants.IMAGE_NONE.equalsIgnoreCase(text(map(item).get("imageUuid")))) throw error(409, "UpgradeTargetUnsupported");
                 }
-                String requested = normalizeImage(image);
-                if (Objects.equals(primary.get("imageUuid"), requested)) throw error(409, "UpgradeImageUnchanged");
+                if (changes.get("healthCheck") instanceof Map<?, ?> patch) {
+                    Map<String, Object> merged = new LinkedHashMap<>();
+                    Map<String, Object> previous = map(configurationValue("healthCheck", primary.get("healthCheck")));
+                    if (previous != null) merged.putAll(previous);
+                    patch.forEach((key, value) -> merged.put((String) key, value));
+                    try { changes.put("healthCheck", AiServiceCreateChange.healthCheck(merged)); }
+                    catch (ClientVisibleException invalid) { throw error(422, "UpgradeInputInvalid"); }
+                }
+                String requested = image == null ? text(primary.get("imageUuid")) : normalizeImage(image);
+                boolean changed = false;
+                for (String field : changes.keySet()) {
+                    Object before = configurationValue(field, primary.get(field)), after = changes.get(field);
+                    changed |= "ports".equals(field) ? !(AiServiceCreateChange.configuredPortsMatch(before, after)
+                            && AiServiceCreateChange.configuredPortsMatch(after, before)) : !Objects.equals(before, after);
+                }
+                if (Objects.equals(primary.get("imageUuid"), requested) && !changed) throw error(409, "UpgradeImageUnchanged");
                 Map<String, Object> plan = new LinkedHashMap<>();
                 // A letter prefix is required by TypeIdFormatter for opaque IDs.
                 String id = "aiplan-" + UUID.randomUUID();
@@ -114,6 +131,13 @@ public class AiServiceUpgradePlanService extends AbstractJooqDao {
                 snapshot.put("approvedUpgradeStrategy", copy(strategy));
                 plan.put("requestedImage", requested); plan.put("snapshot", snapshot);
                 plan.put("upgradeStrategy", strategy);
+                if (!changes.isEmpty()) {
+                    if (target.getUuid() == null || target.getUuid().isBlank()) throw error(409, "UpgradeTargetUnsupported");
+                    snapshot.put("targetUuid", target.getUuid());
+                    plan.put("launchConfigChanges", copy(changes));
+                    snapshot.put("approvedLaunchConfigChanges", copy(changes));
+                    plan.put("configurationChanges", configurationReview(primary, changes));
+                }
                 plan.put("expiresAt", clock.instant().plusSeconds(300).toString());
                 plan.put("confirmationState", "pending"); plan.put("status", "preview");
                 plan.put("verifiedResult", false); plan.put("messageCode", "UpgradeNeedsConfirmation");
@@ -285,6 +309,7 @@ public class AiServiceUpgradePlanService extends AbstractJooqDao {
     private Map<String, Object> nativeStrategy(Map<String, Object> plan) {
         Map<String, Object> primary = map(map(plan.get("snapshot")).get("launchConfig"));
         primary.put("imageUuid", plan.get("requestedImage"));
+        primary.putAll(effectiveConfiguration(plan));
         Map<String, Object> strategy = effectiveStrategy(plan);
         strategy.put("launchConfig", primary);
         return strategy;
@@ -317,10 +342,51 @@ public class AiServiceUpgradePlanService extends AbstractJooqDao {
         boolean rejected = !(value instanceof Map<?, ?> fields)
                 || fields.keySet().stream().anyMatch(key -> !(key instanceof String) || !PREVIEW_INPUTS.contains(key));
         if (!rejected) {
-            try { strategyValues((Map<?, ?>) value); }
+            try { strategyValues((Map<?, ?>) value); configurationValues((Map<?, ?>) value); }
             catch (ClientVisibleException invalid) { rejected = true; }
         }
         request.setAttribute(ORIGINAL_PREVIEW_REJECTED, rejected);
+    }
+
+    private static Map<String, Object> configurationValues(Map<?, ?> input) {
+        Map<String, Object> changes = new LinkedHashMap<>();
+        try {
+            if (input.containsKey("ports")) changes.put("ports", AiServiceCreateChange.ports(input.get("ports")));
+            if (input.containsKey("healthCheck")) changes.put("healthCheck", input.get("healthCheck") == null ? null
+                    : AiServiceCreateChange.healthCheckChanges(input.get("healthCheck")));
+        } catch (ClientVisibleException | IllegalArgumentException invalid) { throw error(422, "UpgradeInputInvalid"); }
+        return changes;
+    }
+
+    private static Object configurationValue(String field, Object value) {
+        try {
+            return "ports".equals(field) ? value == null ? List.of() : AiServiceCreateChange.ports(value)
+                    : AiServiceCreateChange.canonicalHealth(value);
+        } catch (ClientVisibleException | IllegalArgumentException unsupported) {
+            throw error(409, "UpgradeConfigurationUnsupported");
+        }
+    }
+
+    private static Map<String, Object> effectiveConfiguration(Map<String, Object> plan) {
+        if (!plan.containsKey("launchConfigChanges")) return Map.of();
+        if (!(plan.get("launchConfigChanges") instanceof Map<?, ?> changes) || changes.isEmpty()
+                || !Set.of("ports", "healthCheck").containsAll(changes.keySet())) throw error(422, "UpgradeInputInvalid");
+        return configurationValues(changes);
+    }
+
+    private List<Map<String, Object>> configurationReview(Map<String, Object> primary, Map<String, Object> changes) {
+        List<Map<String, Object>> result = new ArrayList<>();
+        for (String field : List.of("ports", "healthCheck")) {
+            if (!changes.containsKey(field)) continue;
+            Map<String, Object> row = new LinkedHashMap<>(); row.put("field", field);
+            try {
+                Object before = configurationValue(field, primary.get(field)), after = changes.get(field);
+                row.put("before", before == null ? null : json.writeValueAsString(before));
+                row.put("after", after == null ? null : json.writeValueAsString(after));
+            } catch (IOException invalid) { throw error(422, "UpgradeInputInvalid"); }
+            result.add(row);
+        }
+        return result;
     }
 
     private static long strategyInteger(Map<?, ?> input, String field, long defaultValue, long minimum) {
@@ -416,6 +482,10 @@ public class AiServiceUpgradePlanService extends AbstractJooqDao {
         // Older engines compare the classic snapshot and reject this extra approved operand.
         // Genuine image-only plans retain their classic snapshot and dispatch defaults.
         if (plan.containsKey("upgradeStrategy")) snapshot.put("approvedUpgradeStrategy", copy(effectiveStrategy(plan)));
+        if (plan.containsKey("launchConfigChanges")) {
+            snapshot.put("targetUuid", target.getUuid());
+            snapshot.put("approvedLaunchConfigChanges", copy(effectiveConfiguration(plan)));
+        }
         return snapshot;
     }
 
@@ -551,6 +621,16 @@ public class AiServiceUpgradePlanService extends AbstractJooqDao {
     protected boolean settingsPreserved(Map<String, Object> plan, Service target) {
         Map<String, Object> expected = map(map(plan.get("snapshot")).get("launchConfig"));
         Map<String, Object> actual = map(DataAccessor.fieldMap(target, "launchConfig"));
+        for (var entry : effectiveConfiguration(plan).entrySet()) {
+            String field = entry.getKey();
+            try {
+                Object value = configurationValue(field, actual.get(field));
+                if ("ports".equals(field) ? !AiServiceCreateChange.configuredPortsMatch(entry.getValue(), value)
+                        : !Objects.equals(entry.getValue(), value)) return false;
+            }
+            catch (ClientVisibleException invalid) { return false; }
+            expected.remove(field); actual.remove(field);
+        }
         expected.remove("imageUuid"); expected.remove("version"); actual.remove("imageUuid"); actual.remove("version");
         if (!expected.equals(actual)) return false;
         Object original = map(plan.get("snapshot")).get("secondaryLaunchConfigs");
@@ -605,7 +685,7 @@ public class AiServiceUpgradePlanService extends AbstractJooqDao {
     protected Map<String, Object> output(Map<String, Object> plan) {
         Map<String, Object> result = new LinkedHashMap<>();
         for (String key : List.of("id", "planRef", "accountId", "serviceId", "serviceName", "displayPath", "currentImage", "requestedImage",
-                "expiresAt", "confirmationState", "status", "operationId", "verifiedResult", "messageCode")) {
+                "expiresAt", "confirmationState", "status", "operationId", "verifiedResult", "messageCode", "configurationChanges")) {
             if (plan.containsKey(key)) result.put(key, plan.get(key));
         }
         if ("dispatching".equals(result.get("status"))) result.put("status", "unknown");

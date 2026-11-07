@@ -893,6 +893,149 @@ public class ApiKeyTargetResolverTest {
         return new ImageEnsure(f, image, cache, pool);
     }
 
+    @Test public void loadBalancerImageEnsureUsesExactSubtypeAndOwnedNativeVolume() {
+        ImageEnsure f = imageEnsure(); f.lifecycle.service.setKind("loadBalancerService");
+        f.lifecycle.expose.setManaged(true); f.lifecycle.expose.setUpgrade(false);
+        Map<String, Object> binding = new HashMap<>(Map.of("targetType", "loadBalancerService", "targetId", "2",
+                "operation", "create", "requestMethod", "POST", "requestCollection", true, "preview", false));
+        EngineContext engine = EngineContext.getEngineContext(); var frame = engine.pushVerifiedExecution("volume", "6", binding);
+        try {
+            for (Object child : List.of(f.image, f.cache)) {
+                var dependency = resolver.resolveImageEnsureDependency(f.lifecycle.service, child, owner, frame, binding);
+                assertEquals(ApiKeyPolicyEvaluator.Target.stackResource("volume", "1v6", "1a5", "1st8"), dependency.scope());
+                assertTrue(dependency.resources().stream().anyMatch(resource -> "container".equals(resource.resourceType())
+                        && "1i3".equals(resource.resourceId())));
+                assertTrue(dependency.resources().stream().anyMatch(resource -> "storagePool".equals(resource.resourceType())));
+            }
+        } finally { engine.popVerifiedExecution(frame); }
+        assertEquals("loadBalancerService", ApiKeyQueryScopes.canonical("loadBalancerService"));
+    }
+
+    @Test public void loadBalancerImageEnsureRejectsWrongKindRootOwnerFrameAndAllocation() {
+        for (String invalid : List.of("ordinary-kind", "other-subtype", "unknown-subtype", "wrong-root", "foreign-volume",
+                "foreign-instance", "wrong-service", "wrong-map-instance", "wrong-map-account", "foreign-pool", "wrong-image",
+                "missing-frame", "wrong-frame", "changed-binding", "revoked-owner")) {
+            ImageEnsure f = imageEnsure(); f.lifecycle.service.setKind("loadBalancerService");
+            Map<String, Object> binding = new HashMap<>(Map.of("targetType", "loadBalancerService", "targetId", "2",
+                    "operation", "create", "requestMethod", "POST", "requestCollection", true, "preview", false));
+            switch (invalid) {
+                case "ordinary-kind" -> f.lifecycle.service.setKind("service");
+                case "other-subtype" -> binding.put("targetType", "dnsService");
+                case "unknown-subtype" -> binding.put("targetType", "futureLoadBalancer");
+                case "wrong-root" -> binding.put("targetId", "99");
+                case "foreign-volume" -> f.lifecycle.volume.setAccountId(6L);
+                case "foreign-instance" -> f.lifecycle.instance.setAccountId(6L);
+                case "wrong-service" -> f.lifecycle.expose.setServiceId(99L);
+                case "wrong-map-instance" -> f.lifecycle.expose.setInstanceId(99L);
+                case "wrong-map-account" -> f.lifecycle.expose.setAccountId(6L);
+                case "foreign-pool" -> f.pool.setAccountId(6L);
+                case "wrong-image" -> f.lifecycle.volume.setImageId(99L);
+                case "revoked-owner" -> { owner = mock(Policy.class); when(owner.authorizeObject(any())).thenReturn(null); }
+                default -> { }
+            }
+            EngineContext engine = EngineContext.getEngineContext();
+            var frame = engine.pushVerifiedExecution(invalid.equals("wrong-frame") ? "instance" : "volume", "6", binding);
+            Map<String, Object> attempted = new HashMap<>(binding);
+            if (invalid.equals("changed-binding")) attempted.put("requestId", "different");
+            try { assertThrows(invalid, ClientVisibleException.class, () -> resolver.resolveImageEnsureDependency(
+                    f.lifecycle.service, f.cache, owner, invalid.equals("missing-frame") ? null : frame, attempted)); }
+            finally { engine.popVerifiedExecution(frame); }
+        }
+    }
+
+    @Test public void loadBalancerOwnedImageCleanupUsesExactSubtypeAndOriginalVolumeFrames() {
+        Lifecycle f = cleanupLifecycle(); f.service.setKind("loadBalancerService");
+        Map<String, Object> binding = new HashMap<>(Map.of("targetType", "loadBalancerService", "targetId", "2",
+                "operation", "delete", "requestMethod", "DELETE", "requestCollection", false, "preview", false));
+        EngineContext engine = EngineContext.getEngineContext(); var volume = engine.pushVerifiedExecution("volume", "6", binding);
+        try {
+            Image image = (Image) f.rows.get(Image.class).get(7L);
+            assertNotNull(resolver.resolveOwnedImageCleanupDependency(f.service, image, owner,
+                    cleanupJob("image", "remove", 7), volume, null, binding));
+            var imageFrame = engine.pushVerifiedExecution("image", "7", binding);
+            try { assertNotNull(resolver.resolveOwnedImageCleanupDependency(f.service, f.rows.get(ImageStoragePoolMap.class).get(14L),
+                    owner, cleanupJob("imageStoragePoolMap", "remove", 14), imageFrame, volume, binding)); }
+            finally { engine.popVerifiedExecution(imageFrame); }
+        } finally { engine.popVerifiedExecution(volume); }
+    }
+
+    @Test public void loadBalancerOwnedImageCleanupRejectsWrongKindRootOwnerAndFrame() {
+        for (String invalid : List.of("ordinary-kind", "other-subtype", "wrong-root", "foreign-volume", "foreign-instance",
+                "missing-frame", "wrong-frame", "changed-binding", "shared-image")) {
+            Lifecycle f = cleanupLifecycle(); f.service.setKind("loadBalancerService");
+            Map<String, Object> binding = new HashMap<>(Map.of("targetType", "loadBalancerService", "targetId", "2",
+                    "operation", "delete", "requestMethod", "DELETE", "requestCollection", false, "preview", false));
+            switch (invalid) {
+                case "ordinary-kind" -> f.service.setKind("service");
+                case "other-subtype" -> binding.put("targetType", "dnsService");
+                case "wrong-root" -> binding.put("targetId", "99");
+                case "foreign-volume" -> f.volume.setAccountId(6L);
+                case "foreign-instance" -> f.instance.setAccountId(6L);
+                case "shared-image" -> { InstanceRecord other = new InstanceRecord(); other.setId(99L);
+                    other.setAccountId(5L); other.setImageId(7L); f.add(Instance.class, other); }
+                default -> { }
+            }
+            EngineContext engine = EngineContext.getEngineContext();
+            var frame = engine.pushVerifiedExecution(invalid.equals("wrong-frame") ? "instance" : "volume", "6", binding);
+            Map<String, Object> attempted = new HashMap<>(binding);
+            if (invalid.equals("changed-binding")) attempted.put("requestId", "different");
+            try { assertThrows(invalid, ClientVisibleException.class, () -> resolver.resolveOwnedImageCleanupDependency(f.service,
+                    f.rows.get(Image.class).get(7L), owner, cleanupJob("image", "remove", 7),
+                    invalid.equals("missing-frame") ? null : frame, null, attempted)); }
+            finally { engine.popVerifiedExecution(frame); }
+        }
+    }
+
+    @Test public void loadBalancerImageEnsureRevalidatesLiveKeyRevisionRoleAndDependencyDenials() {
+        for (String condition : List.of("full-image", "full-cache", "revoked-key", "changed-revision", "expired-key",
+                "wrong-key-owner", "read-only-key", "container-deny", "schema-denied", "role-denied", "cross-project-volume")) {
+            ImageEnsure f = imageEnsure(); f.lifecycle.service.setKind("loadBalancerService");
+            var formatter = new DefaultIdFormatter(); SchemaFactory formatting = mock(SchemaFactory.class);
+            when(formatting.getBaseType(anyString())).thenAnswer(i -> i.getArgument(0)); formatter.setSchemaFactory(formatting);
+            formatter.setTypeMappings(Map.of("project", "a", "stack", "st", "service", "s", "loadBalancerService", "s",
+                    "container", "i", "volume", "v", "image", "img", "credential", "c")); resolver.idFormatter = formatter;
+            java.time.Instant now = java.time.Instant.parse("2026-11-07T07:49:49Z");
+            CredentialRecord key = new CredentialRecord(); key.setId(1L); key.setAccountId(10L);
+            key.setState("active"); key.setKind("apiKeyRestricted");
+            ApiKeyPolicy policy = new ApiKeyPolicy(ApiKeyPolicy.Mode.FULL, ApiKeyPolicy.Effect.ALLOW, now.plusSeconds(3600), List.of());
+            if (condition.equals("read-only-key")) policy = new ApiKeyPolicy(ApiKeyPolicy.Mode.CUSTOM, ApiKeyPolicy.Effect.DENY, null,
+                    List.of(new ApiKeyPolicy.Rule("read", ApiKeyPolicy.Effect.ALLOW, ApiKeyPolicy.Scope.project("1a5"), java.util.Set.of("read"))));
+            if (condition.equals("container-deny")) policy = new ApiKeyPolicy(ApiKeyPolicy.Mode.CUSTOM, ApiKeyPolicy.Effect.DENY, null,
+                    List.of(new ApiKeyPolicy.Rule("root", ApiKeyPolicy.Effect.ALLOW, ApiKeyPolicy.Scope.project("1a5"), java.util.Set.of("create")),
+                            new ApiKeyPolicy.Rule("child", ApiKeyPolicy.Effect.DENY, ApiKeyPolicy.Scope.resource("container", "1i3"), java.util.Set.of("create"))));
+            if (condition.equals("expired-key")) policy = new ApiKeyPolicy(ApiKeyPolicy.Mode.FULL, ApiKeyPolicy.Effect.ALLOW, now, List.of());
+            key.setData(new ApiKeyPolicyCodec().store(key, policy, condition.equals("changed-revision") ? 2L : 1L));
+            if (condition.equals("revoked-key")) key.setState("inactive");
+            if (condition.equals("wrong-key-owner")) key.setAccountId(11L);
+            if (condition.equals("cross-project-volume")) f.lifecycle.volume.setAccountId(6L);
+            if (condition.equals("role-denied")) { owner = mock(Policy.class); when(owner.authorizeObject(any())).thenReturn(null); }
+            f.lifecycle.add(Credential.class, key);
+            when(resolver.objectManager.loadResource("loadBalancerService", 2L)).thenReturn(f.lifecycle.service);
+            when(resolver.objectManager.loadResource("image", "7")).thenReturn(f.image);
+            when(resolver.objectManager.loadResource("imageStoragePoolMap", "14")).thenReturn(f.cache);
+            Schema schema = mock(Schema.class); when(schema.getCollectionMethods()).thenReturn(
+                    condition.equals("schema-denied") ? List.of("GET") : List.of("POST"));
+            SchemaFactory schemas = mock(SchemaFactory.class); when(schemas.getSchema("loadBalancerService")).thenReturn(schema);
+            ApiKeyProcessAuthorization hook = new ApiKeyProcessAuthorization(); hook.objectManager = resolver.objectManager; hook.targets = resolver;
+            hook.authenticator = mock(io.cattle.platform.iaas.api.auth.impl.ApiAuthenticator.class);
+            when(hook.authenticator.currentAuthorization(eq(10L), eq(5L), any())).thenReturn(
+                    new io.cattle.platform.iaas.api.auth.impl.ApiAuthenticator.CurrentAuthorization(owner, schemas));
+            hook.clock = java.time.Clock.fixed(now, java.time.ZoneOffset.UTC);
+            Map<String, Object> binding = new HashMap<>(Map.of("targetType", "loadBalancerService", "targetId", "2",
+                    "operation", "create", "requestMethod", "POST", "requestCollection", true, "preview", false));
+            binding.putAll(Map.of("keyId", "1c1", "policyRevision", 1L, "principalAccountId", 10L, "accountId", 5L));
+            boolean cache = condition.equals("full-cache");
+            LaunchConfiguration job = new LaunchConfiguration(cache ? "imagestoragepoolmap.activate" : "image.activate",
+                    cache ? "imageStoragePoolMap" : "image", cache ? "14" : "7", 5L, 0, Map.of());
+            EngineContext engine = EngineContext.getEngineContext(); var frame = engine.pushVerifiedExecution("volume", "6", binding);
+            try {
+                if (condition.startsWith("full-")) hook.beforeExecution(job, binding);
+                else assertThrows(condition, io.cattle.platform.engine.process.ProcessAuthorizationDeniedException.class,
+                        () -> hook.beforeExecution(job, binding));
+            } finally { engine.popVerifiedExecution(frame); }
+        }
+    }
+
     @Test public void sharedImageEnsureUsesOnlyVerifiedOwnedVolumeAndAllocatedCache() {
         ImageEnsure f = imageEnsure();
         InstanceRecord foreign = new InstanceRecord(); foreign.setId(99L); foreign.setAccountId(6L); foreign.setImageId(7L);

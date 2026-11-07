@@ -22,6 +22,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.Supplier;
 import org.junit.After;
 import org.junit.Test;
@@ -316,6 +317,59 @@ public class AiResourceChangePlanServiceTest {
             state.put(field, original); f.confirm(); state.put(field, "replacement");
             assertCode(409, "ResourceChangePlanStale", () -> f.apply(false)); assertEquals(0, f.claims); assertEquals(0, f.dispatched);
         }
+    }
+
+    @Test public void staleOrdinaryLinkInboxRemainsCancellableWithoutLendingApplyAuthority() {
+        Fixture f = new Fixture(); previewPendingLinks(f); f.confirm();
+        when(f.domain.prepare(any(), any(), anyString(), anyMap(), anyMap()))
+                .thenThrow(new ClientVisibleException(409, "ResourceChangePlanStale"));
+        clearInvocations(f.domain);
+        var inbox = f.service.pending(f.request(null, false));
+        assertEquals(1, inbox.size()); assertEquals(f.id, inbox.getFirst().get("id"));
+        assertEquals("preview", inbox.getFirst().get("status"));
+        assertEquals("approved", inbox.getFirst().get("confirmationState"));
+        assertEquals("ResourceChangePlanStale", inbox.getFirst().get("messageCode"));
+        assertFalse(inbox.getFirst().containsKey("snapshot")); assertNull(inbox.getFirst().get("operationId"));
+        verify(f.domain, times(2)).receiptTarget(any(), any(), anyMap());
+        assertCode(409, "ResourceChangePlanStale", () -> f.apply(true));
+        assertEquals(0, f.claims); assertEquals(0, f.dispatched);
+        assertEquals("ResourceChangeReady", f.documents.get(f.id).get("messageCode"));
+        var cancelled = f.service.action(f.id, f.request("cancel", false));
+        assertEquals("cancelled", cancelled.get("status"));
+        assertEquals("cancelled", cancelled.get("confirmationState")); assertNull(cancelled.get("operationId"));
+        assertEquals(0, f.claims); assertEquals(0, f.dispatched);
+    }
+
+    @Test public void staleInboxExceptionNeverRescuesRoleKeyTargetOrOtherConflicts() {
+        for (String denied : List.of("OwnerPermissionDenied", "ApiKeyRevoked", "ApiKeyPolicyChanged", "OtherConflict",
+                "CrossProject", "TargetUuidChanged", "OtherOperation")) {
+            Fixture f = new Fixture();
+            if ("OtherOperation".equals(denied)) f.preview(true); else previewPendingLinks(f);
+            f.confirm();
+            String code = "OtherConflict".equals(denied) ? "ResourceChangeTargetBusy"
+                    : Set.of("CrossProject", "TargetUuidChanged", "OtherOperation").contains(denied)
+                            ? "ResourceChangePlanStale" : denied;
+            int status = Set.of("OtherConflict", "CrossProject", "TargetUuidChanged", "OtherOperation").contains(denied) ? 409 : 403;
+            when(f.domain.prepare(any(), any(), anyString(), anyMap(), anyMap()))
+                    .thenThrow(new ClientVisibleException(status, code));
+            if ("CrossProject".equals(denied))
+                when(f.domain.receiptTarget(any(), any(), anyMap())).thenThrow(new ClientVisibleException(404, "NotFound"));
+            if ("TargetUuidChanged".equals(denied))
+                when(f.domain.receiptTarget(any(), any(), anyMap())).thenReturn(f.target)
+                        .thenThrow(new ClientVisibleException(409, "ResourceChangePlanStale"));
+            assertTrue(denied, f.service.pending(f.request(null, false)).isEmpty());
+            assertEquals(0, f.claims); assertEquals(0, f.dispatched);
+        }
+    }
+
+    private static void previewPendingLinks(Fixture f) {
+        when(f.domain.serviceLinksSnapshot(any())).thenReturn(new LinkedHashMap<>(Map.of("uuid", "source", "linkStackUuid", "stack")));
+        when(f.domain.aliasReferenceSnapshot(any(), any(), anyString(), anyMap()))
+                .thenReturn(Map.of("before", List.of(), "after", List.of()));
+        ApiRequest request = f.request(null, true); request.setId(null);
+        request.setRequestObject(Map.of("resourceType", "service", "operation", "update_links", "resourceId", "1s7",
+                "parameters", Map.of("serviceIds", List.of())));
+        f.id = (String) f.service.preview(request).get("id");
     }
 
     private static void assertCode(int status, String code, Runnable action) {

@@ -1,0 +1,466 @@
+{
+  "schemaVersion": 1,
+  "version": "0.183.384",
+  "scope": "SOURCE_ONLY_NOT_RUNTIME_ACCEPTANCE",
+  "reviewedBaseCommit": "63c6a19c1d03172297c400ab3ad98bde3ed0da08",
+  "sourceInputs": {
+    "algorithm": "c03-source-inputs-v1",
+    "baseline": {
+      "count": 479,
+      "sha256": "91e5f29254dee511c8e63c7354b3ffe6baafdc8e852bdb1e8cfc32d117c9574f"
+    },
+    "reviewed": {
+      "count": 487,
+      "sha256": "5052cbdd8695bdd1938ab68201449230f0bd55f36ee2a02f7def6a1c286401be"
+    },
+    "addedAnchors": [
+      "AiContainerLogsInputHandler.java",
+      "AiContainerLogsRunner.java",
+      "AiContainerLogsService.java",
+      "AiContainerLogsTicket.java",
+      "AiServiceUpgradePersistence.java",
+      "AiVolumeCreateChange.java",
+      "ApiContainerLogsRead.java",
+      "ApiKeyAiBridgeGuard.java",
+      "ContainerLogsActionHandler.java"
+    ]
+  },
+  "tupleReview": {
+    "baseline": 1396,
+    "candidate": 1396,
+    "added": 0,
+    "removed": 0,
+    "semanticChanges": 0,
+    "sha256": "8f1c0fb378663b0b3d272efba2f211cb210eb6f17cb8035aefa33b56feeaf36a"
+  },
+  "delta": [
+    {
+      "path": "code/framework/api/src/main/java/io/cattle/platform/api/auth/ApiAuditPayload.java",
+      "before": "16122e192f490b7866d3b0af3ed4981184c938d8446ec9b7d4c892d68cf2d67d",
+      "after": "744807719901aa0827e5aa092ea15926011cd918cade1678052e2b8e111f13ec"
+    },
+    {
+      "path": "code/framework/api/src/main/java/io/cattle/platform/api/auth/ApiContainerLogsRead.java",
+      "before": null,
+      "after": "a90a9e5424d51cf91d04d412442b6fed14d689ae17ee3320ab14b9d4d2082a4b"
+    },
+    {
+      "path": "code/framework/api/src/main/java/io/cattle/platform/api/auth/ApiKeyAuditSink.java",
+      "before": "c04eec56c774f68254c832cc8916b57ec000d5fce3bd07e5cafb65260a48fe9b",
+      "after": "f741c60482b35c88852d548968aef200f8308db9077ea09bb19b6c3110b49076"
+    },
+    {
+      "path": "code/framework/auditing/src/main/java/io/cattle/platform/iaas/api/auditing/AuditServiceImpl.java",
+      "before": "e7c1539840b9ccb90dc966a9a592c82ed3f988f745629ce2926843761f83cd61",
+      "after": "bd9bee1c6600af44e6e7badeeb72831fff3824130c17662aa0b52a6270b4dbe4"
+    },
+    {
+      "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/ai/logs/AiContainerLogsInputHandler.java",
+      "before": null,
+      "after": "70a033bfd1c47e65fc8ea554f285114d9c6a344c44c61758cedd11bf05222c04"
+    },
+    {
+      "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/ai/logs/AiContainerLogsRunner.java",
+      "before": null,
+      "after": "8362b7821b5495773fae9760131cbe9bb8cba91c915846d76a340c20b9691653"
+    },
+    {
+      "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/ai/logs/AiContainerLogsService.java",
+      "before": null,
+      "after": "8851a6e0a741a5db0c983fdaf2d51f1854ea8e8140004364ed0ed97f85af6c0f"
+    },
+    {
+      "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/ai/logs/AiContainerLogsTicket.java",
+      "before": null,
+      "after": "6bf6691d381f1ca32acbb9eb0a2ece078777e618afc1705ad3983582fd7d002d"
+    },
+    {
+      "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/ai/view/AiResourceViewService.java",
+      "before": "c79d779bf078948c84ddc7004da7e53f77d1d6b9746a8aab73ab6f5750e6e4b0",
+      "after": "0ac2097cc679340736374e7517a3d6a1c94fc146434a9ac8625d9eefbd3c6228"
+    },
+    {
+      "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/apikey/ApiKeyAiBridgeGuard.java",
+      "before": null,
+      "after": "a9b8bf651edbd350d4c2149a326de7010058c73e13a5b89517275db6132f1c2f"
+    },
+    {
+      "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiResourceChangeDescriptor.java",
+      "before": "01f543ac0bf0a129f3c9a555fcd085da301d3ca75caef08a59d6399a84b57472",
+      "after": "8b67cc5bbef6aaa559653150e016c28f23dfc3377c25f47c51584b15073ce250"
+    },
+    {
+      "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiResourceChangeDomain.java",
+      "before": "5b3f558bb72278beb2c112c1b67f63084b96381416fc041ac23546e4fa40d1c2",
+      "after": "977d6c699d26fca757aabd213fd0a5404710cd21d0f6e84cd01b025c004ccbc8"
+    },
+    {
+      "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiResourceChangePlanService.java",
+      "before": "94226df1c7db16ccb022fdf6f475ac195ab866b496d4dbcbb0053390ef4e141b",
+      "after": "46bc0f8946fd54449a455c68c641bed457eff7772a12ea80366455c25904b3f8"
+    },
+    {
+      "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiServiceCreateChange.java",
+      "before": "807332acbad739f5c2a20e2f18a2e0af7a0ea92297d057825e2954f61a2d4110",
+      "after": "184c2a0644647b67e1aa33f6de7e39cad319047239babc98d6665fadbbad3b11"
+    },
+    {
+      "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiVolumeCreateChange.java",
+      "before": null,
+      "after": "df8218ae115a6772b599c51fcad8f0fd6398884ad0c267798a17bc171e7e87d0"
+    },
+    {
+      "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/integration/internal/rancher/TokenAuthLookup.java",
+      "before": "11c66db998415be5deab8a34df362dcb299a7b1a8df938ef1afb6f6602b71c91",
+      "after": "43c4f0454308e88c7aa59cdd5927951484cc35b02d6c0dc9a9e92f4c1014f216"
+    },
+    {
+      "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/upgrade/AiServiceUpgradePlanService.java",
+      "before": "7398ac81e4287ee2e950d2b86b8ce55fd574d8af40831044553514e729d8204d",
+      "after": "0db7885e92e533f6cf20dd399cc239295d985c26dc0da431953f5c5b65ccea31"
+    },
+    {
+      "path": "code/iaas/service-discovery/api/src/main/java/io/cattle/platform/servicediscovery/api/filter/AiServiceUpgradePersistence.java",
+      "before": null,
+      "after": "b437da188b9a2ad3ef8b59098c4d9ba61ed6a919a08243bbf788b1f8510ea664"
+    },
+    {
+      "path": "code/implementation/docker/api/src/main/java/io/cattle/platform/docker/api/ContainerLogsActionHandler.java",
+      "before": "de7d6b3742e154f75130f0a3dcb51a3f8a7511075726b0a0dc382431ac82f012",
+      "after": "ba87316a24c049d588dfe135ad3e29a76eeac44f4001fe3d5a27d46a4e4e04f3"
+    },
+    {
+      "path": "code/packaging/app-config/src/main/java/io/cattle/platform/app/IaasApiConfig.java",
+      "before": "3bc51cdbf8e1d4c71ca97f645fa0fb1bd4687d17d4a47feab416d10f4685b4e0",
+      "after": "5247d3f2f332d9c90399d6a8eb5ef4b8393c523908dc574e558c50f152ad8bdd"
+    },
+    {
+      "path": "resources/content/schema/admin/admin-auth.json",
+      "before": "1c5fe597971c097c2a87e3ed2e94be7bc6094630c0f5b6529d48b451720de7d7",
+      "after": "f381ab7daadaaa50021caaf85c71e402f339532695dcab9d4f0bdb4474fcd20e"
+    },
+    {
+      "path": "resources/content/schema/base/aiResourceChangePlan.json",
+      "before": "20c01d3957873ddd818623bb9ed69dad039ff7be7f42cf4e9c4ada96962a6647",
+      "after": "4f4e6bfd90c8adf054168008c9153e7d8b10c4278f586e1695a2c36f200eeaff"
+    },
+    {
+      "path": "resources/content/schema/base/aiResourceView.json",
+      "before": "01802e590d7b3c639c27544c1fff92ba5a93ba394ebe6a580e139363a04a9bed",
+      "after": "7c97b50f612d7046b25785fa461d484278124309fb88d385bd3b3ce9156d50a3"
+    },
+    {
+      "path": "resources/content/schema/base/aiServiceUpgradePlan.json",
+      "before": "5285ad2caab0e05e28fed27299e5ad114e84c15820bba9a9cfbfc45a163b62d0",
+      "after": "de02fa51ff9a12f94130450b4cc710227be2a21db003500b06ca797a96399652"
+    },
+    {
+      "path": "resources/content/schema/project/project-auth.json",
+      "before": "b2b3003f9b441c972959e1c418a5815f856ec4e87b6dabbcb4eb15c0769228b9",
+      "after": "c7cbfeca6d2801a56e7997c8d63f7ef44dc83992486ceb0b21bb497a5e184b4e"
+    },
+    {
+      "path": "resources/content/schema/user/user-auth.json",
+      "before": "71638082ce7a00b2961e5bf168ed7a04fb3f6e12a3de44c54608565d6be0e458",
+      "after": "c506e874dce1d1cba1e0ed59aea8bd7bb5410694851bab2dcb11de41a3b383b1"
+    },
+    {
+      "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/apikey/ApiKeyTargetResolver.java",
+      "before": "20425fe7f6bb65c50f7cea1b01e9d41dbdca363a033865d9d6c560723b63f398",
+      "after": "9c08d3d8988e9a4a4c7ce17875e380e271d5c669218e8db874d0d8451413f0a2"
+    }
+  ],
+  "roleFieldDelta": [
+    {
+      "role": "admin",
+      "changes": [
+        {
+          "path": "authorize.aiResourceView.logs",
+          "before": null,
+          "after": "r"
+        },
+        {
+          "path": "authorize.aiResourceView.tailLines",
+          "before": null,
+          "after": "cr"
+        },
+        {
+          "path": "authorize.aiServiceUpgradePlan.configurationChanges",
+          "before": null,
+          "after": "r"
+        },
+        {
+          "path": "authorize.aiServiceUpgradePlan.healthCheck",
+          "before": null,
+          "after": "cr"
+        },
+        {
+          "path": "authorize.aiServiceUpgradePlan.ports",
+          "before": null,
+          "after": "cr"
+        }
+      ]
+    },
+    {
+      "role": "user",
+      "changes": [
+        {
+          "path": "authorize.aiResourceView.logs",
+          "before": null,
+          "after": "r"
+        },
+        {
+          "path": "authorize.aiResourceView.tailLines",
+          "before": null,
+          "after": "cr"
+        },
+        {
+          "path": "authorize.aiServiceUpgradePlan.configurationChanges",
+          "before": null,
+          "after": "r"
+        },
+        {
+          "path": "authorize.aiServiceUpgradePlan.healthCheck",
+          "before": null,
+          "after": "cr"
+        },
+        {
+          "path": "authorize.aiServiceUpgradePlan.ports",
+          "before": null,
+          "after": "cr"
+        }
+      ]
+    },
+    {
+      "role": "project",
+      "changes": [
+        {
+          "path": "authorize.aiResourceView.logs",
+          "before": null,
+          "after": "r"
+        },
+        {
+          "path": "authorize.aiResourceView.tailLines",
+          "before": null,
+          "after": "cr"
+        },
+        {
+          "path": "authorize.aiServiceUpgradePlan.configurationChanges",
+          "before": null,
+          "after": "r"
+        },
+        {
+          "path": "authorize.aiServiceUpgradePlan.healthCheck",
+          "before": null,
+          "after": "cr"
+        },
+        {
+          "path": "authorize.aiServiceUpgradePlan.ports",
+          "before": null,
+          "after": "cr"
+        }
+      ]
+    }
+  ],
+  "typedBaseSchemaDelta": [
+    {
+      "path": "resources/content/schema/base/aiResourceChangePlan.json",
+      "changes": [
+        {
+          "path": "resourceFields.resourceType.options",
+          "before": [
+            "stack",
+            "service",
+            "container",
+            "externalService",
+            "dnsService",
+            "certificate",
+            "host",
+            "project",
+            "loadBalancerService",
+            "registry"
+          ],
+          "after": [
+            "stack",
+            "service",
+            "container",
+            "externalService",
+            "dnsService",
+            "certificate",
+            "host",
+            "project",
+            "loadBalancerService",
+            "registry",
+            "volume"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "resources/content/schema/base/aiResourceView.json",
+      "changes": [
+        {
+          "path": "resourceFields.logs",
+          "before": null,
+          "after": {
+            "type": "map[json]",
+            "create": false
+          }
+        },
+        {
+          "path": "resourceFields.tailLines",
+          "before": null,
+          "after": {
+            "type": "int",
+            "create": true,
+            "min": 1,
+            "max": 200
+          }
+        },
+        {
+          "path": "resourceFields.view.options",
+          "before": [
+            "stack_graph"
+          ],
+          "after": [
+            "stack_graph",
+            "container_logs"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "resources/content/schema/base/aiServiceUpgradePlan.json",
+      "changes": [
+        {
+          "path": "resourceFields.configurationChanges",
+          "before": null,
+          "after": {
+            "type": "array[json]",
+            "create": false,
+            "update": false
+          }
+        },
+        {
+          "path": "resourceFields.healthCheck",
+          "before": null,
+          "after": {
+            "type": "json",
+            "create": true,
+            "update": false,
+            "nullable": true
+          }
+        },
+        {
+          "path": "resourceFields.image.required",
+          "before": true,
+          "after": false
+        },
+        {
+          "path": "resourceFields.ports",
+          "before": null,
+          "after": {
+            "type": "array[string]",
+            "create": true,
+            "update": false,
+            "nullable": false
+          }
+        }
+      ]
+    }
+  ],
+  "requiredMethodCount": 402,
+  "requiredPackagedRootSources": [
+    "code/framework/api/src/main/java/io/cattle/platform/api/auth/ApiAuditPayload.java",
+    "code/framework/api/src/main/java/io/cattle/platform/api/auth/ApiContainerLogsRead.java",
+    "code/framework/api/src/main/java/io/cattle/platform/api/auth/ApiKeyAuditSink.java",
+    "code/framework/api/src/main/java/io/cattle/platform/api/auth/ClientToolAuditEvent.java",
+    "code/framework/auditing/src/main/java/io/cattle/platform/iaas/api/auditing/AuditLogKeySelector.java",
+    "code/framework/auditing/src/main/java/io/cattle/platform/iaas/api/auditing/AuditServiceImpl.java",
+    "code/framework/engine/src/main/java/io/cattle/platform/engine/process/ProcessAuthorization.java",
+    "code/framework/lock/src/main/java/io/cattle/platform/lock/Lock.java",
+    "code/framework/lock/src/main/java/io/cattle/platform/lock/provider/impl/StandardLock.java",
+    "code/framework/object/src/main/java/io/cattle/platform/object/impl/AbstractObjectManager.java",
+    "code/iaas/api-logic/src/main/java/io/cattle/platform/iaas/api/filter/instance/InstancePortsValidationFilter.java",
+    "code/iaas/api-logic/src/main/java/io/cattle/platform/iaas/api/port/InstanceCreatePortValidation.java",
+    "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/ai/AiToolCallEventService.java",
+    "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/ai/audit/AiAuditQueryInputHandler.java",
+    "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/ai/audit/AiAuditQueryService.java",
+    "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/ai/catalog/AiCatalogLaunchAccess.java",
+    "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/ai/catalog/AiCatalogLaunchDelegation.java",
+    "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/ai/catalog/AiCatalogLaunchPlanResourceManager.java",
+    "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/ai/catalog/AiCatalogLaunchPlanService.java",
+    "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/ai/logs/AiContainerLogsInputHandler.java",
+    "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/ai/logs/AiContainerLogsRunner.java",
+    "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/ai/logs/AiContainerLogsService.java",
+    "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/ai/logs/AiContainerLogsTicket.java",
+    "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/ai/view/AiApiKeyReadView.java",
+    "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/ai/view/AiAuditSourcePage.java",
+    "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/ai/view/AiProcessDiagnostics.java",
+    "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/ai/view/AiResourceViewService.java",
+    "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/apikey/ApiKeyAiBridgeGuard.java",
+    "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/apikey/ApiKeyProcessAuthorization.java",
+    "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/apikey/ApiKeyTargetResolver.java",
+    "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiAliasServiceChange.java",
+    "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiCreatePorts.java",
+    "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiExternalServiceChange.java",
+    "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiHostMetadataChange.java",
+    "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiLoadBalancerCreateChange.java",
+    "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiProjectMetadataChange.java",
+    "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiRegistryLifecycleChange.java",
+    "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiResourceChangeDescriptor.java",
+    "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiResourceChangeDomain.java",
+    "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiResourceChangePlanResourceManager.java",
+    "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiResourceChangePlanService.java",
+    "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiResourceChangePlanStore.java",
+    "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiResourceChangeProcessObserver.java",
+    "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiServiceCreateChange.java",
+    "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiServiceUpgradeLifecycleChange.java",
+    "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiVolumeCreateChange.java",
+    "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/integration/internal/rancher/TokenAuthLookup.java",
+    "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/projects/ProjectAccessService.java",
+    "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/projects/ProjectResourceManager.java",
+    "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/upgrade/AiServiceUpgradePlanInputHandler.java",
+    "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/upgrade/AiServiceUpgradePlanResourceManager.java",
+    "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/upgrade/AiServiceUpgradePlanService.java",
+    "code/iaas/model/src/main/java/io/cattle/platform/core/dao/HostDao.java",
+    "code/iaas/model/src/main/java/io/cattle/platform/core/dao/ServiceDao.java",
+    "code/iaas/model/src/main/java/io/cattle/platform/core/dao/VolumeDao.java",
+    "code/iaas/model/src/main/java/io/cattle/platform/core/dao/impl/AccountDaoImpl.java",
+    "code/iaas/model/src/main/java/io/cattle/platform/core/dao/impl/HostDaoImpl.java",
+    "code/iaas/model/src/main/java/io/cattle/platform/core/dao/impl/ServiceDaoImpl.java",
+    "code/iaas/model/src/main/java/io/cattle/platform/core/dao/impl/VolumeDaoImpl.java",
+    "code/iaas/service-discovery/api/src/main/java/io/cattle/platform/servicediscovery/api/action/SetServiceLinksActionHandler.java",
+    "code/iaas/service-discovery/api/src/main/java/io/cattle/platform/servicediscovery/api/dao/ServiceConsumeMapDao.java",
+    "code/iaas/service-discovery/api/src/main/java/io/cattle/platform/servicediscovery/api/filter/AiServiceUpgradePersistence.java",
+    "code/iaas/service-discovery/api/src/main/java/io/cattle/platform/servicediscovery/api/filter/ServiceUpgradeValidationFilter.java",
+    "code/iaas/service-discovery/api/src/main/java/io/cattle/platform/servicediscovery/api/lock/ServiceDiscoveryServiceSetLinksLock.java",
+    "code/iaas/service-discovery/api/src/main/java/io/cattle/platform/servicediscovery/api/service/ServiceUpgradeValidation.java",
+    "code/iaas/service-discovery/api/src/main/java/io/cattle/platform/servicediscovery/api/service/impl/ServiceDiscoveryApiServiceImpl.java",
+    "code/iaas/service-discovery/server/src/main/java/io/cattle/platform/servicediscovery/dao/impl/ServiceConsumeMapDaoImpl.java",
+    "code/iaas/service-discovery/server/src/main/java/io/cattle/platform/servicediscovery/process/LoadBalancerServiceCreatePostListener.java",
+    "code/implementation/docker/api/src/main/java/io/cattle/platform/docker/api/ContainerLogsActionHandler.java",
+    "code/packaging/app-config/src/main/java/io/cattle/platform/app/IaasApiConfig.java",
+    "code/packaging/app-config/src/main/java/io/cattle/platform/app/SystemServicesConfig.java"
+  ],
+  "currentRoots": 21,
+  "carriedSourceRoots": 50,
+  "frozenV1SourceSerFilesUnchanged": true,
+  "compiledRoleSchemaProof": "PENDING_FRESH_EFFECTIVE_ROLE_PROJECTIONS_NO_FORCED_EQUALITY",
+  "compiledClassHashes": null,
+  "artifactQualificationClaimed": false,
+  "runtimeAcceptanceClaimed": false,
+  "extractor": {
+    "path": "C:\\Users\\chen21019\\source\\outputs\\webmcp-expansion-20261029\\integration-360-201\\refresh-integrated-operation-contract.py",
+    "sha256": "078ffe48881469fe5eb3cb43a15fa41b480fe70e11bd5f63102ded6b35a6d076",
+    "bytes": 16386
+  },
+  "nativeLbImageEnsureFix": {
+    "source": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/apikey/ApiKeyTargetResolver.java",
+    "sourceSha256": "9c08d3d8988e9a4a4c7ce17875e380e271d5c669218e8db874d0d8451413f0a2",
+    "newRequiredMethods": 5,
+    "nativeAcceptance": "PENDING_ROOT_ONLY",
+    "originalFailure": "tcp7e",
+    "compiledHashes": null
+  }
+}

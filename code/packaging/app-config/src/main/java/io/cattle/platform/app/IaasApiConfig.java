@@ -958,6 +958,18 @@ public class IaasApiConfig {
     AiToolCallEventResourceManager AiToolCallEventResourceManager() { return new AiToolCallEventResourceManager(); }
 
     @Bean
+    io.cattle.platform.iaas.api.auth.ai.logs.AiContainerLogsService AiContainerLogsService() {
+        return new io.cattle.platform.iaas.api.auth.ai.logs.AiContainerLogsService();
+    }
+    @Bean
+    io.cattle.platform.iaas.api.auth.ai.logs.AiContainerLogsRunner AiContainerLogsRunner() {
+        return new io.cattle.platform.iaas.api.auth.ai.logs.AiContainerLogsRunner();
+    }
+    @Bean
+    io.cattle.platform.iaas.api.auth.ai.logs.AiContainerLogsInputHandler AiContainerLogsInputHandler(ExtensionManagerImpl em) {
+        return EMUtils.add(em, ApiRequestHandler.class, new io.cattle.platform.iaas.api.auth.ai.logs.AiContainerLogsInputHandler());
+    }
+    @Bean
     AiResourceViewService AiResourceViewService() { return new AiResourceViewService(); }
 
     @Bean

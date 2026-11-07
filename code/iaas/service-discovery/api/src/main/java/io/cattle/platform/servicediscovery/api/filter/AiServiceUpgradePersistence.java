@@ -28,6 +28,7 @@ public class AiServiceUpgradePersistence extends AbstractJooqDao {
         int changed = create().update(SERVICE).set(SERVICE.DATA, service.getData())
                 .where(SERVICE.ID.eq(service.getId()).and(SERVICE.ACCOUNT_ID.eq(service.getAccountId()))
                         .and(SERVICE.STATE.eq("active")).and(SERVICE.REMOVED.isNull())
+                        .and(snapshot.containsKey("targetUuid") ? SERVICE.UUID.eq((String) snapshot.get("targetUuid")) : DSL.trueCondition())
                         .and(SERVICE.NAME.eq((String) snapshot.get("name")))
                         .and(snapshot.get("selectorContainer") == null ? SERVICE.SELECTOR_CONTAINER.isNull()
                                 : SERVICE.SELECTOR_CONTAINER.eq((String) snapshot.get("selectorContainer")))

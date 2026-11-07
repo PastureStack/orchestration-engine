@@ -1,5 +1,14 @@
 # Compatibility Contract
 
+## Upcoming Engine 0.183.384 source candidate
+
+Requires matching Web Console 1.6.224 / Bridge 0.2.26 and a newly qualified
+Server assembly. Required methods retain all 395 previous identities and add five LB image
+dependency regressions (330 union 70 = 400); source roots are the original 59
+union 21 affected = 71 (21 current / 50 unchanged source roots). Fresh effective-role projections and
+class hashes remain pending; no all-16-schema equality assumption is carried.
+Native HTTP tuples/authority remain unchanged. Source review is not native PASS.
+
 ## Engine 0.183.383 published
 
 [The immutable release](https://github.com/PastureStack/orchestration-engine/releases/tag/v0.183.383)

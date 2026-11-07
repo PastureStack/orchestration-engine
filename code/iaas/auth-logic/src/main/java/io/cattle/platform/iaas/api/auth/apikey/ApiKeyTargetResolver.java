@@ -1565,7 +1565,7 @@ public class ApiKeyTargetResolver {
             Instance instance = liveInstance(volume.getInstanceId(), volume.getAccountId(), owner);
             String rootType = root instanceof Instance ? "container" : root instanceof Volume ? "volume" : root instanceof Service ? "service" : "stack";
             if (!Integer.valueOf(0).equals(volume.getDeviceNumber())
-                    || !(binding.get("targetType") instanceof String type) || !rootType.equals(ApiKeyQueryScopes.canonical(type))
+                    || !(binding.get("targetType") instanceof String type) || !imageDependencyRootType(root, rootType, type)
                     || !(binding.get("targetId") instanceof String id)
                     || !Objects.equals(ObjectUtils.getPropertyIgnoreErrors(root, "id"), executionResourceId(rootType, id))
                     || !Objects.equals(ObjectUtils.getPropertyIgnoreErrors(root, "accountId"), volume.getAccountId())
@@ -1718,7 +1718,8 @@ public class ApiKeyTargetResolver {
                 || !frame.rootAuthorization().equals(binding)) denied("KeyScopeDenied");
         String rootType = root instanceof Instance ? "container" : root instanceof Service ? "service" : root instanceof Stack ? "stack" : null;
         if (rootType == null || !(binding.get("targetType") instanceof String type)
-                || !rootType.equals(ApiKeyQueryScopes.canonical(type)) || !(binding.get("targetId") instanceof String id)
+                || !imageDependencyRootType(root, rootType, type)
+                || !(binding.get("targetId") instanceof String id)
                 || !Objects.equals(ObjectUtils.getPropertyIgnoreErrors(root, "id"), executionResourceId(rootType, id))) denied("KeyScopeDenied");
         Volume volume = liveResource(Volume.class, executionResourceId("volume", frame.resourceId()), owner);
         LifecycleDependency owned = resolveLifecycleDependency(root, volume, owner);
@@ -1775,6 +1776,12 @@ public class ApiKeyTargetResolver {
             resources.add(ApiKeyPolicyEvaluator.Target.platformResource("imageStoragePoolMap", format("imageStoragePoolMap", cache.getId())));
         }
         return new LifecycleDependency(owned.scope(), List.copyOf(resources));
+    }
+
+    private boolean imageDependencyRootType(Object root, String nativeType, String declaredType) {
+        return nativeType.equals(ApiKeyQueryScopes.canonical(declaredType))
+                || root instanceof Service service && "loadBalancerService".equals(declaredType)
+                    && "loadBalancerService".equals(service.getKind());
     }
 
     private ImageStoragePoolMap sharedImageCache(ImageStoragePoolMap supplied) {

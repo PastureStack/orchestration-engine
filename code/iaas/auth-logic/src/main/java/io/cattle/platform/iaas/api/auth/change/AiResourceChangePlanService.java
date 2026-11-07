@@ -62,6 +62,7 @@ public class AiResourceChangePlanService {
                 plan.put("parameters", parameters); plan.put("body", body);
                 if (AiAliasServiceChange.referenceOperation(descriptor))
                     plan.put("referenceSnapshot", domain.aliasReferenceSnapshot(request, descriptor, resourceId, parameters));
+                if (AiVolumeCreateChange.supports(descriptor)) plan.put("referenceSnapshot", domain.volumeCreateScope(request));
                 if (AiLoadBalancerCreateChange.supports(descriptor))
                     plan.put("referenceSnapshot", domain.loadBalancerCreateReferences(request, descriptor, parameters));
                 if (AiResourceChangeDomain.loadBalancerOwned(descriptor))
@@ -117,8 +118,19 @@ public class AiResourceChangePlanService {
                 owned(plan, request); AiResourceChangeDescriptor descriptor = descriptor(plan);
                 if (!descriptor.createsResource()) domain.visible(request, descriptor, text(plan.get("resourceId")));
                 domain.parent(request, descriptor, map(plan.get("parameters")));
-                domain.prepare(request, descriptor, text(plan.get("resourceId")), map(plan.get("parameters")), plan);
-                result.add(output(plan));
+                try {
+                    domain.prepare(request, descriptor, text(plan.get("resourceId")), map(plan.get("parameters")), plan);
+                    result.add(output(plan));
+                } catch (ClientVisibleException stale) {
+                    if (!AiAliasServiceChange.ordinaryLinks(descriptor) || stale.getStatus() != 409
+                            || !"ResourceChangePlanStale".equals(stale.getCode())) throw stale;
+                    // prepare already checked the live bound Key and native write ceiling.
+                    // Recheck reviewed identities; a changed map set may prevent apply, not cancellation.
+                    owned(plan, request);
+                    Map<String, Object> cancellable = new LinkedHashMap<>(plan);
+                    cancellable.put("messageCode", "ResourceChangePlanStale");
+                    result.add(output(cancellable));
+                }
             } catch (ClientVisibleException denied) { if (denied.getStatus() >= 500) throw denied; }
         }
         audit(request, "read", Map.of(), true, "ResourceChangePendingPlansRead");
@@ -191,8 +203,13 @@ public class AiResourceChangePlanService {
                             Object createdId = ObjectUtils.getId(result);
                             long numericId = createdId instanceof Number numeric ? numeric.longValue()
                                     : domain.internalId(descriptor.resourceType(), text(createdId));
+                            if (AiVolumeCreateChange.supports(descriptor) && (!(result instanceof io.cattle.platform.core.model.Volume volume)
+                                    || !Objects.equals(volume.getAccountId(), number(plan.get("accountId")))
+                                    || (createdId instanceof Number ? AiAliasServiceChange.nativeId(createdId)
+                                        : domain.internalId("volume", text(createdId))) != numericId))
+                                throw new IllegalStateException("Created Volume identity unavailable");
                             if (numericId <= 0) throw new IllegalStateException("Created resource identity unavailable");
-                            if (Set.of("service", "loadBalancerService").contains(descriptor.resourceType())) {
+                            if (Set.of("service", "loadBalancerService", "volume").contains(descriptor.resourceType())) {
                                 Object uuid = ObjectUtils.getPropertyIgnoreErrors(result, "uuid");
                                 if (!(uuid instanceof String identity) || identity.isBlank())
                                     throw new IllegalStateException("Created Service identity unavailable");
@@ -270,6 +287,10 @@ public class AiResourceChangePlanService {
         AiResourceChangeDescriptor descriptor = descriptor(plan);
         Object target = domain.receiptTarget(request, descriptor, plan);
         Map<String, Object> before = map(plan.get("snapshot"));
+        if (AiVolumeCreateChange.supports(descriptor)) {
+            before.put("volumeCreateId", plan.get("internalResourceId")); before.put("volumeCreateUuid", plan.get("createdResourceUuid"));
+            before.put("volumeCreateAccountId", plan.get("accountId"));
+        }
         if (AiLoadBalancerCreateChange.supports(descriptor)) before.put("loadBalancerCreateBody", plan.get("body"));
         String lifecycleOutcome = AiServiceUpgradeLifecycleChange.supports(descriptor) ? domain.upgradeLifecycleProcessOutcome(plan, target) : null;
         if (AiServiceUpgradeLifecycleChange.supports(descriptor)) before.put("retirementSnapshot", plan.get("retirementSnapshot"));
