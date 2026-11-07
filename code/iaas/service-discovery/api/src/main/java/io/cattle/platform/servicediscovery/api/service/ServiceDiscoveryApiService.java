@@ -12,6 +12,11 @@ public interface ServiceDiscoveryApiService {
 
     void removeServiceLink(Service service, ServiceLink serviceLink);
 
+    /** Full-set replacement owns exact (target, name) identities; singular legacy actions retain their existing semantics. */
+    void addServiceLinkExactPair(Service service, ServiceLink serviceLink);
+
+    void removeServiceLinkExactPair(Service service, ServiceLink serviceLink);
+
     List<? extends Service> listStackServices(long stackId);
 
     Map.Entry<String, String> buildComposeConfig(List<? extends Service> services, Stack stack);

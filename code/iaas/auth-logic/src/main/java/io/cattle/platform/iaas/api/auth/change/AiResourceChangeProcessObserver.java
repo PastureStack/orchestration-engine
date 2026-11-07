@@ -32,6 +32,7 @@ public class AiResourceChangeProcessObserver implements ProcessAuthorizationHook
     @Inject ApiKeyTargetResolver targets;
     @Inject io.cattle.platform.json.JsonMapper json;
     @Inject io.cattle.platform.servicediscovery.api.service.ServiceCreateValidation serviceCreateValidation;
+    @Inject jakarta.inject.Provider<io.cattle.platform.servicediscovery.api.service.ServiceDeploymentReadiness> deploymentReadiness;
 
     /** No HTTP field/header can construct this private, request-identity-bound value. */
     private record Dispatch(ApiRequest request, String id) { }
@@ -63,6 +64,15 @@ public class AiResourceChangeProcessObserver implements ProcessAuthorizationHook
             if (plan == null || !(plan.get("parameters") instanceof Map<?, ?> approved) || approved.isEmpty()
                     || !Set.of("name", "description").containsAll(approved.keySet()) || !approved.equals(request.getRequestObject()))
                 throw new IllegalStateException("Resource-change metadata request unavailable");
+        }
+        if (AiResourceChangePlanStore.loadBalancerScale(binding)) {
+            Map<String, Object> plan = store.load(id);
+            if (plan == null || !id.equals(plan.get("operationId")) || !"dispatching".equals(plan.get("status"))
+                    || !"loadBalancerService".equals(plan.get("resourceType")) || !"scale".equals(plan.get("operation"))
+                    || !(plan.get("parameters") instanceof Map<?, ?> approved) || !Set.of("scale").equals(approved.keySet())
+                    || !(approved.get("scale") instanceof Integer scale) || scale < 1
+                    || !approved.equals(plan.get("body")) || !approved.equals(request.getRequestObject()))
+                throw new IllegalStateException("Approved resource-change scale request unavailable");
         }
         if (AiProjectMetadataChange.metadataBinding(binding) && !approvedProjectRequest(id, request))
             throw new IllegalStateException("Resource-change metadata request unavailable");
@@ -141,7 +151,8 @@ public class AiResourceChangeProcessObserver implements ProcessAuthorizationHook
         if (metadata.get("requestId") instanceof String id && id.matches("aichange-[0-9a-f-]{36}")
                 && "loadBalancerService".equals(metadata.get("targetType")) && "PUT".equals(metadata.get("requestMethod"))
                 && "service".equals(config.getResourceType()) && "service.update".equals(config.getProcessName())
-                && !attestsLoadBalancerMetadata(config, metadata)) throw new ProcessAuthorizationDeniedException("OwnerPermissionDenied");
+                && !(attestsLoadBalancerMetadata(config, metadata) || attestsLoadBalancerScale(config, metadata)))
+            throw new ProcessAuthorizationDeniedException("OwnerPermissionDenied");
         if (requiresProjectMetadataAttestation(config, metadata) && !attestsProjectMetadataExecution(config, metadata))
             throw new ProcessAuthorizationDeniedException("OwnerPermissionDenied");
     }
@@ -541,6 +552,59 @@ public class AiResourceChangeProcessObserver implements ProcessAuthorizationHook
         }
         return false;
     }
+    /** Scale shares the native PUT process with metadata, but never its approved field set. */
+    private boolean attestsLoadBalancerScale(LaunchConfiguration config, Map<String, Object> metadata) {
+        if (!(metadata.get("requestId") instanceof String id) || !id.matches("aichange-[0-9a-f-]{36}")
+                || !(config instanceof ProcessRecord record) || record.getId() == null || record.getId() <= 0
+                || !ProcessAuthorization.metadata(config).equals(metadata)) return false;
+        for (int attempt = 0; attempt < 2; attempt++) {
+            Map<String, Object> binding = store.execution(id), plan = store.load(id);
+            if (!AiResourceChangePlanStore.loadBalancerScale(binding) || plan == null || !id.equals(plan.get("operationId"))
+                    || !"loadBalancerService".equals(plan.get("resourceType")) || !"scale".equals(plan.get("operation"))
+                    || !(binding.get("rootUuid") instanceof String rootUuid) || rootUuid.isBlank()
+                    || !(binding.get("rootStackUuid") instanceof String stackUuid) || stackUuid.isBlank()
+                    || number(binding.get("rootId")) <= 0 || number(binding.get("rootStackId")) <= 0
+                    || !metadataMatches(binding, metadata) || !provenChild(binding, config, metadata)
+                    || !(plan.get("parameters") instanceof Map<?, ?> approved) || !Set.of("scale").equals(approved.keySet())
+                    || !(approved.get("scale") instanceof Integer scale) || scale < 1
+                    || !approved.equals(plan.get("body")) || config.getData() == null
+                    || !Objects.equals(scale, config.getData().get("scale"))
+                    || !(plan.get("snapshot") instanceof Map<?, ?> before)
+                    || !(before.get("loadBalancerConfiguration") instanceof Map<?, ?> configuration)
+                    || !(plan.get("referenceSnapshot") instanceof Map<?, ?> parent)
+                    || !Objects.equals(before.get("uuid"), binding.get("rootUuid"))
+                    || number(before.get("id")) != number(binding.get("rootId"))
+                    || number(before.get("accountId")) != number(binding.get("accountId"))
+                    || !"loadBalancerService".equals(before.get("kind"))
+                    || number(before.get("stackId")) != number(binding.get("rootStackId"))
+                    || number(parent.get("id")) != number(binding.get("rootStackId"))
+                    || !Objects.equals(parent.get("uuid"), binding.get("rootStackUuid"))
+                    || number(parent.get("accountId")) != number(binding.get("accountId"))
+                    || !(config.getData().get("old") instanceof Map<?, ?> old) || !Set.of("scale").equals(old.keySet())
+                    || !configuration.containsKey("scale") || !Objects.equals(configuration.get("scale"), old.get("scale"))) return false;
+            Set<String> reserved = Set.of("old", ProcessAuthorization.DATA_KEY, ProcessAuthorization.CAPTURED_EXECUTION_KEY,
+                    ProcessAuthorization.VERIFIED_CHILD_KEY, ProcessAuthorization.COMPLETION_PENDING_KEY);
+            for (String field : config.getData().keySet()) if (!"scale".equals(field) && !reserved.contains(field)) return false;
+            Object root = objects.loadResource("service", number(binding.get("rootId")));
+            if (!(root instanceof Service service) || !Set.of("active", "inactive").contains(service.getState() == null ? "" : service.getState())
+                    || !Objects.equals(scale, io.cattle.platform.object.util.DataAccessor.fieldInteger(service, "scale"))
+                    || deploymentReadiness == null || !deploymentReadiness.get().supportsManualScale(service)) return false;
+            var persisted = objects.loadResource(io.cattle.platform.core.model.ProcessInstance.class, record.getId());
+            if (persisted == null || persisted.getEndTime() != null || !Objects.equals(persisted.getId(), record.getId())
+                    || !Objects.equals(persisted.getAccountId(), config.getAccountId())
+                    || !Objects.equals(persisted.getProcessName(), config.getProcessName())
+                    || !Objects.equals(persisted.getResourceType(), config.getResourceType())
+                    || !Objects.equals(persisted.getResourceId(), config.getResourceId()) || !Objects.equals(persisted.getData(), config.getData())
+                    || !(persisted.getData().get(ProcessAuthorization.DATA_KEY) instanceof Map<?, ?> raw)
+                    || !metadata.equals(raw) || !metadata.equals(ProcessAuthorization.sanitize(raw))) return false;
+            if (binding.get("rootProcessId") instanceof Number prior)
+                return prior.longValue() == record.getId() && store.loadBalancerScaleExecutionActive(id, binding);
+            Map<String, Object> after = new LinkedHashMap<>(binding); after.put("rootProcessId", record.getId());
+            if (store.attestLoadBalancerScaleProcess(id, binding, after)) return true;
+        }
+        return false;
+    }
+
     private boolean attestsLoadBalancerMetadata(LaunchConfiguration config, Map<String, Object> metadata) {
         if (!(metadata.get("requestId") instanceof String id) || !id.matches("aichange-[0-9a-f-]{36}")
                 || !(config instanceof ProcessRecord record) || record.getId() == null || record.getId() <= 0

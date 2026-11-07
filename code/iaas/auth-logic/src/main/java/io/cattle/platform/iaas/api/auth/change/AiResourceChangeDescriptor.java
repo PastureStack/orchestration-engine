@@ -29,7 +29,7 @@ public record AiResourceChangeDescriptor(String resourceType, String operation, 
         }
         add(result, "volume", "create", "POST", null, "create", Set.of("name", "description"));
         add(result, "service", "scale", "PUT", null, "update", Set.of("scale"));
-        add(result, "service", "update_links", "POST", "setservicelinks", "update", Set.of("serviceIds"));
+        add(result, "service", "update_links", "POST", "setservicelinks", "update", Set.of("serviceIds", "links"));
         add(result, "service", "finish_upgrade", "POST", "finishupgrade", "upgrade", Set.of());
         add(result, "service", "rollback", "POST", "rollback", "upgrade", Set.of());
         add(result, "service", "cancel_upgrade", "POST", "cancelupgrade", "upgrade", Set.of());
@@ -90,6 +90,8 @@ public record AiResourceChangeDescriptor(String resourceType, String operation, 
     public Map<String, Object> parameters(Object value) {
         if (AiVolumeCreateChange.supports(this)) return AiVolumeCreateChange.parameters(value);
         if (AiLoadBalancerCreateChange.supports(this)) return AiLoadBalancerCreateChange.parameters(parameterNames, value);
+        if (AiAliasServiceChange.ordinaryLinks(this) && value instanceof Map<?, ?> input && input.containsKey("links"))
+            return AiNamedServiceLinks.parameters(value);
         if (AiAliasServiceChange.ordinaryLinks(this)) return AiAliasServiceChange.parameters(operation, parameterNames, value);
         if ("dnsService".equals(resourceType)) return AiAliasServiceChange.parameters(operation, parameterNames, value);
         if ("externalService".equals(resourceType)) return AiExternalServiceChange.parameters(operation, parameterNames, value);
@@ -148,6 +150,7 @@ public record AiResourceChangeDescriptor(String resourceType, String operation, 
     public Map<String, Object> body(Map<String, Object> parameters) {
         if (AiVolumeCreateChange.supports(this)) return AiVolumeCreateChange.body(parameters);
         if (AiLoadBalancerCreateChange.supports(this)) return AiLoadBalancerCreateChange.body(parameters);
+        if (AiNamedServiceLinks.supports(this, parameters)) return Map.of("serviceLinks", AiNamedServiceLinks.rows(parameters));
         if (AiAliasServiceChange.ordinaryLinks(this)) return AiAliasServiceChange.body(operation, parameters);
         if (changesArchive()) return new LinkedHashMap<>(Map.of("archived", "archive".equals(operation)));
         if ("externalService".equals(resourceType)) return AiExternalServiceChange.body(operation, parameters);

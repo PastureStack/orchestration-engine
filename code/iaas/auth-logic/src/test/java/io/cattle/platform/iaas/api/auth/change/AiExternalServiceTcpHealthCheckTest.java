@@ -187,4 +187,29 @@ public class AiExternalServiceTcpHealthCheckTest {
             var result = new FieldImpl(); result.setType(type); result.setCreate(true); result.setNullable(true); return result;
         }
     }
+
+    @org.junit.Test public void externalHttpCreateUsesExistingBoundAndStillRequiresExactNativeFields() {
+        var descriptor = AiResourceChangeDescriptor.require("externalService", "create");
+        var health = java.util.Map.<String, Object>of("port", 80, "requestLine", "GET /health HTTP/1.0", "interval", 2000);
+        var params = descriptor.parameters(java.util.Map.of("name", "http-backend", "stackId", "1st8", "hostname", "backend.invalid", "healthCheck", health));
+        var body = descriptor.body(params); org.junit.Assert.assertEquals(health, body.get("healthCheck"));
+        Fixture nativeDomain = new Fixture(); var nativeParameters = nativeDomain.parameters(health);
+        org.junit.Assert.assertEquals("GET /health HTTP/1.0", ((java.util.Map<?, ?>) nativeDomain.domain.prepare(nativeDomain.request,
+                descriptor, null, nativeParameters).get("healthCheck")).get("requestLine"));
+        nativeDomain.healthFields.get("requestLine").setCreate(false);
+        assertDenied(() -> nativeDomain.domain.prepare(nativeDomain.request, descriptor, null, nativeParameters));
+        org.junit.Assert.assertTrue(AiExternalServiceChange.healthCheckMatches(health, health));
+        var changed = new java.util.LinkedHashMap<String, Object>(health); changed.put("requestLine", "GET /other HTTP/1.0");
+        org.junit.Assert.assertFalse(AiExternalServiceChange.healthCheckMatches(health, changed));
+        for (Object invalid : java.util.List.of(17, "x".repeat(1025), "GET / HTTP/1.0\r\nHost: secret", "x\u0000")) {
+            var bad = new java.util.LinkedHashMap<String, Object>(health); bad.put("requestLine", invalid);
+            org.junit.Assert.assertThrows(io.github.ibuildthecloud.gdapi.exception.ClientVisibleException.class,
+                    () -> descriptor.parameters(java.util.Map.of("name", "http-backend", "stackId", "1st8", "hostname", "backend.invalid", "healthCheck", bad)));
+        }
+        var tcp = java.util.Map.<String, Object>of("port", 80, "interval", 2000);
+        var nativeTcp = new java.util.LinkedHashMap<String, Object>(tcp); nativeTcp.put("requestLine", null);
+        org.junit.Assert.assertTrue(AiExternalServiceChange.healthCheckMatches(tcp, nativeTcp));
+        org.junit.Assert.assertNull(((java.util.Map<?, ?>) descriptor.body(descriptor.parameters(java.util.Map.of("name", "tcp", "stackId", "1st8", "hostname", "backend.invalid", "healthCheck", tcp))).get("healthCheck")).get("requestLine"));
+    }
+
 }

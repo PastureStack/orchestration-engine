@@ -115,6 +115,25 @@ public class ServiceDiscoveryApiServiceImpl implements ServiceDiscoveryApiServic
     }
 
     @Override
+    public void addServiceLinkExactPair(Service service, ServiceLink serviceLink) {
+        ServiceDiscoveryServiceSetLinksLock.withLock(lockManager, service.getId(), () -> {
+            consumeMapDao.createServiceLinkExactPair(service, serviceLink); return null;
+        });
+    }
+
+    @Override
+    public void removeServiceLinkExactPair(Service service, ServiceLink serviceLink) {
+        ServiceDiscoveryServiceSetLinksLock.withLock(lockManager, service.getId(), () -> {
+            ServiceConsumeMap map = consumeMapDao.findConsumedMapsForMutation(service.getId()).stream()
+                    .filter(row -> new ServiceLink(row.getConsumedServiceId(), row.getName(), row.getConsumedService())
+                            .getUuid().equals(serviceLink.getUuid()))
+                    .findFirst().orElse(null);
+            if (map != null) objectProcessManager.scheduleProcessInstance(ServiceConstants.PROCESS_SERVICE_CONSUME_MAP_REMOVE, map, null);
+            return null;
+        });
+    }
+
+    @Override
     public void removeServiceLink(Service service, ServiceLink serviceLink) {
         ServiceDiscoveryServiceSetLinksLock.withLock(lockManager, service.getId(), () -> {
             // Mutation reads are current even when API validation established an older RR snapshot.

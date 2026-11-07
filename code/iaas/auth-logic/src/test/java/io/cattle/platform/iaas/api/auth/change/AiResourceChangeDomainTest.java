@@ -497,7 +497,7 @@ public class AiResourceChangeDomainTest {
             var denied = assertThrows(ClientVisibleException.class, () -> service.preview(f.request));
             assertEquals(422, denied.getStatus()); assertEquals("InvalidReference", denied.getCode());
             verify(audit).recordResourceChangeDecision(eq(f.request), eq(f.policy), eq("preview"), startsWith("aichange-"),
-                    eq("aiResourceChangePlan"), isNull(), eq(false), eq("InvalidReference"));
+                    eq("dnsService"), eq(7L), eq(false), eq("InvalidReference"));
             verify(service.store, never()).insert(anyMap());
             verify(manager, never()).resourceAction(anyString(), any());
             assertSame(f.request, ApiContext.getContext().getApiRequest());

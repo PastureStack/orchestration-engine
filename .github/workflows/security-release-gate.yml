@@ -59,6 +59,14 @@ jobs:
           import xml.etree.ElementTree as ET
 
           required = {
+              'io.cattle.platform.servicediscovery.api.service.impl.ServiceNamedLinkPairOwnerTest': {
+                  'replacementRemovesOnlyTheExactAliasWhileLegacyNullRemovalKeepsItsContract',
+              },
+              'io.cattle.platform.iaas.api.auth.change.AiLoadBalancerScaleExecutionTest': {
+                  'scaleCannotBorrowMetadataForeignIdentityOrMutatedProcessPayload',
+                  'scaleAttestationKeepsLiveFullCustomReadRevocationRoleAndGlobalChecks',
+                  'approvedScaleTwoHasItsOwnExactActiveAndInactiveFullAndLegacyFrame',
+              },
               'io.cattle.platform.iaas.api.auth.change.AiResourceChangeValidationFieldTest': {
                   'safeNativeValidationFieldRetainsStatusCodeWithoutValuesOrPrivateNativeText',
                   'malformedOversizedAndUnknownValidationPathsKeepOnlySanitizedStatusCode',
@@ -288,6 +296,8 @@ jobs:
                   'staleInboxExceptionNeverRescuesRoleKeyTargetOrOtherConflicts',
                   'nativeAndDirectDenialsKeepOnlyTheirStatusAndCodeBeforeAnyPlanIsStored',
                   'ordinaryLinkConfirmationAndApplyCasIncludeSourceParentMapAndConsumedUuid',
+                  'deniedPreviewAuditsOnlyTheCurrentNativeVisibleTarget',
+                  'unreadableAndEarlyInvalidPreviewsNeverAttestTheRequestedTarget',
               },
               'io.cattle.platform.iaas.api.auth.change.AiExternalServiceChangeTest': {
                   'createReceiptRequiresExactTcpReadbackAndOmittedHealthCheckStaysNone',
@@ -295,6 +305,7 @@ jobs:
                   'tcpHealthCheckIsClosedCreateOnlyAndRejectsInvalidNumbersWithoutDefaults',
               },
               'io.cattle.platform.iaas.api.auth.change.AiExternalServiceTcpHealthCheckTest': {
+                  'externalHttpCreateUsesExistingBoundAndStillRequiresExactNativeFields',
                   'approvedTcpSurvivesJsonReloadHumanReviewNativeDispatchAndOneReceipt',
                   'changedApprovedTcpBodyAndCurrentRoleCannotReachTheDurableClaim',
                   'nativeRoleRemovalHttpFallbackAndBoundKeyRevocationFailBeforeMutation',
@@ -502,6 +513,8 @@ jobs:
                   'registryEndpointSearchRetainsBoundedNativeRoleAndKeyQueryWithoutInventingNameMatches',
               },
               'io.cattle.platform.iaas.api.auth.apikey.ApiKeyAliasServiceDependencyTest': {
+                  'plainFrameReferenceShapeAndUntrustedNativeCallBoundaryStayUnchanged',
+                  'namedOrdinaryLinksPinAliasToTheSameVerifiedFrameAndKeepAllCurrentCeilings',
                   'legacyRevisionZeroRetainsNativeQueuedAuthorizationAndFreshReadCeilings',
                   'ordinaryQueuedCapabilityRequiresThePrivateTypedOwnerAndCannotComeFromPayload',
                   'typedOrdinaryLinksCaptureExactNativeMapsAndRecheckLiveAuthority',
@@ -518,6 +531,8 @@ jobs:
                   'persistedOrdinaryIdentityNumbersMustBePositiveExactNativeIntegers',
               },
               'io.cattle.platform.iaas.api.auth.change.AiOrdinaryServiceLinksTest': {
+                  'namedLinksUseNativePairIdentityAndLeaveLegacyBranchClosed',
+                  'namedLinksAddRenameRemoveClearAndPreserveCurrentServiceConfiguration',
                   'beforeSetIsCollectedFromAllNativeMapsAndComplexOrOversizedSetsReject',
                   'completionReadsTheActualSettledSetAndPreservesStateConfigurationAndInstanceStarts',
                   'nativeIdentityPinsNeverTruncateFractionalNonFiniteOverflowOrStringValues',
@@ -556,6 +571,7 @@ jobs:
                   'everyMapRemovalStateUsesTheSharedMutexAndRetriesWithoutTerminalDenial',
               },
               'io.cattle.platform.servicediscovery.dao.impl.ServiceLinksMutationCurrentReadTest': {
+                  'fullSetExactPairCreateKeepsLegacyNullLookupAndSupportsAliasToPlain',
                   'bulkCloneTakesEverySourceMutexInSortedOrderBeforeAnyEdge',
                   'directCloneDaoWaitsForTheWholeSetOwnerBeforeTakingItsEdgeLock',
                   'mutationUsesCurrentRowsWhilePreMutexValidationRemainsNonLocking',

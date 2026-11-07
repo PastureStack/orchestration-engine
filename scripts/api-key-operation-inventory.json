@@ -220,17 +220,17 @@
     "defaultProcesses": "ebf41ab873c349656c307511712674e0db434a9c4986e08d03ec35d92bdcd6a7"
   },
   "currentSourceReview": {
-    "version": "unreleased-385-stack-group",
+    "version": "unreleased-386-links-http-lb-scale",
     "status": "SOURCE_REEXTRACTED_NOT_ARTIFACT_OR_RUNTIME_ACCEPTANCE",
-    "baseCommit": "6ead99132f575b05c564f94882f59088f19e7511",
+    "baseCommit": "1bd87ed39b0ccae7852c7407003692f35ecf83da",
     "sourceCandidate": "STAGED_NOT_COMMITTED",
     "producerCommit": null,
     "contract": "scripts/api-key-operation-contract.json",
-    "contractSha256": "1f0bead30bfe5dd9ebf76b1a60f20f96c52952bb0e4129f36bbc02641fc83734",
+    "contractSha256": "a6685e36bb0d6e7187dc965daaed368b804c5687caac6555c9fd3e105cfee27d",
     "sourceInputs": {
       "algorithm": "c03-source-inputs-v1",
-      "count": 488,
-      "sha256": "f547c586d45da8e28930d68584713b9c6b143b6ff1138143e148d2bd253a8912",
+      "count": 490,
+      "sha256": "d1e4d02cf3d0c1ff06c5d20db93aa208f4cd491cc532e2a71c32fa072e7657e5",
       "anchors": [
         "AbstractObjectManager.java",
         "AbstractSchemaFactory.java",
@@ -281,6 +281,7 @@
         "AiExternalServiceChange.java",
         "AiHostMetadataChange.java",
         "AiLoadBalancerCreateChange.java",
+        "AiNamedServiceLinks.java",
         "AiProcessDiagnostics.java",
         "AiProjectMetadataChange.java",
         "AiRegistryLifecycleChange.java",
@@ -354,6 +355,7 @@
         "ServiceCreateValidation.java",
         "ServiceDao.java",
         "ServiceDaoImpl.java",
+        "ServiceDiscoveryApiService.java",
         "ServiceDiscoveryApiServiceImpl.java",
         "ServiceDiscoveryServiceImpl.java",
         "ServiceDiscoveryServiceSetLinksLock.java",
@@ -389,8 +391,8 @@
     "changedTuples": [],
     "roleFieldDelta": [],
     "historicalInventoryPreserved": true,
-    "reviewManifest": "scripts/api-key-operation-review-0.183.385.json",
-    "reviewManifestSha256": "dc6befa18cc4ef896ef6118d57571945ef6c72060d9d94dadaa96f185fffc82b",
+    "reviewManifest": "scripts/api-key-operation-review-0.183.386.json",
+    "reviewManifestSha256": "c1fd50ca77abe94ed5136175a802a02c3915d2aa4488a0b1feedf2e381f98ebe",
     "nativeVolumeInactiveFix": {
       "scope": "SOURCE_ONLY_NOT_RUNTIME_ACCEPTANCE",
       "previousSourceInputs": {
@@ -480,6 +482,71 @@
       "finalCi": null,
       "compiledProof": null,
       "nativePass": false
+    },
+    "previousReviewManifest": "scripts/api-key-operation-review-0.183.385.json",
+    "previousReviewManifestSha256": "dc6befa18cc4ef896ef6118d57571945ef6c72060d9d94dadaa96f185fffc82b",
+    "prior385FixRecordsAreHistorical": true,
+    "previewDenyAuditFix": {
+      "scope": "SOURCE_ONLY_CURRENT_CI_AND_NATIVE_PENDING",
+      "oldFingerprint": "3c51cd656b6e9480194cb7ab7f36a562824c6ac3ad571370855400c9ed3552b5",
+      "newFingerprint": "a800e90ed317d598fbae0f70c252782be1c491dba60b598c6cd9f57740fffd91",
+      "selectedSourceDelta": [
+        {
+          "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiResourceChangePlanService.java",
+          "before": "857ec937288a36c2e823888b02cd8e90632bc8b86679a8702ee9d985a0a6e20f",
+          "after": "0bbd79672290e9283dbc91c65fb932cdee0f880a1cb5ab8859112eed6f4724f9"
+        }
+      ],
+      "requiredMethods": 427,
+      "newRequiredMethods": [
+        [
+          "io.cattle.platform.iaas.api.auth.change.AiResourceChangePlanServiceTest",
+          "deniedPreviewAuditsOnlyTheCurrentNativeVisibleTarget"
+        ],
+        [
+          "io.cattle.platform.iaas.api.auth.change.AiResourceChangePlanServiceTest",
+          "unreadableAndEarlyInvalidPreviewsNeverAttestTheRequestedTarget"
+        ]
+      ],
+      "affectedExistingRequired": [
+        [
+          "io.cattle.platform.iaas.api.auth.change.AiResourceChangePlanServiceTest",
+          "nativeAndDirectDenialsKeepOnlyTheirStatusAndCodeBeforeAnyPlanIsStored"
+        ]
+      ],
+      "affectedExistingNonrequired": [
+        [
+          "io.cattle.platform.iaas.api.auth.change.AiResourceChangePlanServiceTest",
+          "auditFailureCannotPersistApproveOrDispatch"
+        ]
+      ],
+      "focusedFourMethodsPassed": true,
+      "trustedAuditTargetOnlyAfterCurrentNativeRead": true,
+      "earlyAndUnreadableTargetsRemainGeneric": true,
+      "originalDenialStatusCodeAndAuditFailureClosed": true,
+      "historicalFiveTargetMatchersRemainFail": true,
+      "oldAndNewAuditRowsMustNotBeSummedAsThirteenPass": true,
+      "freshFiveNegatives": "PENDING_WITH_NEXT_NAMED_FIXTURES",
+      "runtimePass": false,
+      "producerCommit": null,
+      "currentCi": null
+    },
+    "styleWhitespaceRebind": {
+      "scope": "SOURCE_ONLY_WHITESPACE_REBIND_NOT_CURRENT_CI",
+      "oldFingerprint": "a800e90ed317d598fbae0f70c252782be1c491dba60b598c6cd9f57740fffd91",
+      "newFingerprint": "d1e4d02cf3d0c1ff06c5d20db93aa208f4cd491cc532e2a71c32fa072e7657e5",
+      "selectedSourceDelta": [
+        {
+          "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/apikey/ApiKeyTargetResolver.java",
+          "before": "547612c212f888bfb642604aa7ff7d29ecc0008d64779c46d263acc2452625a7",
+          "after": "db1668fa5043fbd8a07cfef15223dbc2c274a963a93669d32ba9d6efcb728be3"
+        }
+      ],
+      "nonWhitespaceBytesEqual": true,
+      "requiredMethods": 427,
+      "tuples": 1396,
+      "zeroRoleDelta": true,
+      "testsReexecuted": 0
     },
     "previousReview": {
     "version": "unreleased-384-typed-config-local-volume-bounded-logs",

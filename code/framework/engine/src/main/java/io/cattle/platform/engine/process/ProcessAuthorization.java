@@ -18,7 +18,7 @@ public final class ProcessAuthorization {
     public static final String CAPTURED_EXECUTION_KEY = "_apiKeyCapturedExecution";
     private static final Set<String> FIELDS = Set.of("keyId", "policyRevision", "principalAccountId", "accountId",
             "requestId", "operation", "targetType", "targetId", "preview", "requestMethod", "requestAction", "requestLink",
-            "requestCollection", "projectCreation", "ordinaryServiceLinks", "aliasServiceUuid", "aliasMapUuid",
+            "requestCollection", "projectCreation", "ordinaryServiceLinks", "aliasServiceUuid", "aliasMapUuid", "aliasMapName",
             "aliasConsumedServiceId", "aliasConsumedServiceUuid",
             "aliasStackId", "aliasStackUuid", "aliasConsumedStackId", "aliasConsumedStackUuid", "projectUpdateUuid", "projectUpdateFields");
 

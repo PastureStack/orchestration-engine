@@ -37,7 +37,8 @@ public class AiResourceChangePlanService {
 
     public Map<String, Object> preview(ApiRequest request) {
         String id = "aichange-" + UUID.randomUUID();
-        return audited(request, "preview", id, () -> {
+        Map<String, Object> denialReceipt = new LinkedHashMap<>(); denialReceipt.put("id", id);
+        return audited(request, "preview", denialReceipt, () -> {
             requireEnabled();
             Map<String, Object> input = input(request, Set.of("type", "resourceType", "operation", "resourceId", "parameters"));
             if (!(input.get("resourceType") instanceof String) || !(input.get("operation") instanceof String)
@@ -50,7 +51,13 @@ public class AiResourceChangePlanService {
             Object parent = descriptor.requiresStackParent()
                     ? domain.lock("stack", domain.internalId("stack", text(parameters.get("stackId")))) : null;
             Policy actor = domain.actor(request);
-            if (target != null) visibleTarget(request, descriptor, resourceId, target, parameters);
+            if (target != null) {
+                Object visible = visibleTarget(request, descriptor, resourceId, target, parameters);
+                // Only a completed current native/Key read may identify a denied target.
+                // Raw input and a database lock alone do not attest visibility.
+                denialReceipt.put("resourceType", descriptor.resourceType());
+                denialReceipt.put("internalResourceId", ObjectUtils.getId(visible));
+            }
             if (parent != null) domain.parent(request, descriptor, parameters);
             domain.ready(descriptor, target, parent, parameters);
             Map<String, Object> body = domain.prepare(request, descriptor, resourceId, parameters);
@@ -254,7 +261,7 @@ public class AiResourceChangePlanService {
                 : AiResourceChangeDomain.loadBalancerMetadata(descriptor) ? domain.loadBalancerMetadataSnapshot(target) : domain.snapshot(target);
     }
 
-    private void visibleTarget(ApiRequest request, AiResourceChangeDescriptor descriptor, String id, Object lockedTarget,
+    private Object visibleTarget(ApiRequest request, AiResourceChangeDescriptor descriptor, String id, Object lockedTarget,
             Map<String, Object> parameters) {
         Object visible = domain.visible(request, descriptor, id);
         if (AiStackGroupChange.supports(descriptor, parameters)
@@ -268,6 +275,7 @@ public class AiResourceChangePlanService {
             throw error(409, "ResourceChangePlanStale");
         if (AiRegistryLifecycleChange.supports(descriptor) && !domain.snapshot(lockedTarget).equals(domain.snapshot(visible)))
             throw error(409, "ResourceChangePlanStale");
+        return visible;
     }
 
     protected Map<String, Object> owned(Map<String, Object> plan, ApiRequest request) {
@@ -335,12 +343,17 @@ public class AiResourceChangePlanService {
     }
 
     private Map<String, Object> audited(ApiRequest request, String action, String id, Supplier<Map<String, Object>> operation) {
+        Map<String, Object> receipt = new LinkedHashMap<>(); receipt.put("id", id);
+        return audited(request, action, receipt, operation);
+    }
+
+    private Map<String, Object> audited(ApiRequest request, String action, Map<String, Object> receipt,
+            Supplier<Map<String, Object>> operation) {
         try { return operation.get(); }
         catch (ClientVisibleException denied) {
             var nativeError = denied.getApiError();
             int status = nativeError == null ? denied.getStatus() : nativeError.getStatus();
             String code = nativeError == null ? denied.getCode() : nativeError.getCode();
-            Map<String, Object> receipt = new LinkedHashMap<>(); receipt.put("id", id);
             audit(request, Objects.toString(action, "unknown"), receipt, false, code);
             if (nativeError instanceof ValidationError validation) {
                 String field = safeValidationField(request, validation);

@@ -46,8 +46,8 @@ with zipfile.ZipFile(sys.argv[1]) as war:
             require(field in audit and audit[field].get("create") is False and audit[field].get("update") is False,
                     "audit-server-owned-" + field)
         config = resources.read("cattle-global.properties").decode()
-        require("releases/download/v0.13.28/node-agent-0.13.28.tar.gz" in config, "node-lifecycle-producer")
-        require("releases/download/v0.38.5/host-api-0.38.5.tar.gz" in config, "host-producer")
+        require("releases/download/v0.13.35/node-agent-0.13.35.tar.gz" in config, "node-lifecycle-producer")
+        require("releases/download/v0.38.9/host-api-0.38.9.tar.gz" in config, "host-producer")
         require("releases/download/v0.23.15/websocket-proxy-0.23.15-linux-amd64.tar.xz" in config, "proxy-producer")
         bootstrap = resources.read("config-content/bootstrap/bootstrap.sh").decode()
         launcher = re.search(r"(?ms)^start_agent\(\)\n\{(.*?)^\}\n", bootstrap)

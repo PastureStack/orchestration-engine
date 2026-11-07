@@ -10,18 +10,16 @@ upstream history, authorship, licenses, and dependency notices.
 
 ## Current component
 
-[Engine **0.183.385**](https://github.com/PastureStack/orchestration-engine/releases/tag/v0.183.385)
-is published, paired with Web Console **1.6.225** / Bridge **0.2.27**. Ordinary
-Stack Group editing uses the existing human-reviewed metadata plan and native
-field, role, Key and configuration-consistency checks. Logical local Volume
-creation verifies the native inactive, unallocated record; native validation
-guidance retains only approved field names, never private native values or text.
-See the [release note](docs/releases/orchestration-engine-0.183.385.md).
+[Engine **0.183.386 source candidate**](docs/releases/orchestration-engine-0.183.386.md)
+adds named ordinary Service dependencies and native ExternalService HTTP health
+request lines, and fixes Load Balancer manual-scale execution attestation. Human
+review, native authorization, bound Key, identity and consistency checks remain.
+CI, publication and fresh native acceptance are pending; complete WebMCP coverage
+is not claimed. The published baseline remains Engine **0.183.385**.
 
 Deploy through the [Server installation guide](https://github.com/PastureStack/server#quick-start)
-using the current qualified matching assembly. Component publication is separate
-from Server deployment and native workflow acceptance; supported WebMCP
-workflows remain partial.
+using a qualified matching assembly. Matching Web Console support is required;
+this source candidate does not update an existing Server deployment.
 
 ## Optional AI resource workflows
 
@@ -184,7 +182,7 @@ Before publishing an Engine artifact, run the complete package gate:
 
 ```sh
 bash scripts/check-cattle-jdk25-full-package
-ENGINE_VERSION=0.183.385 bash scripts/build --release
+ENGINE_VERSION=0.183.386 bash scripts/build --release
 bash scripts/check-release-artifact dist/artifacts/cattle.jar
 ```
 
