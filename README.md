@@ -16,6 +16,11 @@ Stack and backend references while retaining canonical wire-ID checks for
 String references. See the [release note](docs/releases/orchestration-engine-0.183.381.md)
 for changes, verification and upgrade boundaries.
 
+The 0.183.382 source candidate repairs the native load-balancer Agent setup and
+cleanup authorization closure, including upgrade/rollback and Stack activation.
+Its [release note](docs/releases/orchestration-engine-0.183.382.md) separates
+focused local evidence from pending formal CI, publication and native acceptance.
+
 Deploy through the [Server installation guide](https://github.com/PastureStack/server#quick-start)
 using a qualified matching component assembly; an Engine JAR alone is not a
 Server installation. Component publication does not establish native workflow
@@ -173,7 +178,7 @@ Before publishing an Engine artifact, run the complete package gate:
 
 ```sh
 bash scripts/check-cattle-jdk25-full-package
-ENGINE_VERSION=0.183.381 bash scripts/build --release
+ENGINE_VERSION=0.183.382 bash scripts/build --release
 bash scripts/check-release-artifact dist/artifacts/cattle.jar
 ```
 
