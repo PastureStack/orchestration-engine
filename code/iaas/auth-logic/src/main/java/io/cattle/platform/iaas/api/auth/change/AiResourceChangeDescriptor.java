@@ -26,6 +26,7 @@ public record AiResourceChangeDescriptor(String resourceType, String operation, 
                     : "service".equals(type) ? Set.of("name", "description", "image", "scale", "stackId", "command", "entryPoint", "ports", "healthCheck")
                     : Set.of("name", "description", "image", "command", "entryPoint", "ports"));
         }
+        add(result, "volume", "create", "POST", null, "create", Set.of("name", "description"));
         add(result, "service", "scale", "PUT", null, "update", Set.of("scale"));
         add(result, "service", "update_links", "POST", "setservicelinks", "update", Set.of("serviceIds"));
         add(result, "service", "finish_upgrade", "POST", "finishupgrade", "upgrade", Set.of());
@@ -86,6 +87,7 @@ public record AiResourceChangeDescriptor(String resourceType, String operation, 
     public boolean changesArchive() { return Set.of("archive", "restore").contains(operation); }
 
     public Map<String, Object> parameters(Object value) {
+        if (AiVolumeCreateChange.supports(this)) return AiVolumeCreateChange.parameters(value);
         if (AiLoadBalancerCreateChange.supports(this)) return AiLoadBalancerCreateChange.parameters(parameterNames, value);
         if (AiAliasServiceChange.ordinaryLinks(this)) return AiAliasServiceChange.parameters(operation, parameterNames, value);
         if ("dnsService".equals(resourceType)) return AiAliasServiceChange.parameters(operation, parameterNames, value);
@@ -142,6 +144,7 @@ public record AiResourceChangeDescriptor(String resourceType, String operation, 
     }
 
     public Map<String, Object> body(Map<String, Object> parameters) {
+        if (AiVolumeCreateChange.supports(this)) return AiVolumeCreateChange.body(parameters);
         if (AiLoadBalancerCreateChange.supports(this)) return AiLoadBalancerCreateChange.body(parameters);
         if (AiAliasServiceChange.ordinaryLinks(this)) return AiAliasServiceChange.body(operation, parameters);
         if (changesArchive()) return new LinkedHashMap<>(Map.of("archived", "archive".equals(operation)));

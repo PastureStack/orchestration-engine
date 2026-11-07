@@ -19,6 +19,11 @@ public interface ApiKeyAuditSink {
             String resourceType, Long resourceId, boolean allowed, String reason) {
         throw new IllegalStateException("Resource-change audit unavailable");
     }
+    /** Fixed metadata only: never accepts log text, a ticket, URL or arbitrary payload. */
+    default void recordContainerLogsOutcome(ApiRequest request, Policy policy, String requestId,
+            Long containerId, String outcome, String reason) {
+        throw new IllegalStateException("Container logs audit unavailable");
+    }
     void recordDecision(ApiRequest request, Policy policy);
     default void recordClientToolEvent(Policy policy, ClientToolAuditEvent event) {
         throw new IllegalStateException("Client tool auditing is unavailable");

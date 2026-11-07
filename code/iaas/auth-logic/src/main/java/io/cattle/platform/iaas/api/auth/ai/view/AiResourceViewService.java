@@ -103,11 +103,13 @@ public class AiResourceViewService {
     @Inject HostDao hosts;
     @Inject ServiceDao services;
     @Inject AiProcessDiagnostics processDiagnostics;
+    @Inject io.cattle.platform.iaas.api.auth.ai.logs.AiContainerLogsService containerLogs;
 
     private record AuthorizedTarget(Resource resource, boolean serviceIdsReadable, boolean missingPersistedStack, String instanceUuid, String nativeUuid) { }
 
     public Map<String, Object> read(ApiRequest request) {
         Map<String, Object> input = input(request);
+        if ("container_logs".equals(input.get("view"))) return containerLogs.read(request, input);
         AiAuditSourcePage source = input.containsKey("sourcePage") ? AiAuditSourcePage.parse(input) : null;
         String type = source == null ? (String) input.get("resourceType") : source.type;
         Policy current = keyAuthorization.actor(request);
@@ -821,7 +823,7 @@ public class AiResourceViewService {
 
     private static Map<String, Object> input(ApiRequest request) {
         Map<String, Object> input = CollectionUtils.toMap(request.getRequestObject());
-        if (!Set.of("type", "resourceType", "resourceId", "query", "marker", "parentId", "sourcePage", "view").containsAll(input.keySet())
+        if (!Set.of("type", "resourceType", "resourceId", "query", "marker", "parentId", "sourcePage", "view", "tailLines").containsAll(input.keySet())
                 || !(input.get("resourceType") instanceof String type) || !READ_TYPES.contains(type)) throw error(422, "ResourceViewInputInvalid");
         for (String key : List.of("resourceId", "marker", "parentId")) {
             Object value = input.get(key);
@@ -830,8 +832,12 @@ public class AiResourceViewService {
         if (input.containsKey("query") && (!(input.get("query") instanceof String query) || query.length() > 256)) throw error(422, "ResourceViewInputInvalid");
         if (input.get("resourceId") != null && (input.get("marker") != null || input.get("query") != null || input.get("parentId") != null))
             throw error(422, "ResourceViewInputInvalid");
-        if (input.containsKey("view") && (!"stack_graph".equals(input.get("view")) || !"stack".equals(type)
+        if (input.containsKey("view") && (!("stack_graph".equals(input.get("view")) && "stack".equals(type)
+                || "container_logs".equals(input.get("view")) && "container".equals(type))
                 || input.get("resourceId") == null || input.containsKey("sourcePage"))) throw error(422, "ResourceViewInputInvalid");
+        if (input.containsKey("tailLines") && (!"container_logs".equals(input.get("view"))
+                || !(input.get("tailLines") instanceof Number n) || n.doubleValue() != n.longValue()
+                || n.longValue() < 1 || n.longValue() > 200)) throw error(422, "ResourceViewInputInvalid");
         return input;
     }
 

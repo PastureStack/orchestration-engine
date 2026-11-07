@@ -9,19 +9,27 @@ import java.util.Objects;
 import java.util.Set;
 
 /** The reviewed Service-create subset; raw launch configuration and environment stay outside it. */
-final class AiServiceCreateChange {
+public final class AiServiceCreateChange {
     static final int MAX_PORTS = AiCreatePorts.MAX_PORTS;
     private static final Set<String> HEALTH_FIELDS = Set.of("port", "requestLine", "responseTimeout", "interval",
             "healthyThreshold", "unhealthyThreshold", "initializingTimeout", "reinitializingTimeout", "strategy");
 
     private AiServiceCreateChange() { }
 
-    static List<String> ports(Object value) {
+    public static List<String> ports(Object value) {
         return AiCreatePorts.parameters(value);
     }
 
-    static Map<String, Object> healthCheck(Object value) {
-        if (!(value instanceof Map<?, ?> input) || input.size() > HEALTH_FIELDS.size()) throw invalid();
+    public static boolean configuredPortsMatch(Object expected, Object actual) {
+        return AiCreatePorts.configuredMatch(expected, actual);
+    }
+
+    public static Map<String, Object> healthCheck(Object value) { return healthCheck(value, true); }
+
+    public static Map<String, Object> healthCheckChanges(Object value) { return healthCheck(value, false); }
+
+    private static Map<String, Object> healthCheck(Object value, boolean create) {
+        if (!(value instanceof Map<?, ?> input) || input.isEmpty() || input.size() > HEALTH_FIELDS.size()) throw invalid();
         Map<String, Object> result = new LinkedHashMap<>();
         for (var entry : input.entrySet()) {
             if (!(entry.getKey() instanceof String field) || !HEALTH_FIELDS.contains(field)) throw invalid();
@@ -41,8 +49,8 @@ final class AiServiceCreateChange {
             }
             result.put(field, item);
         }
-        if (!result.containsKey("port")) throw invalid();
-        result.putIfAbsent("strategy", "recreate"); // InstanceHealthCheck's native schema default.
+        if (create && !result.containsKey("port")) throw invalid();
+        if (create) result.putIfAbsent("strategy", "recreate"); // InstanceHealthCheck's native schema default.
         return java.util.Collections.unmodifiableMap(result);
     }
 
@@ -74,7 +82,7 @@ final class AiServiceCreateChange {
                 && first.longValue() == second.longValue();
     }
 
-    private static Map<String, Object> canonicalHealth(Object value) {
+    public static Map<String, Object> canonicalHealth(Object value) {
         if (value == null) return null;
         if (!(value instanceof Map<?, ?> input)) throw invalid();
         Map<String, Object> fields = new LinkedHashMap<>();

@@ -1,18 +1,74 @@
 {
   "pluralName": "aiResourceViews",
-  "collectionMethods": ["POST"],
+  "collectionMethods": [
+    "POST"
+  ],
   "resourceMethods": [],
   "resourceFields": {
-    "resourceType": {"type": "string", "create": true, "required": true, "maxLength": 64},
-    "resourceId": {"type": "string", "create": true, "maxLength": 128},
-    "query": {"type": "string", "create": true, "maxLength": 256},
-    "marker": {"type": "string", "create": true, "maxLength": 128},
-    "parentId": {"type": "string", "create": true, "maxLength": 128},
-    "view": {"type": "string", "create": true, "maxLength": 32, "options": ["stack_graph"]},
-    "sourcePage": {"type": "aiAuditSourcePageInput", "create": true},
-    "data": {"type": "array[json]", "create": false},
-    "nextMarker": {"type": "string", "create": false},
-    "sourcePageResult": {"type": "boolean", "create": false},
-    "nativeAuthority": {"type": "map[json]", "create": false}
+    "resourceType": {
+      "type": "string",
+      "create": true,
+      "required": true,
+      "maxLength": 64
+    },
+    "resourceId": {
+      "type": "string",
+      "create": true,
+      "maxLength": 128
+    },
+    "query": {
+      "type": "string",
+      "create": true,
+      "maxLength": 256
+    },
+    "marker": {
+      "type": "string",
+      "create": true,
+      "maxLength": 128
+    },
+    "parentId": {
+      "type": "string",
+      "create": true,
+      "maxLength": 128
+    },
+    "view": {
+      "type": "string",
+      "create": true,
+      "maxLength": 32,
+      "options": [
+        "stack_graph",
+        "container_logs"
+      ]
+    },
+    "sourcePage": {
+      "type": "aiAuditSourcePageInput",
+      "create": true
+    },
+    "data": {
+      "type": "array[json]",
+      "create": false
+    },
+    "nextMarker": {
+      "type": "string",
+      "create": false
+    },
+    "sourcePageResult": {
+      "type": "boolean",
+      "create": false
+    },
+    "nativeAuthority": {
+      "type": "map[json]",
+      "create": false
+    },
+    "tailLines": {
+      "type": "int",
+      "create": true,
+      "min": 1,
+      "max": 200
+    },
+    "logs": {
+      "type": "map[json]",
+      "create": false
+    }
   }
 }

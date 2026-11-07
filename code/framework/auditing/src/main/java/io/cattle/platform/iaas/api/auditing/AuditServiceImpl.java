@@ -59,7 +59,7 @@ public class AuditServiceImpl implements AuditService, ApiKeyAuditSink, ApiReque
             "eventId", "keyId", "decision", "outcome", "httpStatus", "responseCode", "requestId", "actor",
             "targetType", "targetId", "operation", "policyRevision", "reason", "phase", "preview", "processId", "processName", "hostUuid", "failureCode",
             "clientReportedCommand", "clientReportedPhase", "clientReportedStatus", "clientReportedReason", "clientReportedReasonDetail",
-            "clientCorrelationId", "evidenceSource", "channel")));
+            "clientCorrelationId", "evidenceSource", "channel", "payloadsIncluded", "maxLines", "maxBytes", "maxMillis")));
     private static final Set<String> SENSITIVE_AUDIT_FIELDS = Set.of(
             "secretvalue", "secretvalues", "password", "newsecret", "oldsecret", "adminaccountpassword", "serviceaccountpassword",
             "identityproof", "providerswitchcode", "localpassword", "mfacode", "recoverycode", "verificationcode",
@@ -330,6 +330,29 @@ public class AuditServiceImpl implements AuditService, ApiKeyAuditSink, ApiReque
     }
 
     @Override
+    public void recordContainerLogsOutcome(ApiRequest request, Policy policy, String requestId,
+            Long containerId, String outcome, String reason) {
+        if (policy == null || requestId == null || !requestId.matches("ailogs-[0-9a-f-]{36}")
+                || !Set.of("ALLOW", "DENY", "ERROR").contains(outcome)
+                || !Set.of("Completed", "AuthorityDenied", "InputInvalid", "Unavailable", "Canceled").contains(reason)
+                || containerId != null && containerId <= 0) throw new IllegalArgumentException("Invalid container logs outcome");
+        Map<String, Object> data = new HashMap<>();
+        data.put("eventId", UUID.randomUUID().toString()); data.put("requestId", requestId);
+        data.put("operation", "logs"); data.put("targetType", "container"); data.put("phase", "completion");
+        if (containerId != null) data.put("targetId", String.valueOf(idFormatter.formatId("container", containerId)));
+        data.put("decision", "ALLOW".equals(outcome) ? "ALLOW" : "DENY");
+        data.put("outcome", "ALLOW".equals(outcome) ? "SUCCEEDED" : "DENY".equals(outcome) ? "DENIED" : "ERROR");
+        data.put("reason", reason); data.put("evidenceSource", "server_observed");
+        data.put("payloadsIncluded", false); data.put("maxLines", 200); data.put("maxBytes", 65536); data.put("maxMillis", 5000);
+        Map<String, Object> event = new HashMap<>();
+        event.put("resourceType", "container"); event.put("resourceId", containerId);
+        event.put("accountId", policy.getAccountId()); event.put("authenticatedAsAccountId", policy.getAuthenticatedAsAccountId());
+        event.put("eventType", "api.container.boundedLogs"); event.put("authType", addVerifiedKeyIdentity(request, data));
+        event.put("runtime", 0); event.put("clientIp", ""); event.put("data", data);
+        outbox().persist(event, this::deliverApiKeyEvent);
+    }
+
+    @Override
     public void recordAuditQueryOutcome(ApiRequest request, Policy policy, String queryId,
             String outcome, String reason, int count) {
         if (policy == null || !Set.of("ALLOW", "DENY", "ERROR").contains(outcome)
@@ -375,7 +398,7 @@ public class AuditServiceImpl implements AuditService, ApiKeyAuditSink, ApiReque
     public void recordResourceChangeDecision(ApiRequest request, Policy policy, String action, String receiptId,
             String resourceType, Long resourceId, boolean allowed, String reason) {
         if (!Set.of("stack", "service", "container", "externalService", "dnsService", "certificate", "host", "project",
-                "loadBalancerService", "registry", "aiResourceChangePlan")
+                "loadBalancerService", "registry", "volume", "aiResourceChangePlan")
                 .contains(resourceType))
             throw new IllegalArgumentException("Invalid resource-change audit target");
         recordTypedResourceDecision(request, policy, action, receiptId, "aichange", resourceType, resourceId,

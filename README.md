@@ -21,6 +21,13 @@ using a qualified matching component assembly; an Engine JAR alone is not a
 Server installation. Component publication does not establish native workflow
 or complete WebMCP coverage.
 
+## Upcoming component
+
+Source candidate **0.183.384** prepares the typed Service configuration subset,
+local logical Volume create and bounded Container logs. CI, compiled schemas,
+artifacts, publication and native acceptance remain pending. The current
+published component remains **0.183.383**. See [upcoming notes](docs/releases/orchestration-engine-0.183.384.md).
+
 ## Optional AI resource workflows
 
 The Engine supplies typed, bounded metadata queries and human-reviewed resource

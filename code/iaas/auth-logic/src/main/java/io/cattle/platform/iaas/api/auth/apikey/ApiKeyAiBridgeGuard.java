@@ -49,6 +49,7 @@ public final class ApiKeyAiBridgeGuard {
         String type = request.getType();
         if (AiCatalogLaunchAccess.trustedDomain(request)) return true;
         if (AiResourceChangeDomain.trustedDomain(request)) return true;
+        if (io.cattle.platform.api.auth.ApiContainerLogsRead.trusted(request)) return true;
         if (Boolean.TRUE.equals(request.getAttribute(AiResourceViewService.DOMAIN_READ_ATTRIBUTE))
                 && "GET".equals(request.getMethod()) && request.getAction() == null
                 && AiResourceViewService.READ_TYPES.contains(type == null ? "" : type)) return true;

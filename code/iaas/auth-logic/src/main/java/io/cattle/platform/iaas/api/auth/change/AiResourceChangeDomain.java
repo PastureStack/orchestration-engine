@@ -156,14 +156,16 @@ public class AiResourceChangeDomain extends AbstractJooqDao {
             if ("project".equals(type)) return AiProjectMetadataChange.selectedReadable(row, selectedProject);
             if (row == null || ObjectUtils.getRemoved(row) != null || !matchesResourceType(type, row)
                     || !Objects.equals(ObjectUtils.getAccountId(row), ApiUtils.getPolicy().getAccountId())) throw error(404, "NotFound");
-            if ("registry".equals(type) && !Objects.equals(ObjectUtils.getId(row), internalId(type, publicId))) throw error(404, "NotFound");
+            if (Set.of("registry", "volume").contains(type) && !Objects.equals(ObjectUtils.getId(row), internalId(type, publicId)))
+                throw error(404, "NotFound");
             return row;
         });
     }
 
     private static boolean matchesResourceType(String type, Object target) {
         // A Host's kind identifies its native driver (for example docker), not the API resource type.
-        return "host".equals(type) ? target instanceof Host : "project".equals(type) ? target instanceof Account account
+        return "volume".equals(type) ? target instanceof io.cattle.platform.core.model.Volume
+                : "host".equals(type) ? target instanceof Host : "project".equals(type) ? target instanceof Account account
                 && "project".equals(account.getKind()) : Objects.equals(ObjectUtils.getKind(target), type);
     }
 
@@ -192,6 +194,10 @@ public class AiResourceChangeDomain extends AbstractJooqDao {
                 if (boundPlan != null && !references.equals(boundPlan.get("referenceSnapshot"))) throw error(409, "ResourceChangePlanStale");
                 validateLoadBalancerCreate(descriptor, parameters, request);
             }
+            if (AiVolumeCreateChange.supports(descriptor)) {
+                Map<String, Object> scope = volumeCreateScope(original);
+                if (boundPlan != null && !scope.equals(boundPlan.get("referenceSnapshot"))) throw error(409, "ResourceChangePlanStale");
+            }
             validateExternalHealthCheck(descriptor, parameters, request);
             if (descriptor.createsResource() && "service".equals(descriptor.resourceType())) {
                 Map<String, Object> validated = copyMap(request.getRequestObject());
@@ -216,6 +222,16 @@ public class AiResourceChangeDomain extends AbstractJooqDao {
             }
             return copyMap(request.getRequestObject());
         });
+    }
+
+    public Map<String, Object> volumeCreateScope(ApiRequest request) {
+        Account project = objects.loadResource(Account.class, actor(request).getAccountId());
+        if (project == null || project.getUuid() == null || project.getUuid().isBlank()) throw error(404, "NotFound");
+        if (!objects.find(io.cattle.platform.core.model.StorageDriver.class, "accountId", project.getId(), "name", "local", "removed", null).isEmpty())
+            throw error(422, "ResourceChangeUnsupported");
+        Map<String, Object> scope = new LinkedHashMap<>();
+        for (String field : List.of("id", "uuid", "kind", "name", "state")) scope.put(field, ObjectUtils.getPropertyIgnoreErrors(project, field));
+        return copyMap(scope);
     }
 
     public Map<String, Object> loadBalancerCreateParentSnapshot(Object parent) {
@@ -393,7 +409,7 @@ public class AiResourceChangeDomain extends AbstractJooqDao {
             projectMetadata.authorize(account, current.policy(), schema, "PUT".equals(request.getMethod()), copyMap(request.getRequestObject()).keySet());
         }
         if (request.getAttribute(DOMAIN) instanceof AiResourceChangeDescriptor descriptor
-                && (Set.of("dnsService", "certificate", "host", "project", "loadBalancerService", "registry").contains(descriptor.resourceType())
+                && (Set.of("dnsService", "certificate", "host", "project", "loadBalancerService", "registry", "volume").contains(descriptor.resourceType())
                     || AiServiceUpgradeLifecycleChange.supports(descriptor) || AiAliasServiceChange.ordinaryLinks(descriptor))) {
             if (request.getAction() != null) {
                 var actions = request.getId() == null ? schema.getCollectionActions() : schema.getResourceActions();
@@ -439,6 +455,8 @@ public class AiResourceChangeDomain extends AbstractJooqDao {
         return switch (type) {
         case "stack" -> create().selectFrom(STACK).where(STACK.ID.eq(id)).forUpdate().fetchOne();
         case "service", "externalService", "dnsService", "loadBalancerService" -> create().selectFrom(SERVICE).where(SERVICE.ID.eq(id)).forUpdate().fetchOne();
+        case "volume" -> create().selectFrom(io.cattle.platform.core.model.tables.VolumeTable.VOLUME)
+                .where(io.cattle.platform.core.model.tables.VolumeTable.VOLUME.ID.eq(id)).forUpdate().fetchOne();
         case "container" -> create().selectFrom(INSTANCE).where(INSTANCE.ID.eq(id)).forUpdate().fetchOne();
         case "certificate" -> create().selectFrom(CERTIFICATE).where(CERTIFICATE.ID.eq(id)).forUpdate().fetchOne();
         case "host" -> create().selectFrom(HOST).where(HOST.ID.eq(id)).forUpdate().fetchOne();
@@ -848,7 +866,7 @@ public class AiResourceChangeDomain extends AbstractJooqDao {
                     || !Objects.equals(identity.get("uuid"), ObjectUtils.getPropertyIgnoreErrors(target, "uuid")))
                 throw error(409, "ResourceChangePlanStale");
         }
-        if (descriptor.createsResource() && Set.of("service", "loadBalancerService").contains(descriptor.resourceType())
+        if (descriptor.createsResource() && Set.of("service", "loadBalancerService", "volume").contains(descriptor.resourceType())
                 && (number(ObjectUtils.getId(target)) != number(plan.get("internalResourceId"))
                     || !(plan.get("createdResourceUuid") instanceof String uuid) || uuid.isBlank()
                     || !uuid.equals(ObjectUtils.getPropertyIgnoreErrors(target, "uuid")))) throw error(403, "PermissionDenied");
@@ -920,6 +938,13 @@ public class AiResourceChangeDomain extends AbstractJooqDao {
     public boolean complete(AiResourceChangeDescriptor descriptor, Object target, Map<String, Object> parameters,
             Map<String, Object> before) {
         if (target == null) return false;
+        if (AiVolumeCreateChange.supports(descriptor)) {
+            return target instanceof io.cattle.platform.core.model.Volume volume
+                    && AiVolumeCreateChange.complete(volume, parameters, number(before.get("volumeCreateId")),
+                        (String) before.get("volumeCreateUuid"), number(before.get("volumeCreateAccountId")))
+                    && objects.find(Mount.class, "volumeId", volume.getId()).isEmpty()
+                    && objects.find(io.cattle.platform.core.model.VolumeStoragePoolMap.class, "volumeId", volume.getId()).isEmpty();
+        }
         if (AiRegistryLifecycleChange.supports(descriptor))
             return parameters.isEmpty() && AiRegistryLifecycleChange.complete(descriptor, target, before, snapshot(target));
         if (AiServiceUpgradeLifecycleChange.supports(descriptor)) {
@@ -1123,6 +1148,12 @@ public class AiResourceChangeDomain extends AbstractJooqDao {
     }
 
     public List<Map<String, Object>> changes(AiResourceChangeDescriptor descriptor, Object target, Map<String, Object> parameters) {
+        if (AiVolumeCreateChange.supports(descriptor)) {
+            List<Map<String, Object>> result = new ArrayList<>();
+            result.add(change("name", null, parameters.get("name")));
+            if (parameters.containsKey("description")) result.add(change("description", null, parameters.get("description")));
+            result.add(change("driver", null, "local")); result.add(change("state", null, "detached")); return result;
+        }
         if (AiServiceUpgradeLifecycleChange.supports(descriptor)) return AiServiceUpgradeLifecycleChange.changes(descriptor, target);
         List<Map<String, Object>> result = new ArrayList<>();
         if (AiLoadBalancerCreateChange.supports(descriptor)) {

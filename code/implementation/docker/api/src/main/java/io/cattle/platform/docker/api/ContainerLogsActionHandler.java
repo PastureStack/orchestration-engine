@@ -61,7 +61,8 @@ public class ContainerLogsActionHandler implements ActionHandler {
         Map<String, Object> data = CollectionUtils.asMap(DockerInstanceConstants.DOCKER_CONTAINER, dockerId, "Lines", logs.getLines(), "Follow",
                 logs.getFollow(), "Timestamps", logs.getTimestamps(), "Since", logs.getSince());
 
-        HostApiAccess apiAccess = apiService.getAccess(request, host.getId(), CollectionUtils.asMap("logs", data), settings.hostLogsPath());
+        HostApiAccess apiAccess = apiService.getAccess(request, host.getId(), CollectionUtils.asMap("logs", data),
+                io.cattle.platform.api.auth.ApiContainerLogsRead.expiration(request), settings.hostLogsPath());
 
         if (apiAccess == null) {
             return null;
