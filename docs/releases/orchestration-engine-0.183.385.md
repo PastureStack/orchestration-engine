@@ -12,6 +12,13 @@ an already-created record could remain reported as running. Preview and verified
 readback now require the actual inactive state; all identity, driver, allocation
 and no-mount checks remain. The native manager and state machine are unchanged.
 
+Native validation failures keep a known schema field name after durable denial
+audit, while retaining the original status and code. Private native messages,
+details, values and identifiers are excluded. Unknown or unavailable field
+metadata falls back to the existing sanitized error. Reference validation still
+masks unreadable resources as InvalidReference; this does not grant access or
+distinguish a missing resource from one outside the caller's permissions.
+
 Execution uses the existing native PUT manager and current resource/field
 capabilities, account permissions and bound Key policy. Preview and execution
 bind the Stack UUID, project UUID and configuration digest; human confirmation

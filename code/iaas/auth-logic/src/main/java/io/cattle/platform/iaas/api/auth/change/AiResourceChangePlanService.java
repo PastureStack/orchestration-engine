@@ -12,6 +12,8 @@ import io.cattle.platform.lock.definition.AbstractBlockingLockDefintion;
 import io.cattle.platform.object.util.ObjectUtils;
 import io.cattle.platform.servicediscovery.api.lock.ServiceDiscoveryServiceSetLinksLock;
 import io.github.ibuildthecloud.gdapi.exception.ClientVisibleException;
+import io.github.ibuildthecloud.gdapi.model.ValidationError;
+import io.github.ibuildthecloud.gdapi.model.impl.ValidationErrorImpl;
 import io.github.ibuildthecloud.gdapi.request.ApiRequest;
 import io.github.ibuildthecloud.gdapi.util.RequestUtils;
 import jakarta.inject.Inject;
@@ -340,8 +342,35 @@ public class AiResourceChangePlanService {
             String code = nativeError == null ? denied.getCode() : nativeError.getCode();
             Map<String, Object> receipt = new LinkedHashMap<>(); receipt.put("id", id);
             audit(request, Objects.toString(action, "unknown"), receipt, false, code);
+            if (nativeError instanceof ValidationError validation) {
+                String field = safeValidationField(request, validation);
+                if (field != null) {
+                    ValidationErrorImpl safe = new ValidationErrorImpl(code, field);
+                    safe.setStatus(status);
+                    throw new ClientVisibleException(safe);
+                }
+            }
             throw error(status, code);
         }
+    }
+
+    /** Native validation reports a leaf schema path, never an input value. */
+    private static String safeValidationField(ApiRequest request, ValidationError validation) {
+        String field = validation.getFieldName();
+        if (field == null || field.length() > 64 || !field.matches("[A-Za-z][A-Za-z0-9_]*")) return null;
+        if (request.getSchemaFactory() == null) return null;
+        try {
+            var schemas = request.getSchemaFactory().listSchemas();
+            if (schemas == null || schemas.size() > 1024) return null;
+            for (var schema : schemas) {
+                if (schema != null && schema.getResourceFields() != null && schema.getResourceFields().containsKey(field))
+                    return field;
+            }
+        } catch (RuntimeException unavailable) {
+            // Missing metadata must retain the original sanitized error, not its payload.
+            return null;
+        }
+        return null;
     }
 
     private <T> T locked(String id, Supplier<T> operation) {

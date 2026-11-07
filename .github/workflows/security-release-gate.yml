@@ -59,6 +59,12 @@ jobs:
           import xml.etree.ElementTree as ET
 
           required = {
+              'io.cattle.platform.iaas.api.auth.change.AiResourceChangeValidationFieldTest': {
+                  'safeNativeValidationFieldRetainsStatusCodeWithoutValuesOrPrivateNativeText',
+                  'malformedOversizedAndUnknownValidationPathsKeepOnlySanitizedStatusCode',
+                  'unavailableOrUnboundedSchemaMetadataCannotExposeAValidationPathOrPayload',
+                  'failedAuditRemainsFailClosedBeforeAnyValidationFieldCanBeReturned',
+              },
               'io.cattle.platform.iaas.api.auth.change.AiStackGroupChangeTest': {
                   'groupAllowsNativeEditableOrdinaryNonemptyStatesButRejectsSystemCatalogAndRemovedStacks',
                   'groupCompletionRequiresExactRequestedFieldsAndPreservesAllOtherConfiguration',
