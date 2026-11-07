@@ -10,16 +10,11 @@ upstream history, authorship, licenses, and dependency notices.
 
 ## Current component
 
-[Engine **0.183.381**](https://github.com/PastureStack/orchestration-engine/releases/tag/v0.183.381)
-is published. Typed TCP load-balancer creation preserves exact native numeric
-Stack and backend references while retaining canonical wire-ID checks for
-String references. See the [release note](docs/releases/orchestration-engine-0.183.381.md)
+[Engine **0.183.382**](https://github.com/PastureStack/orchestration-engine/releases/tag/v0.183.382)
+is published. It repairs authorization for the platform-managed load-balancer
+Agent lifecycle while preserving compatibility with legacy verified process
+frames. See the [release note](docs/releases/orchestration-engine-0.183.382.md)
 for changes, verification and upgrade boundaries.
-
-The 0.183.382 source candidate repairs the native load-balancer Agent setup and
-cleanup authorization closure, including upgrade/rollback and Stack activation.
-Its [release note](docs/releases/orchestration-engine-0.183.382.md) separates
-focused local evidence from pending formal CI, publication and native acceptance.
 
 Deploy through the [Server installation guide](https://github.com/PastureStack/server#quick-start)
 using a qualified matching component assembly; an Engine JAR alone is not a
