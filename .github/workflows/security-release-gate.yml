@@ -589,6 +589,8 @@ jobs:
                   'genuineSessionOwnerExportsCaptureInterface',
               },
               'io.cattle.platform.iaas.api.auth.change.AiVolumeCreateChangeTest': {
+                  'humanCreateReviewUsesTheSameNativeInactiveTerminalState',
+                  'onlyCompletedNativeCreateStateCanVerifyTheNewUnallocatedRecord',
                   'boundKeyRevocationPropagatesWithoutDroppingTheExistingKeyGuard',
                   'exactNativeFactoryAcceptsOnlyNameDescriptionAndNeverWritableReadonlyFlags',
                   'exactNewUuidAndLogicalDetachedReadbackDoNotAdoptSameNameOldOrAllocatedVolumes',

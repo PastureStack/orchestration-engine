@@ -226,11 +226,11 @@
     "sourceCandidate": "STAGED_NOT_COMMITTED",
     "producerCommit": null,
     "contract": "scripts/api-key-operation-contract.json",
-    "contractSha256": "da680860473455032cfc1f45ed023fa6b22df514c5f608bd904f3249d6fb4317",
+    "contractSha256": "bdfb997ebf638fc75875e553b66499a99eec92425f412156a9a64251403240c5",
     "sourceInputs": {
       "algorithm": "c03-source-inputs-v1",
       "count": 488,
-      "sha256": "8701355114bb0846500f1ebc86bd7fa00f4231aa60924803618f601bef705f95",
+      "sha256": "43e15bb19ac723ccff1588459d4eb6dc49d297c2f525557ecd5c70c195d43116",
       "anchors": [
         "AbstractObjectManager.java",
         "AbstractSchemaFactory.java",
@@ -390,7 +390,53 @@
     "roleFieldDelta": [],
     "historicalInventoryPreserved": true,
     "reviewManifest": "scripts/api-key-operation-review-0.183.385.json",
-    "reviewManifestSha256": "0befca0dc71b1de7cc68df1e5403065f2304e18a25fbbc6a3d20c53b21eecbc2",
+    "reviewManifestSha256": "22f4bb96ebc972b278f17399f60418ccf52d6fb42d6ba4bb0b6d95bab36f1ec2",
+    "nativeVolumeInactiveFix": {
+      "scope": "SOURCE_ONLY_NOT_RUNTIME_ACCEPTANCE",
+      "previousSourceInputs": {
+        "count": 488,
+        "sha256": "8701355114bb0846500f1ebc86bd7fa00f4231aa60924803618f601bef705f95"
+      },
+      "sourceInputs": {
+        "count": 488,
+        "sha256": "43e15bb19ac723ccff1588459d4eb6dc49d297c2f525557ecd5c70c195d43116"
+      },
+      "selectedSourceDelta": [
+        {
+          "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiResourceChangeDomain.java",
+          "before": "b8335b74afa9b70aa9dc5c82ffe42a991b1e22a1c64d8b95e006f63fc7dc79e0",
+          "after": "ab63d628bcc1ffc30de7615b20171ac7e16ab901f34d5cfbc42dfbf34b349f7b"
+        },
+        {
+          "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiVolumeCreateChange.java",
+          "before": "df8218ae115a6772b599c51fcad8f0fd6398884ad0c267798a17bc171e7e87d0",
+          "after": "784963fb087377899b51bdb24477db5519d4e58f4bda0f0d9047b8f38f794872"
+        }
+      ],
+      "nativeTerminalStateBefore": "detached",
+      "nativeTerminalStateAfter": "inactive",
+      "allocationState": "inactive",
+      "normalNativeCreateDispatchAndIdentityChecksPreserved": true,
+      "newMandatoryMethods": [
+        [
+          "io.cattle.platform.iaas.api.auth.change.AiVolumeCreateChangeTest",
+          "onlyCompletedNativeCreateStateCanVerifyTheNewUnallocatedRecord"
+        ],
+        [
+          "io.cattle.platform.iaas.api.auth.change.AiVolumeCreateChangeTest",
+          "humanCreateReviewUsesTheSameNativeInactiveTerminalState"
+        ]
+      ],
+      "preservedMandatoryMethod": [
+        "io.cattle.platform.iaas.api.auth.change.AiVolumeCreateChangeTest",
+        "exactNewUuidAndLogicalDetachedReadbackDoNotAdoptSameNameOldOrAllocatedVolumes"
+      ],
+      "tupleCount": 1396,
+      "roleFieldDelta": [],
+      "frozenV1SourceSerFilesUnchanged": true,
+      "compiledRoleProof": "PENDING_NORMAL_CI",
+      "runtimePass": false
+    },
     "previousReview": {
     "version": "unreleased-384-typed-config-local-volume-bounded-logs",
     "status": "SOURCE_REEXTRACTED_NOT_ARTIFACT_OR_RUNTIME_ACCEPTANCE",

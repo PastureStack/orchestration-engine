@@ -1183,7 +1183,7 @@ public class AiResourceChangeDomain extends AbstractJooqDao {
             List<Map<String, Object>> result = new ArrayList<>();
             result.add(change("name", null, parameters.get("name")));
             if (parameters.containsKey("description")) result.add(change("description", null, parameters.get("description")));
-            result.add(change("driver", null, "local")); result.add(change("state", null, "detached")); return result;
+            result.add(change("driver", null, "local")); result.add(change("state", null, "inactive")); return result;
         }
         if (AiServiceUpgradeLifecycleChange.supports(descriptor)) return AiServiceUpgradeLifecycleChange.changes(descriptor, target);
         List<Map<String, Object>> result = new ArrayList<>();
