@@ -10,16 +10,16 @@ upstream history, authorship, licenses, and dependency notices.
 
 ## Current component
 
-[Engine **0.183.386 source candidate**](docs/releases/orchestration-engine-0.183.386.md)
+[Engine **0.183.386**](https://github.com/PastureStack/orchestration-engine/releases/tag/v0.183.386)
 adds named ordinary Service dependencies and native ExternalService HTTP health
 request lines, and fixes Load Balancer manual-scale execution attestation. Human
 review, native authorization, bound Key, identity and consistency checks remain.
-CI, publication and fresh native acceptance are pending; complete WebMCP coverage
-is not claimed. The published baseline remains Engine **0.183.385**.
+Original CI and immutable component publication passed. Matching Server deployment
+and fresh native acceptance remain pending; complete WebMCP coverage is not claimed.
 
 Deploy through the [Server installation guide](https://github.com/PastureStack/server#quick-start)
 using a qualified matching assembly. Matching Web Console support is required;
-this source candidate does not update an existing Server deployment.
+component publication does not update an existing Server deployment.
 
 ## Optional AI resource workflows
 
@@ -57,9 +57,10 @@ Supported resource families and lifecycle operations remain partial. The
 optional `get_resource view=stack_graph` returns bounded ordinary-Service links
 with unknown completeness; ordinary detail reads do not query the graph.
 
-Ordinary-Service `update_links` replaces the complete simple-link set, including
-an explicit empty set to clear links. Named, port-qualified, remote or incomplete
-links remain outside this workflow. Registry plans activate or deactivate an
+Ordinary-Service `update_links` replaces the complete plain or named-link set,
+including an explicit empty set to clear links. Native target/name pair identity
+is preserved. Port-qualified, remote or incomplete links remain outside this
+workflow. Registry plans activate or deactivate an
 existing Registry through its native StoragePool owner; private configuration
 stays server-side, and credential editing remains a separate human workflow.
 Read-only process views use the native global owner and fixed diagnostic enums;

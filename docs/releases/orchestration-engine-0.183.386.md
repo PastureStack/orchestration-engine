@@ -1,4 +1,4 @@
-# Orchestration Engine 0.183.386 candidate
+# Orchestration Engine 0.183.386
 
 Ordinary Service dependency plans accept mutually exclusive `links` entries with
 an opaque target reference and native alias name, or the existing `serviceRefs`
@@ -24,10 +24,26 @@ native manual readiness still rejects global services. The native PUT can save
 desired fields before a process fails, so the original failed plan is not retried,
 rewritten or counted as success.
 
-Source assembly: 415 retained required cases plus 10 new methods (425); 74 planned
-class roots (13 current, 61 carry); pure C03 extraction 490 inputs with exactly the
-same 1,396 HTTP tuples, no role, route or operation grant delta. Source SER/schema
-inputs are unchanged. Current original CI, compiled class/role-schema evidence,
-SBOM/security qualification, publication, deployment and fresh native/weak-model
-acceptance remain PENDING. No old FAIL is promoted and no full coverage is claimed.
-Matching Web Console support and a qualified Server assembly are required.
+Readable-target denied audits retain a trusted target identity only after fresh
+native visibility checks. Hidden targets remain excluded. Native permission
+checks are preserved.
+
+Original JDK 25 CI
+[42407902564](https://github.com/PastureStack/orchestration-engine/actions/runs/42407902564)
+passed 475 suites / 4,241 tests, zero failures/errors and one inherited skip.
+All 427 required methods passed: 415 retained and 12 new. Compiled evidence covers
+74 roots (14 current, 60 byte-identical carry), all 16 serialized schemas and
+175 schema JSON inputs. C03 retains 490 inputs and the same 1,396 HTTP tuples,
+with zero role, route or operation grant delta.
+
+Producer `062d8e336339f1b55749fc5731a2f7797a12a005` and signed merge/tag target
+`bf297828e9e02e09bf6f291b037b22fb8801afd3` share tested tree
+`dccd2fca2a302c9f7289604b343df4a451c7be02`. The original JAR SHA256 is
+`caab40811c651725b0d73ad861a744ce991466f75819e453e826d0b1a796e929`.
+All twelve [public assets](https://github.com/PastureStack/orchestration-engine/releases/tag/v0.183.386)
+passed anonymous SHA256 readback and immutable cryptographic release verification.
+Security, original SBOM and compiled role-schema qualifications passed.
+
+Matching Web Console support, qualified Server deployment and fresh designated
+native/weak-model acceptance remain separate. No old FAIL is promoted and no
+full frontend coverage is claimed.
