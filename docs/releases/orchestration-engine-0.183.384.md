@@ -1,50 +1,76 @@
-# Orchestration Engine 0.183.384 — upcoming source candidate
+# Orchestration Engine 0.183.384
 
-This candidate prepares three bounded subsets: ordinary-Service config-only
-upgrade using typed ports/healthCheck, builtin-local detached logical Volume
-creation, and bounded Container logs through current native LOGS authority.
-It does not establish physical storage/mounts, advanced or quorum health checks,
-plugin credentials/options, arbitrary application-secret redaction, full frontend
-coverage or native acceptance. Omitted configuration is retained; ports=[] and
-healthCheck=null explicitly clear; a true no-op plan is rejected.
+## Changes and boundaries
 
-Normal human confirmation, complete native configuration/UUID/state CAS and
-current role/Key/session checks remain. Private broker tickets are single-use
-and request-bound. Logs remain untrusted, completeness unknown, bounded at
-200 lines / 64 KiB / 5 seconds with cancellation. Audit stores fixed metadata,
-never log text, tokens or tickets. Ordinary native APIs and GUI Logs/Terminal
-are not restricted by this typed subset.
+This release adds three bounded typed subsets:
 
-## Native LB image dependency correction
+- Ordinary-Service configuration upgrades accept native port strings and a
+  closed health-check object, including a same-image upgrade. Omitted settings
+  remain unchanged; `ports: []` and `healthCheck: null` explicitly clear them.
+  Complete primary/secondary, environment, volume, security, link and hardware
+  configuration remains subject to native snapshot CAS and verified readback.
+  Advanced/quorum health checks and unsupported strategy/plugin settings remain
+  outside the typed subset.
+- Builtin-local logical Volume creation returns a new, precisely identified
+  detached record. It does not allocate storage on a Host, mount it, or enable
+  other storage drivers or private plugin options.
+- `container_logs` returns actual untrusted application text under the native
+  Container LOGS action and current role, Key and Cookie-session authority.
+  Read metadata alone grants no logs access. A request-bound server-only ticket
+  is single-use; broker output is bounded to 200 lines and 64 KiB, with a
+  five-second dial/read deadline and cancellation. This is not a five-second
+  end-to-end DAO/audit guarantee or an arbitrary application-secret redactor.
+  Audit records fixed metadata, never log text, tokens or tickets. Existing GUI
+  Logs, Terminal and ordinary native APIs keep their existing behavior.
 
-The existing native Volume image/cache ensure and Full-owned cleanup now
-recognize the exact loadBalancerService subtype/kind of a Service root.
-Verified parent frames, persisted ownership/relations and live Key, revision,
-expiry, role and schema ceilings remain. Five focused new regressions passed;
-the original tcp7e native failure is preserved. Native recovery and retest
-remain separate; no full native acceptance is claimed.
+The native image/cache ensure and Full-owned cleanup now recognize the exact
+`loadBalancerService` subtype of an authorized Service root. Verified parent
+frames, persisted ownership/relations and live Key revision, expiry, role and
+schema ceilings remain; five regressions cover this admission correction.
 
-## Cancellable stale Service-link plans
+An ordinary-Service `update_links` plan with an exact CAS-stale dependency set
+remains visible for human cancellation after fresh actor, role, bound Key and
+reviewed target identities pass. Other authorization failures/conflicts remain
+excluded. Confirm/apply retain their full CAS rejection. Two regressions cover
+cancellation and the denial boundaries; the matching Console disables Review
+and displays the existing localized stale-plan warning.
 
-An ordinary-Service link plan whose dependency set changed remains visible for
-cancellation only after fresh actor, native role, bound Key and both reviewed
-target identities still pass. The original plan stays immutable; confirm/apply
-retain their full CAS rejection. Other authorization failures and conflicts do
-not regain visibility. Two regressions cover cancellation and the denial cases.
+## Component verification
 
-## Verification pending
+The immutable [`v0.183.384` release](https://github.com/PastureStack/orchestration-engine/releases/tag/v0.183.384)
+uses signed producer `6ead99132f575b05c564f94882f59088f19e7511`, tree
+`866f6f3d132f620bc0c220fbfcab2c059f6c7225`, and same-tree merge
+`3b96f1da2b60ffdb85856963b64ce747f436d2da`.
 
-The normal required-method union is 402: all 330 published requirements,
-65 typed-feature cases, five LB image dependency cases and two stale-inbox cases.
-The source inventory has 21 affected
-production Java sources, six new sources and 71 required source class roots
-(the original 59 union the 21 affected roots, including 50 unchanged sources).
-C03 is normally re-extracted; all 1,396 HTTP tuples and semantics are retained.
-Five typed DTO fields per admin/user/project role are reviewed. Fresh effective
-schema projections and every compiled class/schema hash, full CI, original
-artifacts, publication and native acceptance remain pending. Do not force the
-new serialized effective roles to match 383; do not rewrite frozen v1 source
-SER bytes to invent proof. Latest published Engine remains 0.183.383.
+[Security/package CI](https://github.com/PastureStack/orchestration-engine/actions/runs/42358110324),
+[custom CodeQL](https://github.com/PastureStack/orchestration-engine/actions/runs/42358110220)
+and [organization CodeQL](https://github.com/PastureStack/orchestration-engine/actions/runs/42358110997)
+passed for that producer. The original CI artifact reports **4,216 tests in
+471 suites, zero failures/errors and one inherited skip**. All **402 required
+methods** are observed: the prior 330, 65 typed-feature cases, five image-admission
+cases and two stale-inbox cases. The original packaged artifact closes **71
+class roots** (21 affected production roots plus 50 same-source carried roots).
 
-Use matching Web Console 1.6.224 / Bridge 0.2.26 and a newly qualified Server
-after actual signed producer, artifact and deployment pins exist.
+C03 retains **487 source inputs and all 1,396 HTTP tuples**, with 1,397 executed
+projection rows. The three existing role overlays add only the five reviewed
+typed DTO fields per role; native HTTP admission and role grants do not expand.
+Frozen v1 source SER compatibility, packaged schemas and fresh effective typed
+schema projections are qualified separately, without borrowing historical
+compiled classes. Original artifact/SBOM provenance is retained; all 12 public
+assets passed anonymous byte verification and the native GitHub release
+attestation passed cryptographic verification. This workflow provides no native
+SLSA attestation, and no SLSA claim is made.
+
+## Native acceptance and installation
+
+Component qualification is not native acceptance. The affected Service upgrade,
+logical Volume and bounded logs workflows, their role/Key/revocation cases,
+52-profile review views and the Go broker/runtime framing still require the
+matching qualified Server and affected native acceptance. Historical failures
+and scoped results remain separate; neither this release nor source mapping
+establishes all 243 frontend workflow groups.
+
+Use matching Web Console 1.6.224 / Bridge 0.2.26 through the
+[current qualified Server installation](https://github.com/PastureStack/server#quick-start).
+Do not replace a running Server with the Engine JAR alone or infer a Server
+digest/deployment result from component publication.

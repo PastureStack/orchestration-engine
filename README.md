@@ -10,23 +10,18 @@ upstream history, authorship, licenses, and dependency notices.
 
 ## Current component
 
-[Engine **0.183.383**](https://github.com/PastureStack/orchestration-engine/releases/tag/v0.183.383)
-is published. It adds reviewed ordinary-Service dependency-link replacement and
-Registry activation/deactivation, with native authorization and transaction-bound
-concurrency checks. See the [release note](docs/releases/orchestration-engine-0.183.383.md)
-for changes, verification and upgrade boundaries.
+[Engine **0.183.384**](https://github.com/PastureStack/orchestration-engine/releases/tag/v0.183.384)
+is published. It adds typed Service ports/health-check configuration upgrades,
+builtin-local logical Volume creation and bounded Container application logs.
+It also corrects native load-balancer image dependency admission and keeps
+CAS-stale Service-link plans visible for authorized human cancellation. See the
+[release note](docs/releases/orchestration-engine-0.183.384.md) for verified
+component evidence and the remaining native acceptance boundaries.
 
 Deploy through the [Server installation guide](https://github.com/PastureStack/server#quick-start)
-using a qualified matching component assembly; an Engine JAR alone is not a
-Server installation. Component publication does not establish native workflow
-or complete WebMCP coverage.
-
-## Upcoming component
-
-Source candidate **0.183.384** prepares the typed Service configuration subset,
-local logical Volume create and bounded Container logs. CI, compiled schemas,
-artifacts, publication and native acceptance remain pending. The current
-published component remains **0.183.383**. See [upcoming notes](docs/releases/orchestration-engine-0.183.384.md).
+using the current qualified matching component assembly; an Engine JAR alone is
+not a Server installation. Component publication does not establish native
+workflow or complete WebMCP coverage.
 
 ## Optional AI resource workflows
 
@@ -35,9 +30,12 @@ plans for compatible Web Console and stdio clients. It reuses real resource
 managers, current role/membership checks and the owner's live API Key policy.
 Ordinary Full and legacy API Key capabilities are retained.
 
-`aiResourceView` returns an authorized scalar projection, not secret values,
-private keys, raw process logs or full launch configurations. Queries and opaque
-pagination remain subject to the underlying domain manager's authorization.
+Ordinary `aiResourceView` detail queries return authorized scalar projections,
+excluding credentials, private keys, raw process logs and full launch
+configurations. The explicit `container_logs` view separately returns bounded
+application log text under native LOGS authority and live Key/session checks.
+Application text is untrusted and may contain application secrets; it is not a
+metadata-only view. Queries and opaque pagination retain native authorization.
 
 `aiResourceChangePlan` supports Stack, Service and Container creation, metadata
 editing and the explicitly registered lifecycle operations. Service creation
@@ -186,7 +184,7 @@ Before publishing an Engine artifact, run the complete package gate:
 
 ```sh
 bash scripts/check-cattle-jdk25-full-package
-ENGINE_VERSION=0.183.382 bash scripts/build --release
+ENGINE_VERSION=0.183.384 bash scripts/build --release
 bash scripts/check-release-artifact dist/artifacts/cattle.jar
 ```
 
@@ -223,11 +221,14 @@ the credential identity and policy revision; that same Key must apply them.
 Using a browser's shared Cookie alone does not establish strict credential
 isolation. Ordinary UI/API authorization remains unchanged.
 
-* `POST /v2-beta/projects/{projectId}/aiServiceUpgradePlans` with `serviceId`,
-  `image` and optional `startFirst` / `batchSize` / `intervalMillis` creates a
+* `POST /v2-beta/projects/{projectId}/aiServiceUpgradePlans` with `serviceId`
+  and an image or typed `ports` / `healthCheck` changes, plus optional
+  `startFirst` / `batchSize` / `intervalMillis`, creates a
   five-minute actor/project-bound preview and, for Key callers, a credential/revision
   binding. The effective strategy is immutable and shown for human review.
-  It does not upgrade a service.
+  It does not upgrade a service. A same-image configuration upgrade is supported;
+  omitted ports/health checks are retained, `ports: []` clears ports and
+  `healthCheck: null` clears the health check. A true no-op is rejected.
 * The confirmation UI separately calls `POST .../{planId}?action=confirm` with an
   empty body. The same owner's human session confirms through the console;
   API Keys cannot confirm, and a bound Key's current scope, expiry and revision
