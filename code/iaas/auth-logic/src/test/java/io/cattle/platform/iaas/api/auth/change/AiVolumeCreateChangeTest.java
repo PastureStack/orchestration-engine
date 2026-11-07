@@ -34,7 +34,7 @@ public class AiVolumeCreateChangeTest {
     }
     static VolumeRecord volume() {
         var volume = new VolumeRecord(); volume.setId(91L); volume.setUuid("new-volume"); volume.setAccountId(77L);
-        volume.setKind("volume"); volume.setName("new-data"); volume.setState("detached"); volume.setAllocationState("inactive");
+        volume.setKind("volume"); volume.setName("new-data"); volume.setState("inactive"); volume.setAllocationState("inactive");
         volume.setDeviceNumber(-1); volume.setExternalId("new-data"); volume.setUri("local:///new-data"); volume.setData(new LinkedHashMap<>());
         DataAccessor.setField(volume, "driver", "local"); DataAccessor.setField(volume, "driverOpts", Map.of()); return volume;
     }
@@ -67,6 +67,20 @@ public class AiVolumeCreateChangeTest {
                 v -> DataAccessor.setField(v, "isNative", true), v -> DataAccessor.setField(v, "isHostPath", true));
         for (var drift : drifts) { var changed = volume(); drift.accept(changed);
             assertFalse(AiVolumeCreateChange.complete(changed, parameters, 91L, "new-volume", 77L)); }
+    }
+    @Test public void onlyCompletedNativeCreateStateCanVerifyTheNewUnallocatedRecord() {
+        var parameters = Map.<String, Object>of("name", "new-data");
+        assertTrue(AiVolumeCreateChange.complete(volume(), parameters, 91L, "new-volume", 77L));
+        for (String state : List.of("requested", "registering", "creating", "activating", "active", "detached", "removing", "removed", "purged", "error")) {
+            var changed = volume(); changed.setState(state);
+            assertFalse(state, AiVolumeCreateChange.complete(changed, parameters, 91L, "new-volume", 77L));
+        }
+    }
+    @Test public void humanCreateReviewUsesTheSameNativeInactiveTerminalState() {
+        var f = fixture();
+        var state = f.domain.changes(CREATE, null, Map.of("name", "new-data")).stream()
+                .filter(row -> "state".equals(row.get("field"))).findFirst().orElseThrow();
+        assertNull(state.get("before")); assertEquals("inactive", state.get("after"));
     }
     @Test public void freshNativePostSchemaAndReadonlyFieldsRemainTheAuthorityBoundary() throws Exception {
         var f = fixture(); var parameters = Map.<String, Object>of("name", "new-data");

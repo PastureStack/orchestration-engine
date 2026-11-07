@@ -1,0 +1,302 @@
+{
+  "schemaVersion": 1,
+  "version": "0.183.385",
+  "scope": "SOURCE_ONLY_NOT_RUNTIME_ACCEPTANCE",
+  "reviewedBaseCommit": "6ead99132f575b05c564f94882f59088f19e7511",
+  "sourceInputs": {
+    "algorithm": "c03-source-inputs-v1",
+    "baseline": {
+      "count": 487,
+      "sha256": "5052cbdd8695bdd1938ab68201449230f0bd55f36ee2a02f7def6a1c286401be"
+    },
+    "reviewed": {
+      "count": 488,
+      "sha256": "f547c586d45da8e28930d68584713b9c6b143b6ff1138143e148d2bd253a8912"
+    },
+    "addedAnchors": [
+      "AiStackGroupChange.java"
+    ]
+  },
+  "tupleReview": {
+    "baseline": 1396,
+    "candidate": 1396,
+    "added": 0,
+    "removed": 0,
+    "semanticChanges": 0,
+    "sha256": "8f1c0fb378663b0b3d272efba2f211cb210eb6f17cb8035aefa33b56feeaf36a"
+  },
+  "delta": [
+    {
+      "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/ai/view/AiResourceViewService.java",
+      "before": "0ac2097cc679340736374e7517a3d6a1c94fc146434a9ac8625d9eefbd3c6228",
+      "after": "2de14905e4bd27065b1655f528cb64923b42711f0a8d26c7dc58afb9f1109481"
+    },
+    {
+      "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiResourceChangeDescriptor.java",
+      "before": "8b67cc5bbef6aaa559653150e016c28f23dfc3377c25f47c51584b15073ce250",
+      "after": "c978c0c9479f1f19168e766988c9ae6666aad9bcbc3702232f339d34f84d0d7d"
+    },
+    {
+      "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiResourceChangeDomain.java",
+      "before": "977d6c699d26fca757aabd213fd0a5404710cd21d0f6e84cd01b025c004ccbc8",
+      "after": "ab63d628bcc1ffc30de7615b20171ac7e16ab901f34d5cfbc42dfbf34b349f7b"
+    },
+    {
+      "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiResourceChangePlanService.java",
+      "before": "46bc0f8946fd54449a455c68c641bed457eff7772a12ea80366455c25904b3f8",
+      "after": "857ec937288a36c2e823888b02cd8e90632bc8b86679a8702ee9d985a0a6e20f"
+    },
+    {
+      "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiStackGroupChange.java",
+      "before": null,
+      "after": "eed8acdc9402a9e5f3b4e04b086c475da5ea3f6cf994f3359b7302b690c3dde6"
+    },
+    {
+      "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiVolumeCreateChange.java",
+      "before": "df8218ae115a6772b599c51fcad8f0fd6398884ad0c267798a17bc171e7e87d0",
+      "after": "784963fb087377899b51bdb24477db5519d4e58f4bda0f0d9047b8f38f794872"
+    }
+  ],
+  "roleFieldDelta": [],
+  "typedBaseSchemaDelta": [],
+  "requiredMethodCount": 415,
+  "newRequiredMethods": [
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiResourceChangeValidationFieldTest",
+      "failedAuditRemainsFailClosedBeforeAnyValidationFieldCanBeReturned"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiResourceChangeValidationFieldTest",
+      "malformedOversizedAndUnknownValidationPathsKeepOnlySanitizedStatusCode"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiResourceChangeValidationFieldTest",
+      "safeNativeValidationFieldRetainsStatusCodeWithoutValuesOrPrivateNativeText"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiResourceChangeValidationFieldTest",
+      "unavailableOrUnboundedSchemaMetadataCannotExposeAValidationPathOrPayload"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiStackGroupChangeTest",
+      "groupAllowsNativeEditableOrdinaryNonemptyStatesButRejectsSystemCatalogAndRemovedStacks"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiStackGroupChangeTest",
+      "groupCompletionRequiresExactRequestedFieldsAndPreservesAllOtherConfiguration"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiStackGroupChangeTest",
+      "groupParametersPreserveNativeTextNullAndEmptyWithoutExtendingOtherWorkflows"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiStackGroupChangeTest",
+      "groupPlanRetainsHumanConfirmationAndDetectsGroupAndParentUuidDriftBeforeDispatch"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiStackGroupChangeTest",
+      "groupSnapshotAndTerminalReceiptRequireCurrentReadableFieldRoleAndExactIdentity"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiStackGroupChangeTest",
+      "groupSnapshotBindsNativeColumnIdentityProjectAndConfigurationWithoutCopyingSecrets"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiStackGroupChangeTest",
+      "groupStillRequiresNativePutFieldCeilingAndCurrentBoundKeyBeforeDispatch"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiVolumeCreateChangeTest",
+      "humanCreateReviewUsesTheSameNativeInactiveTerminalState"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiVolumeCreateChangeTest",
+      "onlyCompletedNativeCreateStateCanVerifyTheNewUnallocatedRecord"
+    ]
+  ],
+  "requiredPackagedRootSources": [
+    "code/framework/api/src/main/java/io/cattle/platform/api/auth/ApiAuditPayload.java",
+    "code/framework/api/src/main/java/io/cattle/platform/api/auth/ApiContainerLogsRead.java",
+    "code/framework/api/src/main/java/io/cattle/platform/api/auth/ApiKeyAuditSink.java",
+    "code/framework/api/src/main/java/io/cattle/platform/api/auth/ClientToolAuditEvent.java",
+    "code/framework/auditing/src/main/java/io/cattle/platform/iaas/api/auditing/AuditLogKeySelector.java",
+    "code/framework/auditing/src/main/java/io/cattle/platform/iaas/api/auditing/AuditServiceImpl.java",
+    "code/framework/engine/src/main/java/io/cattle/platform/engine/process/ProcessAuthorization.java",
+    "code/framework/lock/src/main/java/io/cattle/platform/lock/Lock.java",
+    "code/framework/lock/src/main/java/io/cattle/platform/lock/provider/impl/StandardLock.java",
+    "code/framework/object/src/main/java/io/cattle/platform/object/impl/AbstractObjectManager.java",
+    "code/iaas/api-logic/src/main/java/io/cattle/platform/iaas/api/filter/instance/InstancePortsValidationFilter.java",
+    "code/iaas/api-logic/src/main/java/io/cattle/platform/iaas/api/port/InstanceCreatePortValidation.java",
+    "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/ai/AiToolCallEventService.java",
+    "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/ai/audit/AiAuditQueryInputHandler.java",
+    "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/ai/audit/AiAuditQueryService.java",
+    "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/ai/catalog/AiCatalogLaunchAccess.java",
+    "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/ai/catalog/AiCatalogLaunchDelegation.java",
+    "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/ai/catalog/AiCatalogLaunchPlanResourceManager.java",
+    "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/ai/catalog/AiCatalogLaunchPlanService.java",
+    "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/ai/logs/AiContainerLogsInputHandler.java",
+    "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/ai/logs/AiContainerLogsRunner.java",
+    "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/ai/logs/AiContainerLogsService.java",
+    "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/ai/logs/AiContainerLogsTicket.java",
+    "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/ai/view/AiApiKeyReadView.java",
+    "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/ai/view/AiAuditSourcePage.java",
+    "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/ai/view/AiProcessDiagnostics.java",
+    "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/ai/view/AiResourceViewService.java",
+    "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/apikey/ApiKeyAiBridgeGuard.java",
+    "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/apikey/ApiKeyProcessAuthorization.java",
+    "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/apikey/ApiKeyTargetResolver.java",
+    "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiAliasServiceChange.java",
+    "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiCreatePorts.java",
+    "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiExternalServiceChange.java",
+    "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiHostMetadataChange.java",
+    "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiLoadBalancerCreateChange.java",
+    "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiProjectMetadataChange.java",
+    "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiRegistryLifecycleChange.java",
+    "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiResourceChangeDescriptor.java",
+    "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiResourceChangeDomain.java",
+    "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiResourceChangePlanResourceManager.java",
+    "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiResourceChangePlanService.java",
+    "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiResourceChangePlanStore.java",
+    "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiResourceChangeProcessObserver.java",
+    "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiServiceCreateChange.java",
+    "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiServiceUpgradeLifecycleChange.java",
+    "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiStackGroupChange.java",
+    "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiVolumeCreateChange.java",
+    "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/integration/internal/rancher/TokenAuthLookup.java",
+    "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/projects/ProjectAccessService.java",
+    "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/projects/ProjectResourceManager.java",
+    "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/upgrade/AiServiceUpgradePlanInputHandler.java",
+    "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/upgrade/AiServiceUpgradePlanResourceManager.java",
+    "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/upgrade/AiServiceUpgradePlanService.java",
+    "code/iaas/model/src/main/java/io/cattle/platform/core/dao/HostDao.java",
+    "code/iaas/model/src/main/java/io/cattle/platform/core/dao/ServiceDao.java",
+    "code/iaas/model/src/main/java/io/cattle/platform/core/dao/VolumeDao.java",
+    "code/iaas/model/src/main/java/io/cattle/platform/core/dao/impl/AccountDaoImpl.java",
+    "code/iaas/model/src/main/java/io/cattle/platform/core/dao/impl/HostDaoImpl.java",
+    "code/iaas/model/src/main/java/io/cattle/platform/core/dao/impl/ServiceDaoImpl.java",
+    "code/iaas/model/src/main/java/io/cattle/platform/core/dao/impl/VolumeDaoImpl.java",
+    "code/iaas/service-discovery/api/src/main/java/io/cattle/platform/servicediscovery/api/action/SetServiceLinksActionHandler.java",
+    "code/iaas/service-discovery/api/src/main/java/io/cattle/platform/servicediscovery/api/dao/ServiceConsumeMapDao.java",
+    "code/iaas/service-discovery/api/src/main/java/io/cattle/platform/servicediscovery/api/filter/AiServiceUpgradePersistence.java",
+    "code/iaas/service-discovery/api/src/main/java/io/cattle/platform/servicediscovery/api/filter/ServiceUpgradeValidationFilter.java",
+    "code/iaas/service-discovery/api/src/main/java/io/cattle/platform/servicediscovery/api/lock/ServiceDiscoveryServiceSetLinksLock.java",
+    "code/iaas/service-discovery/api/src/main/java/io/cattle/platform/servicediscovery/api/service/ServiceUpgradeValidation.java",
+    "code/iaas/service-discovery/api/src/main/java/io/cattle/platform/servicediscovery/api/service/impl/ServiceDiscoveryApiServiceImpl.java",
+    "code/iaas/service-discovery/server/src/main/java/io/cattle/platform/servicediscovery/dao/impl/ServiceConsumeMapDaoImpl.java",
+    "code/iaas/service-discovery/server/src/main/java/io/cattle/platform/servicediscovery/process/LoadBalancerServiceCreatePostListener.java",
+    "code/implementation/docker/api/src/main/java/io/cattle/platform/docker/api/ContainerLogsActionHandler.java",
+    "code/packaging/app-config/src/main/java/io/cattle/platform/app/IaasApiConfig.java",
+    "code/packaging/app-config/src/main/java/io/cattle/platform/app/SystemServicesConfig.java"
+  ],
+  "currentRoots": 6,
+  "carriedSourceRoots": 66,
+  "currentSourceRoots": [
+    "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/ai/view/AiResourceViewService.java",
+    "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiResourceChangeDescriptor.java",
+    "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiResourceChangeDomain.java",
+    "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiResourceChangePlanService.java",
+    "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiStackGroupChange.java",
+    "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiVolumeCreateChange.java"
+  ],
+  "frozenV1SourceSerFilesUnchanged": true,
+  "compiledRoleSchemaProof": "PENDING_NORMAL_CURRENT_CI",
+  "compiledClassHashes": null,
+  "artifactQualificationClaimed": false,
+  "runtimeAcceptanceClaimed": false,
+  "previousReviewManifest": "scripts/api-key-operation-review-0.183.384.json",
+  "previousReviewManifestSha256": "4d4f025af1215f0673505646189beed6e8fe4449c573804bdc899dbb611a4b5d",
+  "extractor": {
+    "path": "C:\\Users\\chen21019\\source\\outputs\\webmcp-expansion-20261029\\integration-360-201\\refresh-integrated-operation-contract.py",
+    "sha256": "078ffe48881469fe5eb3cb43a15fa41b480fe70e11bd5f63102ded6b35a6d076"
+  },
+  "nativeVolumeInactiveFix": {
+    "scope": "SOURCE_ONLY_NOT_RUNTIME_ACCEPTANCE",
+    "previousSourceInputs": {
+      "count": 488,
+      "sha256": "8701355114bb0846500f1ebc86bd7fa00f4231aa60924803618f601bef705f95"
+    },
+    "sourceInputs": {
+      "count": 488,
+      "sha256": "43e15bb19ac723ccff1588459d4eb6dc49d297c2f525557ecd5c70c195d43116"
+    },
+    "selectedSourceDelta": [
+      {
+        "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiResourceChangeDomain.java",
+        "before": "b8335b74afa9b70aa9dc5c82ffe42a991b1e22a1c64d8b95e006f63fc7dc79e0",
+        "after": "ab63d628bcc1ffc30de7615b20171ac7e16ab901f34d5cfbc42dfbf34b349f7b"
+      },
+      {
+        "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiVolumeCreateChange.java",
+        "before": "df8218ae115a6772b599c51fcad8f0fd6398884ad0c267798a17bc171e7e87d0",
+        "after": "784963fb087377899b51bdb24477db5519d4e58f4bda0f0d9047b8f38f794872"
+      }
+    ],
+    "nativeTerminalStateBefore": "detached",
+    "nativeTerminalStateAfter": "inactive",
+    "allocationState": "inactive",
+    "normalNativeCreateDispatchAndIdentityChecksPreserved": true,
+    "newMandatoryMethods": [
+      [
+        "io.cattle.platform.iaas.api.auth.change.AiVolumeCreateChangeTest",
+        "onlyCompletedNativeCreateStateCanVerifyTheNewUnallocatedRecord"
+      ],
+      [
+        "io.cattle.platform.iaas.api.auth.change.AiVolumeCreateChangeTest",
+        "humanCreateReviewUsesTheSameNativeInactiveTerminalState"
+      ]
+    ],
+    "preservedMandatoryMethod": [
+      "io.cattle.platform.iaas.api.auth.change.AiVolumeCreateChangeTest",
+      "exactNewUuidAndLogicalDetachedReadbackDoNotAdoptSameNameOldOrAllocatedVolumes"
+    ],
+    "tupleCount": 1396,
+    "roleFieldDelta": [],
+    "frozenV1SourceSerFilesUnchanged": true,
+    "compiledRoleProof": "PENDING_NORMAL_CI",
+    "runtimePass": false
+  },
+  "safeValidationFieldFix": {
+    "scope": "SOURCE_ONLY_NOT_CURRENT_CI_ARTIFACT_OR_NATIVE_ACCEPTANCE",
+    "intermediateProducer": "056166069e95eafa4c1988d89e482884cbcacb3e",
+    "intermediateCi": 42373910487,
+    "oldFingerprint": "43e15bb19ac723ccff1588459d4eb6dc49d297c2f525557ecd5c70c195d43116",
+    "newFingerprint": "f547c586d45da8e28930d68584713b9c6b143b6ff1138143e148d2bd253a8912",
+    "selectedSourceDelta": [
+      {
+        "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiResourceChangePlanService.java",
+        "before": "0a587567de24b0cdba1bb4ea29047a05ebb5c7c3823aaae9b832f2cdb0418220",
+        "after": "857ec937288a36c2e823888b02cd8e90632bc8b86679a8702ee9d985a0a6e20f"
+      }
+    ],
+    "newRequiredMethods": [
+      [
+        "io.cattle.platform.iaas.api.auth.change.AiResourceChangeValidationFieldTest",
+        "failedAuditRemainsFailClosedBeforeAnyValidationFieldCanBeReturned"
+      ],
+      [
+        "io.cattle.platform.iaas.api.auth.change.AiResourceChangeValidationFieldTest",
+        "malformedOversizedAndUnknownValidationPathsKeepOnlySanitizedStatusCode"
+      ],
+      [
+        "io.cattle.platform.iaas.api.auth.change.AiResourceChangeValidationFieldTest",
+        "safeNativeValidationFieldRetainsStatusCodeWithoutValuesOrPrivateNativeText"
+      ],
+      [
+        "io.cattle.platform.iaas.api.auth.change.AiResourceChangeValidationFieldTest",
+        "unavailableOrUnboundedSchemaMetadataCannotExposeAValidationPathOrPayload"
+      ]
+    ],
+    "requiredMethods": 415,
+    "preserveNativeStatusCode": true,
+    "fieldOnly": true,
+    "privateValueMessageDetailExcluded": true,
+    "sourceInputs": 488,
+    "tuples": 1396,
+    "roleFieldDelta": [],
+    "frozenV1SerBytesUnchanged": true,
+    "finalProducer": null,
+    "finalCi": null,
+    "compiledProof": null,
+    "nativePass": false
+  }
+}

@@ -410,7 +410,8 @@ public class AiResourceChangeDomain extends AbstractJooqDao {
         }
         if (request.getAttribute(DOMAIN) instanceof AiResourceChangeDescriptor descriptor
                 && (Set.of("dnsService", "certificate", "host", "project", "loadBalancerService", "registry", "volume").contains(descriptor.resourceType())
-                    || AiServiceUpgradeLifecycleChange.supports(descriptor) || AiAliasServiceChange.ordinaryLinks(descriptor))) {
+                    || AiServiceUpgradeLifecycleChange.supports(descriptor) || AiAliasServiceChange.ordinaryLinks(descriptor)
+                    || AiStackGroupChange.supports(descriptor, copyMap(request.getRequestObject())))) {
             if (request.getAction() != null) {
                 var actions = request.getId() == null ? schema.getCollectionActions() : schema.getResourceActions();
                 if (actions == null || !actions.containsKey(request.getAction())) throw error(403, "PermissionDenied");
@@ -782,6 +783,26 @@ public class AiResourceChangeDomain extends AbstractJooqDao {
         return copyMap(result);
     }
 
+    public Map<String, Object> stackGroupSnapshot(ApiRequest request, Object target) {
+        Policy actor = actor(request);
+        ApiRequest read = domain(request, AiResourceChangeDescriptor.require("stack", "update_metadata"),
+                "stack", publicId("stack", ObjectUtils.getId(target)), "GET", null, new LinkedHashMap<>());
+        var current = authenticator.currentAuthorization(actor.getAuthenticatedAsAccountId(), actor.getAccountId(), read);
+        requireStackGroupReadable(current.schemas().getSchema("stack"));
+        return AiStackGroupChange.snapshot(target, objects.loadResource(Account.class, actor.getAccountId()), json);
+    }
+
+    private static void requireStackGroupReadable(Schema schema) {
+        var field = schema == null || schema.getResourceFields() == null ? null : schema.getResourceFields().get("group");
+        if (field == null || !field.isIncludeInList() || field.isReadOnCreateOnly()
+                || field.getTransform() != null && !field.getTransform().isBlank()) throw error(403, "PermissionDenied");
+    }
+
+    public void ready(AiResourceChangeDescriptor descriptor, Object target, Object parent, Map<String, Object> parameters) {
+        if (AiStackGroupChange.supports(descriptor, parameters)) { AiStackGroupChange.ordinary(target); return; }
+        ready(descriptor, target, parent);
+    }
+
     public void ready(AiResourceChangeDescriptor descriptor, Object target, Object parent) {
         if (AiRegistryLifecycleChange.supports(descriptor)) { AiRegistryLifecycleChange.ready(descriptor, target); return; }
         if (AiServiceUpgradeLifecycleChange.supports(descriptor)) {
@@ -860,6 +881,12 @@ public class AiResourceChangeDomain extends AbstractJooqDao {
         if (target == null || !Objects.equals(ObjectUtils.getAccountId(target), actor.getAccountId())
                 || !matchesResourceType(descriptor.resourceType(), target) || current.policy().authorizeObject(target) == null)
             throw error(403, "PermissionDenied");
+        if (AiStackGroupChange.supports(descriptor, copyMap(plan.get("parameters")))) {
+            Map<String, Object> identity = copyMap(plan.containsKey("stackGroupIdentity")
+                    ? plan.get("stackGroupIdentity") : AiStackGroupChange.identity(copyMap(plan.get("snapshot"))));
+            if (!identity.equals(AiStackGroupChange.identity(stackGroupSnapshot(request, target))))
+                throw error(409, "ResourceChangePlanStale");
+        }
         if (AiRegistryLifecycleChange.supports(descriptor)) {
             Map<String, Object> identity = copyMap(plan.containsKey("registryIdentity") ? plan.get("registryIdentity") : plan.get("snapshot"));
             if (!AiRegistryLifecycleChange.registry(target) || number(identity.get("id")) != number(ObjectUtils.getId(target))
@@ -938,6 +965,10 @@ public class AiResourceChangeDomain extends AbstractJooqDao {
     public boolean complete(AiResourceChangeDescriptor descriptor, Object target, Map<String, Object> parameters,
             Map<String, Object> before) {
         if (target == null) return false;
+        if (AiStackGroupChange.supports(descriptor, parameters)) {
+            return AiStackGroupChange.complete(target, parameters, before,
+                    objects.loadResource(Account.class, number(before.get("accountId"))), json);
+        }
         if (AiVolumeCreateChange.supports(descriptor)) {
             return target instanceof io.cattle.platform.core.model.Volume volume
                     && AiVolumeCreateChange.complete(volume, parameters, number(before.get("volumeCreateId")),
@@ -1152,7 +1183,7 @@ public class AiResourceChangeDomain extends AbstractJooqDao {
             List<Map<String, Object>> result = new ArrayList<>();
             result.add(change("name", null, parameters.get("name")));
             if (parameters.containsKey("description")) result.add(change("description", null, parameters.get("description")));
-            result.add(change("driver", null, "local")); result.add(change("state", null, "detached")); return result;
+            result.add(change("driver", null, "local")); result.add(change("state", null, "inactive")); return result;
         }
         if (AiServiceUpgradeLifecycleChange.supports(descriptor)) return AiServiceUpgradeLifecycleChange.changes(descriptor, target);
         List<Map<String, Object>> result = new ArrayList<>();

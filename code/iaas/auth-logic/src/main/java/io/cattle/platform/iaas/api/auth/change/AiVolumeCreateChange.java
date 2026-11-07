@@ -33,7 +33,7 @@ final class AiVolumeCreateChange {
     static boolean complete(Volume volume, Map<String, Object> parameters, long id, String uuid, long account) {
         if (id <= 0 || account <= 0 || uuid == null || uuid.isBlank() || !Objects.equals(volume.getId(), id)
                 || !Objects.equals(volume.getUuid(), uuid) || !Objects.equals(volume.getAccountId(), account)
-                || volume.getRemoved() != null || !"detached".equals(volume.getState()) || !"inactive".equals(volume.getAllocationState())
+                || volume.getRemoved() != null || !"inactive".equals(volume.getState()) || !"inactive".equals(volume.getAllocationState())
                 || volume.getStorageDriverId() != null || volume.getHostId() != null || volume.getImageId() != null || volume.getInstanceId() != null
                 || !Integer.valueOf(-1).equals(volume.getDeviceNumber()) || volume.getSizeMb() != null
                 || !Objects.equals(parameters.get("name"), volume.getName()) || !Objects.equals(parameters.get("description"), volume.getDescription())

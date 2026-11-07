@@ -1,13 +1,21 @@
 # Compatibility Contract
 
-## Upcoming Engine 0.183.384 source candidate
+## Upcoming Engine 0.183.385 source candidate
 
-Requires matching Web Console 1.6.224 / Bridge 0.2.26 and a newly qualified
-Server assembly. Required methods retain all 395 previous identities and add five LB image
-dependency regressions (330 union 70 = 400); source roots are the original 59
-union 21 affected = 71 (21 current / 50 unchanged source roots). Fresh effective-role projections and
-class hashes remain pending; no all-16-schema equality assumption is carried.
-Native HTTP tuples/authority remain unchanged. Source review is not native PASS.
+Matching Web Console 1.6.225 / Bridge 0.2.27 adds ordinary Stack Group editing
+through the existing human-reviewed metadata plan. Native PUT and field
+capabilities, live Key policy, resource/project identity and configuration CAS
+remain binding. System/catalog Stacks are outside this typed subset. Normal
+CI, immutable publication and native acceptance are pending.
+
+## Engine 0.183.384 published
+
+The immutable component release adds typed Service configuration upgrades,
+builtin-local logical Volume creation and bounded Container logs. Original
+JDK 25 CI passed 471 suites / 4,216 tests with zero failures/errors and one
+inherited skip; all 402 required methods passed. The native HTTP/role authority
+is unchanged. Publication evidence does not establish complete native workflow
+or all-frontend coverage; see the component release note for boundaries.
 
 ## Engine 0.183.383 published
 

@@ -9,8 +9,8 @@
   "scope": "Declared v1/v2 and source handler/process union; source-only review, not current artifact packaging, live role/state availability or asynchronous completion.",
   "sourceInputs": {
     "algorithm": "c03-source-inputs-v1",
-    "count": 487,
-    "sha256": "5052cbdd8695bdd1938ab68201449230f0bd55f36ee2a02f7def6a1c286401be",
+    "count": 488,
+    "sha256": "f547c586d45da8e28930d68584713b9c6b143b6ff1138143e148d2bd253a8912",
     "anchors": [
       "AbstractObjectManager.java",
       "AbstractSchemaFactory.java",
@@ -76,6 +76,7 @@
       "AiServiceUpgradePersistence.java",
       "AiServiceUpgradePlanInputHandler.java",
       "AiServiceUpgradePlanService.java",
+      "AiStackGroupChange.java",
       "AiToolCallEventService.java",
       "AiVolumeCreateChange.java",
       "ApiAuditPayload.java",
@@ -291,6 +292,135 @@
   "tupleCount": 1396,
   "tupleSha256": "8f1c0fb378663b0b3d272efba2f211cb210eb6f17cb8035aefa33b56feeaf36a",
   "extensionReview": {
+    "version": "unreleased-385-stack-group",
+    "status": "SOURCE_ONLY_NOT_RUNTIME_ACCEPTANCE",
+    "scope": "Ordinary Stack update_metadata adds only exact native group text or null. No tag normalization, empty-Stack constraint, new action/HTTP route, role/native field grant or Key bypass. Existing human preview/confirm, native PUT validation/manager and Key ceiling remain. Stack/project UUID, native group and configuration digest bind CAS; group plans do not copy configuration material. Terminal receipts recheck current authority and exact identity. Source review is not compiled artifact or native acceptance.",
+    "sourceInputChanges": [
+      {
+        "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/ai/view/AiResourceViewService.java",
+        "before": "0ac2097cc679340736374e7517a3d6a1c94fc146434a9ac8625d9eefbd3c6228",
+        "after": "2de14905e4bd27065b1655f528cb64923b42711f0a8d26c7dc58afb9f1109481"
+      },
+      {
+        "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiResourceChangeDescriptor.java",
+        "before": "8b67cc5bbef6aaa559653150e016c28f23dfc3377c25f47c51584b15073ce250",
+        "after": "c978c0c9479f1f19168e766988c9ae6666aad9bcbc3702232f339d34f84d0d7d"
+      },
+      {
+        "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiResourceChangeDomain.java",
+        "before": "977d6c699d26fca757aabd213fd0a5404710cd21d0f6e84cd01b025c004ccbc8",
+        "after": "ab63d628bcc1ffc30de7615b20171ac7e16ab901f34d5cfbc42dfbf34b349f7b"
+      },
+      {
+        "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiResourceChangePlanService.java",
+        "before": "46bc0f8946fd54449a455c68c641bed457eff7772a12ea80366455c25904b3f8",
+        "after": "857ec937288a36c2e823888b02cd8e90632bc8b86679a8702ee9d985a0a6e20f"
+      },
+      {
+        "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiStackGroupChange.java",
+        "before": null,
+        "after": "eed8acdc9402a9e5f3b4e04b086c475da5ea3f6cf994f3359b7302b690c3dde6"
+      },
+      {
+        "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiVolumeCreateChange.java",
+        "before": "df8218ae115a6772b599c51fcad8f0fd6398884ad0c267798a17bc171e7e87d0",
+        "after": "784963fb087377899b51bdb24477db5519d4e58f4bda0f0d9047b8f38f794872"
+      }
+    ],
+    "roleFieldDelta": [],
+    "reviewManifest": "scripts/api-key-operation-review-0.183.385.json",
+    "reviewManifestSha256": "dc6befa18cc4ef896ef6118d57571945ef6c72060d9d94dadaa96f185fffc82b",
+    "nativeVolumeInactiveFix": {
+      "scope": "SOURCE_ONLY_NOT_RUNTIME_ACCEPTANCE",
+      "previousSourceInputs": {
+        "count": 488,
+        "sha256": "8701355114bb0846500f1ebc86bd7fa00f4231aa60924803618f601bef705f95"
+      },
+      "sourceInputs": {
+        "count": 488,
+        "sha256": "43e15bb19ac723ccff1588459d4eb6dc49d297c2f525557ecd5c70c195d43116"
+      },
+      "selectedSourceDelta": [
+        {
+          "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiResourceChangeDomain.java",
+          "before": "b8335b74afa9b70aa9dc5c82ffe42a991b1e22a1c64d8b95e006f63fc7dc79e0",
+          "after": "ab63d628bcc1ffc30de7615b20171ac7e16ab901f34d5cfbc42dfbf34b349f7b"
+        },
+        {
+          "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiVolumeCreateChange.java",
+          "before": "df8218ae115a6772b599c51fcad8f0fd6398884ad0c267798a17bc171e7e87d0",
+          "after": "784963fb087377899b51bdb24477db5519d4e58f4bda0f0d9047b8f38f794872"
+        }
+      ],
+      "nativeTerminalStateBefore": "detached",
+      "nativeTerminalStateAfter": "inactive",
+      "allocationState": "inactive",
+      "normalNativeCreateDispatchAndIdentityChecksPreserved": true,
+      "newMandatoryMethods": [
+        [
+          "io.cattle.platform.iaas.api.auth.change.AiVolumeCreateChangeTest",
+          "onlyCompletedNativeCreateStateCanVerifyTheNewUnallocatedRecord"
+        ],
+        [
+          "io.cattle.platform.iaas.api.auth.change.AiVolumeCreateChangeTest",
+          "humanCreateReviewUsesTheSameNativeInactiveTerminalState"
+        ]
+      ],
+      "preservedMandatoryMethod": [
+        "io.cattle.platform.iaas.api.auth.change.AiVolumeCreateChangeTest",
+        "exactNewUuidAndLogicalDetachedReadbackDoNotAdoptSameNameOldOrAllocatedVolumes"
+      ],
+      "tupleCount": 1396,
+      "roleFieldDelta": [],
+      "frozenV1SourceSerFilesUnchanged": true,
+      "compiledRoleProof": "PENDING_NORMAL_CI",
+      "runtimePass": false
+    },
+    "safeValidationFieldFix": {
+      "scope": "SOURCE_ONLY_NOT_CURRENT_CI_ARTIFACT_OR_NATIVE_ACCEPTANCE",
+      "intermediateProducer": "056166069e95eafa4c1988d89e482884cbcacb3e",
+      "intermediateCi": 42373910487,
+      "oldFingerprint": "43e15bb19ac723ccff1588459d4eb6dc49d297c2f525557ecd5c70c195d43116",
+      "newFingerprint": "f547c586d45da8e28930d68584713b9c6b143b6ff1138143e148d2bd253a8912",
+      "selectedSourceDelta": [
+        {
+          "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiResourceChangePlanService.java",
+          "before": "0a587567de24b0cdba1bb4ea29047a05ebb5c7c3823aaae9b832f2cdb0418220",
+          "after": "857ec937288a36c2e823888b02cd8e90632bc8b86679a8702ee9d985a0a6e20f"
+        }
+      ],
+      "newRequiredMethods": [
+        [
+          "io.cattle.platform.iaas.api.auth.change.AiResourceChangeValidationFieldTest",
+          "failedAuditRemainsFailClosedBeforeAnyValidationFieldCanBeReturned"
+        ],
+        [
+          "io.cattle.platform.iaas.api.auth.change.AiResourceChangeValidationFieldTest",
+          "malformedOversizedAndUnknownValidationPathsKeepOnlySanitizedStatusCode"
+        ],
+        [
+          "io.cattle.platform.iaas.api.auth.change.AiResourceChangeValidationFieldTest",
+          "safeNativeValidationFieldRetainsStatusCodeWithoutValuesOrPrivateNativeText"
+        ],
+        [
+          "io.cattle.platform.iaas.api.auth.change.AiResourceChangeValidationFieldTest",
+          "unavailableOrUnboundedSchemaMetadataCannotExposeAValidationPathOrPayload"
+        ]
+      ],
+      "requiredMethods": 415,
+      "preserveNativeStatusCode": true,
+      "fieldOnly": true,
+      "privateValueMessageDetailExcluded": true,
+      "sourceInputs": 488,
+      "tuples": 1396,
+      "roleFieldDelta": [],
+      "frozenV1SerBytesUnchanged": true,
+      "finalProducer": null,
+      "finalCi": null,
+      "compiledProof": null,
+      "nativePass": false
+    },
+    "previous": {
     "version": "unreleased-384-typed-config-local-volume-bounded-logs",
     "status": "SOURCE_ONLY_NOT_RUNTIME_ACCEPTANCE",
     "scope": "Typed ordinary-Service ports/healthCheck config-only upgrade preserves full primary/secondary/env/volume/security/hardware configuration and rejects no-op or unsupported inputs. Local Volume create makes only an unallocated builtin-local logical record. Opt-in bounded Container logs reuse current native LOGS authority and live Key or durable Cookie/session rechecks before disclosure, exact single-use private broker tickets and200lines/64KiB/5s/cancel bounds. Contents are untrusted, completeness unknown, redaction covers only known request secrets and sensitive key patterns; audit stores fixed metadata, not contents/tickets. Each admin/user/project role adds only five typed DTO fields; native method/action/route/Key ceilings and1396 HTTP tuples are unchanged. Frozen v1 source SER files are retained, but fresh compiled effective-schema projections and class hashes remain pending; no all16-byte-equal assumption is carried. Source extraction is not CI, artifact, publication or native acceptance. LB image ensure and Full-owned image cleanup recognize only the exact loadBalancerService subtype/kind of their native Service root; existing verified Volume/image/pool graph, current owner/role/Key/revision/expiry checks remain. The original tcp7e native failure is retained and native correction acceptance remains pending.",
@@ -2918,6 +3048,7 @@
         ]
       }
     ]
+  }
   },
   "tuples": [
     ["account","collection","GET","","","read"],
