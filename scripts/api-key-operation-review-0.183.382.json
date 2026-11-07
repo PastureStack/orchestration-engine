@@ -1,0 +1,165 @@
+{
+  "schemaVersion": 1,
+  "version": "0.183.382",
+  "scope": "SOURCE_ONLY_NOT_RUNTIME_ACCEPTANCE",
+  "reviewedBaseCommit": "db015a06646f4ab5376e83f5d4ad9abb73211633",
+  "sourceInputs": {
+    "algorithm": "c03-source-inputs-v1",
+    "baseline": {
+      "count": 472,
+      "sha256": "181e8cbfe3076bb5e211fa23edab89b16e6d4b29f951044aa1411f3c5bc25b63"
+    },
+    "reviewed": {
+      "count": 472,
+      "sha256": "19ea99616089f710415fd8a11877d8b05cf4a6a8235694b6ec09e4b36c0d28fc"
+    },
+    "addedAnchors": []
+  },
+  "tupleReview": {
+    "baseline": 1396,
+    "candidate": 1396,
+    "added": 0,
+    "removed": 0,
+    "semanticChanges": 0,
+    "dispositionChanges": 0,
+    "sha256": "8f1c0fb378663b0b3d272efba2f211cb210eb6f17cb8035aefa33b56feeaf36a",
+    "evidence": "Only three non-HTTP authorization implementation files changed; ApiKeyOperations, all native schema/handler/process declarations and existing tuple union remain byte-identical to base."
+  },
+  "delta": [
+    {
+      "path": "code/framework/engine/src/main/java/io/cattle/platform/engine/process/ProcessAuthorization.java",
+      "before": "3cfeae220cf28af1ee485ae56d308a299e7d1fa1d91b2a5b20879441fd3b2e2b",
+      "after": "5151c97d05c7fa45672a07b712ea3525a7f2255c2d8c7cfc2cd4c86b7f359eaf"
+    },
+    {
+      "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/apikey/ApiKeyProcessAuthorization.java",
+      "before": "e08045a95cd4a8ec7c57a4a942d02d05a47aa9cba6bbd2c678042b8b0c60f27d",
+      "after": "e5a3a618fe8898145895d01b1af7464eca415210acf09b46e06449fc27c89105"
+    },
+    {
+      "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/apikey/ApiKeyTargetResolver.java",
+      "before": "964d376bb380782b36fae483718752398752749e25dcf06b5ec9112a2fb977d7",
+      "after": "fcebe810bfeae4249afda2defd71d5235dbecc69266e1c7097251e0885d5d05f"
+    }
+  ],
+  "roleFieldDelta": [],
+  "authorizationBoundary": "Existing native load-balancer Agent setup and required cleanup retain the original create/update/upgrade/delete operation. Verified native scheduling ancestry plus fresh exact Service/Stack/Instance/Agent/expose-map/agent-Account/agentApiKey identities bind only the legitimate LB factory subgraph, including upgrade/rollback and Stack activateservices. First scheduling binds immutable identity pins; detached retries recheck current owner/schema/Key revision, expiry, revocation, role accounts and explicit child DENY. Removed parents may complete only this captured exact cleanup. Default event instance URI and native factory roles remain required. No general Agent grant, system/Full bypass, Catalog/Host delegation, public route, operation tuple, role/schema grant or confirmation bypass is added. Source extraction and focused local tests do not establish formal CI, packaged schemas, publication or native acceptance. Missing native parent process names remain valid for existing generic Instance/Volume proofs. The new Agent ancestry predicate canonicalizes absent process names to an empty non-match; the LB Agent resolver independently requires a nonempty captured parentProcess, so null equality cannot supply Agent authority.",
+  "frozenV1SchemaFilesUnchanged": true,
+  "nativeRoleRouteActionGrantsUnchanged": true,
+  "compiledRoleSchemaProof": "PENDING_ACTUAL_PACKAGED_CLASSES_AND_SCHEMAS",
+  "extractor": {
+    "path": "C:\\Users\\chen21019\\source\\outputs\\webmcp-expansion-20261029\\integration-360-201\\refresh-integrated-operation-contract.py",
+    "sha256": "078ffe48881469fe5eb3cb43a15fa41b480fe70e11bd5f63102ded6b35a6d076",
+    "execution": "Only covered/fingerprint/sha AST definitions; historical main never invoked."
+  },
+  "baselineProof": {
+    "path": "C:\\Users\\chen21019\\source\\outputs\\webmcp-expansion-20261029\\engine382-baseline-c03-source-inputs-20261107.json",
+    "sha256": "659cc06dc0d55f503c90ac991abb4162c791f9b9e4ade13a056f52e829566585",
+    "gitBlobFingerprintReproduced": true
+  },
+  "historicalProducerAndReviewChainsPreserved": true,
+  "artifactQualificationClaimed": false,
+  "runtimeAcceptanceClaimed": false,
+  "focusedSourceTests": {
+    "testsPassed": 58,
+    "scope": "54 original failed CI methods in original log order plus four affected provenance/Agent guards, one JVM/main thread, no EngineContext reset",
+    "originalFailedCiMethodsRestored": 54,
+    "red": {
+      "methods": 4,
+      "failures": 4,
+      "scope": "managed scale-down, mount unmount, subsequent Project Full and generic null-frame"
+    },
+    "requiredMethods": {
+      "before": 269,
+      "after": 286,
+      "addedClosureMethods": [
+        "factoryAgentCreateUsesVerifiedInstanceBeforeAgentIdIsWrittenBack",
+        "nativeAgentAccountAndCredentialCreationUseTheSameFactoryRelation",
+        "anUnrelatedAgentOrUnverifiedDetachedWorkCannotInheritTheLbGrant",
+        "aCapturedQueuedRetryStillRechecksExpiryRevocationRevisionAndOwner",
+        "customLbAuthorityInheritsOnlyTheVerifiedClosureAndExplicitChildDenialsWin",
+        "genericNativeAncestryDoesNotAuthorizeNonLbOrOtherOperations",
+        "staleFactoryUuidsAndForgedAccountOrCredentialRelationsAreRejected",
+        "liveRootOwnerKeyExpiryRevocationAndRevisionStillApplyToInternalAgentCreation",
+        "nativeLbUpgradeAndRollbackUseTheirRegisteredOperation",
+        "stackActivationUsesOnlyTheExactPersistedManagedLb",
+        "nativeLbCleanupCoversTheExactAgentAccountAndCredentialProcesses",
+        "capturedCleanupAllowsRetiredParentsButRejectsChangedIdentityAndOwnership",
+        "cleanupRechecksRevocationExpiryRevisionAndCustomExplicitDenials",
+        "cleanupCannotBorrowAnUnrelatedOrUnverifiedNativeParent"
+      ],
+      "addedFrameworkMethods": [
+        "nativeAgentSetupProofRecordsAncestryWithoutDomainAuthorization",
+        "nativeAgentCleanupProofRequiresTheExactNativeParentProcess",
+        "legacyVerifiedFramesWithoutProcessNamesKeepTheirExistingChildProof"
+      ]
+    },
+    "files": [
+      {
+        "path": "code/iaas/auth-logic/src/test/java/io/cattle/platform/iaas/api/auth/apikey/ApiKeyLoadBalancerAgentDependencyTest.java",
+        "gitLfSha256": "053a5ddfdbe6343a659ca8b85de0a5bb2ce120cdbcc72596a01c527f5f7b5cae"
+      },
+      {
+        "path": "code/framework/engine/src/test/java/io/cattle/platform/engine/process/ProcessAuthorizationTest.java",
+        "gitLfSha256": "cb647f07bfbdc5b07661cc9779ab7a3bfbd894e8249f192f20af8c7320b6d975"
+      }
+    ],
+    "originalFailedTestSourcesUnchanged": true,
+    "nativeAcceptanceClaimed": false
+  },
+  "observer": "Existing exact rootProcessId completion protection is unchanged. Intentional nested revocation/expiry/revision denial is not generalized into a terminal plan outcome; get_operation remains subject to current authorization.",
+  "priorFocusedSourceTestsV2": {
+    "testsPassed": 25,
+    "initialV2Reproduction": {
+      "tests": 6,
+      "failures": 5,
+      "baseline": "frozen first-version Agent setup runtime"
+    },
+    "requiredMethods": {
+      "before": 269,
+      "after": 285,
+      "addedClosureMethods": [
+        "factoryAgentCreateUsesVerifiedInstanceBeforeAgentIdIsWrittenBack",
+        "nativeAgentAccountAndCredentialCreationUseTheSameFactoryRelation",
+        "anUnrelatedAgentOrUnverifiedDetachedWorkCannotInheritTheLbGrant",
+        "aCapturedQueuedRetryStillRechecksExpiryRevocationRevisionAndOwner",
+        "customLbAuthorityInheritsOnlyTheVerifiedClosureAndExplicitChildDenialsWin",
+        "genericNativeAncestryDoesNotAuthorizeNonLbOrOtherOperations",
+        "staleFactoryUuidsAndForgedAccountOrCredentialRelationsAreRejected",
+        "liveRootOwnerKeyExpiryRevocationAndRevisionStillApplyToInternalAgentCreation",
+        "nativeLbUpgradeAndRollbackUseTheirRegisteredOperation",
+        "stackActivationUsesOnlyTheExactPersistedManagedLb",
+        "nativeLbCleanupCoversTheExactAgentAccountAndCredentialProcesses",
+        "capturedCleanupAllowsRetiredParentsButRejectsChangedIdentityAndOwnership",
+        "cleanupRechecksRevocationExpiryRevisionAndCustomExplicitDenials",
+        "cleanupCannotBorrowAnUnrelatedOrUnverifiedNativeParent"
+      ],
+      "addedFrameworkMethods": [
+        "nativeAgentSetupProofRecordsAncestryWithoutDomainAuthorization",
+        "nativeAgentCleanupProofRequiresTheExactNativeParentProcess"
+      ]
+    },
+    "files": [
+      {
+        "path": "code/iaas/auth-logic/src/test/java/io/cattle/platform/iaas/api/auth/apikey/ApiKeyLoadBalancerAgentDependencyTest.java",
+        "gitLfSha256": "b1de434b0d98faede3c20e9fcd0981e62e6bb9a44e7013aabb0da2aa429eae5b"
+      },
+      {
+        "path": "code/framework/engine/src/test/java/io/cattle/platform/engine/process/ProcessAuthorizationTest.java",
+        "gitLfSha256": "73c06070ecda78c264abc8b96504e177355ec76b887bec6d9568d81aee93c8e7"
+      }
+    ],
+    "nativeAcceptanceClaimed": false
+  },
+  "regressionCorrection": {
+    "firstCiRun": 42325138009,
+    "failureLogSha256": "3edbbc709cfa3610c42c021d783241b9986a207b2efa75bd882682fa934112e1",
+    "cause": "New generic predicate passed a permitted null parent process name to an immutable Set.contains; the first mount exception skipped its later normal authorization pop and poisoned the same thread for Project/observer capture.",
+    "fix": "Missing native parent process names remain valid for existing generic Instance/Volume proofs. The new Agent ancestry predicate canonicalizes absent process names to an empty non-match; the LB Agent resolver independently requires a nonempty captured parentProcess, so null equality cannot supply Agent authority.",
+    "runtimeIncrementRelativeToFirstSignedCandidate": [
+      "code/framework/engine/src/main/java/io/cattle/platform/engine/process/ProcessAuthorization.java",
+      "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/apikey/ApiKeyTargetResolver.java"
+    ],
+    "formalCi": "PENDING_CORRECTED_SIGNED_CANDIDATE_CI"
+  }
+}

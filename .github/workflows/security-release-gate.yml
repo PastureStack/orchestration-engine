@@ -449,6 +449,27 @@ jobs:
                   'graphRejectsWrongSelectorReadDenialRevocationAndLateUuidReplacementWithoutFallback',
                   'graphRejectsSourceUuidAndStackReplacementBetweenNativeReads',
               },
+              'io.cattle.platform.iaas.api.auth.apikey.ApiKeyLoadBalancerAgentDependencyTest': {
+                  'factoryAgentCreateUsesVerifiedInstanceBeforeAgentIdIsWrittenBack',
+                  'nativeAgentAccountAndCredentialCreationUseTheSameFactoryRelation',
+                  'anUnrelatedAgentOrUnverifiedDetachedWorkCannotInheritTheLbGrant',
+                  'aCapturedQueuedRetryStillRechecksExpiryRevocationRevisionAndOwner',
+                  'customLbAuthorityInheritsOnlyTheVerifiedClosureAndExplicitChildDenialsWin',
+                  'genericNativeAncestryDoesNotAuthorizeNonLbOrOtherOperations',
+                  'staleFactoryUuidsAndForgedAccountOrCredentialRelationsAreRejected',
+                  'liveRootOwnerKeyExpiryRevocationAndRevisionStillApplyToInternalAgentCreation',
+                  'nativeLbUpgradeAndRollbackUseTheirRegisteredOperation',
+                  'stackActivationUsesOnlyTheExactPersistedManagedLb',
+                  'nativeLbCleanupCoversTheExactAgentAccountAndCredentialProcesses',
+                  'capturedCleanupAllowsRetiredParentsButRejectsChangedIdentityAndOwnership',
+                  'cleanupRechecksRevocationExpiryRevisionAndCustomExplicitDenials',
+                  'cleanupCannotBorrowAnUnrelatedOrUnverifiedNativeParent',
+              },
+              'io.cattle.platform.engine.process.ProcessAuthorizationTest': {
+                  'legacyVerifiedFramesWithoutProcessNamesKeepTheirExistingChildProof',
+                  'nativeAgentSetupProofRecordsAncestryWithoutDomainAuthorization',
+                  'nativeAgentCleanupProofRequiresTheExactNativeParentProcess',
+              },
           }
           suites = []
           observed = {}

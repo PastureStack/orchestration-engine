@@ -123,6 +123,7 @@ public class ApiKeyProcessAuthorization implements ProcessAuthorizationHook {
                     && ("image.deactivate".equals(config.getProcessName()) || "image.remove".equals(config.getProcessName()))
                     || child instanceof ImageStoragePoolMap && "imageStoragePoolMap".equalsIgnoreCase(config.getResourceType())
                     && ("imagestoragepoolmap.deactivate".equals(config.getProcessName()) || "imagestoragepoolmap.remove".equals(config.getProcessName())));
+            boolean agentSetup = ApiKeyTargetResolver.loadBalancerAgentLifecycle(root, child, config, metadata);
             if (!projectUpdate && current.policy().authorizeObject(child) == null) {
                 if (imageDependency) dependency = targets.resolveImageDependency(root, (Image) child, current.policy());
                 else if (imageEnsure) ensure = targets.resolveImageEnsureDependency(root, child, current.policy(),
@@ -140,6 +141,10 @@ public class ApiKeyProcessAuthorization implements ProcessAuthorizationHook {
                                 EngineContext.getEngineContext().currentVerifiedExecution(),
                                 EngineContext.getEngineContext().parentVerifiedExecution(), metadata);
                     }
+                }
+                else if (agentSetup) {
+                    cleanup = targets.resolveLoadBalancerAgentDependency(root, child, current.policy(), config, metadata);
+                    if (cleanup == null) denied("OwnerPermissionDenied");
                 }
                 else denied("OwnerPermissionDenied");
                 if (imageCleanup && cleanup == null) denied("OwnerPermissionDenied");
@@ -165,6 +170,8 @@ public class ApiKeyProcessAuthorization implements ProcessAuthorizationHook {
             }
             if (imageEnsure && ensure == null) ensure = targets.resolveImageEnsureDependency(root, child, current.policy(),
                     EngineContext.getEngineContext().currentVerifiedExecution(), metadata);
+            if (agentSetup && cleanup == null)
+                cleanup = targets.resolveLoadBalancerAgentDependency(root, child, current.policy(), config, metadata);
             var alias = targets.resolveAliasServiceDependency(root, child, current.policy(), current.schemas(), config, metadata);
             if (alias != null) {
                 var reference = evaluator.evaluate(policy, new ApiKeyPolicyEvaluator.Request(true, "read", true,

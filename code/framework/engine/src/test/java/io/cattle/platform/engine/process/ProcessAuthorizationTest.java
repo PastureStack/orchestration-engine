@@ -9,6 +9,82 @@ import java.util.Map;
 import org.junit.Test;
 
 public class ProcessAuthorizationTest {
+    @Test public void legacyVerifiedFramesWithoutProcessNamesKeepTheirExistingChildProof() {
+        Map<String, Object> binding = Map.of("keyId", "1c1", "requestId", "legacy-request", "policyRevision", 1L);
+        EngineContext engine = EngineContext.getEngineContext(); engine.pushAuthorization(binding);
+        try {
+            for (String[] edge : List.of(new String[]{"instance", "3", "mount", "7", "mount.deactivate"},
+                    new String[]{"volume", "6", "volumeStoragePoolMap", "12", "volumestoragepoolmap.remove"},
+                    new String[]{"instance", "3", "agent", "20", "agent.create"})) {
+                var frame = engine.pushVerifiedExecution(edge[0], edge[1], binding);
+                try {
+                    LaunchConfiguration child = new LaunchConfiguration(edge[4], edge[2], edge[3], 5L, 0, Map.of());
+                    ProcessAuthorization.prepare(child, List.of());
+                    ProcessRecord queued = new ProcessRecord(child, 100L, "server");
+                    var proof = ProcessAuthorization.verifiedChild(queued);
+                    assertNotNull(proof); assertEquals(edge[0], proof.parentType()); assertEquals(edge[1], proof.parentId());
+                    assertEquals(binding, ProcessAuthorization.metadata(queued));
+                    assertFalse(((Map<?, ?>) queued.getData().get(ProcessAuthorization.VERIFIED_CHILD_KEY)).containsKey("parentProcess"));
+                } finally { engine.popVerifiedExecution(frame); }
+            }
+        } finally { engine.popAuthorization(); }
+        assertTrue(engine.peekAuthorization().isEmpty()); assertNull(engine.currentVerifiedExecution());
+    }
+
+    @Test public void nativeAgentSetupProofRecordsAncestryWithoutDomainAuthorization() {
+        Map<String, Object> binding = Map.of("keyId", "1c1", "targetType", "service", "operation", "create");
+        EngineContext engine = EngineContext.getEngineContext(); engine.pushAuthorization(binding);
+        try {
+            for (String[] edge : List.of(new String[]{"instance", "3", "agent", "20"},
+                    new String[]{"agent", "20", "account", "30"}, new String[]{"account", "30", "credential", "40"})) {
+                var frame = engine.pushVerifiedExecution(edge[0], edge[1], edge[0] + ".create", binding);
+                ProcessRecord queued;
+                try {
+                    LaunchConfiguration child = new LaunchConfiguration(edge[2] + ".create", edge[2], edge[3], null, 0, Map.of());
+                    ProcessAuthorization.prepare(child, List.of());
+                    assertNotNull(ProcessAuthorization.verifiedChild(new ProcessRecord(child, null, "server")));
+                    queued = new ProcessRecord(child, 100L, "server");
+                    assertEquals(edge[0] + ".create", ((Map<?, ?>) queued.getData().get(ProcessAuthorization.VERIFIED_CHILD_KEY)).get("parentProcess"));
+                } finally { engine.popVerifiedExecution(frame); }
+                assertNotNull(ProcessAuthorization.verifiedChild(queued));
+                assertNull(ProcessAuthorization.verifiedChild(new ProcessRecord(queued, null, "server")));
+                Map<String, Object> forged = new HashMap<>((Map<String, Object>) queued.getData().get(ProcessAuthorization.VERIFIED_CHILD_KEY));
+                forged.put("parentProcess", edge[0] + ".update"); queued.getData().put(ProcessAuthorization.VERIFIED_CHILD_KEY, forged);
+                assertNull(ProcessAuthorization.verifiedChild(queued));
+            }
+        } finally { engine.popAuthorization(); }
+    }
+
+    @Test public void nativeAgentCleanupProofRequiresTheExactNativeParentProcess() {
+        Map<String, Object> binding = Map.of("keyId", "1c1", "targetType", "service", "operation", "delete");
+        EngineContext engine = EngineContext.getEngineContext(); engine.pushAuthorization(binding);
+        try {
+            for (String[] edge : List.of(new String[]{"instance", "3", "instance.remove", "agent", "20", "agent.deactivate"},
+                    new String[]{"instance", "3", "instance.purge", "agent", "20", "agent.remove"},
+                    new String[]{"agent", "20", "agent.deactivate", "agent", "20", "agent.remove"},
+                    new String[]{"agent", "20", "agent.remove", "account", "30", "account.deactivate"},
+                    new String[]{"agent", "20", "agent.remove", "account", "30", "account.remove"},
+                    new String[]{"account", "30", "account.deactivate", "account", "30", "account.remove"},
+                    new String[]{"account", "30", "account.remove", "credential", "40", "credential.deactivate"},
+                    new String[]{"account", "30", "account.purge", "credential", "40", "credential.remove"},
+                    new String[]{"credential", "40", "credential.deactivate", "credential", "40", "credential.remove"})) {
+                var frame = engine.pushVerifiedExecution(edge[0], edge[1], edge[2], binding);
+                ProcessRecord queued;
+                try {
+                    LaunchConfiguration child = new LaunchConfiguration(edge[5], edge[3], edge[4], null, 0, Map.of());
+                    ProcessAuthorization.prepare(child, List.of());
+                    assertNotNull(ProcessAuthorization.verifiedChild(new ProcessRecord(child, null, "server")));
+                    queued = new ProcessRecord(child, 100L, "server");
+                } finally { engine.popVerifiedExecution(frame); }
+                assertNotNull(ProcessAuthorization.verifiedChild(queued));
+                assertNull(ProcessAuthorization.verifiedChild(new ProcessRecord(queued, null, "server")));
+                Map<String, Object> changed = new HashMap<>((Map<String, Object>) queued.getData().get(ProcessAuthorization.VERIFIED_CHILD_KEY));
+                changed.put("parentProcess", edge[0] + ".update"); queued.getData().put(ProcessAuthorization.VERIFIED_CHILD_KEY, changed);
+                assertNull(ProcessAuthorization.verifiedChild(queued));
+            }
+        } finally { engine.popAuthorization(); }
+    }
+
     @Test
     public void captureIsImmutableWhitelistedAndPayloadCannotForgeProvenance() {
         LaunchConfiguration config = config(Map.of(ProcessAuthorization.DATA_KEY, Map.of("keyId", "forged")));

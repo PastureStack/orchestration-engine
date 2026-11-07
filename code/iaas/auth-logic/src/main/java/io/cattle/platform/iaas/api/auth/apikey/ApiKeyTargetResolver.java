@@ -5,6 +5,8 @@ import io.cattle.platform.iaas.api.auth.projects.ProjectAccessService;
 import io.cattle.platform.api.resource.NamedResourceIdentity;
 import io.cattle.platform.core.constants.AccountConstants;
 import io.cattle.platform.core.model.Account;
+import io.cattle.platform.core.model.Agent;
+import io.cattle.platform.core.constants.AgentConstants;
 import io.cattle.platform.core.model.Instance;
 import io.cattle.platform.core.model.InstanceHostMap;
 import io.cattle.platform.core.model.InstanceLink;
@@ -51,6 +53,7 @@ import java.util.Set;
 import java.util.Objects;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
+import java.util.LinkedHashMap;
 import io.github.ibuildthecloud.gdapi.model.Field;
 import io.github.ibuildthecloud.gdapi.model.FieldType;
 import io.github.ibuildthecloud.gdapi.model.Action;
@@ -242,6 +245,187 @@ public class ApiKeyTargetResolver {
     }
 
     public record AliasDependency(LifecycleDependency lifecycle, ApiKeyPolicyEvaluator.Target reference) { }
+
+    static boolean loadBalancerAgentLifecycle(Object root, Object child, LaunchConfiguration execution, Map<String, Object> binding) {
+        if (binding.containsKey("requestLink") || !Boolean.FALSE.equals(binding.get("preview"))) return false;
+        boolean setup = (child instanceof Agent && "agent".equals(execution.getResourceType()) && "agent.create".equals(execution.getProcessName())
+                || child instanceof Account && "account".equals(execution.getResourceType()) && "account.create".equals(execution.getProcessName())
+                || child instanceof Credential && "credential".equals(execution.getResourceType()) && "credential.create".equals(execution.getProcessName()));
+        boolean cleanup = agentCleanup(execution) && (child instanceof Agent || child instanceof Account || child instanceof Credential);
+        if (!setup && !cleanup) return false;
+        if (root instanceof Stack && "stack".equals(binding.get("targetType")))
+            return "update".equals(binding.get("operation")) && "POST".equals(binding.get("requestMethod"))
+                    && "activateservices".equals(binding.get("requestAction")) && Boolean.FALSE.equals(binding.get("requestCollection"));
+        if (!(root instanceof Service service) || !"loadBalancerService".equals(service.getKind())
+                || !Set.of("service", "loadBalancerService").contains(Objects.toString(binding.get("targetType"), ""))) return false;
+        boolean create = "create".equals(binding.get("operation")) && "POST".equals(binding.get("requestMethod"))
+                && !binding.containsKey("requestAction") && Boolean.TRUE.equals(binding.get("requestCollection"));
+        if (create) return true;
+        if (!Boolean.FALSE.equals(binding.get("requestCollection"))) return false;
+        String method = Objects.toString(binding.get("requestMethod"), ""), action = Objects.toString(binding.get("requestAction"), "");
+        return "update".equals(binding.get("operation")) && ("PUT".equals(method) && !binding.containsKey("requestAction")
+                    || "POST".equals(method) && ("activate".equals(action) || cleanup && Set.of("deactivate", "restart").contains(action)))
+                || "upgrade".equals(binding.get("operation")) && "POST".equals(method) && Set.of("upgrade", "rollback", "finishupgrade").contains(action)
+                || cleanup && "delete".equals(binding.get("operation")) && "DELETE".equals(method) && !binding.containsKey("requestAction");
+    }
+
+    private static boolean agentCleanup(LaunchConfiguration execution) {
+        return Set.of("agent", "account", "credential").contains(Objects.toString(execution.getResourceType(), ""))
+                && Set.of(execution.getResourceType() + ".deactivate", execution.getResourceType() +
+                        ".remove").contains(Objects.toString(execution.getProcessName(), ""));
+    }
+
+    /** Factory setup precedes Instance.agentId; cleanup may outlive its removed
+     * Instance/map. Both require a native scheduling edge and fresh exact pins. */
+    public LifecycleDependency resolveLoadBalancerAgentDependency(Object root, Object child, Policy owner,
+            LaunchConfiguration execution, Map<String, Object> binding) {
+        if (!loadBalancerAgentLifecycle(root, child, execution, binding)) return null;
+        var proof = ProcessAuthorization.verifiedChild(execution);
+        if (proof == null || !proof.rootAuthorization().equals(binding) || !ProcessAuthorization.metadata(execution).equals(binding)
+                || !(execution.getData().get(ProcessAuthorization.VERIFIED_CHILD_KEY) instanceof Map<?, ?>)) denied("KeyScopeDenied");
+        Map<?, ?> rawProof = (Map<?, ?>) execution.getData().get(ProcessAuthorization.VERIFIED_CHILD_KEY);
+        if (!(rawProof.get("parentProcess") instanceof String parentProcess) || parentProcess.isBlank()) denied("KeyScopeDenied");
+        boolean cleanup = agentCleanup(execution);
+        Agent agent; Account account = null;
+        if (child instanceof Agent supplied) {
+            agent = factoryRow(Agent.class, supplied.getId(), supplied, cleanup);
+            if (!("instance".equals(proof.parentType()) || cleanup && "agent".equals(proof.parentType())
+                    && Objects.equals(agent.getId(), executionResourceId("agent", proof.parentId())))) denied("KeyScopeDenied");
+        } else if (child instanceof Account supplied) {
+            account = factoryRow(Account.class, supplied.getId(), supplied, cleanup);
+            if ("agent".equals(proof.parentType())) agent = factoryRow(Agent.class, executionResourceId("agent", proof.parentId()), null, cleanup);
+            else if (cleanup && "account".equals(proof.parentType()) && Objects.equals(account.getId(), executionResourceId("account", proof.parentId())))
+                agent = factoryAccountAgent(account, cleanup);
+            else { denied("KeyScopeDenied"); return null; }
+        } else {
+            Credential credential = factoryRow(Credential.class, ((Credential) child).getId(), child, cleanup);
+            if (!CredentialConstants.KIND_AGENT_API_KEY.equals(credential.getKind())) denied("KeyScopeDenied");
+            account = factoryRow(Account.class, credential.getAccountId(), null, cleanup);
+            if (!("account".equals(proof.parentType()) && Objects.equals(account.getId(), executionResourceId("account", proof.parentId()))
+                    || cleanup && "credential".equals(proof.parentType()) && Objects.equals(credential.getId(),
+                            executionResourceId("credential", proof.parentId())))) denied("KeyScopeDenied");
+            agent = factoryAccountAgent(account, cleanup);
+        }
+        if (agent.getUri() == null || !agent.getUri().matches("event:///instanceId=[1-9][0-9]*") ||
+                Boolean.TRUE.equals(agent.getManagedConfig())) denied("KeyScopeDenied");
+        Long instanceId = Long.valueOf(agent.getUri().substring("event:///instanceId=".length()));
+        Instance instance = factoryOwned(Instance.class, instanceId, null, owner, cleanup);
+        if (child instanceof Agent && "instance".equals(proof.parentType()) && !Objects.equals(instanceId, executionResourceId("instance", proof.parentId()))
+                || !"container".equals(instance.getKind()) || !Objects.equals(instance.getZoneId(), agent.getZoneId())
+                || cleanup && !Objects.equals(instance.getAgentId(), agent.getId())
+                || cleanup && !Set.of("removing", "removed", "purging", "purged").contains(String.valueOf(instance.getState()))
+                || !cleanup && instance.getAgentId() != null && !Objects.equals(instance.getAgentId(), agent.getId())
+                || !cleanup && Set.of("removing", "error", "erroring").contains(String.valueOf(instance.getState()))) denied("KeyScopeDenied");
+        List<ServiceExposeMap> maps = cleanup ? objectManager.find(ServiceExposeMap.class, SERVICE_EXPOSE_MAP.INSTANCE_ID, instance.getId())
+                : objectManager.find(ServiceExposeMap.class, SERVICE_EXPOSE_MAP.INSTANCE_ID, instance.getId(), SERVICE_EXPOSE_MAP.REMOVED,
+                        null, SERVICE_EXPOSE_MAP.MANAGED, true);
+        if (maps == null || maps.size() != 1) denied("KeyScopeDenied");
+        ServiceExposeMap map = maps.getFirst();
+        Service service = factoryOwned(Service.class, map.getServiceId(), root instanceof Service ? root : null, owner, cleanup);
+        if (!"loadBalancerService".equals(service.getKind()) || !Objects.equals(service.getAccountId(), owner.getAccountId())
+                || !Objects.equals(instance.getAccountId(), service.getAccountId()) || !Objects.equals(map.getAccountId(), service.getAccountId())
+                || !Objects.equals(map.getInstanceId(), instance.getId()) || map.getUuid() == null
+                || !(Boolean.TRUE.equals(map.getManaged()) || cleanup && Boolean.FALSE.equals(map.getManaged()) && Boolean.TRUE.equals(map.getUpgrade()))
+                || !cleanup && (map.getRemoved() != null || Set.of("removed", "removing", "purging", "purged", "error",
+                        "erroring").contains(String.valueOf(map.getState())))
+                || instance.getServiceId() != null && !Objects.equals(instance.getServiceId(), service.getId())
+                || instance.getStackId() != null && !Objects.equals(instance.getStackId(), service.getStackId())) denied("KeyScopeDenied");
+        if (root instanceof Service supplied && (!Objects.equals(supplied.getId(), service.getId())
+                    || !Objects.equals(service.getId(), executionResourceId("service", Objects.toString(binding.get("targetId"), "")))))
+                            denied("KeyScopeDenied");
+        Stack stack = liveResource(Stack.class, service.getStackId(), owner);
+        if (!Objects.equals(stack.getAccountId(), service.getAccountId())) denied("KeyScopeDenied");
+        if (root instanceof Stack supplied && (!Objects.equals(supplied.getId(), stack.getId()) || !Objects.equals(supplied.getUuid(), stack.getUuid())
+                || !Objects.equals(supplied.getAccountId(), service.getAccountId())
+                || !Objects.equals(stack.getId(), executionResourceId("stack", Objects.toString(binding.get("targetId"), ""))))) denied("KeyScopeDenied");
+        liveResource(Account.class, service.getAccountId(), owner);
+        Map<String, Object> labels = io.cattle.platform.object.util.DataAccessor.fieldMap(instance,
+                io.cattle.platform.core.constants.InstanceConstants.FIELD_LABELS);
+        if (!"true".equals(labels.get(io.cattle.platform.core.util.SystemLabels.LABEL_AGENT_CREATE))
+                || agent.getData() == null || ApiKeyPolicyCodec.number(agent.getData().get(AgentConstants.DATA_AGENT_RESOURCES_ACCOUNT_ID))
+                        != instance.getAccountId()
+                || !(agent.getData().get(AgentConstants.DATA_REQUESTED_ROLES) instanceof List<?>)) denied("KeyScopeDenied");
+        List<?> requested = (List<?>) agent.getData().get(AgentConstants.DATA_REQUESTED_ROLES);
+        Set<String> roles = new LinkedHashSet<>();
+        for (String role : Objects.toString(labels.get(io.cattle.platform.core.util.SystemLabels.LABEL_AGENT_ROLE), "").split(","))
+            if (Set.of("agent", "environment", "environmentAdmin").contains(role)) roles.add(role);
+        if (roles.isEmpty() || requested.size() != roles.size() || !roles.equals(new LinkedHashSet<>(requested))) denied("KeyScopeDenied");
+        if (agent.getAccountId() != null) {
+            Account primary = factoryRow(Account.class, agent.getAccountId(), null, cleanup);
+            if (!("agentAccount" + agent.getId()).equals(primary.getUuid())) denied("KeyScopeDenied");
+            factoryAccount(agent, primary, roles, cleanup);
+        }
+        if (account != null) factoryAccount(agent, account, roles, cleanup);
+        Map<String, String> pins = new LinkedHashMap<>();
+        factoryPin(pins, "service", service); factoryPin(pins, "stack", stack); factoryPin(pins, "instance", instance);
+        factoryPin(pins, "agent", agent); factoryPin(pins, "map", map); factoryPin(pins, "child", child);
+        if (account != null) factoryPin(pins, "account", account);
+        pins.put("agentUri", agent.getUri()); pins.put("projectId", service.getAccountId().toString()); pins.put("roles",
+                roles.stream().sorted().reduce((a, b) -> a + "," + b).orElse(""));
+        if (proof.references().isEmpty()) {
+            var frame = EngineContext.getEngineContext().currentVerifiedExecution();
+            if (frame == null || !Objects.equals(frame.processName(), rawProof.get("parentProcess"))) denied("KeyScopeDenied");
+            ProcessAuthorization.bindVerifiedChildReferences(execution, pins);
+        }
+        if (!pins.equals(ProcessAuthorization.verifiedChild(execution).references())) denied("KeyScopeDenied");
+        var instanceTarget = child("container", format("container", instance.getId()), instance.getAccountId(), service.getStackId(), owner);
+        var childScope = ApiKeyPolicyEvaluator.Target.stackResource(execution.getResourceType(), format(execution.getResourceType(), ObjectUtils.getId(child)),
+                instanceTarget.projectId(), instanceTarget.stackId());
+        return new LifecycleDependency(childScope, List.of(instanceTarget, resolveObject("service", service, owner), childScope));
+    }
+
+    private Agent factoryAccountAgent(Account account, boolean cleanup) {
+        String uuid = account.getUuid();
+        if (uuid == null || !uuid.matches("agentAccount[1-9][0-9]*(?:-(?:agent|environment|environmentAdmin))?")) denied("KeyScopeDenied");
+        return factoryRow(Agent.class, Long.valueOf(uuid.substring("agentAccount".length()).split("-")[0]), null, cleanup);
+    }
+
+    private <T> T factoryOwned(Class<T> model, Long id, Object supplied, Policy owner, boolean cleanup) {
+        T stored = factoryRow(model, id, supplied, cleanup);
+        if (!ownerAuthorizes(stored, owner)) denied("OwnerPermissionDenied");
+        return stored;
+    }
+
+    private <T> T factoryRow(Class<T> model, Long id, Object supplied, boolean cleanup) {
+        T stored = id == null ? null : objectManager.loadResource(model, id);
+        if (stored == null || id <= 0 || !Objects.equals(ObjectUtils.getId(stored), id)
+                || !cleanup && (ObjectUtils.getRemoved(stored) != null || Set.of("removed", "removing", "purging", "purged", "error",
+                        "erroring").contains(String.valueOf(ObjectUtils.getState(stored))))
+                || cleanup && ObjectUtils.getRemoved(stored) != null && !Set.of("removing", "removed", "purging",
+                        "purged").contains(String.valueOf(ObjectUtils.getState(stored)))
+                || supplied != null && (!Objects.equals(ObjectUtils.getId(supplied), id)
+                    || !Objects.equals(ObjectUtils.getPropertyIgnoreErrors(supplied, "uuid"), ObjectUtils.getPropertyIgnoreErrors(stored,
+                            "uuid")))) denied("KeyScopeDenied");
+        return stored;
+    }
+
+    private void factoryPin(Map<String, String> pins, String name, Object row) {
+        Object id = ObjectUtils.getId(row), uuid = ObjectUtils.getPropertyIgnoreErrors(row, "uuid");
+        if (!(id instanceof Long number) || number <= 0 || !(uuid instanceof String text) || text.isBlank()) denied("KeyScopeDenied");
+        pins.put(name + "Id", id.toString()); pins.put(name + "Uuid", (String) uuid);
+    }
+
+    private void factoryAccount(Agent agent, Account account, Set<String> roles, boolean cleanup) {
+        if (!"agent".equals(account.getKind()) || account.getUuid() == null || account.getData() == null) denied("KeyScopeDenied");
+        String primary = roles.contains("agent") ? "agent" : roles.contains("environmentAdmin") ? "environmentAdmin" : "environment";
+        String prefix = "agentAccount" + agent.getId(), role;
+        if (prefix.equals(account.getUuid())) {
+            if (cleanup && !Objects.equals(agent.getAccountId(), account.getId())) denied("KeyScopeDenied");
+            role = primary;
+        }
+        else {
+            role = account.getUuid().startsWith(prefix + "-") ? account.getUuid().substring(prefix.length() + 1) : "";
+            if (!roles.contains(role) || primary.equals(role) ||
+                    ApiKeyPolicyCodec.number(account.getData().get(AccountConstants.DATA_AGENT_OWNER_ID)) != agent.getId()
+                    || cleanup && !io.cattle.platform.object.util.DataAccessor.fieldLongList(agent,
+                            AgentConstants.FIELD_AUTHORIZED_ROLE_ACCOUNTS).contains(account.getId())) denied("KeyScopeDenied");
+        }
+        if (Boolean.TRUE.equals(account.getData().get(AccountConstants.DATA_ACT_AS_RESOURCE_ADMIN_ACCOUNT)) != "environmentAdmin".equals(role)
+                || Boolean.TRUE.equals(account.getData().get(AccountConstants.DATA_ACT_AS_RESOURCE_ACCOUNT)) != "environment".equals(role))
+                        denied("KeyScopeDenied");
+        if (agent.getAccountId() != null && prefix.equals(account.getUuid()) && !Objects.equals(agent.getAccountId(), account.getId()))
+                denied("KeyScopeDenied");
+    }
 
     /** IDs only, captured from native rows. This is not an authorization decision. */
     public Map<String, String> aliasSchedulingReferences(LaunchConfiguration execution, Map<String, Object> binding, Policy owner) {

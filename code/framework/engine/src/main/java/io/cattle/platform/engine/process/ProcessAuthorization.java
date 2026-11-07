@@ -101,13 +101,17 @@ public final class ProcessAuthorization {
                     || serviceIndexRemovalEdge(parent.resourceType(), parent.resourceId(), config, metadata)
                         && serviceIndexRemovalOwner(parent.processName(), metadata)
                     || externalServiceEdge(parent.resourceType(), parent.resourceId(), config, metadata)
+                    || agentLifecycleEdge(parent.resourceType(), parent.processName(), config)
                     || aliasRemovalEdge(parent.resourceType(), parent.resourceId(), config, metadata))
                     && parent.resourceId() != null && parent.resourceId().matches("[0-9]+")
                     && parent.rootAuthorization().equals(metadata)
                     && config.getResourceType() != null && config.getResourceId() != null && config.getProcessName() != null) {
-                data.put(VERIFIED_CHILD_KEY, Map.of("parentType", parent.resourceType(), "parentId", parent.resourceId(),
+                Map<String, Object> childProof = new HashMap<>(Map.of("parentType", parent.resourceType(), "parentId", parent.resourceId(),
                         "childType", config.getResourceType(), "childId", config.getResourceId(),
                         "processName", config.getProcessName(), "rootAuthorization", sanitize(metadata)));
+                if (agentLifecycleEdge(parent.resourceType(), parent.processName(), config))
+                    childProof.put("parentProcess", parent.processName());
+                data.put(VERIFIED_CHILD_KEY, Map.copyOf(childProof));
             }
         }
         config.setData(data);
@@ -201,7 +205,7 @@ public final class ProcessAuthorization {
     public static VerifiedChild verifiedChild(LaunchConfiguration config) {
         if (!(config instanceof ProcessRecord record) || config.getData() == null) return null;
         Object value = config.getData().get(VERIFIED_CHILD_KEY);
-        if (!(value instanceof Map<?, ?> proof) || (proof.size() != 6 && proof.size() != 7)
+        if (!(value instanceof Map<?, ?> proof) || proof.size() < 6 || proof.size() > 8
                 || !(proof.get("parentType") instanceof String parentType)
                 || !(proof.get("parentId") instanceof String parentId) || !parentId.matches("[0-9]+")
                 || !Objects.equals(proof.get("childType"), config.getResourceType())
@@ -211,16 +215,19 @@ public final class ProcessAuthorization {
         Map<String, Object> binding = sanitize(rawBinding);
         if (binding.isEmpty() || !binding.equals(rawBinding) || !binding.equals(metadata(config))) return null;
         boolean creationEdge = projectNetworkCreationEdge(parentType, parentId, config, binding);
+        boolean agentEdge = agentLifecycleEdge(parentType, Objects.toString(proof.get("parentProcess"), ""), config);
+        if (proof.containsKey("parentProcess") && !agentEdge || proof.size() == 8 && !agentEdge) return null;
         boolean retirementEdge = serviceRetirementEdge(parentType, parentId, config, binding)
                 || serviceIndexRemovalEdge(parentType, parentId, config, binding)
                 || externalServiceEdge(parentType, parentId, config, binding) || aliasRemovalEdge(parentType, parentId, config, binding);
         if (!Set.of("volume", "instance").contains(parentType) && !creationEdge
-                && !retirementEdge && !upgradeUnmountEdge(parentType, config, binding)) return null;
+                && !retirementEdge && !agentEdge && !upgradeUnmountEdge(parentType, config, binding)) return null;
         if (creationEdge && !executionBound(config)) return null;
         if (record.getId() == null) {
             var parent = EngineContext.getEngineContext().currentVerifiedExecution();
-            if (!(creationEdge || retirementEdge) || parent == null || !parentType.equals(parent.resourceType())
-                    || !parentId.equals(parent.resourceId()) || !parent.rootAuthorization().equals(binding)) return null;
+            if (!(creationEdge || retirementEdge || agentEdge) || parent == null || !parentType.equals(parent.resourceType())
+                    || !parentId.equals(parent.resourceId()) || !parent.rootAuthorization().equals(binding)
+                    || agentEdge && !Objects.equals(proof.get("parentProcess"), parent.processName())) return null;
         }
         Map<String, String> references = new HashMap<>();
         if (proof.containsKey("references")) {
@@ -257,6 +264,27 @@ public final class ProcessAuthorization {
                 && "setservicelinks".equals(binding.get("requestAction")) && "update".equals(binding.get("operation"))
                 && Boolean.FALSE.equals(binding.get("requestCollection")) && Boolean.FALSE.equals(binding.get("preview"))
                 && !binding.containsKey("requestLink");
+    }
+
+    /** Native Agent ancestry only; consumers authorize the live or retired model graph. */
+    private static boolean agentLifecycleEdge(String parentType, String parentProcess, LaunchConfiguration child) {
+        parentType = Objects.toString(parentType, "");
+        parentProcess = Objects.toString(parentProcess, "");
+        String type = child.getResourceType(), process = Objects.toString(child.getProcessName(), "");
+        return "instance".equals(parentType) && "instance.create".equals(parentProcess)
+                    && "agent".equals(type) && "agent.create".equals(process)
+                || "agent".equals(parentType) && "agent.create".equals(parentProcess)
+                    && "account".equals(type) && "account.create".equals(process)
+                || "account".equals(parentType) && "account.create".equals(parentProcess)
+                    && "credential".equals(type) && "credential.create".equals(process)
+                || "instance".equals(parentType) && Set.of("instance.remove", "instance.purge").contains(parentProcess)
+                    && "agent".equals(type) && Set.of("agent.deactivate", "agent.remove").contains(process)
+                || "agent".equals(parentType) && "agent.remove".equals(parentProcess)
+                    && "account".equals(type) && Set.of("account.deactivate", "account.remove").contains(process)
+                || "account".equals(parentType) && Set.of("account.remove", "account.purge").contains(parentProcess)
+                    && "credential".equals(type) && Set.of("credential.deactivate", "credential.remove").contains(process)
+                || Set.of("agent", "account", "credential").contains(parentType) && parentType.equals(type)
+                    && (parentType + ".deactivate").equals(parentProcess) && (parentType + ".remove").equals(process);
     }
 
     public static boolean aliasLinkExecution(LaunchConfiguration config, Map<String, Object> binding) {
