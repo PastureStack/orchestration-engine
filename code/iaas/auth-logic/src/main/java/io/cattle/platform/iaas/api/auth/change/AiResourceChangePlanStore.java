@@ -36,14 +36,15 @@ public class AiResourceChangePlanStore extends AbstractJooqDao {
 
     static boolean lifecycle(AiResourceChangeDescriptor descriptor) {
         return AiHostLifecycleChange.supports(descriptor) || ordinaryLifecycle(descriptor) || AiServiceUpgradeLifecycleChange.supports(descriptor)
-                || AiStackUpgradeLifecycleChange.supports(descriptor)
+                || AiStackUpgradeLifecycleChange.supports(descriptor) || AiRegistryRemovalChange.supports(descriptor)
                 || AiCookieLifecycleWitness.supports(descriptor);
     }
 
     static boolean sessionLifecycle(Map<String, Object> binding) {
         if (binding == null || !Boolean.TRUE.equals(binding.get("sessionLifecycle")) || binding.containsKey("credentialId")) return false;
         AiResourceChangeDescriptor descriptor = AiResourceChangeDescriptor.require((String) binding.get("resourceType"), (String) binding.get("operation"));
-        return lifecycle(descriptor) && "POST".equals(binding.get("method")) && descriptor.action().equals(binding.get("action"));
+        return AiRegistryRemovalChange.supports(descriptor) ? AiRegistryRemovalChange.binding(binding)
+                : lifecycle(descriptor) && "POST".equals(binding.get("method")) && descriptor.action().equals(binding.get("action"));
     }
 
     boolean sessionLifecycleActive(String id, Map<String, Object> binding) {
@@ -215,9 +216,17 @@ public class AiResourceChangePlanStore extends AbstractJooqDao {
     }
 
     private static boolean registryLifecycle(Map<String, Object> binding) {
-        return binding != null && "registry".equals(binding.get("resourceType")) && "POST".equals(binding.get("method"))
+        return AiRegistryRemovalChange.binding(binding)
+                || binding != null && "registry".equals(binding.get("resourceType")) && "POST".equals(binding.get("method"))
                 && ("start".equals(binding.get("operation")) && "activate".equals(binding.get("action"))
                     || "stop".equals(binding.get("operation")) && "deactivate".equals(binding.get("action")));
+    }
+
+    List<Map<String, Object>> registryRemovalCredentials(Map<String, Object> binding) {
+        if (!AiRegistryRemovalChange.binding(binding)) throw new IllegalStateException("Registry removal binding unavailable");
+        long id = AiAliasServiceChange.nativeId(binding.get("rootId")), account = AiAliasServiceChange.nativeId(binding.get("accountId"));
+        if (id <= 0 || account <= 0) throw new IllegalStateException("Registry removal identity unavailable");
+        return AiRegistryRemovalChange.credentials(create(), id, account, true, List.of());
     }
 
     boolean hostLifecycleExecutionActive(String id, Map<String, Object> binding) {
@@ -360,6 +369,8 @@ public class AiResourceChangePlanStore extends AbstractJooqDao {
             Map<String, Object> values = new java.util.LinkedHashMap<>();
             for (var entry : snapshot.entrySet()) if (entry.getKey() instanceof String key) values.put(key, entry.getValue());
             binding.put("rootUuid", snapshot.get("uuid"));
+            if (AiRegistryRemovalChange.supports(descriptor))
+                binding.put(AiRegistryRemovalChange.CREDENTIALS, AiRegistryRemovalChange.captured(values.remove(AiRegistryRemovalChange.CREDENTIALS)));
             binding.put("registryConfiguration", AiRegistryLifecycleChange.configuration(values));
         }
         if ("project".equals(descriptor.resourceType())) {

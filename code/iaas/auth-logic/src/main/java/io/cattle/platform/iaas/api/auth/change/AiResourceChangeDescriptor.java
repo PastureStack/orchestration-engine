@@ -72,8 +72,10 @@ public record AiResourceChangeDescriptor(String resourceType, String operation, 
         for (String operation : Set.of("start", "stop"))
             add(result, "host", operation, "POST", "start".equals(operation) ? "activate" : "deactivate", "update", Set.of());
         add(result, "project", "update_metadata", "PUT", null, "update", Set.of("name", "description"));
-        for (String operation : Set.of("start", "stop"))
-            add(result, "registry", operation, "POST", "start".equals(operation) ? "activate" : "deactivate", "update", Set.of());
+        for (String operation : Set.of("start", "stop", "remove"))
+            add(result, "registry", operation, "remove".equals(operation) ? "DELETE" : "POST",
+                    "remove".equals(operation) ? null : "start".equals(operation) ? "activate" : "deactivate",
+                    "remove".equals(operation) ? "delete" : "update", Set.of());
         return Map.copyOf(result);
     }
 

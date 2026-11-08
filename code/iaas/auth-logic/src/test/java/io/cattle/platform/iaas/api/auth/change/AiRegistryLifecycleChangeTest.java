@@ -20,7 +20,7 @@ public class AiRegistryLifecycleChangeTest {
             for (String field : List.of("serverAddress", "name", "secretValue", "credential", "registryId", "remove"))
                 assertThrows(ClientVisibleException.class, () -> descriptor.parameters(Map.of(field, "PRIVATE")));
         }
-        for (String operation : List.of("remove", "create", "update_metadata", "restart", "purge"))
+        for (String operation : List.of("create", "update_metadata", "restart", "purge"))
             assertThrows(ClientVisibleException.class, () -> AiResourceChangeDescriptor.require("registry", operation));
     }
 

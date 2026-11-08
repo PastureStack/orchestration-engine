@@ -37,7 +37,8 @@
       "maxLength": 32,
       "options": [
         "stack_graph",
-        "container_logs"
+        "container_logs",
+        "bridge_context"
       ]
     },
     "sourcePage": {

@@ -105,6 +105,7 @@ public class AiResourceViewService {
     @Inject HostDao hosts;
     @Inject ServiceDao services;
     @Inject AiProcessDiagnostics processDiagnostics;
+    @Inject io.cattle.platform.iaas.api.auth.apikey.ApiKeyTargetResolver bridgeTargets;
     @Inject io.cattle.platform.iaas.api.auth.ai.logs.AiContainerLogsService containerLogs;
 
     private record AuthorizedTarget(Resource resource, boolean serviceIdsReadable, boolean missingPersistedStack, String instanceUuid, String nativeUuid) { }
@@ -112,6 +113,7 @@ public class AiResourceViewService {
     public Map<String, Object> read(ApiRequest request) {
         Map<String, Object> input = input(request);
         if ("container_logs".equals(input.get("view"))) return containerLogs.read(request, input);
+        if ("bridge_context".equals(input.get("view"))) return bridgeContext(request, input);
         AiAuditSourcePage source = input.containsKey("sourcePage") ? AiAuditSourcePage.parse(input) : null;
         String type = source == null ? (String) input.get("resourceType") : source.type;
         Policy current = keyAuthorization.actor(request);
@@ -278,6 +280,116 @@ public class AiResourceViewService {
                     return type == null ? null : apiKeyPolicyTarget(domain, type, scope.resourceId(),
                             scope.kind() == io.cattle.platform.iaas.api.auth.apikey.ApiKeyPolicy.ScopeKind.PROJECT, true);
                 }, () -> apiKeyPolicyTarget(domain, resource.getType(), resource.getId(), false, false));
+    }
+
+    private record BridgeWitness(AiBridgeContextView.Candidate candidate, String uuid,
+                                 io.cattle.platform.iaas.api.auth.apikey.ApiKeyPolicyEvaluator.Target ancestry,
+                                 AiBridgeContextView.Project project) { }
+
+    private Map<String, Object> bridgeContext(ApiRequest request, Map<String, Object> input) {
+        ApiKeyCredentialContext key = ApiKeyCredentialContext.get(request);
+        if (key == null || key.policy() == null || key.policy().getPurpose()
+                != io.cattle.platform.iaas.api.auth.apikey.ApiKeyPolicy.Purpose.AI_BRIDGE)
+            throw error(403, "DedicatedAiBridgeKeyRequired");
+        ApiKeyAiBridgeGuard.check(request, key.policy());
+        Policy actor = keyAuthorization.actor(request);
+        if (actor == null || actor.getAuthenticatedAsAccountId() <= 0) throw error(403, "PermissionDenied");
+        long principal = actor.getAuthenticatedAsAccountId();
+        Set<AiBridgeContextView.Candidate> candidates = new LinkedHashSet<>();
+        // Preserve the ordinary Project owner and all original Full behavior.
+        // Only its KeyScopeDenied can use a child's navigation witness below.
+        ApiRequest ordinary = new ApiRequest(request);
+        ordinary.setRequestServletContext(request.getServletContext());
+        Map<String, Object> selectors = new LinkedHashMap<>(input); selectors.remove("view");
+        ordinary.setRequestObject(selectors); ApiKeyCredentialContext.attach(ordinary, key);
+        try {
+            Map<String, Object> visible = read(ordinary);
+            if (visible.get("nextMarker") != null) throw error(422, "ResourceViewNarrowQuery");
+            if (!(visible.get("data") instanceof List<?> rows)) throw error(503, "ResourceViewUnavailable");
+            for (Object row : rows) {
+                if (!(row instanceof Map<?, ?> fields) || !(fields.get("id") instanceof String id))
+                    throw error(503, "ResourceViewUnavailable");
+                candidates.add(new AiBridgeContextView.Candidate("project", id));
+            }
+        } catch (ClientVisibleException denied) {
+            if (!"KeyScopeDenied".equals(denied.getCode()) || key.policy().getMode()
+                    != io.cattle.platform.iaas.api.auth.apikey.ApiKeyPolicy.Mode.CUSTOM) throw denied;
+        }
+        candidates.addAll(AiBridgeContextView.candidates(key.policy()));
+        if (candidates.size() > 178) throw error(422, "ResourceViewNarrowQuery");
+        Map<String, BridgeWitness> selected = new LinkedHashMap<>();
+        for (var candidate : candidates) {
+            BridgeWitness witness = bridgeWitness(request, input, candidate, key, principal);
+            if (witness != null) {
+                BridgeWitness prior = selected.putIfAbsent(witness.project().id(), witness);
+                if (prior != null && !prior.project().equals(witness.project())) throw error(409, "ResourceViewUnavailable");
+            }
+        }
+        for (BridgeWitness witness : selected.values()) {
+            BridgeWitness fresh = bridgeWitness(request, input, witness.candidate(), key, principal);
+            if (!witness.equals(fresh)) throw error(409, "ResourceViewUnavailable");
+        }
+        ApiKeyAiBridgeGuard.check(request, key.policy());
+        if (keyAuthorization.actor(request).getAuthenticatedAsAccountId() != principal) throw error(403, "OwnerPermissionDenied");
+        return AiBridgeContextView.envelope(selected.values().stream().map(BridgeWitness::project).toList());
+    }
+
+    private BridgeWitness bridgeWitness(ApiRequest request, Map<String, Object> input,
+            AiBridgeContextView.Candidate candidate, ApiKeyCredentialContext key, long principal) {
+        ApiKeyAiBridgeGuard.check(request, key.policy());
+        Policy actor = keyAuthorization.actor(request);
+        if (actor.getAuthenticatedAsAccountId() != principal) throw error(403, "OwnerPermissionDenied");
+        long id = bridgeTargets.parseScopeId(candidate.type(), candidate.id());
+        Object before = objects.loadResource(candidate.type(), id);
+        if (before == null || io.cattle.platform.object.util.ObjectUtils.getPropertyIgnoreErrors(before, "removed") != null) return null;
+        Object uuidValue = io.cattle.platform.object.util.ObjectUtils.getPropertyIgnoreErrors(before, "uuid");
+        if (!(uuidValue instanceof String uuid) || uuid.isBlank()) return null;
+        Object accountValue = "project".equals(candidate.type()) && before instanceof Account parent
+                ? parent.getId() : io.cattle.platform.object.util.ObjectUtils.getPropertyIgnoreErrors(before, "accountId");
+        if (!(accountValue instanceof Number account) || account.longValue() <= 0) return null;
+        final io.cattle.platform.iaas.api.auth.apikey.ApiKeyPolicyEvaluator.Target ancestry;
+        try {
+            Policy scoped = authenticator.currentAuthorization(principal, account.longValue(), request).policy();
+            ancestry = bridgeTargets.resolveObject(candidate.type(), before, scoped);
+        }
+        catch (ClientVisibleException denied) {
+            if (Set.of("KeyScopeDenied", "OwnerPermissionDenied", "NotFound").contains(denied.getCode())) return null;
+            throw denied;
+        }
+        if (ancestry.projectId() == null) return null;
+        long projectId = bridgeTargets.parseScopeId("project", ancestry.projectId());
+        Account project = objects.loadResource(Account.class, projectId);
+        if (project == null || project.getId() == null || project.getId() != projectId
+                || project.getRemoved() != null || !"project".equals(project.getKind())
+                || !"active".equals(project.getState()) || StringUtils.isBlank(project.getUuid())
+                || StringUtils.isBlank(project.getName()) || project.getName().length() > 2048) return null;
+        var identity = new AiBridgeContextView.Project(String.valueOf(ApiContext.getContext().getIdFormatter()
+                .formatId("project", projectId)), project.getUuid(), project.getName(), project.getState());
+        if (!AiBridgeContextView.selected(input, identity)) return null;
+        AiBridgeContextView.requireNoParentDeny(key.policy(), identity.id());
+        // Parent fields are navigation metadata, not an authorized Project GET.
+        // The actual child still traverses the unchanged ordinary GET owner.
+        AiApiKeyReadView.Evidence evidence = apiKeyPolicyTarget(request, candidate.type(), candidate.id(), false, true);
+        if (evidence == null) return null;
+        var authority = authenticator.currentAuthorization(principal, projectId, request);
+        Schema schema = authority.schemas().getSchema("project");
+        if (schema == null || schema.getResourceMethods() == null || !schema.getResourceMethods().contains("GET")
+                || authority.policy().authorizeObject(project) == null
+                || !List.of("uuid", "name", "state").stream().allMatch(field -> AiApiKeyReadView.readable(schema, field)))
+            throw error(403, "OwnerPermissionDenied");
+        Object after = objects.loadResource(candidate.type(), id);
+        Account parent = objects.loadResource(Account.class, projectId);
+        Policy freshActor = keyAuthorization.actor(request);
+        if (freshActor.getAuthenticatedAsAccountId() != principal || after == null || parent == null
+                || !Objects.equals(uuid, io.cattle.platform.object.util.ObjectUtils.getPropertyIgnoreErrors(after, "uuid"))
+                || io.cattle.platform.object.util.ObjectUtils.getPropertyIgnoreErrors(after, "removed") != null
+                || !ancestry.equals(bridgeTargets.resolveObject(candidate.type(), after,
+                        authenticator.currentAuthorization(principal, account.longValue(), request).policy()))
+                || parent.getRemoved() != null || parent.getId() == null || parent.getId() != projectId
+                || !Objects.equals(identity.uuid(), parent.getUuid()) || !Objects.equals(identity.name(), parent.getName())
+                || !Objects.equals(identity.state(), parent.getState()) || !"project".equals(parent.getKind()))
+            throw error(409, "ResourceViewUnavailable");
+        return new BridgeWitness(candidate, uuid, ancestry, identity);
     }
 
     private AiApiKeyReadView.Evidence apiKeyPolicyTarget(ApiRequest domain, String type, String id,
@@ -826,6 +938,7 @@ public class AiResourceViewService {
 
     private static Map<String, Object> input(ApiRequest request) {
         Map<String, Object> input = CollectionUtils.toMap(request.getRequestObject());
+        if ("bridge_context".equals(input.get("view"))) { AiBridgeContextView.validate(input); return input; }
         if (!Set.of("type", "resourceType", "resourceId", "query", "marker", "parentId", "sourcePage", "view", "tailLines").containsAll(input.keySet())
                 || !(input.get("resourceType") instanceof String type) || !READ_TYPES.contains(type)) throw error(422, "ResourceViewInputInvalid");
         for (String key : List.of("resourceId", "marker", "parentId")) {

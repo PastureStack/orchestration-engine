@@ -65,7 +65,7 @@ public class AiResourceChangeProcessObserver implements ProcessAuthorizationHook
                 throw new IllegalStateException("Approved lifecycle request unavailable");
             Object previous = request.getAttribute(ATTRIBUTE);
             request.setAttribute(ATTRIBUTE, new Dispatch(request, id));
-            try { return operation.get(); }
+            try { return registryRemovalDispatch(request, session, operation); }
             finally { request.setAttribute(ATTRIBUTE, previous); }
         }
         Map<String, Object> binding = store.execution(id);
@@ -105,8 +105,17 @@ public class AiResourceChangeProcessObserver implements ProcessAuthorizationHook
         }
         Object previous = request.getAttribute(ATTRIBUTE);
         request.setAttribute(ATTRIBUTE, new Dispatch(request, id));
-        try { return operation.get(); }
+        try { return registryRemovalDispatch(request, binding, operation); }
         finally { request.setAttribute(ATTRIBUTE, previous); }
+    }
+
+    private <T> T registryRemovalDispatch(ApiRequest request, Map<String, Object> binding, Supplier<T> operation) {
+        if (!AiRegistryRemovalChange.binding(binding)) return operation.get();
+        return io.cattle.platform.iaas.api.filter.registry.RegistryCredentialReferenceGuard.withRemovalPrecondition(request,
+                number(binding.get("rootId")), (String) binding.get("rootUuid"), number(binding.get("accountId")), parent -> {
+                    if (!registryConfiguration(binding, parent))
+                        throw new io.github.ibuildthecloud.gdapi.exception.ClientVisibleException(409, "ResourceChangeConflict");
+                }, operation);
     }
 
     @Override public Map<String, Object> capture(LaunchConfiguration config) {
@@ -202,15 +211,17 @@ public class AiResourceChangeProcessObserver implements ProcessAuthorizationHook
     }
 
     private boolean sessionRoot(Map<String, Object> binding, LaunchConfiguration config) {
-        Object root = objects.loadResource((String) binding.get("resourceType"), number(binding.get("rootId")));
+        String type = AiRegistryRemovalChange.binding(binding) ? "storagePool" : (String) binding.get("resourceType");
+        Object root = objects.loadResource(type, number(binding.get("rootId")));
         return AiResourceChangePlanStore.sessionLifecycle(binding) && ownedRoot(binding, root) && resourceKind(binding, root)
                 && Objects.equals(binding.get("rootUuid"), uuid(root))
                 && number(config.getAccountId()) == number(binding.get("accountId"))
-                && Objects.equals(binding.get("resourceType"), config.getResourceType())
+                && Objects.equals(type, config.getResourceType())
                 && Long.toString(number(binding.get("rootId"))).equals(config.getResourceId())
                 && initialProcess(binding).equals(config.getProcessName())
                 && list(binding.get("initial")).contains(initialIdentity(config, root))
-                && (AiHostLifecycleChange.binding(binding) ? AiHostLifecycleChange.queuedRoot(binding, root, config) && hostConfiguration(binding, root)
+                && (AiRegistryRemovalChange.binding(binding) ? registryConfiguration(binding, root)
+                    : AiHostLifecycleChange.binding(binding) ? AiHostLifecycleChange.queuedRoot(binding, root, config) && hostConfiguration(binding, root)
                     : AiStackUpgradeLifecycleChange.binding(binding)
                         ? root instanceof io.cattle.platform.core.model.Stack stack && "stack".equals(stack.getKind())
                         : root instanceof Service service && "service".equals(service.getKind())
@@ -633,8 +644,11 @@ public class AiResourceChangeProcessObserver implements ProcessAuthorizationHook
         try {
             Map<String, Object> current = json.readValue(json.writeValueAsString(
                     AiRegistryLifecycleChange.snapshot((io.cattle.platform.core.model.StoragePool) root)));
-            return expected.equals(AiRegistryLifecycleChange.configuration(current));
-        } catch (java.io.IOException unavailable) { throw new IllegalStateException("Resource-change execution binding unavailable", unavailable); }
+            return expected.equals(AiRegistryLifecycleChange.configuration(current))
+                    && (!AiRegistryRemovalChange.binding(binding) || AiRegistryRemovalChange.captured(binding.get(AiRegistryRemovalChange.CREDENTIALS))
+                        .equals(store.registryRemovalCredentials(binding)));
+        } catch (io.github.ibuildthecloud.gdapi.exception.ClientVisibleException invalid) { return false; }
+        catch (java.io.IOException unavailable) { throw new IllegalStateException("Resource-change execution binding unavailable", unavailable); }
     }
 
     private boolean hostConfiguration(Map<String, Object> binding, Object root) {
@@ -696,6 +710,31 @@ public class AiResourceChangeProcessObserver implements ProcessAuthorizationHook
         }
         return false;
     }
+    String registryRemovalOutcome(String id) {
+        Map<String, Object> binding = store.execution(id);
+        if (!AiRegistryRemovalChange.binding(binding) || !id.equals(binding.get("id"))
+                || !(binding.get("rootProcessId") instanceof Number processId) || processId.longValue() <= 0) return "unknown";
+        var record = objects.loadResource(io.cattle.platform.core.model.ProcessInstance.class, processId.longValue());
+        if (record == null || !Objects.equals(record.getId(), processId.longValue())
+                || !"storagepool.remove".equals(record.getProcessName()) || !"storagePool".equals(record.getResourceType())
+                || !Long.toString(number(binding.get("rootId"))).equals(record.getResourceId())
+                || !Objects.equals(record.getAccountId(), number(binding.get("accountId")))) return "unknown";
+        // Cookie correlation is the exact native insert/claim witness, never a Key authorization surrogate.
+        if (AiResourceChangePlanStore.sessionLifecycle(binding)) {
+            if (!store.sessionLifecycleActive(id, binding)
+                    || record.getData() != null && record.getData().containsKey(ProcessAuthorization.DATA_KEY)) return "unknown";
+            return record.getEndTime() == null ? "running" : "SUCCESS".equals(record.getResult()) ? "succeeded" : "failed";
+        }
+        if (record.getData() == null || !(record.getData().get(ProcessAuthorization.DATA_KEY) instanceof Map<?, ?> raw)) return "unknown";
+        Map<String, Object> metadata = new LinkedHashMap<>();
+        for (var entry : raw.entrySet()) {
+            if (!(entry.getKey() instanceof String key)) return "unknown";
+            metadata.put(key, entry.getValue());
+        }
+        if (!metadataMatches(binding, metadata)) return "unknown";
+        return record.getEndTime() == null ? "running" : "SUCCESS".equals(record.getResult()) ? "succeeded" : "failed";
+    }
+
     /** Scale shares the native PUT process with metadata, but never its approved field set. */
     private boolean attestsLoadBalancerScale(LaunchConfiguration config, Map<String, Object> metadata) {
         if (!(metadata.get("requestId") instanceof String id) || !id.matches("aichange-[0-9a-f-]{36}")

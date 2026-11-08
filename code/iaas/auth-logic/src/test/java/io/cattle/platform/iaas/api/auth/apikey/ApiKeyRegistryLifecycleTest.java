@@ -24,6 +24,23 @@ import java.util.Set;
 import org.junit.Test;
 
 public class ApiKeyRegistryLifecycleTest {
+    @Test public void registryDeleteKeepsTheOriginalFullLegacyAndExactScopedDeleteCeilings() {
+        for (String mode : List.of("custom", "full", "legacy")) {
+            var f = new Fixture("activate"); f.policy(Set.of("read", "delete"), false, false, null, 1); f.mode(mode);
+            when(f.schema.getResourceMethods()).thenReturn(List.of("GET", "DELETE"));
+            f.metadata.put("operation", "delete"); f.metadata.put("requestMethod", "DELETE"); f.metadata.remove("requestAction");
+            var remove = new LaunchConfiguration("storagepool.remove", "storagePool", "3", 5L, 0, Map.of());
+            f.hook.beforeExecution(remove, f.metadata); verify(f.objects, never()).persist(any());
+            when(f.schema.getResourceMethods()).thenReturn(List.of("GET"));
+            assertThrows(ProcessAuthorizationDeniedException.class, () -> f.hook.beforeExecution(remove, f.metadata));
+        }
+        var read = new Fixture("activate"); read.policy(Set.of("read"), false, false, null, 1);
+        when(read.schema.getResourceMethods()).thenReturn(List.of("GET", "DELETE"));
+        read.metadata.put("operation", "delete"); read.metadata.put("requestMethod", "DELETE"); read.metadata.remove("requestAction");
+        assertThrows(ProcessAuthorizationDeniedException.class, () -> read.hook.beforeExecution(
+                new LaunchConfiguration("storagepool.remove", "storagePool", "3", 5L, 0, Map.of()), read.metadata));
+    }
+
     @Test public void nativeStoragePoolRootUsesTheExactRegistryRoleAndRealCanonicalIdParser() {
         for (String action : List.of("activate", "deactivate")) for (String mode : List.of("custom", "full", "legacy")) {
             var f = new Fixture(action); f.mode(mode); f.hook.beforeExecution(f.job, f.metadata);

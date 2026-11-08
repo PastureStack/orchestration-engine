@@ -85,6 +85,7 @@ public class AiResourceChangeDomain extends AbstractJooqDao {
     @Inject InstanceCreatePortValidation instanceCreatePortValidation;
     @Inject ResourceArchiveChange archiveChanges;
     @Inject io.cattle.platform.iaas.api.port.PortUpdateService containerPortUpdates;
+    @Inject io.cattle.platform.iaas.api.filter.registry.RegistryCredentialReferenceGuard registryReferences;
 
     /** This marker only exists on a fresh, server-created domain request. */
     public static boolean trustedDomain(ApiRequest request) {
@@ -1072,6 +1073,30 @@ public class AiResourceChangeDomain extends AbstractJooqDao {
         ready(descriptor, target, parent, AiNamedServiceLinks.supports(descriptor, parameters));
     }
 
+    public Map<String, Object> registryRemovalSnapshot(Object target) {
+        if (!AiRegistryLifecycleChange.registry(target) || !(target instanceof io.cattle.platform.core.model.StoragePool pool))
+            throw error(422, "ResourceChangeUnsupported");
+        List<Map<String, Object>> credentials = AiRegistryRemovalChange.credentials(create(), pool.getId(), pool.getAccountId(), true, List.of());
+        for (Map<String, Object> credential : credentials)
+            if (credential.get("removed") == null && !Set.of("active", "inactive").contains(credential.get("state")))
+                throw error(409, "ResourceChangeTargetBusy");
+        Map<String, Object> result = snapshot(target); result.put(AiRegistryRemovalChange.CREDENTIALS, credentials); return result;
+    }
+
+    public <T> T withRegistryRemovalWrite(ApiRequest request, Map<String, Object> projection, Supplier<T> action) {
+        if (registryReferences == null) throw error(503, "ResourceChangePreflightUnavailable");
+        var descriptor = AiResourceChangeDescriptor.require("registry", "remove");
+        if (!(projection.get("resourceId") instanceof String id)) throw error(422, "ResourceChangeInputInvalid");
+        Object selected = visible(request, descriptor, id);
+        if (!(selected instanceof io.cattle.platform.core.model.StoragePool pool) || !AiRegistryLifecycleChange.registry(pool))
+            throw error(404, "NotFound");
+        return registryReferences.withRegistryRemoval(pool.getId(), action);
+    }
+
+    public String registryRemovalOutcome(String id) {
+        return processObserver == null ? "unknown" : processObserver.registryRemovalOutcome(id);
+    }
+
     public void ready(AiResourceChangeDescriptor descriptor, Object target, Object parent) {
         ready(descriptor, target, parent, false);
     }
@@ -1184,7 +1209,8 @@ public class AiResourceChangeDomain extends AbstractJooqDao {
         }
         if (AiRegistryLifecycleChange.supports(descriptor)) {
             Map<String, Object> identity = copyMap(plan.containsKey("registryIdentity") ? plan.get("registryIdentity") : plan.get("snapshot"));
-            if (!AiRegistryLifecycleChange.registry(target) || number(identity.get("id")) != number(ObjectUtils.getId(target))
+            if (!(AiRegistryRemovalChange.supports(descriptor) ? AiRegistryRemovalChange.receiptIdentity(target, identity)
+                    : AiRegistryLifecycleChange.registry(target)) || number(identity.get("id")) != number(ObjectUtils.getId(target))
                     || !Objects.equals(identity.get("uuid"), ObjectUtils.getPropertyIgnoreErrors(target, "uuid")))
                 throw error(409, "ResourceChangePlanStale");
         }
@@ -1300,6 +1326,10 @@ public class AiResourceChangeDomain extends AbstractJooqDao {
                     && objects.find(Mount.class, "volumeId", volume.getId()).isEmpty()
                     && objects.find(io.cattle.platform.core.model.VolumeStoragePoolMap.class, "volumeId", volume.getId()).isEmpty();
         }
+        if (AiRegistryRemovalChange.supports(descriptor) && target instanceof io.cattle.platform.core.model.StoragePool pool)
+            return parameters.isEmpty() && AiRegistryRemovalChange.complete(target, before, snapshot(target),
+                    AiRegistryRemovalChange.credentials(create(), pool.getId(), pool.getAccountId(), false,
+                        AiRegistryRemovalChange.captured(before.get(AiRegistryRemovalChange.CREDENTIALS))));
         if (AiRegistryLifecycleChange.supports(descriptor))
             return parameters.isEmpty() && AiRegistryLifecycleChange.complete(descriptor, target, before, snapshot(target));
         if (AiServiceUpgradeLifecycleChange.supports(descriptor)) {
@@ -1637,6 +1667,11 @@ public class AiResourceChangeDomain extends AbstractJooqDao {
             String cleared = parameters.containsKey("hostname") ? "externalIpAddresses" : "hostname";
             result.add(change(cleared, target == null ? null : displayed(cleared,
                     DataAccessor.field(target, cleared, Object.class)), null));
+        }
+        if (AiRegistryRemovalChange.supports(descriptor)) {
+            int count = AiRegistryRemovalChange.affected(AiRegistryRemovalChange.captured(
+                    registryRemovalSnapshot(target).get(AiRegistryRemovalChange.CREDENTIALS)));
+            result.add(change("affectedCredentialCount", count, count));
         }
         for (var entry : parameters.entrySet()) {
             if (Set.of("externalService", "dnsService").contains(descriptor.resourceType()) && "stackId".equals(entry.getKey())) continue;

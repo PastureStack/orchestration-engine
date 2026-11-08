@@ -39,7 +39,7 @@ public class AiResourceChangePlanService {
     public Map<String, Object> preview(ApiRequest request) {
         String id = "aichange-" + UUID.randomUUID();
         Map<String, Object> denialReceipt = new LinkedHashMap<>(); denialReceipt.put("id", id);
-        return audited(request, "preview", denialReceipt, () -> portLocked(request,
+        return audited(request, "preview", denialReceipt, () -> nativeLocked(request,
                 CollectionUtils.toMap(request.getRequestObject()), () -> {
             requireEnabled();
             Map<String, Object> input = input(request, Set.of("type", "resourceType", "operation", "resourceId", "parameters"));
@@ -156,7 +156,7 @@ public class AiResourceChangePlanService {
 
     public Map<String, Object> action(String id, ApiRequest request) {
         String action = request.getAction();
-        return audited(request, action, id, () -> portLocked(request,
+        return audited(request, action, id, () -> nativeLocked(request,
                 "cancel".equals(action) ? Map.of() : store.load(validId(id)), () -> locked(validId(id), () -> {
             if (!Set.of("confirm", "apply", "cancel").contains(action == null ? "" : action)) throw error(422, "ResourceChangeInputInvalid");
             if (!"apply".equals(action)) human(request);
@@ -257,7 +257,10 @@ public class AiResourceChangePlanService {
         })));
     }
 
-    private <T> T portLocked(ApiRequest request, Map<String, Object> projection, Supplier<T> action) {
+    private <T> T nativeLocked(ApiRequest request, Map<String, Object> projection, Supplier<T> action) {
+        if (projection != null && "registry".equals(projection.get("resourceType")) && "remove".equals(projection.get("operation"))
+                && (!projection.containsKey("status") || "preview".equals(projection.get("status"))))
+            return domain.withRegistryRemovalWrite(request, projection, action);
         if (projection == null || !"port".equals(projection.get("resourceType")) || !"update_public_port".equals(projection.get("operation"))
                 || projection.containsKey("status") && !"preview".equals(projection.get("status"))) return action.get();
         return domain.withContainerPortWrite(request, projection, action);
@@ -277,6 +280,7 @@ public class AiResourceChangePlanService {
 
     private Map<String, Object> targetSnapshot(ApiRequest request, AiResourceChangeDescriptor descriptor, Object target,
             Map<String, Object> parameters) {
+        if (AiRegistryRemovalChange.supports(descriptor)) return domain.registryRemovalSnapshot(target);
         if (AiCookieLifecycleWitness.supports(descriptor) && ApiKeyCredentialContext.get(request) == null)
             return domain.cookieLifecycleSnapshot(descriptor, target);
         if (AiStackUpgradeLifecycleChange.supports(descriptor)) return domain.stackUpgradeLifecycleSnapshot(descriptor, target, true);
@@ -350,7 +354,8 @@ public class AiResourceChangePlanService {
             before.put("volumeCreateAccountId", plan.get("accountId"));
         }
         if (AiLoadBalancerCreateChange.supports(descriptor)) before.put("loadBalancerCreateBody", plan.get("body"));
-        String lifecycleOutcome = AiCookieLifecycleWitness.supports(descriptor) && !(plan.get("credentialId") instanceof Number)
+        String lifecycleOutcome = AiRegistryRemovalChange.supports(descriptor) ? domain.registryRemovalOutcome((String) plan.get("id"))
+                : AiCookieLifecycleWitness.supports(descriptor) && !(plan.get("credentialId") instanceof Number)
                 ? Objects.toString(domain.cookieLifecycleOutcome(plan, target), "unknown") : AiHostLifecycleChange.supports(descriptor) ?
                         Objects.toString(domain.hostLifecycleProcessOutcome(plan, target), "unknown")
                 : AiStackUpgradeLifecycleChange.supports(descriptor)

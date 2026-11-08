@@ -18,6 +18,20 @@ Exact configuration CAS, current role/Key ceilings, native validation and human
 confirmation remain required. See the [release note](docs/releases/orchestration-engine-0.183.390.md)
 for the explicit plan-input metadata additions and verified component evidence.
 
+## Next source candidate
+
+Engine **0.183.391** is a source candidate, not a published release. It adds
+human-reviewed removal of an inactive Registry through the existing native
+StoragePool delete owner. The complete non-sensitive credential set is captured
+and rechecked; credential values remain private. Native parent/child writers use
+the same Registry lock through transaction completion. Current roles, live Key
+policy, Full/legacy native behavior and one-time human confirmation remain
+required. An AI-purpose scoped Bridge may resolve only the four-field parent
+environment identity through an authorized child; this does not grant ordinary
+Project reads or business access. Matching Web Console **1.6.232** / Bridge **0.2.34**, original CI,
+compiled qualification, publication and affected native acceptance are pending.
+See the [candidate note](docs/releases/orchestration-engine-0.183.391.md).
+
 Install a qualified matching assembly through the
 [Server installation guide](https://github.com/PastureStack/server#quick-start).
 Component publication does not update a running Server. Supported AI workflows

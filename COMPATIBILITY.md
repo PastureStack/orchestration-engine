@@ -1,5 +1,31 @@
 # Compatibility Contract
 
+## Engine 0.183.391 source candidate
+
+Typed Registry removal is an empty native DELETE of an inactive Registry after
+human review. Exact parent identity, the full non-sensitive credential set,
+current authorization and Key revision are fenced through native dispatch.
+Credential create/reparent and Registry removal share the parent native lock
+through transaction completion. Cookie completion requires this plan's durable
+native delete witness and complete captured-child removal; another process or
+parent state alone cannot prove completion. Existing Full/legacy writers and
+role/Key ceilings are preserved, with no new native grant or credential editor.
+
+AI-purpose Bridge navigation may use the private `bridge_context` view when
+ordinary Project scope is denied. A fresh ordinary child read and exact parent
+ancestry are required; explicit parent denial wins. Only parent id, UUID, name
+and state are projected. This does not grant Project read or business access.
+The private view enum has three entries; the public MCP view enum remains two.
+The six startup role inputs, two base fields and six compiled semantics from
+published 390 remain required and introduce no new 391 role grant.
+
+The original 506 mandatory method identities are retained and seventeen new
+methods are registered (523 total: eleven Registry and six Bridge context).
+Normal C03 source extraction covers 506 inputs and preserves all 1,396 native
+HTTP tuples. This is source enumeration, not executed JUnit or compiled evidence. Matching Web Console 1.6.232 / Bridge 0.2.34, original CI,
+compiled/source qualification, component publication and native acceptance are
+pending. See the [candidate note](docs/releases/orchestration-engine-0.183.391.md).
+
 ## Engine 0.183.390 published
 
 Reviewed primary Service startup arguments preserve native omitted, null and
