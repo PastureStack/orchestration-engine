@@ -26,7 +26,9 @@ StoragePool delete owner. The complete non-sensitive credential set is captured
 and rechecked; credential values remain private. Native parent/child writers use
 the same Registry lock through transaction completion. Current roles, live Key
 policy, Full/legacy native behavior and one-time human confirmation remain
-required. Matching Web Console **1.6.232** / Bridge **0.2.34**, original CI,
+required. An AI-purpose scoped Bridge may resolve only the four-field parent
+environment identity through an authorized child; this does not grant ordinary
+Project reads or business access. Matching Web Console **1.6.232** / Bridge **0.2.34**, original CI,
 compiled qualification, publication and affected native acceptance are pending.
 See the [candidate note](docs/releases/orchestration-engine-0.183.391.md).
 
