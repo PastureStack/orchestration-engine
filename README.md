@@ -10,7 +10,8 @@ upstream history, authorship, licenses, and dependency notices.
 
 ## Current component
 
-Engine **0.183.389** is the next release candidate. It adds human-reviewed
+[Engine **0.183.389**](https://github.com/PastureStack/orchestration-engine/releases/tag/v0.183.389)
+is published. It adds human-reviewed
 Stack finish-upgrade, cancel-upgrade and rollback plans using the existing
 native Stack and Service owners. Rollback restores only currently eligible
 services; finished services and newly introduced active/inactive services remain.
@@ -22,12 +23,11 @@ the existing per-Service rollback owner performs each authorized restore.
 Catalog/system ordinary Stacks retain their native capabilities. Current roles,
 live Key policy, exact identities/configuration CAS and own-process completion
 remain required. A matching Web Console review and Compose rollback executor
-must be qualified together. Component CI, publication, deployment and native
-business acceptance are pending. See the [candidate note](docs/releases/orchestration-engine-0.183.389.md).
+must be qualified together. Original CI, all twelve anonymous assets and native
+release attestation passed. Matching Server deployment and native business
+acceptance remain separate. See the [release note](docs/releases/orchestration-engine-0.183.389.md).
 
-The latest published baseline remains Engine 0.183.388:
-
-Engine **0.183.388** is published. It adds human-reviewed Host
+Human-reviewed Host
 activation and deactivation through the existing native Host actions. Cookie-origin
 Host, Service, Container, registry, load-balancer, external/DNS service and Stack
 lifecycle completion requires its own durable native process evidence. Stack fanout
@@ -35,11 +35,6 @@ and restart chains retain their actual native identities; original readiness,
 instance retirement and every domain terminal predicate remain required.
 The framework insertion hook records correlation only; native authorization stays
 with its existing owner. Full and legacy clients need no new header.
-
-[Engine 0.183.388](https://github.com/PastureStack/orchestration-engine/releases/tag/v0.183.388)
-retains original component CI and immutable publication evidence.
-Matching Server deployment and native business acceptance remain separate and
-pending or partial. See the [release note](docs/releases/orchestration-engine-0.183.388.md).
 
 Deploy through the [Server installation guide](https://github.com/PastureStack/server#quick-start)
 using a qualified matching assembly. Matching Web Console support is required;
