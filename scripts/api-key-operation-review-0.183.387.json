@@ -166,7 +166,7 @@
     "reviewed": {
       "algorithm": "c03-source-inputs-v1",
       "count": 497,
-      "sha256": "6dcf7f5bcbf933102d761b1fccf753380b196852ea2d408ebec9e5cc97626940",
+      "sha256": "8ff1d335eeaa86472871324f88704ceed37273b219aca406fdeab1c49150daa9",
       "anchors": [
         "AbstractObjectManager.java",
         "AbstractSchemaFactory.java",
@@ -330,6 +330,11 @@
     }
   },
   "delta": [
+    {
+      "path": "code/framework/auditing/src/main/java/io/cattle/platform/iaas/api/auditing/AuditServiceImpl.java",
+      "before": "bd9bee1c6600af44e6e7badeeb72831fff3824130c17662aa0b52a6270b4dbe4",
+      "after": "fc42a340651cc8b594a3213c1931e083d0f82b1b2835985dc3f4a7963c1643e3"
+    },
     {
       "path": "code/iaas/allocator/src/main/java/io/cattle/platform/allocator/lock/AllocateConstraintLock.java",
       "before": null,
@@ -2343,6 +2348,7 @@
     "code/packaging/app-config/src/main/java/io/cattle/platform/app/SystemServicesConfig.java"
   ],
   "currentSourceRoots": [
+    "code/framework/auditing/src/main/java/io/cattle/platform/iaas/api/auditing/AuditServiceImpl.java",
     "code/iaas/allocator/src/main/java/io/cattle/platform/allocator/lock/AllocateConstraintLock.java",
     "code/iaas/api-logic/src/main/java/io/cattle/platform/iaas/api/filter/port/PortUpdateValidationFilter.java",
     "code/iaas/api-logic/src/main/java/io/cattle/platform/iaas/api/port/PortPreflightDaoImpl.java",
@@ -2360,8 +2366,8 @@
     "code/iaas/model/src/main/java/io/cattle/platform/core/constants/PortConstants.java",
     "code/packaging/app-config/src/main/java/io/cattle/platform/app/IaasApiConfig.java"
   ],
-  "currentRoots": 16,
-  "carriedSourceRoots": 67,
+  "currentRoots": 17,
+  "carriedSourceRoots": 66,
   "packagedRootPlan": [
     {
       "source": "code/framework/api/src/main/java/io/cattle/platform/api/auth/ApiAuditPayload.java",
@@ -2407,8 +2413,8 @@
       "source": "code/framework/auditing/src/main/java/io/cattle/platform/iaas/api/auditing/AuditServiceImpl.java",
       "class": "io.cattle.platform.iaas.api.auditing.AuditServiceImpl",
       "moduleArtifactId": "cattle-framework-auditing",
-      "sourceSha256": "bd9bee1c6600af44e6e7badeeb72831fff3824130c17662aa0b52a6270b4dbe4",
-      "classification": "EXACT386_CARRY_CANDIDATE",
+      "sourceSha256": "fc42a340651cc8b594a3213c1931e083d0f82b1b2835985dc3f4a7963c1643e3",
+      "classification": "CURRENT",
       "compiledClassAndAllInnerClosure": "PENDING_ORIGINAL387_CI_PACKAGE_BYTES"
     },
     {
@@ -3066,6 +3072,10 @@
   },
   "modifiedExistingRequiredMethods": [
     [
+      "io.cattle.platform.iaas.api.auditing.TypedResourceAuditContractTest",
+      "everyRegisteredTypedDomainHasRealClosedMetadataAuditAllowAndDeny"
+    ],
+    [
       "io.cattle.platform.iaas.api.auth.change.AiServiceUpgradeLifecycleChangeTest",
       "nativeSchemaAdmitsTheSameThreeActionsWithoutAddingCancelRollback"
     ]
@@ -3083,6 +3093,19 @@
       "classification": "EXISTING_REQUIRED_SCHEMA_FIXTURE_REPAIR_NOT_A_NEW_METHOD",
       "change": "Add the two declared operations to the full-set expected fixture; preserve the three upgrade actions and cancel_rollback rejection",
       "actualCiPass": false
+    },
+    {
+      "path": "code/packaging/app-config/src/test/java/io/cattle/platform/iaas/api/auditing/TypedResourceAuditContractTest.java",
+      "beforeGitLfSha256": "edf7000a71c8270e2f364dd3177b395c1d788146e2ff89a543733c4343acac8f",
+      "afterGitLfSha256": "638bce207727306fbe4288a9213316fcc11d396aff4117326fc0017af34b2b1b",
+      "classification": "EXISTING_REQUIRED_COMPOSITION_FIXTURE_EXTENSION_NOT_A_NEW_METHOD",
+      "method": [
+        "io.cattle.platform.iaas.api.auditing.TypedResourceAuditContractTest",
+        "everyRegisteredTypedDomainHasRealClosedMetadataAuditAllowAndDeny"
+      ],
+      "change": "Assert both new registered types and reject four case/credentials variants; retain registry ALLOW/DENY, key revision and secret-zero checks",
+      "beforeCommit": "b4c8cd589dc480d63e130d2c98ea7d9c52a1bd5e",
+      "actualCiPass": false
     }
   ],
   "existingFixtureFailurePreserved": {
@@ -3090,5 +3113,203 @@
     "classification": "OLD_FULL_ENUM_EXPECTED_SET",
     "originalFailureRewritten": false,
     "newRuntimeOrCiPassClaimed": false
-  }
+  },
+  "sourceRefreshHistory": [
+    {
+      "beforeCommit": "b4c8cd589dc480d63e130d2c98ea7d9c52a1bd5e",
+      "beforeSourceInputs": {
+        "algorithm": "c03-source-inputs-v1",
+        "count": 497,
+        "sha256": "6dcf7f5bcbf933102d761b1fccf753380b196852ea2d408ebec9e5cc97626940",
+        "anchors": [
+          "AbstractObjectManager.java",
+          "AbstractSchemaFactory.java",
+          "AccountDaoImpl.java",
+          "AiAliasServiceChange.java",
+          "AiApiKeyReadView.java",
+          "AiAuditQuery.java",
+          "AiAuditQueryInputHandler.java",
+          "AiAuditQueryResourceManager.java",
+          "AiAuditQueryRunner.java",
+          "AiAuditQueryService.java",
+          "AiAuditSourcePage.java",
+          "AiAuditSourcePageInput.java",
+          "AiCatalogLaunchAccess.java",
+          "AiCatalogLaunchAccessTest.java",
+          "AiCatalogLaunchBinding.java",
+          "AiCatalogLaunchBindingTest.java",
+          "AiCatalogLaunchDelegation.java",
+          "AiCatalogLaunchDelegationTest.java",
+          "AiCatalogLaunchGateway.java",
+          "AiCatalogLaunchGraph.java",
+          "AiCatalogLaunchHumanInputTest.java",
+          "AiCatalogLaunchInput.java",
+          "AiCatalogLaunchMaterializer.java",
+          "AiCatalogLaunchMaterializerTest.java",
+          "AiCatalogLaunchObservation.java",
+          "AiCatalogLaunchObservationTest.java",
+          "AiCatalogLaunchOptionsResourceManager.java",
+          "AiCatalogLaunchOptionsService.java",
+          "AiCatalogLaunchOptionsStore.java",
+          "AiCatalogLaunchOptionsStoreTest.java",
+          "AiCatalogLaunchOwnerContractTest.java",
+          "AiCatalogLaunchPlanResourceManager.java",
+          "AiCatalogLaunchPlanService.java",
+          "AiCatalogLaunchPlanStore.java",
+          "AiCatalogLaunchPlanStoreTest.java",
+          "AiCatalogLaunchPrivate.java",
+          "AiCatalogLaunchPrivateTest.java",
+          "AiCatalogLaunchProspectiveParentTest.java",
+          "AiCatalogLaunchResponseFilter.java",
+          "AiCatalogLaunchRunner.java",
+          "AiCatalogLaunchWorkflowTest.java",
+          "AiContainerLogsInputHandler.java",
+          "AiContainerLogsRunner.java",
+          "AiContainerLogsService.java",
+          "AiContainerLogsTicket.java",
+          "AiContainerNetworkChange.java",
+          "AiCreatePorts.java",
+          "AiExternalServiceChange.java",
+          "AiHostMetadataChange.java",
+          "AiLoadBalancerCreateChange.java",
+          "AiNamedServiceLinks.java",
+          "AiProcessDiagnostics.java",
+          "AiProjectMetadataChange.java",
+          "AiRegistryLifecycleChange.java",
+          "AiResourceChangeDescriptor.java",
+          "AiResourceChangeDomain.java",
+          "AiResourceChangePlanService.java",
+          "AiResourceChangePlanStore.java",
+          "AiResourceChangeProcessObserver.java",
+          "AiResourceViewResourceManager.java",
+          "AiResourceViewService.java",
+          "AiServiceCreateChange.java",
+          "AiServiceUpgradeLifecycleChange.java",
+          "AiServiceUpgradePersistence.java",
+          "AiServiceUpgradePlanInputHandler.java",
+          "AiServiceUpgradePlanService.java",
+          "AiStackGroupChange.java",
+          "AiToolCallEventService.java",
+          "AiVolumeCreateChange.java",
+          "AllocateConstraintLock.java",
+          "ApiAuditPayload.java",
+          "ApiAuthenticator.java",
+          "ApiContainerLogsRead.java",
+          "ApiCookieAuthentication.java",
+          "ApiKeyAiBridgeGuard.java",
+          "ApiKeyAuditSink.java",
+          "ApiKeyAuthorizationService.java",
+          "ApiKeyOperations.java",
+          "ApiKeyProcessAuthorization.java",
+          "ApiKeyQueryScopes.java",
+          "ApiKeyTargetResolver.java",
+          "ApiServerConfig.java",
+          "AuditLogKeySelector.java",
+          "AuditLogOutPutFilter.java",
+          "AuditServiceImpl.java",
+          "CatalogLaunchTransformAuthorization.java",
+          "ClientToolAuditEvent.java",
+          "ContainerLogsActionHandler.java",
+          "DefaultAuthorizationProvider.java",
+          "DefaultObjectMetaDataManager.java",
+          "DefaultProcessInstanceImpl.java",
+          "DefaultProcessesParser.java",
+          "DriverServiceRemove.java",
+          "EngineContext.java",
+          "EventBasedProcessHandler.java",
+          "EventDiagnostics.java",
+          "ExternalDeploymentUnitInstance.java",
+          "ExternalDynamicExtensionHandler.java",
+          "FileSchemaFactory.java",
+          "GenericWhitelistedProxy.java",
+          "HostDao.java",
+          "HostDaoImpl.java",
+          "IaasApiConfig.java",
+          "InServiceUpgradeStrategy.java",
+          "InstanceCreatePortValidation.java",
+          "InstancePortsLock.java",
+          "InstancePortsValidationFilter.java",
+          "LoadBalancerServiceCreatePostListener.java",
+          "Lock.java",
+          "NotWritablePostProcessor.java",
+          "PortBindingAddress.java",
+          "PortConstants.java",
+          "PortPreflightDaoImpl.java",
+          "PortPreflightInputs.java",
+          "PortPreflightService.java",
+          "PortSpec.java",
+          "PortUpdateService.java",
+          "PortUpdateValidationFilter.java",
+          "ProcessAuthorization.java",
+          "ProcessEventDecorator.java",
+          "ProjectAccessService.java",
+          "ProjectResourceManager.java",
+          "RequestReRouterHandler.java",
+          "ResourceManagerRequestHandler.java",
+          "SchemaFactoryImpl.java",
+          "ServiceConsumeMapDao.java",
+          "ServiceConsumeMapDaoImpl.java",
+          "ServiceCreate.java",
+          "ServiceCreateValidation.java",
+          "ServiceDao.java",
+          "ServiceDaoImpl.java",
+          "ServiceDiscoveryApiService.java",
+          "ServiceDiscoveryApiServiceImpl.java",
+          "ServiceDiscoveryServiceImpl.java",
+          "ServiceDiscoveryServiceSetLinksLock.java",
+          "ServiceUpgradeStrategy.java",
+          "ServiceUpgradeValidation.java",
+          "ServiceUpgradeValidationFilter.java",
+          "ServiceValidationFilter.java",
+          "SetServiceLinksActionHandler.java",
+          "StandardLock.java",
+          "SystemServicesConfig.java",
+          "TokenAuthLookup.java",
+          "TransformInspect.java",
+          "VolumeDao.java",
+          "VolumeDaoImpl.java",
+          "VolumePreflightInputs.java",
+          "VolumePreflightService.java"
+        ],
+        "markers": [
+          "@Type",
+          "@Actions",
+          " getLinkInternal(",
+          " getLink(",
+          " resourceActionInternal(",
+          " collectionActionInternal(",
+          " resourceAction(",
+          " collectionAction("
+        ]
+      },
+      "changes": [
+        {
+          "path": "code/framework/auditing/src/main/java/io/cattle/platform/iaas/api/auditing/AuditServiceImpl.java",
+          "beforeGitLfSha256": "bd9bee1c6600af44e6e7badeeb72831fff3824130c17662aa0b52a6270b4dbe4",
+          "afterGitLfSha256": "fc42a340651cc8b594a3213c1931e083d0f82b1b2835985dc3f4a7963c1643e3",
+          "classification": "EXACT_TWO_NEW_TYPED_AUDIT_TARGET_LITERALS",
+          "change": "Only admit port and instanceLink in the existing closed native audit target set"
+        },
+        {
+          "path": "code/packaging/app-config/src/test/java/io/cattle/platform/iaas/api/auditing/TypedResourceAuditContractTest.java",
+          "beforeGitLfSha256": "edf7000a71c8270e2f364dd3177b395c1d788146e2ff89a543733c4343acac8f",
+          "afterGitLfSha256": "638bce207727306fbe4288a9213316fcc11d396aff4117326fc0017af34b2b1b",
+          "classification": "EXISTING_REQUIRED_COMPOSITION_FIXTURE_EXTENSION_NOT_A_NEW_METHOD",
+          "method": [
+            "io.cattle.platform.iaas.api.auditing.TypedResourceAuditContractTest",
+            "everyRegisteredTypedDomainHasRealClosedMetadataAuditAllowAndDeny"
+          ],
+          "change": "Assert both new registered types and reject four case/credentials variants; retain registry ALLOW/DENY, key revision and secret-zero checks"
+        }
+      ],
+      "failedCi": {
+        "run": 42429458504,
+        "logBasename": "engine387-original-ci-42429458504-failed.log",
+        "logSha256": "eb672d72d52c539ea1640391844de99f984f9dd20e1faac88f2e6712f41984c0",
+        "classification": "PRODUCT_TYPED_AUDIT_CLOSED_TARGET_SET_MISSING_PORT_AND_INSTANCE_LINK",
+        "originalFailureRewritten": false,
+        "newCiPassClaimed": false
+      }
+    }
+  ]
 }

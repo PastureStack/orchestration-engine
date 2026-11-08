@@ -10,7 +10,7 @@
   "sourceInputs": {
     "algorithm": "c03-source-inputs-v1",
     "count": 497,
-    "sha256": "6dcf7f5bcbf933102d761b1fccf753380b196852ea2d408ebec9e5cc97626940",
+    "sha256": "8ff1d335eeaa86472871324f88704ceed37273b219aca406fdeab1c49150daa9",
     "anchors": [
       "AbstractObjectManager.java",
       "AbstractSchemaFactory.java",
@@ -306,6 +306,11 @@
     "status": "SOURCE_ONLY_NOT_ARTIFACT_OR_RUNTIME_ACCEPTANCE",
     "sourceInputChanges": [
       {
+        "path": "code/framework/auditing/src/main/java/io/cattle/platform/iaas/api/auditing/AuditServiceImpl.java",
+        "before": "bd9bee1c6600af44e6e7badeeb72831fff3824130c17662aa0b52a6270b4dbe4",
+        "after": "fc42a340651cc8b594a3213c1931e083d0f82b1b2835985dc3f4a7963c1643e3"
+      },
+      {
         "path": "code/iaas/allocator/src/main/java/io/cattle/platform/allocator/lock/AllocateConstraintLock.java",
         "before": null,
         "after": "09cc196cdc5fcadacbcf3861ababa7d941639b8413aeb1fd5fa285262fdfcb1d"
@@ -411,7 +416,7 @@
       }
     },
     "reviewManifest": "scripts/api-key-operation-review-0.183.387.json",
-    "reviewManifestSha256": "fe30d5c977295ab1fd111671e42a6843448abae886208190dea60120204caa99",
+    "reviewManifestSha256": "3dc307f1c8038e21616eead28119261cbf71b66e1d24cf4676634551d1fe5503",
     "previous": {
     "version": "unreleased-386-links-http-lb-scale",
     "status": "SOURCE_ONLY_NOT_CURRENT_CI_ARTIFACT_OR_RUNTIME_ACCEPTANCE",

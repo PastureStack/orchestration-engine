@@ -226,7 +226,7 @@
     "sourceInputs": {
       "algorithm": "c03-source-inputs-v1",
       "count": 497,
-      "sha256": "6dcf7f5bcbf933102d761b1fccf753380b196852ea2d408ebec9e5cc97626940",
+      "sha256": "8ff1d335eeaa86472871324f88704ceed37273b219aca406fdeab1c49150daa9",
       "anchors": [
         "AbstractObjectManager.java",
         "AbstractSchemaFactory.java",
@@ -388,10 +388,10 @@
         " collectionAction("
       ]
     },
-    "contractSha256": "5f74eedb2cdb504acad1829f9ebd076bf00ffb1ae9740a5f9a82bfa7d4d3a756",
+    "contractSha256": "b0ae25933800efc2611af553efad8ef8f4dd895010715c8c203af91de07b503a",
     "tupleCount": 1396,
     "reviewManifest": "scripts/api-key-operation-review-0.183.387.json",
-    "reviewManifestSha256": "fe30d5c977295ab1fd111671e42a6843448abae886208190dea60120204caa99",
+    "reviewManifestSha256": "3dc307f1c8038e21616eead28119261cbf71b66e1d24cf4676634551d1fe5503",
     "roleFieldDelta": [],
     "previousReview": {
     "version": "unreleased-386-links-http-lb-scale",
