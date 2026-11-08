@@ -1,8 +1,10 @@
-# Orchestration Engine 0.183.391 — source candidate
+# Orchestration Engine 0.183.391
 
-This version is not published. Matching Web Console **1.6.232** / Bridge
-**0.2.34**, original CI, compiled qualification, publication and affected native
-acceptance are pending. The current published Engine remains 0.183.390.
+Engine **0.183.391** is published for matching Web Console **1.6.232** / Bridge
+**0.2.34**. Original CI, compiled qualification and immutable publication have
+passed. Matching Server assembly/deployment and designated native workflow
+acceptance remain separate and pending; publication does not update a running
+Server or establish complete frontend coverage.
 
 ## Human-reviewed Registry removal
 
@@ -41,17 +43,23 @@ The private schema view enum is exactly `stack_graph`, `container_logs`,
 `bridge_context`; the public MCP view enum remains the original two entries.
 There is no new role field, native route, native action or native grant.
 Published-390 startup metadata (six role inputs, two base fields and six
-compiled semantics) must remain in the new compiled artifact.
+compiled semantics) is retained in the verified new artifact.
 
 ## Verification status
 
-The original workflow source parser enumerates 523 required methods: all 506
+Original workflow **42520944186** passed 4,336 tests with zero failures and
+errors and one inherited skip. All 523 required methods passed: 506 retained
 published-390 identities, eleven new Registry methods and six new Bridge context
-methods. Each new identity is present in its owning JUnit source. The unchanged
-normal C03 extractor covers 506 inputs and preserves all 1,396 native HTTP
-tuples. Source roots are 11 current and 83 published-390 carry candidates; the
-carry classes still require exact comparison with the new original CI artifact.
-This is source registration only; original CI XML, compiled operands/C03,
-role/schema comparison, immutable publication and designated native business
-acceptance remain pending. The earlier fingerprint-mismatch CI failure is
-retained and is not qualification evidence.
+methods. Compiled/schema and C03 qualification passed for 11 current roots and
+83 byte-identical published-390 roots, covering 506 source inputs and preserving
+all 1,396 native HTTP tuples. Security and final qualification passed.
+
+The signed producer `bcd470712a4e8d429760b02e8df337ae53d92e2b` and normal
+merge/tag target `b832c463afca3cad704b6d72da5a76bf1c37d771` share tested tree
+`7284073c2907b3a24ae9c24794d49b743148d332`. All twelve public assets passed
+anonymous byte/digest verification; release cryptographic verification covers
+thirteen subjects. See the [published metadata](https://github.com/PastureStack/orchestration-engine/releases/download/v0.183.391/engine391-release-metadata.json).
+
+The earlier fingerprint-mismatch CI failure remains recorded and is not
+qualification evidence. Designated native business acceptance remains pending;
+these component results do not claim all 243 frontend groups are complete.
