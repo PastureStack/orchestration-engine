@@ -1,6 +1,6 @@
 # Compatibility Contract
 
-## Engine 0.183.388 candidate
+## Engine 0.183.388 published
 
 Host start/stop plans use native activate/deactivate actions, with no evacuation,
 daemon stop or Agent lifecycle operation. Cookie lifecycle plans require durable
@@ -11,8 +11,10 @@ policy and Full/legacy native API contracts remain.
 
 The insertion hook is correlation-only and has no effect without the approved
 private execution scope. No dependency, role grant, schema or native header
-requirement is added. Normal CI, publication and matching Server native acceptance
-are pending. See the [candidate release note](docs/releases/orchestration-engine-0.183.388.md).
+requirement is added. Component CI and immutable publication are complete.
+Matching Web Console 1.6.228 / Bridge 0.2.30 and a qualified Server assembly are
+required. Server deployment and affected native acceptance remain separate and
+pending or partial. See the [release note](docs/releases/orchestration-engine-0.183.388.md).
 
 ## Engine 0.183.387 published
 
