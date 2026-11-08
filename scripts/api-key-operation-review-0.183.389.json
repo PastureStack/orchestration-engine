@@ -3050,5 +3050,55 @@
     "basename": "refresh-integrated-operation-contract.py",
     "sha256": "078ffe48881469fe5eb3cb43a15fa41b480fe70e11bd5f63102ded6b35a6d076",
     "algorithm": "c03-source-inputs-v1"
+  },
+  "sourceAmendments": {
+    "kind": "same-official-jdk-transport-only",
+    "sourceCommit": "2c023c0581411cc64fda1dcb6ccdd96fcae3ad38",
+    "source": [
+      {
+        "path": "Dockerfile",
+        "beforeSha256": "affb74a730c161a069d772fb513d86f7f8f52bf6026c9e8fb48d4ca22e0fb006",
+        "afterSha256": "e0796612f36184c9f7489dd77fa3c81a8fa8a3136a475e671a709b17e2fc59a5",
+        "bytes": 16950
+      },
+      {
+        "path": "Dockerfile.dapper",
+        "beforeSha256": "068a0e2f362ae00faf8a4b7499b4158bd7cd7d07bf532f481eb2b03978ffdf1b",
+        "afterSha256": "4ee8bc39c05e7beea3297c49867e0a590fa0a69a369be2212420bcc81374449f",
+        "bytes": 17484
+      },
+      {
+        "path": "scripts/check-pasturestack-source",
+        "beforeSha256": "a2a5c0b3cd78a53448a507761d020dd1ef3e9ec2865d989fde28a364f6b860f9",
+        "afterSha256": "eb3c1268b96fd3beb270a6741e9290d7b60a762cd2813058f5d85ff5b314260e",
+        "bytes": 63568
+      }
+    ],
+    "patches": [
+      {
+        "name": "engine-official-asset-api.delta.patch",
+        "bytes": 2860,
+        "sha256": "d8d6348f7b37b874f2037ca6b6ea85f41278c095962a452e3d1d53a3a9fe54d2"
+      },
+      {
+        "name": "engine-runtime-jdk-api.delta.patch",
+        "bytes": 3112,
+        "sha256": "1adb0e1367b147b514940f75d56104a75c969515d319c2c761ca5aa0f8ea3212"
+      },
+      {
+        "name": "engine-runtime-and-dapper-jdk-range0.delta.patch",
+        "bytes": 3625,
+        "sha256": "ae35d8d172d9d9904b352d8b216a48b14088345707e69931c0a4a1e362c8792c"
+      }
+    ],
+    "affectedMethods": [],
+    "officialArtifact": {
+      "repository": "adoptium/temurin25-binaries",
+      "assetId": 665812068,
+      "name": "OpenJDK25U-jdk_x64_linux_hotspot_25.0.5_8.tar.gz",
+      "bytes": 141341188,
+      "sha256": "68982529869257d0ee6b824ec5aa270ff8b118bb438670da0b97ebdab178d7fb",
+      "apiUrl": "https://api.github.com/repos/adoptium/temurin25-binaries/releases/assets/665812068"
+    }
   }
 }

@@ -398,7 +398,7 @@
     "contractSha256": "2a2bbcc4443096f825ed43ed826911e41c1bdd0e7ea546a46b55b371de9fb5b7",
     "tupleCount": 1396,
     "reviewManifest": "scripts/api-key-operation-review-0.183.389.json",
-    "reviewManifestSha256": "1f9d67954cf1dba112c26c4acb86d30a1bfe81c7f7b79cde28922020e0a769e2",
+    "reviewManifestSha256": "fd45d3b42d2eedfd1b1d35629de225b38753948bf28302705df6e3474157c2d7",
     "roleFieldDelta": [],
     "sourceMethodClassification": {
       "trueNewTestMethods": 9,
