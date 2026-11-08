@@ -14,11 +14,16 @@ import org.junit.Test;
 
 public class AiResourceSchemaAuthorizationTest {
     @Test public void allRealRolesExposeOnlyTheTypedPlanInputAndSafeViewInput() throws Exception {
+        Map<?, ?> view = new JacksonJsonMapper().readValue(Files.readString(
+                root().resolve("resources/content/schema/base/aiResourceView.json")), Map.class);
+        Map<?, ?> fields = (Map<?, ?>) view.get("resourceFields");
+        assertEquals(List.of("stack_graph", "container_logs", "bridge_context"), ((Map<?, ?>) fields.get("view")).get("options"));
         for (String role : List.of("admin", "user", "project")) {
             for (String type : List.of("aiResourceView", "aiResourceChangePlan")) {
                 SchemaImpl schema = effective(role, type);
                 assertNotNull(role + ":" + type, schema); assertTrue(schema.isCreate());
-                List<String> inputs = "aiResourceView".equals(type) ? List.of("resourceType", "resourceId", "query", "marker", "parentId", "sourcePage", "view", "tailLines")
+                List<String> inputs = "aiResourceView".equals(type)
+                        ? List.of("resourceType", "resourceId", "query", "marker", "parentId", "sourcePage", "view", "tailLines")
                         : List.of("resourceType", "operation", "resourceId", "parameters");
                 for (String field : inputs) assertTrue(role + ":" + type + ":" + field, schema.getResourceFields().get(field).isCreate());
                 for (var entry : schema.getResourceFields().entrySet()) if (!inputs.contains(entry.getKey())) assertFalse(entry.getKey(),

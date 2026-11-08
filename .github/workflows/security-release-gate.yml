@@ -59,6 +59,14 @@ jobs:
           import xml.etree.ElementTree as ET
 
           required = {
+              'io.cattle.platform.iaas.api.auth.ai.view.AiBridgeContextViewTest': {
+                  'contextSelectorPurposeAndRevisionAreClosedBeforeAnyNativeRead',
+                  'explicitParentDenialsAndMissingOrdinaryChildAuthorityNeverYieldContextIdentity',
+                  'fullAiPurposeUsesItsOrdinaryProjectOwnerAndIgnoresStaleCustomRuleDenials',
+                  'generalLegacyAndCookieProjectReadsKeepTheirOriginalDomainPathAndProjection',
+                  'keyRoleAndNativeIdentityChangesBeforeCompletionFailClosedAndRestoreTheOriginalContext',
+                  'scopedStackReadProvesOnlyItsFreshFourFieldParentAndNeverLendsAProjectGrant',
+              },
               'io.cattle.platform.api.schema.FileSchemaFactoryTest': {
                   'preservesCreateOnlyApiKeyFlagInThePackagedFrozenV1UserSchema',
                   'restoresOnlyNativeReadFieldInPackagedFrozenVolumeRoleSchemas',
