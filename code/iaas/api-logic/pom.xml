@@ -9,6 +9,10 @@
     </parent>
     <dependencies>
         <dependency>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-tx</artifactId>
+        </dependency>
+        <dependency>
             <groupId>io.cattle</groupId>
             <artifactId>cattle-framework-utils</artifactId>
             <version>${project.version}</version>
