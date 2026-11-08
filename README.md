@@ -10,6 +10,23 @@ upstream history, authorship, licenses, and dependency notices.
 
 ## Current component
 
+Engine **0.183.389** is the next release candidate. It adds human-reviewed
+Stack finish-upgrade, cancel-upgrade and rollback plans using the existing
+native Stack and Service owners. Rollback restores only currently eligible
+services; finished services and newly introduced active/inactive services remain.
+It does not delete added services or recreate removed services. Cancellation is
+a parent checkpoint rather than proof that child work has finished.
+
+The native Stack filter no longer prewrites every child's previous configuration;
+the existing per-Service rollback owner performs each authorized restore.
+Catalog/system ordinary Stacks retain their native capabilities. Current roles,
+live Key policy, exact identities/configuration CAS and own-process completion
+remain required. A matching Web Console review and Compose rollback executor
+must be qualified together. Component CI, publication, deployment and native
+business acceptance are pending. See the [candidate note](docs/releases/orchestration-engine-0.183.389.md).
+
+The latest published baseline remains Engine 0.183.388:
+
 Engine **0.183.388** is published. It adds human-reviewed Host
 activation and deactivation through the existing native Host actions. Cookie-origin
 Host, Service, Container, registry, load-balancer, external/DNS service and Stack
