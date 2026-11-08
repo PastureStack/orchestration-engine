@@ -9,8 +9,8 @@
   "scope": "Declared v1/v2 and source handler/process union; source-only review, not current artifact packaging, live role/state availability or asynchronous completion.",
   "sourceInputs": {
     "algorithm": "c03-source-inputs-v1",
-    "count": 502,
-    "sha256": "89df01043daf2dab7dcc9cc41fa1789b6a2af920825e84f4a62656be7d370afb",
+    "count": 503,
+    "sha256": "3b0b6f54675f15a7590ce179f540a5df4f5524f1ffc253b6b4a2519c2824ef4a",
     "anchors": [
       "AbstractObjectManager.java",
       "AbstractSchemaFactory.java",
@@ -81,6 +81,7 @@
       "AiServiceUpgradePlanInputHandler.java",
       "AiServiceUpgradePlanService.java",
       "AiStackGroupChange.java",
+      "AiStackUpgradeLifecycleChange.java",
       "AiToolCallEventService.java",
       "AiVolumeCreateChange.java",
       "AllocateConstraintLock.java",
@@ -157,6 +158,7 @@
       "ServiceUpgradeValidationFilter.java",
       "ServiceValidationFilter.java",
       "SetServiceLinksActionHandler.java",
+      "StackValidationFilter.java",
       "StandardLock.java",
       "SystemServicesConfig.java",
       "TokenAuthLookup.java",

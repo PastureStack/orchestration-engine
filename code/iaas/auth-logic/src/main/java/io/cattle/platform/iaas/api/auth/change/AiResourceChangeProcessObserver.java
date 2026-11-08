@@ -211,8 +211,10 @@ public class AiResourceChangeProcessObserver implements ProcessAuthorizationHook
                 && initialProcess(binding).equals(config.getProcessName())
                 && list(binding.get("initial")).contains(initialIdentity(config, root))
                 && (AiHostLifecycleChange.binding(binding) ? AiHostLifecycleChange.queuedRoot(binding, root, config) && hostConfiguration(binding, root)
-                    : root instanceof Service service && "service".equals(service.getKind())
-                        && number(binding.get("rootStackId")) == number(service.getStackId()));
+                    : AiStackUpgradeLifecycleChange.binding(binding)
+                        ? root instanceof io.cattle.platform.core.model.Stack stack && "stack".equals(stack.getKind())
+                        : root instanceof Service service && "service".equals(service.getKind())
+                            && number(binding.get("rootStackId")) == number(service.getStackId()));
     }
 
     private static boolean emptyLifecyclePayload(LaunchConfiguration config) {

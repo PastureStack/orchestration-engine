@@ -749,6 +749,22 @@ jobs:
                   'stackFanoutPinsAllChildUuidsAndKeepsExplicitStableNoopsSeparateFromTransitionalSkips',
                   'trackerFailureDoesNotMarkNativeTransactionRollbackOnlyOrSwallowNativeInsertAndQueueErrors',
               ],
+              'io.cattle.platform.iaas.api.auth.change.AiStackUpgradeLifecycleChangeTest': {
+                  'catalogSystemAllNativeServiceKindsAndCompletePrivateGenerationArePreserved',
+                  'completeStillAndsEveryChildReadinessAndOriginalOldInstanceRetirement',
+                  'cookieStackOwnRootIsDurableAndInitialAttestationFailureHasRealSqlRollbackAndZeroQueue',
+                  'finishRollbackAndCancelRespectNativeReplyConfigurationAndCheckpointSemantics',
+                  'nativeEligibilityKeepsFinishedAndNewChildrenAndDoesNotRebuildOldMembership',
+                  'normalHumanPlanRequiresApprovalUnchangedGenerationAndOwnRootBeforeOriginalCompletion',
+                  'originalStackActionKeepsFullLegacyScopeUpgradeAndRoleCeilingsWithoutChildWrites',
+                  'threeNativeStackActionsHaveEmptyBodiesExactStatesAndFourSafeHumanRows',
+              },
+              'io.cattle.platform.servicediscovery.api.filter.ServiceRollbackValidationFilterTypesTest': {
+                  'everyNativeServiceRollbackRestoresOnlyItsOwnConfigurationsBeforeForwarding',
+              },
+              'io.cattle.platform.servicediscovery.api.filter.StackRollbackValidationFilterTest': {
+                  'stackRollbackDelegatesWithoutReadingOrPrewritingAnyChildConfiguration',
+              },
           }
           suites = []
           observed = {}

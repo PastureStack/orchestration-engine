@@ -88,6 +88,11 @@ public class AiResourceChangePlanService {
                     for (String field : List.of("id", "uuid", "accountId", "kind", "stackId")) identity.put(field, snapshot.get(field));
                     identity.put("stackUuid", reference.get("uuid")); plan.put("lifecycleIdentity", identity);
                 }
+                if (AiStackUpgradeLifecycleChange.supports(descriptor)) {
+                    Map<String, Object> identity = new LinkedHashMap<>(), snapshot = map(plan.get("snapshot"));
+                    for (String field : List.of("id", "uuid", "accountId", "kind", "projectUuid")) identity.put(field, snapshot.get(field));
+                    plan.put("lifecycleIdentity", identity);
+                }
                 plan.put("targetPath", AiServiceUpgradeLifecycleChange.supports(descriptor) ? domain.upgradeLifecycleTargetPath(request, descriptor, target)
                         : domain.targetPath(request, target, parent, parameters));
                 plan.put("changes", domain.changes(descriptor, target, parameters));
@@ -209,6 +214,11 @@ public class AiResourceChangePlanService {
                         plan.put("processBaseline", domain.upgradeLifecycleProcessBaseline(target));
                         if (!"cancel_upgrade".equals(descriptor.operation())) plan.put("retirementSnapshot", domain.upgradeLifecycleRetirementSnapshot(target));
                     }
+                    if (AiStackUpgradeLifecycleChange.supports(descriptor)) {
+                        plan.put("processBaseline", domain.stackUpgradeLifecycleProcessBaseline(target));
+                        if (!"cancel_upgrade".equals(descriptor.operation()))
+                            plan.put("retirementSnapshot", domain.stackUpgradeRetirementSnapshot(descriptor, target));
+                    }
                     if (AiHostLifecycleChange.supports(descriptor)) plan.put("processBaseline", domain.hostLifecycleProcessBaseline(target));
                     if (AiResourceChangePlanStore.ordinaryLifecycle(descriptor)) plan.put("processBaseline", domain.upgradeLifecycleProcessBaseline(target));
                     if (!store.claim(plan)) return output(owned(store.load(id), request));
@@ -269,6 +279,7 @@ public class AiResourceChangePlanService {
             Map<String, Object> parameters) {
         if (AiCookieLifecycleWitness.supports(descriptor) && ApiKeyCredentialContext.get(request) == null)
             return domain.cookieLifecycleSnapshot(descriptor, target);
+        if (AiStackUpgradeLifecycleChange.supports(descriptor)) return domain.stackUpgradeLifecycleSnapshot(descriptor, target, true);
         if (AiHostLifecycleChange.supports(descriptor)) return domain.hostLifecycleSnapshot(target);
         if (AiResourceChangePlanStore.ordinaryLifecycle(descriptor)) return domain.serviceLifecycleSnapshot(target);
         if (AiContainerNetworkChange.supports(descriptor)) return domain.containerNetworkSnapshot(request, descriptor, target, parameters, true);
@@ -299,6 +310,10 @@ public class AiResourceChangePlanService {
             throw error(409, "ArchiveConcurrentChange");
         if (AiServiceUpgradeLifecycleChange.supports(descriptor)
                 && !domain.upgradeLifecycleSnapshot(lockedTarget).equals(domain.upgradeLifecycleSnapshot(visible)))
+            throw error(409, "ResourceChangePlanStale");
+        if (AiStackUpgradeLifecycleChange.supports(descriptor)
+                && !domain.stackUpgradeLifecycleSnapshot(descriptor, lockedTarget, true).equals(domain.stackUpgradeLifecycleSnapshot(descriptor,
+                        visible, true)))
             throw error(409, "ResourceChangePlanStale");
         if (AiRegistryLifecycleChange.supports(descriptor) && !domain.snapshot(lockedTarget).equals(domain.snapshot(visible)))
             throw error(409, "ResourceChangePlanStale");
@@ -338,9 +353,12 @@ public class AiResourceChangePlanService {
         String lifecycleOutcome = AiCookieLifecycleWitness.supports(descriptor) && !(plan.get("credentialId") instanceof Number)
                 ? Objects.toString(domain.cookieLifecycleOutcome(plan, target), "unknown") : AiHostLifecycleChange.supports(descriptor) ?
                         Objects.toString(domain.hostLifecycleProcessOutcome(plan, target), "unknown")
+                : AiStackUpgradeLifecycleChange.supports(descriptor)
+                    ? Objects.toString(domain.stackUpgradeLifecycleProcessOutcome(plan, target), "unknown")
                 : AiServiceUpgradeLifecycleChange.supports(descriptor) || AiResourceChangePlanStore.ordinaryLifecycle(descriptor)
                     ? Objects.toString(domain.upgradeLifecycleProcessOutcome(plan, target), "unknown") : null;
-        if (AiServiceUpgradeLifecycleChange.supports(descriptor)) before.put("retirementSnapshot", plan.get("retirementSnapshot"));
+        if (AiServiceUpgradeLifecycleChange.supports(descriptor) || AiStackUpgradeLifecycleChange.supports(descriptor))
+            before.put("retirementSnapshot", plan.get("retirementSnapshot"));
         if ((lifecycleOutcome == null || "succeeded".equals(lifecycleOutcome)) && domain.complete(descriptor, target, map(plan.get("parameters")), before)) {
             if (descriptor.createsResource() && "service".equals(descriptor.resourceType()) && map(plan.get("parameters")).containsKey("ports")) {
                 plan.put("executionResult", domain.serviceCreateResult(target));

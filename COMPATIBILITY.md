@@ -1,5 +1,26 @@
 # Compatibility Contract
 
+## Engine 0.183.389 candidate
+
+Stack finish-upgrade, cancel-upgrade and rollback reuse the native action/state
+contracts. The Stack rollback action delegates without bulk child configuration
+writes. The registered Service rollback owner restores each eligible child's
+previous configuration through its existing native API transaction. Active
+services already finished individually and new services that are native no-ops
+retain their configuration; rollback is not Compose membership reconstruction.
+The fanout remains non-atomic and original Service state/error handling remains.
+
+Typed plans capture the full current child identities and desired configurations,
+require human approval, and verify their own exact Stack root plus the applicable
+configuration, readiness and old-instance retirement result. Cancel-upgrade only
+checkpoints the parent; zero eligible children is likewise not a workload rollback.
+Ordinary Catalog/system Stacks are included. Kubernetes/plugin Stack owners and
+link-migration strategies are not generalized into this typed subset.
+Full/legacy native clients, current roles, Key scope/revision/upgrade ceilings,
+serialized schemas and operation grants remain unchanged. Matching Web Console
+and Compose components, original CI/compiled proof, publication and native
+acceptance are pending. See the [candidate note](docs/releases/orchestration-engine-0.183.389.md).
+
 ## Engine 0.183.388 published
 
 Host start/stop plans use native activate/deactivate actions, with no evacuation,

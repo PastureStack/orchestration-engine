@@ -13,10 +13,13 @@ import json
 import os
 from pathlib import Path
 import shutil
+import ssl
 import subprocess
 import sys
 import tarfile
 import tempfile
+import time
+from urllib.error import HTTPError, URLError
 from urllib.request import HTTPRedirectHandler, HTTPSHandler, build_opener
 from urllib.parse import urlsplit
 import venv
@@ -37,6 +40,42 @@ def sha(path):
 def run(command, cwd, env):
     print("+", " ".join(map(str, command)), flush=True)
     subprocess.run(list(map(str, command)), cwd=cwd, env=env, check=True)
+
+
+def download_input(item, cached, opener):
+    """Retry only transient transport failures; promote only verified input bytes."""
+    for attempt in range(1, 4):
+        partial = None
+        print(json.dumps({"input": cached.name, "attempt": attempt,
+                          "maxAttempts": 3, "status": "starting"}), file=sys.stderr, flush=True)
+        try:
+            with tempfile.NamedTemporaryFile(prefix=cached.name + ".", suffix=".part",
+                                             dir=cached.parent, delete=False) as dest:
+                partial = Path(dest.name)
+                with opener.open(item["url"], timeout=90) as response:
+                    shutil.copyfileobj(response, dest)
+            assert sha(partial) == item["sha256"], ("downloaded input hash mismatch", cached.name)
+            partial.replace(cached)
+            return
+        except (HTTPError, URLError, TimeoutError, ssl.SSLError) as error:
+            status = error.code if isinstance(error, HTTPError) else None
+            reason = error.reason if isinstance(error, URLError) else error
+            timeout = isinstance(reason, TimeoutError)
+            transient = timeout or status is not None and 500 <= status <= 599
+            kind = "http" if status is not None else "timeout" if timeout else "transport"
+            print(json.dumps({"input": cached.name, "attempt": attempt,
+                              "maxAttempts": 3, "status": "failed", "kind": kind,
+                              "httpStatus": status, "willRetry": transient and attempt < 3}),
+                  file=sys.stderr, flush=True)
+            if isinstance(error, HTTPError):
+                error.close()
+            if not transient or attempt == 3:
+                raise RuntimeError("Build input download failed: " + cached.name
+                                   + " (" + kind + ", attempt " + str(attempt) + ")") from None
+        finally:
+            if partial is not None:
+                partial.unlink(missing_ok=True)
+        time.sleep(2)
 
 
 def main():
@@ -64,8 +103,7 @@ def main():
         if not cached.is_file():
             assert not args.offline, ("Offline input is missing", target.name)
             opener = build_opener(HTTPSHandler(), HTTPSOnlyRedirect())
-            with opener.open(item["url"], timeout=90) as response, cached.open("wb") as dest:
-                shutil.copyfileobj(response, dest)
+            download_input(item, cached, opener)
         assert sha(cached) == item["sha256"], ("cached input hash mismatch", target.name)
         if cached != target:
             shutil.copy2(cached, target)

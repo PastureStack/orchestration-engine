@@ -2,7 +2,7 @@ FROM golang:1.27.3-bookworm@sha256:972b4110ba0f47539a975c31e52c64765e1ff19f2d744
 
 ARG DOCKER_VERSION=29.9.2
 ARG DOCKER_CLI_COMMIT=a82e528901260c8df6073311379eac65f92db204
-ADD --checksum=sha256:cdc8005e1958e90c035971b838cf333dc7602868c4e3ee2ccec859cf0ddc3c78 https://github.com/docker/cli/archive/a82e528901260c8df6073311379eac65f92db204.tar.gz /tmp/docker-cli.tar.gz
+ADD --checksum=sha256:cdc8005e1958e90c035971b838cf333dc7602868c4e3ee2ccec859cf0ddc3c78 https://codeload.github.com/docker/cli/tar.gz/a82e528901260c8df6073311379eac65f92db204 /tmp/docker-cli.tar.gz
 RUN set -eux; \
     mkdir -p /go/src/github.com/docker/cli; \
     tar -xzf /tmp/docker-cli.tar.gz -C /go/src/github.com/docker/cli --strip-components=1; \
@@ -40,7 +40,7 @@ ADD --checksum=sha256:0de729b8fe0e1c67c04e8e8d5bd6e0420dbd47f75b93f0b71c8e740edc
 ADD --checksum=sha256:94e5d41303265b66af0f8c70ade18bfb77260ad286edee6c8045faddef82b94c https://security.ubuntu.com/ubuntu/pool/main/a/apt/libapt-pkg7.0_3.2.1ubuntu0.1_amd64.deb /tmp/libapt-pkg7.0.deb
 
 ENV DEBIAN_FRONTEND=noninteractive
-ARG TEMURIN_JDK25_URL="https://github.com/adoptium/temurin25-binaries/releases/download/jdk-25.0.5%2B8/OpenJDK25U-jdk_x64_linux_hotspot_25.0.5_8.tar.gz"
+ARG TEMURIN_JDK25_URL="https://api.github.com/repos/adoptium/temurin25-binaries/releases/assets/665812068"
 ARG TEMURIN_JDK25_SHA256=68982529869257d0ee6b824ec5aa270ff8b118bb438670da0b97ebdab178d7fb
 ARG MAVEN_VERSION=3.9.16
 ARG MAVEN_SHA512=831a8591fe20c8243b1dbe7d71e3244f31d1665b0804b2e825e38cbbe5ce0cafb8338851f90780735568773e0a6cd07bbec107cda0b896b008b861075358b6f6
@@ -189,7 +189,7 @@ RUN curl -fsSL --retry 5 --retry-all-errors --retry-delay 2 --connect-timeout 10
     echo 'b530942257fb935f8b2cfaa5f8eb5bd59c555fd8e8d01b8ce98912e077ea606c  /tmp/guava-33.7.2-jre.jar' | sha256sum -c -
 
 RUN mkdir -p ${JAVA_HOME} /usr/lib/jvm && \
-    curl -fsSL --retry 5 --retry-all-errors --retry-delay 2 --connect-timeout 10 --max-time 600 -o /tmp/temurin-jdk25.tar.gz "${TEMURIN_JDK25_URL}" && \
+    curl -fsSL -H 'Accept: application/octet-stream' --range 0- --retry 5 --retry-all-errors --retry-delay 2 --connect-timeout 10 --max-time 600 -o /tmp/temurin-jdk25.tar.gz "${TEMURIN_JDK25_URL}" && \
     echo "${TEMURIN_JDK25_SHA256}  /tmp/temurin-jdk25.tar.gz" | sha256sum -c - && \
     tar -xzf /tmp/temurin-jdk25.tar.gz -C ${JAVA_HOME} --strip-components=1 && \
     rm -f /tmp/temurin-jdk25.tar.gz && \

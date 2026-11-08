@@ -17,6 +17,7 @@ dpkg -i "${python_debs[@]}"
 for package in "${python_packages[@]}"; do
     test "$(dpkg-query -W -f='${Version}' "$package")" = 3.14.4-1ubuntu0.2
 done
+python3 -B /usr/local/lib/pip-security-overlay/test-build-input-download.py
 python3 /usr/local/lib/pip-security-overlay/build-pip-overlay.py \
     --output /tmp/pip-security-dist --work /tmp/pip-security-build
 echo 'be5f63d537bbe611dc422fabb6740a44b5997888b592888df5091727f023802a  /tmp/pip-security-dist/pip-26.2.2+pasturestack.1-py3-none-any.whl' | sha256sum -c -

@@ -36,6 +36,7 @@ public class AiResourceChangePlanStore extends AbstractJooqDao {
 
     static boolean lifecycle(AiResourceChangeDescriptor descriptor) {
         return AiHostLifecycleChange.supports(descriptor) || ordinaryLifecycle(descriptor) || AiServiceUpgradeLifecycleChange.supports(descriptor)
+                || AiStackUpgradeLifecycleChange.supports(descriptor)
                 || AiCookieLifecycleWitness.supports(descriptor);
     }
 
