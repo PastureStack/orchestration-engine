@@ -398,7 +398,7 @@
     "contractSha256": "6d9aeb9625d4be0948572851822fdb67ac5be0887b8d3e295ee28232fe94e12b",
     "tupleCount": 1396,
     "reviewManifest": "scripts/api-key-operation-review-0.183.390.json",
-    "reviewManifestSha256": "c1b1600a89ae242c0039b88b9f380879bf1b27e4a8b59324811464c2dc6d912a",
+    "reviewManifestSha256": "21e0046f54ebd66ab87ed7fe0d6e52ae99875e773aea8d2671fc491a05e1ca23",
     "roleFieldDelta": [
       {
         "path": "resources/content/schema/admin/admin-auth.json",
