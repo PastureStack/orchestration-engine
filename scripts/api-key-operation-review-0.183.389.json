@@ -3052,7 +3052,7 @@
     "algorithm": "c03-source-inputs-v1"
   },
   "sourceAmendments": {
-    "kind": "same-official-jdk-and-docker-cli-transport-only",
+    "kind": "same-official-artifacts-transport-and-build-tool-reliability",
     "sourceCommit": "2c023c0581411cc64fda1dcb6ccdd96fcae3ad38",
     "source": [
       {
@@ -3072,6 +3072,24 @@
         "beforeSha256": "a2a5c0b3cd78a53448a507761d020dd1ef3e9ec2865d989fde28a364f6b860f9",
         "afterSha256": "2cbde0241f64384a306e39d86e9f9eb77695c46ee3ca182cae8f7846a68be432",
         "bytes": 63570
+      },
+      {
+        "path": "tools/pip-security-overlay/build-pip-overlay.py",
+        "beforeSha256": "d6755caafd0d0183aed521ee2e77e49a3e54f9a118c50bde4096f659428b945e",
+        "afterSha256": "f9cb0829bdb853f1d1b0c5599a0b0d3734a8e2b87a7505a2c340b0813c8c2510",
+        "bytes": 12060
+      },
+      {
+        "path": "tools/pip-security-overlay/test-build-input-download.py",
+        "beforeSha256": null,
+        "afterSha256": "e6572e46dec6faabf14673622e39738edfdffd7eca4ed6a9a93d4a3223ed6017",
+        "bytes": 6848
+      },
+      {
+        "path": "scripts/install-python-security-tools.sh",
+        "beforeSha256": "9be2686c9f311a7b754d8a8f983df9e713ac69d971c0a509631178040c5a6d47",
+        "afterSha256": "f785eb5d6f30b2c34a1275720f73eeab088e7d18438521bc4bfcea459fabbc88",
+        "bytes": 2029
       }
     ],
     "patches": [
@@ -3094,6 +3112,11 @@
         "name": "engine-docker-cli-direct-codeload.delta.patch",
         "bytes": 3404,
         "sha256": "3c3263a4ef9206b715626152c7bdc10b31c595c27d0fddc85094e62e80224938"
+      },
+      {
+        "bytes": 11301,
+        "sha256": "c6cf1fcc6cb421b49e8dcaff0c7e537bad1ac490973cd1b34b31f8cf5d8ac8e1",
+        "name": "engine-pip-input-reliability.delta.patch"
       }
     ],
     "affectedMethods": [],
@@ -3129,6 +3152,41 @@
         "sha256": "5bf1d3361084a8f65546fd31f9b53041852d7e105f1402fb31c423da01cc85d1"
       },
       "ciMismatchCause": "UNRESOLVED_WITHOUT_FAILED_RESPONSE_BYTES"
+    },
+    "buildToolReliability": {
+      "classification": "pinned-build-input-transient-retry-and-verified-atomic-cache",
+      "syncedFrom": {
+        "repository": "PastureStack/web-console",
+        "producer": "72a963dfeba93e955a9d49c1dde0efa6b1914624",
+        "beforeProducer": "cce432a9a4d15a1f66a4039e4b2a8dc5bfaca2b9"
+      },
+      "caller": {
+        "path": "tools/pip-security-overlay/build-pip-overlay.py",
+        "beforeSha256": "d6755caafd0d0183aed521ee2e77e49a3e54f9a118c50bde4096f659428b945e",
+        "afterSha256": "f9cb0829bdb853f1d1b0c5599a0b0d3734a8e2b87a7505a2c340b0813c8c2510"
+      },
+      "stdlibControl": {
+        "path": "tools/pip-security-overlay/test-build-input-download.py",
+        "sha256": "e6572e46dec6faabf14673622e39738edfdffd7eca4ed6a9a93d4a3223ed6017",
+        "methods": 5,
+        "buildCommand": "python3 -B /usr/local/lib/pip-security-overlay/test-build-input-download.py"
+      },
+      "unchangedInput": {
+        "path": "tools/pip-security-overlay/inputs.json",
+        "sha256": "7bdb91a6b481635e262d6eeec8fad077b0448b43e1f6b3acf3d90200b0cd1853"
+      },
+      "unchangedWheelSha256": "be5f63d537bbe611dc422fabb6740a44b5997888b592888df5091727f023802a",
+      "maxAttempts": 3,
+      "retryOnly": [
+        "timeout",
+        "HTTP5xx"
+      ],
+      "rejectWithoutRetry": [
+        "HTTP404",
+        "TLS",
+        "SHA256Mismatch"
+      ],
+      "productWheelBuiltLocally": false
     }
   }
 }
