@@ -1,5 +1,20 @@
 # Compatibility Contract
 
+## Engine 0.183.387 candidate
+
+Matching Web Console 1.6.227 / Bridge 0.2.29 adds Host custom-name reset and
+bounded Container public-port / link-target edits. Existing native clients retain
+unconditional Port PUT when the conditional header is absent. A supplied header
+must match the exact current tuple; typed plans must always supply a server-owned
+precondition. Native role, live Key policy, physical-host port collision checks
+and confirmed-plan identity remain authoritative.
+
+Driver-service removal now uses the existing asynchronous deactivate/remove
+chain for activating children. Network and Storage drivers retain their own
+child-resource cleanup handlers; this does not change state gates or permissions.
+CI, publication and matching Server native acceptance are pending. See the
+[candidate release note](docs/releases/orchestration-engine-0.183.387.md).
+
 ## Engine 0.183.386 published
 
 This release adds ordinary Service named dependency replacements using

@@ -196,6 +196,15 @@ public class ApiKeyTargetResolver {
         if (value instanceof Instance instance) {
             return child("container", id, instance.getAccountId(), instanceParents(instance, owner).stackId(), owner);
         }
+        if (value instanceof Port port && "port".equals(type)) {
+            Port stored = persisted(Port.class, port, owner, "accountId", "instanceId");
+            Long accountId = requiredAccount(stored.getAccountId());
+            liveResource(Account.class, accountId, owner);
+            Instance instance = liveInstance(stored.getInstanceId(), accountId, owner);
+            Long stackId = instanceParents(instance, owner).stackId();
+            if (stackId != null) liveResource(Stack.class, stackId, owner);
+            return child("port", id, accountId, stackId, owner);
+        }
         if (value instanceof InstanceLink link && "instanceLink".equals(type)) {
             // Only the existing native Link type gets this adapter. Its Stack
             // comes from the persisted source Instance, never the destination

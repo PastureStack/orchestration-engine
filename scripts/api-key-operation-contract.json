@@ -9,8 +9,8 @@
   "scope": "Declared v1/v2 and source handler/process union; source-only review, not current artifact packaging, live role/state availability or asynchronous completion.",
   "sourceInputs": {
     "algorithm": "c03-source-inputs-v1",
-    "count": 490,
-    "sha256": "d1e4d02cf3d0c1ff06c5d20db93aa208f4cd491cc532e2a71c32fa072e7657e5",
+    "count": 497,
+    "sha256": "8ff1d335eeaa86472871324f88704ceed37273b219aca406fdeab1c49150daa9",
     "anchors": [
       "AbstractObjectManager.java",
       "AbstractSchemaFactory.java",
@@ -57,6 +57,7 @@
       "AiContainerLogsRunner.java",
       "AiContainerLogsService.java",
       "AiContainerLogsTicket.java",
+      "AiContainerNetworkChange.java",
       "AiCreatePorts.java",
       "AiExternalServiceChange.java",
       "AiHostMetadataChange.java",
@@ -80,6 +81,7 @@
       "AiStackGroupChange.java",
       "AiToolCallEventService.java",
       "AiVolumeCreateChange.java",
+      "AllocateConstraintLock.java",
       "ApiAuditPayload.java",
       "ApiAuthenticator.java",
       "ApiContainerLogsRead.java",
@@ -102,6 +104,7 @@
       "DefaultObjectMetaDataManager.java",
       "DefaultProcessInstanceImpl.java",
       "DefaultProcessesParser.java",
+      "DriverServiceRemove.java",
       "EngineContext.java",
       "EventBasedProcessHandler.java",
       "EventDiagnostics.java",
@@ -114,14 +117,19 @@
       "IaasApiConfig.java",
       "InServiceUpgradeStrategy.java",
       "InstanceCreatePortValidation.java",
+      "InstancePortsLock.java",
       "InstancePortsValidationFilter.java",
       "LoadBalancerServiceCreatePostListener.java",
       "Lock.java",
       "NotWritablePostProcessor.java",
       "PortBindingAddress.java",
+      "PortConstants.java",
+      "PortPreflightDaoImpl.java",
       "PortPreflightInputs.java",
       "PortPreflightService.java",
       "PortSpec.java",
+      "PortUpdateService.java",
+      "PortUpdateValidationFilter.java",
       "ProcessAuthorization.java",
       "ProcessEventDecorator.java",
       "ProjectAccessService.java",
@@ -294,6 +302,122 @@
   "tupleCount": 1396,
   "tupleSha256": "8f1c0fb378663b0b3d272efba2f211cb210eb6f17cb8035aefa33b56feeaf36a",
   "extensionReview": {
+    "version": "unreleased-387-host-port-driver",
+    "status": "SOURCE_ONLY_NOT_ARTIFACT_OR_RUNTIME_ACCEPTANCE",
+    "sourceInputChanges": [
+      {
+        "path": "code/framework/auditing/src/main/java/io/cattle/platform/iaas/api/auditing/AuditServiceImpl.java",
+        "before": "bd9bee1c6600af44e6e7badeeb72831fff3824130c17662aa0b52a6270b4dbe4",
+        "after": "fc42a340651cc8b594a3213c1931e083d0f82b1b2835985dc3f4a7963c1643e3"
+      },
+      {
+        "path": "code/iaas/allocator/src/main/java/io/cattle/platform/allocator/lock/AllocateConstraintLock.java",
+        "before": null,
+        "after": "09cc196cdc5fcadacbcf3861ababa7d941639b8413aeb1fd5fa285262fdfcb1d"
+      },
+      {
+        "path": "code/iaas/api-logic/src/main/java/io/cattle/platform/iaas/api/filter/port/PortUpdateValidationFilter.java",
+        "before": null,
+        "after": "a6411f65b80e36f304d8491cb0d6913f6ae8bcdc81319452bfa6a09bbb4c95fe"
+      },
+      {
+        "path": "code/iaas/api-logic/src/main/java/io/cattle/platform/iaas/api/port/PortPreflightDaoImpl.java",
+        "before": null,
+        "after": "bbc43aef09060b8b0a92bed3ee23ddb0689d5dc8eddff25cbd76f70f4fd84c14"
+      },
+      {
+        "path": "code/iaas/api-logic/src/main/java/io/cattle/platform/iaas/api/port/PortUpdateService.java",
+        "before": null,
+        "after": "b6f523091b6d5ef1abe516fa497fee7d48b9b97d1795a61137e1e1fb5336a732"
+      },
+      {
+        "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/ai/view/AiResourceViewService.java",
+        "before": "2de14905e4bd27065b1655f528cb64923b42711f0a8d26c7dc58afb9f1109481",
+        "after": "5b72f58e9a6c2b385c6d6119ab4d06b8fe9f9d29d042c2d885037fa937a448aa"
+      },
+      {
+        "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/apikey/ApiKeyQueryScopes.java",
+        "before": "44746322973d98c5612b1b2afe7c829a461e78bd9eb8ecb5a8f2afb6fb0c5cc9",
+        "after": "dc19c77dfc3b37fe9b88467d6aa76ef401d1cd4d33b65282d8549557e1c038b5"
+      },
+      {
+        "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/apikey/ApiKeyTargetResolver.java",
+        "before": "db1668fa5043fbd8a07cfef15223dbc2c274a963a93669d32ba9d6efcb728be3",
+        "after": "5aa4ab54b3c8f41f3d8fef297fbeef67067b64d9be13d44e1398bb1ff3458cd2"
+      },
+      {
+        "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiContainerNetworkChange.java",
+        "before": null,
+        "after": "e49917e606aeafc4d53787604c53576e7af3d5894781596f47f90cba8338e5c8"
+      },
+      {
+        "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiHostMetadataChange.java",
+        "before": "e08978156bc77733326da1d299c97038103049d441a41f0332e3115b4ac07ce7",
+        "after": "72375c65ef1c1ddcf1adf93f732f97a8134840fa4d3e05647876d9743e9d6c8d"
+      },
+      {
+        "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiResourceChangeDescriptor.java",
+        "before": "b8a84fb8946e18c7b69b8e94d232ec272a7c1c184bc21ac3d1d8fed62130b6af",
+        "after": "ee8c36bf681274307f7746cf0930b5e5d17500abb2bdd7c945bbdc21310937a2"
+      },
+      {
+        "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiResourceChangeDomain.java",
+        "before": "7dc3fffbb4c33e7408bc5ba7c157e076e31af13648723a128278cd12a005b10b",
+        "after": "c46a34f3b6ed781ffbe3c3d7cc9b8a55b6980123565b2d2d0483764ab17ea57a"
+      },
+      {
+        "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiResourceChangePlanService.java",
+        "before": "0bbd79672290e9283dbc91c65fb932cdee0f880a1cb5ab8859112eed6f4724f9",
+        "after": "a0a9fc9393a24c1cced672287fb19e35b439b1ace304144d654702761510dedd"
+      },
+      {
+        "path": "code/iaas/logic/src/main/java/io/cattle/platform/process/driver/DriverServiceRemove.java",
+        "before": null,
+        "after": "fd1a52eec999a513a4c1e49f05d45fd16357c91186cff974aaf22ce57ce06953"
+      },
+      {
+        "path": "code/iaas/logic/src/main/java/io/cattle/platform/process/lock/InstancePortsLock.java",
+        "before": null,
+        "after": "859844ed7ad23cb63e7ab5ff3a4f802115f814d1fe18f9a806a911b71a16d0bc"
+      },
+      {
+        "path": "code/iaas/model/src/main/java/io/cattle/platform/core/constants/PortConstants.java",
+        "before": "00b054354cd7fcf2ba49e6aa342522fe0a614cdfefdc6bc4ac68f695d0eb18b1",
+        "after": "48eb2a37928ef50645b7d3cb7444217f91741fa031d58a8cc1ea4d38a0b3f8f1"
+      },
+      {
+        "path": "code/packaging/app-config/src/main/java/io/cattle/platform/app/IaasApiConfig.java",
+        "before": "5247d3f2f332d9c90399d6a8eb5ef4b8393c523908dc574e558c50f152ad8bdd",
+        "after": "82654b566626c486a10d64473df82ae2192c06bd412d3e652e03bfa63584b716"
+      },
+      {
+        "path": "resources/content/schema/base/aiResourceChangePlan.json",
+        "before": "4f4e6bfd90c8adf054168008c9153e7d8b10c4278f586e1695a2c36f200eeaff",
+        "after": "6ac594373d4dfe453fa18d7893d52a5253efccef369dd1c07e60c70a4db4aa70"
+      }
+    ],
+    "roleFieldDelta": [],
+    "typedBaseSchemaDelta": {
+      "resources/content/schema/base/aiResourceChangePlan.json": {
+        "resourceType": {
+          "added": [
+            "instanceLink",
+            "port"
+          ],
+          "removed": []
+        },
+        "operation": {
+          "added": [
+            "update_public_port",
+            "update_target"
+          ],
+          "removed": []
+        }
+      }
+    },
+    "reviewManifest": "scripts/api-key-operation-review-0.183.387.json",
+    "reviewManifestSha256": "3dc307f1c8038e21616eead28119261cbf71b66e1d24cf4676634551d1fe5503",
+    "previous": {
     "version": "unreleased-386-links-http-lb-scale",
     "status": "SOURCE_ONLY_NOT_CURRENT_CI_ARTIFACT_OR_RUNTIME_ACCEPTANCE",
     "scope": "Ordinary named dependency replacement, native ExternalService HTTP requestLine and dedicated LB scale execution attestation. No new route, role, operation mapping, parameter raw-ID admission or automatic dispatch. Source-only extraction retains all 1396 HTTP tuples exactly.",
@@ -3155,6 +3279,7 @@
         ]
       }
     ]
+  }
   }
   },
   "tuples": [

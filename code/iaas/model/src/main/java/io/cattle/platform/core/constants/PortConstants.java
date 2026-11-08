@@ -2,6 +2,9 @@ package io.cattle.platform.core.constants;
 
 public class PortConstants {
 
+    public static final String INSTANCE_PORTS_LOCK_PREFIX = "INSTANCE.PORTS.";
+    public static final String ALLOCATION_PORT_LOCK_PREFIX = "ALLOCATE.CONSTRAINT.PORT.";
+
     public static final String KIND_USER = "userPort";
     public static final String KIND_IMAGE = "imagePort";
 

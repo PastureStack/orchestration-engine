@@ -73,7 +73,7 @@ public class PortPreflightDaoImpl extends AbstractJooqDao implements PortPreflig
             Integer publicPort = record.get(PORT.PUBLIC_PORT);
             Integer privatePort = record.get(PORT.PRIVATE_PORT);
             String networkMode = DataAccessor.fromMap(record.get(INSTANCE.DATA))
-                    .withKey(DockerInstanceConstants.FIELD_NETWORK_MODE).as(String.class);
+                    .withScopeKey("fields").withKey(DockerInstanceConstants.FIELD_NETWORK_MODE).as(String.class);
             boolean hostNetwork = NetworkConstants.NETWORK_MODE_HOST.equalsIgnoreCase(networkMode);
             if ((!hostNetwork && publicPort == null) || (hostNetwork && privatePort == null)) {
                 continue;
@@ -97,7 +97,7 @@ public class PortPreflightDaoImpl extends AbstractJooqDao implements PortPreflig
                 owner.publicPort = owner.privatePort;
             } else {
                 owner.bindAddress = DataAccessor.fromMap(record.get(PORT.DATA))
-                        .withKey(PortConstants.FIELD_BIND_ADDR).as(String.class);
+                        .withScopeKey("fields").withKey(PortConstants.FIELD_BIND_ADDR).as(String.class);
                 owner.publicPort = publicPort;
             }
             owner.protocol = record.get(PORT.PROTOCOL);

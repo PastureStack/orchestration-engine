@@ -59,7 +59,7 @@ import org.apache.commons.lang3.StringUtils;
 public class AiResourceViewService {
     public static final String DOMAIN_READ_ATTRIBUTE = "ai.resource.view.domain.read";
     public static final Set<String> READ_TYPES = Set.of("project", "projectTemplate", "account", "stack", "service",
-            "loadBalancerService", "dnsService", "externalService", "container", "virtualMachine",
+            "loadBalancerService", "dnsService", "externalService", "container", "port", "instanceLink", "virtualMachine",
             "host", "volume", "snapshot", "backup", "backupTarget", "storagePool", "storageDriver",
             "network", "networkDriver", "certificate", "registry", "registryCredential", "apiKey",
             "apiKeyRestricted", "setting", "machineDriver", "secret", "processInstance", "processExecution", "processPool", "auditLog");
@@ -72,12 +72,14 @@ public class AiResourceViewService {
             "registryCredential", "apiKey", "apiKeyRestricted", "machineDriver", "secret");
     private static final List<String> COMMON_FIELDS = List.of("name", "description", "state", "kind", "created", "healthState");
     private static final Map<String, List<String>> FIELDS = Map.ofEntries(
+            Map.entry("port", List.of("uuid", "instanceId", "publicPort", "privatePort", "protocol", "bindAddress")),
+            Map.entry("instanceLink", List.of("uuid", "instanceId", "linkName")),
             Map.entry("project", List.of("orchestration")),
             Map.entry("stack", List.of("archived", "group")),
             Map.entry("service", List.of("scale", "stackId", "archived")),
             Map.entry("loadBalancerService", List.of("scale", "stackId", "archived")),
             Map.entry("dnsService", List.of("stackId", "archived")), Map.entry("externalService", List.of("stackId", "archived")),
-            Map.entry("container", List.of("imageUuid", "memory", "cpuShares", "startCount", "networkMode")),
+            Map.entry("container", List.of("uuid", "imageUuid", "memory", "cpuShares", "startCount", "networkMode")),
             Map.entry("virtualMachine", List.of("imageUuid", "memory", "cpuShares")),
             Map.entry("host", List.of("hostname", "agentIpAddress", "dockerVersion", "memTotal", "cpuCount",
                     "agentState", "memory", "milliCpu", "localStorageMb")),
@@ -185,10 +187,11 @@ public class AiResourceViewService {
             domain.getConditions().put("processName", List.of(new Condition(ConditionType.LIKE, namePattern(query))));
         String parent = (String) input.get("parentId");
         if (parent != null) {
-            if (!Set.of("service", "loadBalancerService", "dnsService", "externalService").contains(type))
+            if (!Set.of("service", "loadBalancerService", "dnsService", "externalService", "port", "instanceLink").contains(type))
                 throw error(422, "ResourceViewInputInvalid");
-            // Parent references are never a substitute for child authorization.
-            domain.getConditions().put("stackId", List.of(new Condition(ConditionType.EQ, rawId(parent))));
+            // Parent references narrow the query; they never replace child authorization.
+            domain.getConditions().put(Set.of("port", "instanceLink").contains(type) ? "instanceId" : "stackId",
+                    List.of(new Condition(ConditionType.EQ, rawId(parent))));
         }
         String marker = (String) input.get("marker");
         if (marker != null && !MEMORY_COLLECTIONS.contains(type))
@@ -838,6 +841,8 @@ public class AiResourceViewService {
         if (input.containsKey("tailLines") && (!"container_logs".equals(input.get("view"))
                 || !(input.get("tailLines") instanceof Number n) || n.doubleValue() != n.longValue()
                 || n.longValue() < 1 || n.longValue() > 200)) throw error(422, "ResourceViewInputInvalid");
+        if (Set.of("port", "instanceLink").contains(type) && input.get("resourceId") == null && input.get("parentId") == null)
+            throw error(422, "ResourceViewInputInvalid");
         return input;
     }
 

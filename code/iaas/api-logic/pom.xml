@@ -4,10 +4,14 @@
     <parent>
         <artifactId>cattle-parent</artifactId>
         <groupId>io.cattle</groupId>
-        <version>0.183.386</version>
+        <version>0.183.387</version>
         <relativePath>../../parent/pom.xml</relativePath>
     </parent>
     <dependencies>
+        <dependency>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-tx</artifactId>
+        </dependency>
         <dependency>
             <groupId>io.cattle</groupId>
             <artifactId>cattle-framework-utils</artifactId>

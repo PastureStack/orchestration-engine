@@ -59,6 +59,8 @@ import java.util.function.Supplier;
 
 /** Three reviewed domain adapters using the normal manager and validation chain. */
 public class AiResourceChangeDomain extends AbstractJooqDao {
+    private record NetworkReference(ApiRequest request, String publicId, String nativeId) { }
+    private static final String NETWORK_REFERENCE = "ai.resource.change.network.reference";
     private static final String DOMAIN = "ai.resource.change.domain.descriptor";
     private static final String PARENT_READ = "ai.resource.change.parent.read";
     private static final String LB_CREATE_REFERENCE = "ai.resource.change.lb.create.reference";
@@ -82,6 +84,7 @@ public class AiResourceChangeDomain extends AbstractJooqDao {
     @Inject ServiceCreateValidation serviceCreateValidation;
     @Inject InstanceCreatePortValidation instanceCreatePortValidation;
     @Inject ResourceArchiveChange archiveChanges;
+    @Inject io.cattle.platform.iaas.api.port.PortUpdateService containerPortUpdates;
 
     /** This marker only exists on a fresh, server-created domain request. */
     public static boolean trustedDomain(ApiRequest request) {
@@ -107,6 +110,10 @@ public class AiResourceChangeDomain extends AbstractJooqDao {
                 && reference.request() == request && Set.of("service", "externalService").contains(reference.type())
                 && reference.type().equals(request.getType()) && (reference.publicId().equals(request.getId())
                         || reference.nativeId().equals(request.getId()))) return true;
+        if (AiContainerNetworkChange.supports(descriptor) && "container".equals(request.getType()) && "GET".equals(request.getMethod())
+                && request.getAction() == null && request.getAttribute(NETWORK_REFERENCE) instanceof NetworkReference scope
+                && scope.request() == request && (Objects.equals(scope.publicId(), request.getId())
+                    || Objects.equals(scope.nativeId(), request.getId()))) return true;
         if (!parent && !descriptor.resourceType().equals(request.getType())) return false;
         if ("GET".equals(request.getMethod()) && request.getAction() == null) return true;
         return !parent && descriptor.method().equals(request.getMethod()) && Objects.equals(descriptor.action(), request.getAction())
@@ -150,6 +157,8 @@ public class AiResourceChangeDomain extends AbstractJooqDao {
             request.setAttribute(ALIAS_REFERENCE, new AliasReference(type, publicId, Long.toString(internalId(type, publicId))));
         if (AiLoadBalancerCreateChange.supports(descriptor) && Set.of("service", "externalService").contains(type))
             request.setAttribute(LB_CREATE_REFERENCE, new LoadBalancerReference(request, type, publicId, Long.toString(internalId(type, publicId))));
+        if (AiContainerNetworkChange.supports(descriptor) && "container".equals(type))
+            request.setAttribute(NETWORK_REFERENCE, new NetworkReference(request, publicId, Long.toString(internalId(type, publicId))));
         long selectedProject = "project".equals(type) ? actor(original).getAccountId() : -1;
         return authorized(original, request, () -> {
             Object row = manager(type).getById(type, request.getId(), new ListOptions(request));
@@ -164,7 +173,8 @@ public class AiResourceChangeDomain extends AbstractJooqDao {
 
     private static boolean matchesResourceType(String type, Object target) {
         // A Host's kind identifies its native driver (for example docker), not the API resource type.
-        return "volume".equals(type) ? target instanceof io.cattle.platform.core.model.Volume
+        return "port".equals(type) ? target instanceof Port : "instanceLink".equals(type) ? target instanceof InstanceLink
+                : "volume".equals(type) ? target instanceof io.cattle.platform.core.model.Volume
                 : "host".equals(type) ? target instanceof Host : "project".equals(type) ? target instanceof Account account
                 && "project".equals(account.getKind()) : Objects.equals(ObjectUtils.getKind(target), type);
     }
@@ -181,6 +191,14 @@ public class AiResourceChangeDomain extends AbstractJooqDao {
                 descriptor.method(), descriptor.action(), body);
         return authorized(original, request, () -> {
             if (boundPlan != null) keys.authorizeBoundDomain(boundPlan, request);
+            if (AiContainerNetworkChange.supports(descriptor)) {
+                if (!descriptor.body(parameters).equals(copyMap(request.getRequestObject()))) throw error(403, "PermissionDenied");
+                boolean write = !"GET".equals(original.getMethod());
+                containerNetworkSnapshot(original, descriptor, visible(original, descriptor, publicId), parameters, write);
+                if (write) validateContainerPublicPort(original, descriptor, publicId, parameters);
+            }
+            if (AiHostMetadataChange.resets(descriptor, parameters)
+                    && !descriptor.body(parameters).equals(copyMap(request.getRequestObject()))) throw error(403, "PermissionDenied");
             if (loadBalancerOwned(descriptor)) {
                 Map<String, Object> context = loadBalancerMetadataContext(original, descriptor, publicId);
                 if (boundPlan != null && !context.equals(boundPlan.get("referenceSnapshot"))) throw error(409, "ResourceChangePlanStale");
@@ -347,6 +365,19 @@ public class AiResourceChangeDomain extends AbstractJooqDao {
         ApiRequest request = domain(original, descriptor, descriptor.resourceType(), publicId,
                 descriptor.method(), descriptor.action(), descriptor.body(parameters));
         return authorized(original, request, () -> {
+            if (AiHostMetadataChange.resets(descriptor, parameters)
+                    && !descriptor.body(parameters).equals(copyMap(request.getRequestObject()))) throw error(403, "PermissionDenied");
+            if (AiContainerNetworkChange.supports(descriptor)) {
+                if (!descriptor.body(parameters).equals(copyMap(request.getRequestObject()))) throw error(403, "PermissionDenied");
+            }
+            if ("port".equals(descriptor.resourceType())) {
+                io.cattle.platform.iaas.api.port.PortUpdateService.requireBefore(request);
+                validateContainerPublicPort(original, descriptor, publicId, parameters);
+                Port selected = (Port) load("port", internalId("port", publicId));
+                io.cattle.platform.iaas.api.port.PortUpdateService.attachBefore(request, selected,
+                        objects.loadResource(Instance.class, selected.getInstanceId()));
+                io.cattle.platform.iaas.api.port.PortUpdateService.transferScope(original, request);
+            }
             validateExternalHealthCheck(descriptor, parameters, request);
             if (AiLoadBalancerCreateChange.supports(descriptor)) {
                 validateLoadBalancerCreate(descriptor, parameters, request);
@@ -412,7 +443,8 @@ public class AiResourceChangeDomain extends AbstractJooqDao {
             projectMetadata.authorize(account, current.policy(), schema, "PUT".equals(request.getMethod()), copyMap(request.getRequestObject()).keySet());
         }
         if (request.getAttribute(DOMAIN) instanceof AiResourceChangeDescriptor descriptor
-                && (Set.of("dnsService", "certificate", "host", "project", "loadBalancerService", "registry", "volume").contains(descriptor.resourceType())
+                && (Set.of("dnsService", "certificate", "host", "project", "loadBalancerService", "registry", "volume",
+                        "port", "instanceLink").contains(descriptor.resourceType())
                     || AiServiceUpgradeLifecycleChange.supports(descriptor) || AiAliasServiceChange.ordinaryLinks(descriptor)
                     || AiStackGroupChange.supports(descriptor, copyMap(request.getRequestObject())))) {
             if (request.getAction() != null) {
@@ -461,6 +493,10 @@ public class AiResourceChangeDomain extends AbstractJooqDao {
         case "service", "externalService", "dnsService", "loadBalancerService" -> create().selectFrom(SERVICE).where(SERVICE.ID.eq(id)).forUpdate().fetchOne();
         case "volume" -> create().selectFrom(io.cattle.platform.core.model.tables.VolumeTable.VOLUME)
                 .where(io.cattle.platform.core.model.tables.VolumeTable.VOLUME.ID.eq(id)).forUpdate().fetchOne();
+        case "port" -> create().selectFrom(io.cattle.platform.core.model.tables.PortTable.PORT)
+                .where(io.cattle.platform.core.model.tables.PortTable.PORT.ID.eq(id)).forUpdate().fetchOne();
+        case "instanceLink" -> create().selectFrom(io.cattle.platform.core.model.tables.InstanceLinkTable.INSTANCE_LINK)
+                .where(io.cattle.platform.core.model.tables.InstanceLinkTable.INSTANCE_LINK.ID.eq(id)).forUpdate().fetchOne();
         case "container" -> create().selectFrom(INSTANCE).where(INSTANCE.ID.eq(id)).forUpdate().fetchOne();
         case "certificate" -> create().selectFrom(CERTIFICATE).where(CERTIFICATE.ID.eq(id)).forUpdate().fetchOne();
         case "host" -> create().selectFrom(HOST).where(HOST.ID.eq(id)).forUpdate().fetchOne();
@@ -634,6 +670,105 @@ public class AiResourceChangeDomain extends AbstractJooqDao {
                 || !Objects.equals(current.getUuid(), service.getUuid()) || !Objects.equals(current.getAccountId(), service.getAccountId())
                 || !Objects.equals(current.getStackId(), service.getStackId())) throw error(409, "ResourceChangePlanStale");
         return parent;
+    }
+
+    public Map<String, Object> containerNetworkSnapshot(ApiRequest request, AiResourceChangeDescriptor descriptor,
+            Object child, Map<String, Object> parameters, boolean locking) {
+        long sourceId = AiContainerNetworkChange.sourceId(child);
+        Long currentId = child instanceof InstanceLink link ? link.getTargetInstanceId() : null;
+        Long requestedId = child instanceof InstanceLink ? internalId("container", (String) parameters.get("targetInstanceId")) : null;
+        Map<Long, Instance> rows = new LinkedHashMap<>();
+        java.util.stream.Stream.of(sourceId, currentId, requestedId).filter(Objects::nonNull).distinct().sorted().forEach(id -> {
+            Object row = locking ? lock("container", id) : objects.loadResource(Instance.class, id);
+            if (!(row instanceof Instance instance)) throw error(404, "NotFound");
+            Instance readable = (Instance) read(request, descriptor, "container", publicId("container", id), false);
+            if (!AiContainerNetworkChange.instanceSnapshot(instance, child instanceof Port && id == sourceId, json)
+                    .equals(AiContainerNetworkChange.instanceSnapshot(readable, child instanceof Port && id == sourceId, json)))
+                throw error(409, "ResourceChangePlanStale");
+            rows.put(id, instance);
+        });
+        Account project = locking ? (Account) lock("project", actor(request).getAccountId())
+                : objects.loadResource(Account.class, actor(request).getAccountId());
+        if (requestedId != null && !Objects.equals(parameters.get("targetInstanceUuid"), rows.get(requestedId).getUuid()))
+            throw error(409, "ResourceChangePlanStale");
+        Long host = requestedId == null ? null : containerNetworkHost(rows.get(requestedId));
+        return AiContainerNetworkChange.snapshot(child, rows.get(sourceId), project, rows.get(currentId), rows.get(requestedId), host, json);
+    }
+
+    public void verifyContainerNetworkSelection(ApiRequest request, AiResourceChangeDescriptor descriptor, Object child, Map<String, Object> input) {
+        if (!(input.get("resourceUuid") instanceof String uuid) || !(input.get("sourceId") instanceof String sourceId)
+                || !(input.get("sourceUuid") instanceof String sourceUuid) || uuid.length() > 128 || sourceUuid.length() > 128)
+            throw error(422, "ResourceChangeInputInvalid");
+        long id = internalId("container", sourceId);
+        Object source = lock("container", id);
+        if (!(source instanceof Instance instance)) throw error(409, "ResourceChangePlanStale");
+        AiContainerNetworkChange.requireSelection(child, uuid, id, sourceUuid, instance);
+    }
+
+    private Long containerNetworkHost(Instance target) {
+        List<? extends InstanceHostMap> maps = objects.find(InstanceHostMap.class, "instanceId", target.getId(), "removed", null);
+        if (maps == null || maps.size() > 1) throw error(422, "ResourceChangeUnsupported");
+        return maps.isEmpty() ? null : maps.getFirst().getHostId();
+    }
+
+    private void validateContainerPublicPort(ApiRequest request, AiResourceChangeDescriptor descriptor, String id, Map<String, Object> parameters) {
+        if (!"port".equals(descriptor.resourceType())) return;
+        if (containerPortUpdates == null) throw error(503, "ResourceChangePreflightUnavailable");
+        containerPortUpdates.preview(request, internalId("port", id), actor(request).getAccountId(), parameters.get("publicPort"));
+    }
+
+    public <T> T withContainerPortWrite(ApiRequest request, Map<String, Object> projection, Supplier<T> action) {
+        if (containerPortUpdates == null) throw error(503, "ResourceChangePreflightUnavailable");
+        var descriptor = AiResourceChangeDescriptor.require("port", "update_public_port");
+        Map<String, Object> parameters = descriptor.parameters(projection.get("parameters"));
+        if (!(projection.get("resourceId") instanceof String id)) throw error(422, "ResourceChangeInputInvalid");
+        Port seed = (Port) visible(request, descriptor, id); // Current native/Key child read precedes any lock or mutation.
+        return containerPortUpdates.withLocks(request, seed, (Integer) parameters.get("publicPort"), action);
+    }
+
+    private boolean containerNetworkComplete(AiResourceChangeDescriptor descriptor, Object child, Map<String, Object> parameters, Map<String, Object> before) {
+        if (!Set.of("active", "inactive").contains(Objects.toString(ObjectUtils.getState(child), ""))) return false;
+        Instance source = objects.loadResource(Instance.class, AiContainerNetworkChange.sourceId(child));
+        Account project = source == null ? null : objects.loadResource(Account.class, source.getAccountId());
+        try { AiContainerNetworkChange.ordinary(source, project); }
+        catch (ClientVisibleException unavailable) { return false; }
+        if (!Objects.equals(before.get("source"), AiContainerNetworkChange.instanceSnapshot(source, child instanceof Port, json))
+                || !Objects.equals(before.get("projectUuid"), project.getUuid())
+                || !AiContainerNetworkChange.childComplete(child, parameters, before, json)) return false;
+        if (child instanceof Port port) {
+            List<? extends Port> ports = objects.find(Port.class, "instanceId", source.getId(), "removed", null);
+            if (ports == null || ports.size() > 256) return false;
+            return new java.util.HashSet<>(AiContainerNetworkChange.portSpecs(ports, port, port.getPublicPort()))
+                    .equals(new java.util.HashSet<>(DataAccessor.fieldStringList(source, "ports")));
+        }
+        Instance target = objects.loadResource(Instance.class, ((InstanceLink) child).getTargetInstanceId());
+        if (target == null || !Objects.equals(before.get("requestedTarget"), AiContainerNetworkChange.instanceSnapshot(target, false, json))) return false;
+        Long host = containerNetworkHost(target);
+        return before.get("requestedTargetHost") == null ? host == null : host != null && number(before.get("requestedTargetHost")) == host;
+    }
+
+    private String networkDisplay(Instance instance) {
+        if (instance == null || instance.getUuid() == null) throw error(422, "ResourceChangeUnsupported");
+        return Objects.toString(instance.getName(), "") + " [" + instance.getUuid() + "]";
+    }
+
+    private List<Map<String, Object>> containerNetworkChanges(Object child, Map<String, Object> parameters) {
+        Instance source = objects.loadResource(Instance.class, AiContainerNetworkChange.sourceId(child));
+        List<Map<String, Object>> changes = new ArrayList<>();
+        changes.add(change("sourceContainer", networkDisplay(source), networkDisplay(source)));
+        if (child instanceof Port port) {
+            changes.add(change("publicPort", port.getPublicPort(), parameters.get("publicPort")));
+            changes.add(change("privatePort", port.getPrivatePort(), port.getPrivatePort()));
+            changes.add(change("protocol", port.getProtocol(), port.getProtocol()));
+            String bind = DataAccessor.fieldString(port, "bindAddress"); changes.add(change("bindAddress", bind, bind));
+        } else {
+            InstanceLink link = (InstanceLink) child;
+            changes.add(change("linkName", link.getLinkName(), link.getLinkName()));
+            changes.add(change("targetContainer", link.getTargetInstanceId() == null ? null
+                    : networkDisplay(objects.loadResource(Instance.class, link.getTargetInstanceId())),
+                    networkDisplay(objects.loadResource(Instance.class, internalId("container", (String) parameters.get("targetInstanceId"))))));
+        }
+        return changes;
     }
 
     public Map<String, Object> snapshot(Object target) {
@@ -864,6 +999,11 @@ public class AiResourceChangeDomain extends AbstractJooqDao {
         if (target instanceof Service service && "loadBalancerService".equals(service.getKind()) && parent == null)
             parent = loadBalancerStack(request, AiResourceChangeDescriptor.require("loadBalancerService", "update_metadata"),
                     publicId("loadBalancerService", service.getId()));
+        if (target instanceof Port || target instanceof InstanceLink) {
+            Instance source = objects.loadResource(Instance.class, AiContainerNetworkChange.sourceId(target));
+            return networkDisplay(source) + " / " + (target instanceof Port port ? port.getPrivatePort() + "/" + port.getProtocol()
+                    : ((InstanceLink) target).getLinkName());
+        }
         if (target instanceof Account selected)
             return Objects.toString(AiProjectMetadataChange.selected(selected, actor(request).getAccountId()).getName(), "");
         Policy actor = actor(request); Account project = objects.loadResource(Account.class, actor.getAccountId());
@@ -897,6 +1037,17 @@ public class AiResourceChangeDomain extends AbstractJooqDao {
             Map<String, Object> identity = copyMap(plan.containsKey("stackGroupIdentity")
                     ? plan.get("stackGroupIdentity") : AiStackGroupChange.identity(copyMap(plan.get("snapshot"))));
             if (!identity.equals(AiStackGroupChange.identity(stackGroupSnapshot(request, target))))
+                throw error(409, "ResourceChangePlanStale");
+        }
+        if (AiContainerNetworkChange.supports(descriptor)) {
+            Map<String, Object> identity = copyMap(plan.containsKey("containerNetworkIdentity") ? plan.get("containerNetworkIdentity")
+                    : AiContainerNetworkChange.identity(copyMap(plan.get("snapshot"))));
+            Instance source = objects.loadResource(Instance.class, AiContainerNetworkChange.sourceId(target));
+            Account project = objects.loadResource(Account.class, actor.getAccountId());
+            if (!Objects.equals(identity.get("uuid"), ObjectUtils.getPropertyIgnoreErrors(target, "uuid"))
+                    || source == null || !Objects.equals(identity.get("sourceUuid"), source.getUuid()) || project == null
+                    || !Objects.equals(identity.get("projectUuid"), project.getUuid())
+                    || number(identity.get("instanceId")) != source.getId() || !Objects.equals(source.getAccountId(), project.getId()))
                 throw error(409, "ResourceChangePlanStale");
         }
         if (AiRegistryLifecycleChange.supports(descriptor)) {
@@ -977,6 +1128,7 @@ public class AiResourceChangeDomain extends AbstractJooqDao {
     public boolean complete(AiResourceChangeDescriptor descriptor, Object target, Map<String, Object> parameters,
             Map<String, Object> before) {
         if (target == null) return false;
+        if (AiContainerNetworkChange.supports(descriptor)) return containerNetworkComplete(descriptor, target, parameters, before);
         if (AiStackGroupChange.supports(descriptor, parameters)) {
             return AiStackGroupChange.complete(target, parameters, before,
                     objects.loadResource(Account.class, number(before.get("accountId"))), json);
@@ -1035,6 +1187,8 @@ public class AiResourceChangeDomain extends AbstractJooqDao {
                 && priorInstancesRemoved(before);
         if (ObjectUtils.getRemoved(target) != null) return false;
         if ("project".equals(descriptor.resourceType()) && "update_metadata".equals(descriptor.operation()) && !"active".equals(state)) return false;
+        if (AiHostMetadataChange.resets(descriptor, parameters))
+            return target instanceof Host host && AiHostMetadataChange.resetComplete(host, parameters, before);
         if ("update_metadata".equals(descriptor.operation())) return parameters.entrySet().stream()
                 .allMatch(entry -> Objects.equals(entry.getValue(), ObjectUtils.getPropertyIgnoreErrors(target, entry.getKey())));
         if (loadBalancerScale(descriptor)) {
@@ -1194,6 +1348,11 @@ public class AiResourceChangeDomain extends AbstractJooqDao {
     }
 
     public List<Map<String, Object>> changes(AiResourceChangeDescriptor descriptor, Object target, Map<String, Object> parameters) {
+        if (AiContainerNetworkChange.supports(descriptor)) return containerNetworkChanges(target, parameters);
+        if (AiHostMetadataChange.resets(descriptor, parameters)) {
+            if (!(target instanceof Host host)) throw error(422, "ResourceChangeUnsupported");
+            return AiHostMetadataChange.resetChanges(host, parameters);
+        }
         if (AiVolumeCreateChange.supports(descriptor)) {
             List<Map<String, Object>> result = new ArrayList<>();
             result.add(change("name", null, parameters.get("name")));

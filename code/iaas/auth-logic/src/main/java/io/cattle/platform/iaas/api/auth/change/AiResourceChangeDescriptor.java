@@ -27,6 +27,9 @@ public record AiResourceChangeDescriptor(String resourceType, String operation, 
                     : "service".equals(type) ? Set.of("name", "description", "image", "scale", "stackId", "command", "entryPoint", "ports", "healthCheck")
                     : Set.of("name", "description", "image", "command", "entryPoint", "ports"));
         }
+        add(result, "port", "update_public_port", "PUT", null, "update", Set.of("publicPort", "resourceUuid", "sourceId", "sourceUuid"));
+        add(result, "instanceLink", "update_target", "PUT", null, "update",
+                Set.of("targetInstanceId", "targetInstanceUuid", "resourceUuid", "sourceId", "sourceUuid"));
         add(result, "volume", "create", "POST", null, "create", Set.of("name", "description"));
         add(result, "service", "scale", "PUT", null, "update", Set.of("scale"));
         add(result, "service", "update_links", "POST", "setservicelinks", "update", Set.of("serviceIds", "links"));
@@ -62,7 +65,7 @@ public record AiResourceChangeDescriptor(String resourceType, String operation, 
         add(result, "loadBalancerService", "update_metadata", "PUT", null, "update", Set.of("name", "description"));
         add(result, "loadBalancerService", "scale", "PUT", null, "update", Set.of("scale"));
         add(result, "certificate", "update_metadata", "PUT", null, "update", Set.of("name", "description"));
-        add(result, "host", "update_metadata", "PUT", null, "update", Set.of("name", "description"));
+        add(result, "host", "update_metadata", "PUT", null, "update", Set.of("name", "description", "resetName"));
         add(result, "project", "update_metadata", "PUT", null, "update", Set.of("name", "description"));
         for (String operation : Set.of("start", "stop"))
             add(result, "registry", operation, "POST", "start".equals(operation) ? "activate" : "deactivate", "update", Set.of());
@@ -88,6 +91,7 @@ public record AiResourceChangeDescriptor(String resourceType, String operation, 
     public boolean changesArchive() { return Set.of("archive", "restore").contains(operation); }
 
     public Map<String, Object> parameters(Object value) {
+        if (AiContainerNetworkChange.supports(this)) return AiContainerNetworkChange.parameters(this, value);
         if (AiVolumeCreateChange.supports(this)) return AiVolumeCreateChange.parameters(value);
         if (AiLoadBalancerCreateChange.supports(this)) return AiLoadBalancerCreateChange.parameters(parameterNames, value);
         if (AiAliasServiceChange.ordinaryLinks(this) && value instanceof Map<?, ?> input && input.containsKey("links"))
@@ -102,6 +106,7 @@ public record AiResourceChangeDescriptor(String resourceType, String operation, 
             Object content = entry.getValue();
             switch (field) {
             case "name" -> string(content, 1, 255, false);
+            case "resetName" -> { if (!Boolean.TRUE.equals(content)) throw error("ResourceChangeInputInvalid"); }
             case "description" -> { if (content != null) string(content, 0, 1024, true); }
             case "group" -> AiStackGroupChange.value(content);
             case "image" -> {
@@ -139,6 +144,7 @@ public record AiResourceChangeDescriptor(String resourceType, String operation, 
                 || "service".equals(resourceType) && !result.containsKey("stackId"))) throw error("ResourceChangeInputInvalid");
         if ("update_metadata".equals(operation) && result.isEmpty()
                 || "scale".equals(operation) && !result.containsKey("scale")) throw error("ResourceChangeInputInvalid");
+        if (result.containsKey("resetName") && result.containsKey("name")) throw error("ResourceChangeInputInvalid");
         return result;
     }
 
@@ -148,6 +154,7 @@ public record AiResourceChangeDescriptor(String resourceType, String operation, 
     }
 
     public Map<String, Object> body(Map<String, Object> parameters) {
+        if (AiContainerNetworkChange.supports(this)) return AiContainerNetworkChange.body(parameters);
         if (AiVolumeCreateChange.supports(this)) return AiVolumeCreateChange.body(parameters);
         if (AiLoadBalancerCreateChange.supports(this)) return AiLoadBalancerCreateChange.body(parameters);
         if (AiNamedServiceLinks.supports(this, parameters)) return Map.of("serviceLinks", AiNamedServiceLinks.rows(parameters));
@@ -155,7 +162,8 @@ public record AiResourceChangeDescriptor(String resourceType, String operation, 
         if (changesArchive()) return new LinkedHashMap<>(Map.of("archived", "archive".equals(operation)));
         if ("externalService".equals(resourceType)) return AiExternalServiceChange.body(operation, parameters);
         if ("dnsService".equals(resourceType)) return AiAliasServiceChange.body(operation, parameters);
-        Map<String, Object> body = new LinkedHashMap<>(parameters);
+        Map<String, Object> body = AiHostMetadataChange.supports(this)
+                ? AiHostMetadataChange.body(parameters) : new LinkedHashMap<>(parameters);
         if (createsResource()) {
             body.put("type", resourceType);
             if (!"stack".equals(resourceType)) {
