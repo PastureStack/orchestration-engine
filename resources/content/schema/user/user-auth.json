@@ -127,6 +127,8 @@
         "aiServiceUpgradePlan.intervalMillis" : "cr",
         "aiServiceUpgradePlan.ports": "cr",
         "aiServiceUpgradePlan.healthCheck": "cr",
+        "aiServiceUpgradePlan.command": "cr",
+        "aiServiceUpgradePlan.entryPoint": "cr",
         "aiServiceUpgradePlan.configurationChanges": "r",
         "aiServiceUpgradePlan.upgradeStrategy" : "r",
         "aiServiceUpgradePlan.planRef": "r",

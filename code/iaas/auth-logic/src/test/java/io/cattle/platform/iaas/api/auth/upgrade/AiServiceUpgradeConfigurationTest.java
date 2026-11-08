@@ -206,4 +206,98 @@ public class AiServiceUpgradeConfigurationTest {
                 .authorizeBound(anyMap(), any(), anyString(), any());
         assertEquals("ApiKeyRevoked", rejected(() -> f.action("apply"))); assertEquals(0, f.dispatched);
     }
+
+    @Test public void startupArgumentsUseRealParserAndPreserveTheWholeApprovedLaunchConfiguration() throws Exception {
+        var f = fixture(); var before = primary(f);
+        Object sides = DataAccessor.field(f.target, "secondaryLaunchConfigs", Object.class);
+        var request = f.parsedPreview("{\"serviceId\":\"10\",\"command\":[\"serve\",\"  exact  \",\"\",\"繁體中文\",\"|\"],"
+                + "\"entryPoint\":[\"/bin/app\"]}", Map.of());
+        assertEquals(Boolean.FALSE, request.getAttribute(AiServiceUpgradePlanService.ORIGINAL_PREVIEW_REJECTED));
+        var result = f.service.preview(request); f.id = (String) result.get("id");
+        assertEquals(result.get("currentImage"), result.get("requestedImage"));
+        assertEquals(2, ((List<?>) result.get("configurationChanges")).size()); assertEquals(0, f.dispatched);
+        assertEquals("UpgradeNeedsConfirmation", rejected(() -> f.action("apply"))); assertEquals(0, f.dispatched);
+        f.action("confirm"); f.action("apply"); f.action("apply");
+        Map<?, ?> strategy = (Map<?, ?>) ((Map<?, ?>) f.dispatchedRequest.getRequestObject()).get("inServiceStrategy");
+        var expected = new LinkedHashMap<>(before);
+        expected.put("command", List.of("serve", "  exact  ", "", "繁體中文", "|")); expected.put("entryPoint", List.of("/bin/app"));
+        assertEquals(expected, strategy.get("launchConfig")); assertEquals(1, f.dispatched);
+        assertEquals(sides, ((Map<?, ?>) f.document().get("snapshot")).get("secondaryLaunchConfigs"));
+        assertEquals("upgrade", f.dispatchedRequest.getAction()); assertEquals("POST", f.dispatchedRequest.getMethod());
+    }
+
+    @Test public void startupArgumentsKeepNativeNullEmptyOmitAndNoopDistinct() throws Exception {
+        var f = fixture(); var before = primary(f);
+        before.put("command", List.of("old")); before.put("entryPoint", List.of("/old")); DataAccessor.setField(f.target, "launchConfig", before);
+        var request = f.parsedPreview("{\"serviceId\":\"10\",\"command\":null,\"entryPoint\":[]}", Map.of());
+        var preview = f.service.preview(request); f.id = (String) preview.get("id"); f.action("confirm"); f.action("apply");
+        Map<?, ?> payload = (Map<?, ?>) ((Map<?, ?>) ((Map<?, ?>) f.dispatchedRequest.getRequestObject()).get("inServiceStrategy")).get("launchConfig");
+        assertTrue(payload.containsKey("command")); assertNull(payload.get("command")); assertEquals(List.of(), payload.get("entryPoint"));
+        var omitted = fixture(); var original = primary(omitted);
+        original.put("command", List.of("keep")); original.put("entryPoint", List.of("/keep")); DataAccessor.setField(omitted.target, "launchConfig", original);
+        omitted.preview(Map.of("serviceId", "10", "ports", List.of("90/tcp"))); omitted.action("confirm"); omitted.action("apply");
+        Map<?, ?> unchanged = (Map<?, ?>) ((Map<?, ?>) ((Map<?, ?>) omitted.dispatchedRequest.getRequestObject()).get("inServiceStrategy")).get("launchConfig");
+        assertEquals(original.get("command"), unchanged.get("command")); assertEquals(original.get("entryPoint"), unchanged.get("entryPoint"));
+        var noop = fixture(); var lc = primary(noop); lc.put("command", List.of()); DataAccessor.setField(noop.target, "launchConfig", lc);
+        assertEquals("UpgradeImageUnchanged", rejected(() -> noop.preview(Map.of("serviceId", "10", "command", List.of()))));
+        var clearing = new LinkedHashMap<String, Object>(); clearing.put("serviceId", "10"); clearing.put("command", null);
+        assertEquals("preview", noop.preview(clearing).get("status"));
+    }
+
+    @Test public void startupArgumentsRejectRawCoercionAndEveryClosedArrayLimitBeforeNativeValidation() throws Exception {
+        var json = new io.github.ibuildthecloud.gdapi.json.JacksonMapper(); json.init();
+        for (Object value : List.of("serve --flag", Map.of(), List.of(1), java.util.Collections.singletonList(null),
+                List.of("bad\0arg"), java.util.Collections.nCopies(65, ""),
+                List.of("x".repeat(4097)), java.util.Collections.nCopies(5, "x".repeat(4096)))) {
+            for (String field : List.of("command", "entryPoint")) {
+                var f = fixture(); when(f.schemas.getSchema("aiServiceUpgradePlan")).thenReturn(f.schema);
+                when(f.schema.getId()).thenReturn("aiServiceUpgradePlan");
+                String body = new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(Map.of("serviceId", "10", field, value));
+                var request = new io.github.ibuildthecloud.gdapi.request.ApiRequest(null, f.schemas) {
+                    @Override public java.io.InputStream getInputStream() {
+                        return new java.io.ByteArrayInputStream(body.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+                    }
+                };
+                request.setMethod("POST"); request.setType("aiServiceUpgradePlan"); request.setRequestParams(Map.of());
+                var parser = new io.github.ibuildthecloud.gdapi.request.handler.BodyParserRequestHandler();
+                parser.setJsonMarshaller(json); parser.init(); parser.handle(request); new AiServiceUpgradePlanInputHandler().handle(request);
+                assertEquals(Boolean.TRUE, request.getAttribute(AiServiceUpgradePlanService.ORIGINAL_PREVIEW_REJECTED));
+                assertEquals("UpgradeInputInvalid", rejected(() -> f.service.preview(request)));
+                assertTrue(f.documents.isEmpty()); assertEquals(0, f.dispatched); verifyNoInteractions(f.service.upgradeValidation);
+            }
+        }
+        for (List<String> value : List.of(java.util.Collections.nCopies(64, ""), java.util.Collections.nCopies(4, "x".repeat(4096)))) {
+            var f = fixture();
+            var request = f.parsedPreview(new com.fasterxml.jackson.databind.ObjectMapper()
+                    .writeValueAsString(Map.of("serviceId", "10", "command", value)), Map.of());
+            assertEquals(Boolean.FALSE, request.getAttribute(AiServiceUpgradePlanService.ORIGINAL_PREVIEW_REJECTED));
+            assertEquals("preview", f.service.preview(request).get("status")); assertEquals(0, f.dispatched);
+        }
+    }
+
+    @Test public void startupArgumentsRequireFreshBoundApprovalExactNativeReadbackAndReadiness() {
+        for (boolean operand : List.of(false, true)) {
+            var f = fixture(); f.preview(Map.of("serviceId", "10", "command", List.of("serve"))); f.action("confirm");
+            if (operand) f.document().put("launchConfigChanges", Map.of("command", List.of("changed")));
+            else { var lc = primary(f); lc.put("entryPoint", List.of("drift")); DataAccessor.setField(f.target, "launchConfig", lc); }
+            assertEquals("UpgradePlanStale", rejected(() -> f.action("apply"))); assertEquals(0, f.dispatched);
+        }
+        var key = fixture(); ApiContext.newContext().setPolicy(key.policy);
+        key.key = new io.cattle.platform.iaas.api.auth.apikey.ApiKeyCredentialContext(7, 42, "apiKeyRestricted", 3, null);
+        key.preview(Map.of("serviceId", "10", "entryPoint", List.of("/app")));
+        assertEquals("AiKeyConfirmationForbidden", rejected(() -> key.action("confirm")));
+        key.key = null; key.action("confirm"); assertEquals("UpgradeBoundKeyRequired", rejected(() -> key.action("apply")));
+        var foreign = fixture(); foreign.preview(Map.of("serviceId", "10", "command", List.of("serve")));
+        foreign.document().put("actorId", 999L);
+        assertEquals("NotFound", rejected(() -> foreign.action("confirm"))); assertEquals(0, foreign.dispatched);
+        var cancelled = fixture(); cancelled.preview(Map.of("serviceId", "10", "command", List.of("serve")));
+        assertEquals("cancelled", cancelled.action("cancel").get("status")); assertEquals(0, cancelled.dispatched);
+        var f = fixture(); f.preview(Map.of("serviceId", "10", "command", List.of("serve"))); f.action("confirm"); f.action("apply");
+        f.observed.add(Map.of("name", "service.upgrade", "ended", true, "result", "SUCCESS"));
+        f.observed.add(Map.of("name", "service.finishupgrade", "ended", true, "result", "SUCCESS"));
+        assertEquals("UpgradeResultMismatch", f.service.get(f.id, f.request(Map.of())).get("messageCode"));
+        DataAccessor.fieldMap(f.target, "launchConfig").put("command", List.of("serve")); f.ready = false;
+        assertEquals("running", f.service.get(f.id, f.request(Map.of())).get("status")); f.ready = true;
+        assertEquals(Boolean.TRUE, f.service.get(f.id, f.request(Map.of())).get("verifiedResult")); assertEquals(1, f.dispatched);
+    }
 }

@@ -1,6 +1,15 @@
 # Compatibility Contract
 
-## Engine 0.183.389 candidate
+## Engine 0.183.390 source candidate
+
+Reviewed primary Service startup arguments preserve native omitted, null and
+empty-array semantics and use the existing native Service upgrade owner.
+The original role/Key ceilings, full configuration CAS and human confirmation
+remain required. Matching Web Console 1.6.231 / Bridge 0.2.33, normal release
+qualification and affected native acceptance are pending. See the
+[candidate contract](docs/releases/orchestration-engine-0.183.390.md).
+
+## Engine 0.183.389 published
 
 Stack finish-upgrade, cancel-upgrade and rollback reuse the native action/state
 contracts. The Stack rollback action delegates without bulk child configuration
@@ -18,8 +27,10 @@ Ordinary Catalog/system Stacks are included. Kubernetes/plugin Stack owners and
 link-migration strategies are not generalized into this typed subset.
 Full/legacy native clients, current roles, Key scope/revision/upgrade ceilings,
 serialized schemas and operation grants remain unchanged. Matching Web Console
-and Compose components, original CI/compiled proof, publication and native
-acceptance are pending. See the [candidate note](docs/releases/orchestration-engine-0.183.389.md).
+1.6.230 / Bridge 0.2.32 and Compose 0.14.44 components, original CI/compiled
+proof and publication are qualified. Server 1.6.587 is assembled and QA-deployed;
+affected native business acceptance remains partial. See the
+[release note](docs/releases/orchestration-engine-0.183.389.md).
 
 ## Engine 0.183.388 published
 

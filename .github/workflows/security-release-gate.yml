@@ -602,6 +602,10 @@ jobs:
                   'targetDriftAndApprovedOperandDriftCannotClaimOrDispatch',
                   'terminalReadbackRequiresRequestedConfigAndEveryOtherSetting',
                   'unsupportedHealthIsPreservedWhenOmittedButCannotBeEditedOrClearedWithoutCompleteReview',
+                  'startupArgumentsUseRealParserAndPreserveTheWholeApprovedLaunchConfiguration',
+                  'startupArgumentsKeepNativeNullEmptyOmitAndNoopDistinct',
+                  'startupArgumentsRejectRawCoercionAndEveryClosedArrayLimitBeforeNativeValidation',
+                  'startupArgumentsRequireFreshBoundApprovalExactNativeReadbackAndReadiness',
               },
               'io.cattle.platform.iaas.api.auth.upgrade.AiServiceUpgradePlanLockOrderTest': {
                   'acceptedUpgradeNativeActionPrefetchAndConcurrentGetKeepApplicationBeforeRowLock',
