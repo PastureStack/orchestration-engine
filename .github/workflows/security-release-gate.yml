@@ -296,6 +296,7 @@ jobs:
                   'aRegistryGrantCannotExecuteAnotherPoolIdKindOrUuidEvenForFullAndLegacyKeys',
                   'liveReadonlyRoleReadCeilingKeyRevisionRevocationExpiryAndExplicitDeniesRemainBinding',
                   'nativeStoragePoolRootUsesTheExactRegistryRoleAndRealCanonicalIdParser',
+                  'registryDeleteKeepsTheOriginalFullLegacyAndExactScopedDeleteCeilings',
               },
               'io.cattle.platform.iaas.api.auth.apikey.ApiKeyTargetResolverTest': {
                   'loadBalancerImageEnsureRejectsWrongKindRootOwnerFrameAndAllocation',
@@ -476,6 +477,20 @@ jobs:
                   'changedUuidConfigurationKindOrPersistedProcessCannotBorrowTheApprovedRegistryExecution',
                   'nativeAuthorizationDenialProjectsOnlyToTheSameCapturedOperationWithoutPrivateConfiguration',
                   'serializedNativeStoragePoolExecutionPinsOneExactProcessForLegacyRevisionZero',
+                  'removalWorkerAttestsTheExactNativeDeleteAndRejectsCredentialSetDrift',
+                  'cookieRemovalUsesOnlyItsOwnAtomicNativeInsertWitnessAndNeverBorrowsAKeyGrantOrAnotherProcess',
+              },
+              'io.cattle.platform.iaas.api.auth.change.AiRegistryRemovalChangeTest': {
+                  'removalIsAnEmptyNativeDeleteOfTheInactiveRegistryNotAnotherCredentialApi',
+                  'realSqlPinsTheCompleteNonSensitiveCredentialSetAndRejectsForeignOrTruncatedSets',
+                  'logicalCompletionRequiresEveryCapturedChildAndRejectsNewOrReassignedCredentials',
+                  'confirmationAndApplyFenceAllChildMetadataAndKeepHumanKeyAndCancellationRules',
+              },
+              'io.cattle.platform.iaas.api.filter.registry.RegistryCredentialReferenceGuardTest': {
+                  'originalCredentialKindsAndEveryPreviouslyLegalRegistryParentStateKeepTheirNativeWriter',
+                  'createAndReparentCompleteBeforeTheSameNativeRemovingTransitionCanCommit',
+                  'acceptedRemovingFencesCreateAndUpdateThroughTheRealCommitTailWithoutAChildWrite',
+                  'typedFullSetPreconditionRunsInsideTheNativeOwnerAndLegacyDeleteStillUsesTheOriginalScheduler',
               },
               'io.cattle.platform.iaas.api.auth.change.AiResourceChangeDomainTest': {
                   'aliasNonemptyTargetsUseTheRealNativeValidationBeforeProjectBinding',

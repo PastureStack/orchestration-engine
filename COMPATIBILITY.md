@@ -1,5 +1,22 @@
 # Compatibility Contract
 
+## Engine 0.183.391 source candidate
+
+Typed Registry removal is an empty native DELETE of an inactive Registry after
+human review. Exact parent identity, the full non-sensitive credential set,
+current authorization and Key revision are fenced through native dispatch.
+Credential create/reparent and Registry removal share the parent native lock
+through transaction completion. Cookie completion requires this plan's durable
+native delete witness and complete captured-child removal; another process or
+parent state alone cannot prove completion. Existing Full/legacy writers and
+role/Key ceilings are preserved, with no new native grant or credential editor.
+
+The original 506 mandatory method identities are retained and eleven new
+methods are registered (517 total). This is source enumeration, not executed
+JUnit evidence. Matching Web Console 1.6.232 / Bridge 0.2.34, original CI,
+compiled/source qualification, component publication and native acceptance are
+pending. See the [candidate note](docs/releases/orchestration-engine-0.183.391.md).
+
 ## Engine 0.183.390 published
 
 Reviewed primary Service startup arguments preserve native omitted, null and

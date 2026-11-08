@@ -12,12 +12,12 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 
-/** Registry state only. Credential records and their payloads are never operands. */
+/** Registry native lifecycle. Removal additionally pins only the separate non-sensitive credential identity set. */
 public final class AiRegistryLifecycleChange {
     private AiRegistryLifecycleChange() { }
 
     public static boolean supports(AiResourceChangeDescriptor descriptor) {
-        return "registry".equals(descriptor.resourceType()) && Set.of("start", "stop").contains(descriptor.operation());
+        return "registry".equals(descriptor.resourceType()) && Set.of("start", "stop", "remove").contains(descriptor.operation());
     }
 
     /** Return the actual endpoint unchanged, or unknown. Never strip a secret into a plausible host. */
@@ -53,7 +53,7 @@ public final class AiRegistryLifecycleChange {
     public static void ready(AiResourceChangeDescriptor descriptor, Object target) {
         if (!registry(target) || address(DataAccessor.field(target, "serverAddress", Object.class)) == null)
             throw new ClientVisibleException(422, "ResourceChangeUnsupported");
-        if (!("start".equals(descriptor.operation()) ? "inactive" : "active").equals(ObjectUtils.getState(target)))
+        if (!("stop".equals(descriptor.operation()) ? "active" : "inactive").equals(ObjectUtils.getState(target)))
             throw new ClientVisibleException(409, "ResourceChangeTargetBusy");
     }
 
@@ -66,6 +66,13 @@ public final class AiRegistryLifecycleChange {
     /** The native API subtype is registry, but the sole backing root process is storagepool. */
     public static boolean queuedRoot(Object root, Object child, LaunchConfiguration config, Map<String, Object> metadata) {
         String action = Objects.toString(metadata.get("requestAction"), "");
+        if ("DELETE".equals(metadata.get("requestMethod")))
+            return registry(root) && registry(child) && root instanceof StoragePool selected && child instanceof StoragePool actual
+                    && Objects.equals(selected.getId(), actual.getId()) && Objects.equals(selected.getUuid(), actual.getUuid())
+                    && Objects.equals(selected.getAccountId(), actual.getAccountId()) && "storagePool".equals(config.getResourceType())
+                    && selected.getId().toString().equals(config.getResourceId()) && "storagepool.remove".equals(config.getProcessName())
+                    && metadata.get("requestAction") == null && "delete".equals(metadata.get("operation"))
+                    && Boolean.FALSE.equals(metadata.get("requestCollection")) && metadata.get("requestLink") == null;
         return registry(root) && registry(child) && root instanceof StoragePool selected && child instanceof StoragePool actual
                 && Objects.equals(selected.getId(), actual.getId()) && Objects.equals(selected.getUuid(), actual.getUuid())
                 && Objects.equals(selected.getAccountId(), actual.getAccountId()) && "storagePool".equals(config.getResourceType())

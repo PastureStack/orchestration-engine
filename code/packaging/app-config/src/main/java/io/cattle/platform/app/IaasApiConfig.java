@@ -494,6 +494,16 @@ public class IaasApiConfig {
     }
 
     @Bean
+    io.cattle.platform.iaas.api.filter.registry.RegistryCredentialReferenceGuard RegistryCredentialReferenceGuard() {
+        return new io.cattle.platform.iaas.api.filter.registry.RegistryCredentialReferenceGuard();
+    }
+
+    @Bean
+    io.cattle.platform.iaas.api.filter.registry.RegistryCredentialReferenceGuard.RegistryRead RegistryCredentialRead() {
+        return new io.cattle.platform.iaas.api.filter.registry.RegistryCredentialReferenceGuard.RegistryRead();
+    }
+
+    @Bean
     SecretValidationFilter SecretValidationFilter() {
         return new SecretValidationFilter();
     }
