@@ -56,7 +56,13 @@ final class AiServiceUpgradeLifecycleChange {
 
     /** Server-private CAS operands; never expose configuration, versions or fingerprints. */
     static Map<String, Object> snapshot(Object target, JsonMapper json) {
-        Service service = service(target);
+        return nativeSnapshot(service(target), json);
+    }
+
+    /** Stack's native handler also owns Service subtypes; this is not a new caller capability. */
+    static Map<String, Object> nativeSnapshot(Service service, JsonMapper json) {
+        if (service == null || service.getRemoved() != null || service.getUuid() == null || service.getUuid().isBlank())
+            throw error(404, "NotFound");
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("id", service.getId()); result.put("uuid", service.getUuid());
         result.put("accountId", service.getAccountId()); result.put("kind", service.getKind());

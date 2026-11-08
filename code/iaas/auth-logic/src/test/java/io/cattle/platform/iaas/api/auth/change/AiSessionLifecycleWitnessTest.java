@@ -212,6 +212,7 @@ public class AiSessionLifecycleWitnessTest {
         final ObjectManager objects = mock(ObjectManager.class); final Policy owner = mock(Policy.class); final InsertManager manager = new InsertManager();
         final ApiRequest request = new ApiRequest(null, null); final ServiceRecord service = new ServiceRecord();
         final io.cattle.platform.core.model.tables.records.HostRecord host = AiHostLifecycleChangeTest.host();
+        final io.cattle.platform.core.model.tables.records.StackRecord stack = new io.cattle.platform.core.model.tables.records.StackRecord();
         final Map<String, Object> plan; final Map<String, Object> snapshot; long next = 100;
         Fixture(String type, String operation) throws Exception {
             this.type = type; this.operation = operation;
@@ -229,11 +230,15 @@ public class AiSessionLifecycleWitnessTest {
             service.setId(3L); service.setUuid("service-uuid"); service.setKind("service"); service.setAccountId(5L); service.setStackId(9L);
             service.setData(Map.of()); service.setState(operation.equals("start") ? "inactive" : "active");
             host.setState(operation.equals("start") ? "inactive" : "active");
-            Object root = type.equals("host") ? host : service;
+            stack.setId(3L); stack.setUuid("stack-uuid"); stack.setKind("stack"); stack.setAccountId(5L); stack.setData(Map.of());
+            stack.setState(operation.equals("finish_upgrade") ? "upgraded" : "upgrading");
+            Object root = type.equals("host") ? host : type.equals("stack") ? stack : service;
             when(objects.loadResource(type, 3L)).thenReturn(root); when(objects.loadResource(type, "3")).thenReturn(root);
             when(objects.loadResource(io.cattle.platform.core.model.Account.class, 5L)).thenReturn(AiHostLifecycleChangeTest.project());
             when(owner.getAccountId()).thenReturn(5L); when(owner.getAuthenticatedAsAccountId()).thenReturn(10L);
-            snapshot = type.equals("host") ? domain.hostLifecycleSnapshot(host) : domain.serviceLifecycleSnapshot(service);
+            snapshot = type.equals("host") ? domain.hostLifecycleSnapshot(host) : type.equals("stack")
+                    ? AiStackUpgradeLifecycleChange.snapshot(stack, List.of(), AiHostLifecycleChangeTest.project().getUuid(), json)
+                    : domain.serviceLifecycleSnapshot(service);
             plan = new LinkedHashMap<>(Map.of("id", id, "actorId", 10L, "accountId", 5L, "resourceType", type, "operation", operation,
                     "status", "preview", "internalResourceId", 3L, "expiresAt", "2030-01-01T00:00:00Z", "parameters", Map.of(), "body", Map.of()));
             plan.put("snapshot", snapshot); plan.put("processBaseline", 0L); store.insert(plan);
@@ -266,9 +271,10 @@ public class AiSessionLifecycleWitnessTest {
             sql.update(PROCESS_INSTANCE).set(PROCESS_INSTANCE.END_TIME, new Date()).set(PROCESS_INSTANCE.RESULT, "SUCCESS")
                     .set(PROCESS_INSTANCE.PHASE, "DONE").set(PROCESS_INSTANCE.EXIT_REASON, "DONE").where(PROCESS_INSTANCE.ID.eq(id)).execute();
         }
-        Object target() { return type.equals("host") ? host : service; }
+        Object target() { return type.equals("host") ? host : type.equals("stack") ? stack : service; }
         void terminal() {
             host.setState(operation.equals("start") ? "active" : "inactive");
+            if (type.equals("stack")) stack.setState(AiStackUpgradeLifecycleChange.terminal(operation));
             service.setState(operation.equals("stop") ? "inactive" : operation.equals("cancel_upgrade") ? "canceled-upgrade" : "active");
         }
         Map<String, Object> observe() {
@@ -278,7 +284,8 @@ public class AiSessionLifecycleWitnessTest {
             doReturn(target()).when(service.domain).receiptTarget(any(), any(), anyMap());
             service.store = store; service.clock = java.time.Clock.systemUTC(); service.observe(current, request); return current;
         }
-        String outcome() { return type.equals("host") ? domain.hostLifecycleProcessOutcome(plan, host) : domain.upgradeLifecycleProcessOutcome(plan, service); }
+        String outcome() { return type.equals("host") ? domain.hostLifecycleProcessOutcome(plan, host)
+                : type.equals("stack") ? domain.stackUpgradeLifecycleProcessOutcome(plan, stack) : domain.upgradeLifecycleProcessOutcome(plan, service); }
         int count() { return sql.fetchCount(PROCESS_INSTANCE); }
         @Override public void close() { ApiContext.remove(); dataSource.destroy(); }
     }

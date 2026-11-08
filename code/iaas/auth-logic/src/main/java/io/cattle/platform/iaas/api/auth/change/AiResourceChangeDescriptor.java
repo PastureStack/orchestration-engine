@@ -36,6 +36,9 @@ public record AiResourceChangeDescriptor(String resourceType, String operation, 
         add(result, "service", "finish_upgrade", "POST", "finishupgrade", "upgrade", Set.of());
         add(result, "service", "rollback", "POST", "rollback", "upgrade", Set.of());
         add(result, "service", "cancel_upgrade", "POST", "cancelupgrade", "upgrade", Set.of());
+        add(result, "stack", "finish_upgrade", "POST", "finishupgrade", "upgrade", Set.of());
+        add(result, "stack", "rollback", "POST", "rollback", "upgrade", Set.of());
+        add(result, "stack", "cancel_upgrade", "POST", "cancelupgrade", "upgrade", Set.of());
         for (String type : Set.of("stack", "service")) {
             add(result, type, "archive", "PUT", null, "update", Set.of());
             add(result, type, "restore", "PUT", null, "update", Set.of());
