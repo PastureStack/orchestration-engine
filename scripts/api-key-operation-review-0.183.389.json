@@ -3090,6 +3090,12 @@
         "beforeSha256": "9be2686c9f311a7b754d8a8f983df9e713ac69d971c0a509631178040c5a6d47",
         "afterSha256": "f785eb5d6f30b2c34a1275720f73eeab088e7d18438521bc4bfcea459fabbc88",
         "bytes": 2029
+      },
+      {
+        "path": "scripts/check-docker-host-support",
+        "beforeSha256": "220b31c11ba2b311ff3a23cfdb7ad3ac014d738a7fd7a6d6f7807b7dbae2d03e",
+        "afterSha256": "99bf6cde72be9e292d8099f303d9ed97db5e380b1759fdc9dc3433fbc50ee809",
+        "bytes": 4531
       }
     ],
     "patches": [
