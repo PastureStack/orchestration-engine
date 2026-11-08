@@ -267,7 +267,8 @@ public class AiResourceChangePlanService {
 
     private Map<String, Object> targetSnapshot(ApiRequest request, AiResourceChangeDescriptor descriptor, Object target,
             Map<String, Object> parameters) {
-        if (AiCookieLifecycleWitness.supports(descriptor)) return domain.cookieLifecycleSnapshot(descriptor, target);
+        if (AiCookieLifecycleWitness.supports(descriptor) && ApiKeyCredentialContext.get(request) == null)
+            return domain.cookieLifecycleSnapshot(descriptor, target);
         if (AiHostLifecycleChange.supports(descriptor)) return domain.hostLifecycleSnapshot(target);
         if (AiResourceChangePlanStore.ordinaryLifecycle(descriptor)) return domain.serviceLifecycleSnapshot(target);
         if (AiContainerNetworkChange.supports(descriptor)) return domain.containerNetworkSnapshot(request, descriptor, target, parameters, true);
@@ -433,7 +434,8 @@ public class AiResourceChangePlanService {
     }
 
     private void eraseSnapshot(Map<String, Object> plan) {
-        if (AiCookieLifecycleWitness.supports(descriptor(plan)) && plan.get("snapshot") instanceof Map<?, ?> snapshot)
+        if (AiCookieLifecycleWitness.supports(descriptor(plan)) && !(plan.get("credentialId") instanceof Number)
+                && plan.get("snapshot") instanceof Map<?, ?> snapshot && snapshot.containsKey(AiCookieLifecycleWitness.SNAPSHOT))
             plan.put("cookieLifecycleIdentity", map(map(snapshot.get(AiCookieLifecycleWitness.SNAPSHOT)).get("root")));
         if (AiHostLifecycleChange.supports(descriptor(plan)) && plan.get("snapshot") instanceof Map<?, ?>)
             plan.put("hostLifecycleIdentity", AiHostLifecycleChange.identity(map(plan.get("snapshot"))));

@@ -416,6 +416,7 @@ jobs:
                   'unsupportedProtocolsCertificatesSelectorsRawConfigurationAndAmbiguousListenersFailClosed',
               },
               'io.cattle.platform.iaas.api.auth.change.AiLoadBalancerMetadataChangeTest': {
+                  'fullScopedAndLegacyKeyLifecycleSnapshotsAndCookieReadsKeepTheStoredKeyBoundary',
                   'freshNativeStackAndKeyChecksProtectTheSparsePutAndPrivateParentRead',
                   'loadBalancerLifecyclePlansKeepHumanApprovalConfigurationCasBoundKeyAndOneDispatch',
                   'loadBalancerLifecycleReceiptRequiresNativeReadinessStoppedInstancesAndEveryProtectedConfiguration',

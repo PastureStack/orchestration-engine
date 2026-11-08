@@ -1198,11 +1198,17 @@ public class AiResourceChangeDomain extends AbstractJooqDao {
                 }
             }
         }
-        if (AiCookieLifecycleWitness.supports(descriptor)) {
-            Map<String, Object> identity = copyMap(plan.get("cookieLifecycleIdentity"));
-            if (plan.get("snapshot") instanceof Map<?, ?> snapshot)
-                identity = copyMap(copyMap(snapshot.get(AiCookieLifecycleWitness.SNAPSHOT)).get("root"));
-            if (!processObserver.cookieWitness.identityMatches(identity, target)) throw error(409, "ResourceChangePlanStale");
+        if (AiCookieLifecycleWitness.supports(descriptor) && !(plan.get("credentialId") instanceof Number)
+                && (plan.containsKey("cookieLifecycleIdentity") || plan.get("snapshot") instanceof Map<?, ?> values
+                    && values.containsKey(AiCookieLifecycleWitness.SNAPSHOT))) {
+            Object privateIdentity = plan.get("cookieLifecycleIdentity");
+            if (plan.get("snapshot") instanceof Map<?, ?> snapshot) {
+                if (!(snapshot.get(AiCookieLifecycleWitness.SNAPSHOT) instanceof Map<?, ?> witness))
+                    throw error(409, "ResourceChangePlanStale");
+                privateIdentity = witness.get("root");
+            }
+            if (!(privateIdentity instanceof Map<?, ?> identity) || identity.isEmpty()
+                    || !processObserver.cookieWitness.identityMatches(copyMap(identity), target)) throw error(409, "ResourceChangePlanStale");
         }
         if (AiServiceUpgradeLifecycleChange.supports(descriptor)) {
             Map<String, Object> identity = copyMap(plan.get("lifecycleIdentity"));

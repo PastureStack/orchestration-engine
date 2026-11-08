@@ -398,6 +398,42 @@ public class AiLoadBalancerMetadataChangeTest {
         });
     }
 
+    @Test public void fullScopedAndLegacyKeyLifecycleSnapshotsAndCookieReadsKeepTheStoredKeyBoundary() throws Exception {
+        enabled(() -> {
+            var snapshot = AiResourceChangePlanService.class.getDeclaredMethod("targetSnapshot", ApiRequest.class,
+                    AiResourceChangeDescriptor.class, Object.class, Map.class); snapshot.setAccessible(true);
+            var erase = AiResourceChangePlanService.class.getDeclaredMethod("eraseSnapshot", Map.class); erase.setAccessible(true);
+            for (String mode : List.of("full", "scoped", "legacy")) {
+                var f = new DomainFixture();
+                ApiKeyPolicy policy = "scoped".equals(mode) ? new ApiKeyPolicy(ApiKeyPolicy.Mode.CUSTOM, ApiKeyPolicy.Effect.DENY, null,
+                        List.of(new ApiKeyPolicy.Rule("own-lb", ApiKeyPolicy.Effect.ALLOW, ApiKeyPolicy.Scope.resource("service", "1s7"),
+                                Set.of("read", "update")), new ApiKeyPolicy.Rule("own-parent", ApiKeyPolicy.Effect.ALLOW,
+                                        ApiKeyPolicy.Scope.resource("stack", "1st3"), Set.of("read"))), ApiKeyPolicy.Purpose.AI_BRIDGE) : full();
+                realKey(f, policy);
+                var verified = ApiKeyCredentialContext.get(f.request);
+                ApiKeyCredentialContext.attach(f.request, new ApiKeyCredentialContext(verified.credentialId(), verified.principalAccountId(),
+                        "scoped".equals(mode) ? "apiKeyRestricted" : "apiKey", "legacy".equals(mode) ? 0 : verified.revision(),
+                        "legacy".equals(mode) ? null : policy));
+                var boundKey = ApiKeyCredentialContext.get(f.request); f.domain.processObserver = null;
+                var service = new AiResourceChangePlanService(); service.domain = f.domain;
+                var descriptor = AiResourceChangeDescriptor.require("loadBalancerService", "start");
+                var before = (Map<String, Object>) snapshot.invoke(service, f.request, descriptor, f.row, Map.of());
+                assertEquals(mode, f.domain.snapshot(f.row), before); assertFalse(before.containsKey(AiCookieLifecycleWitness.SNAPSHOT));
+                var plan = new LinkedHashMap<String, Object>(Map.of("resourceType", "loadBalancerService", "operation", "start",
+                        "status", "accepted", "resourceId", "1s7", "internalResourceId", 7L, "snapshot", before,
+                        "referenceSnapshot", f.domain.loadBalancerMetadataContext(f.request, descriptor, "1s7")));
+                plan.put("credentialId", boundKey.credentialId()); plan.put("credentialRevision", boundKey.revision());
+                plan.put("credentialKind", boundKey.kind());
+                when(f.policy.authorizeObject(f.row)).thenReturn(f.row);
+                when(f.domain.objects.loadResource("loadBalancerService", 7L)).thenReturn(f.row);
+                assertSame(f.row, f.domain.receiptTarget(f.request, descriptor, plan));
+                var cookieRead = new ApiRequest(null, f.schemas); assertNull(ApiKeyCredentialContext.get(cookieRead));
+                assertSame(f.row, f.domain.receiptTarget(cookieRead, descriptor, plan));
+                erase.invoke(service, plan); assertFalse(plan.containsKey("cookieLifecycleIdentity")); assertNull(f.domain.processObserver);
+            }
+        });
+    }
+
     @Test public void loadBalancerLifecycleReceiptRequiresNativeReadinessStoppedInstancesAndEveryProtectedConfiguration() {
         var f = new DomainFixture(); f.domain.deploymentReadiness = mock(io.cattle.platform.servicediscovery.api.service.ServiceDeploymentReadiness.class);
         when(f.domain.deploymentReadiness.isReady(f.row)).thenReturn(true);

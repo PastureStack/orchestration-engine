@@ -10,7 +10,7 @@
   "sourceInputs": {
     "algorithm": "c03-source-inputs-v1",
     "count": 502,
-    "sha256": "79e369151a0ac278b4fce79154346784325414bbd33f75e61066ce1c84d0e884",
+    "sha256": "89df01043daf2dab7dcc9cc41fa1789b6a2af920825e84f4a62656be7d370afb",
     "anchors": [
       "AbstractObjectManager.java",
       "AbstractSchemaFactory.java",
@@ -353,12 +353,12 @@
       {
         "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiResourceChangeDomain.java",
         "before": "c46a34f3b6ed781ffbe3c3d7cc9b8a55b6980123565b2d2d0483764ab17ea57a",
-        "after": "79e8c1332e6353031b4a046c31873836bccae2ea6dc1b0ff3b48fe3399cc5ca8"
+        "after": "8f43371d4d9cd631be84754d2b1e160c04c70233c6d2357c5bafb71362853bac"
       },
       {
         "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiResourceChangePlanService.java",
         "before": "a0a9fc9393a24c1cced672287fb19e35b439b1ace304144d654702761510dedd",
-        "after": "9db9d7e96367f5de7263aa497c001950ef4b939be7efdd04901428b0d303c49c"
+        "after": "af662d47b50d523f1e8bec9b5ea3fe819886ea3d3d7b30654d65f2ec97ce8759"
       },
       {
         "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiResourceChangePlanStore.java",
@@ -374,7 +374,7 @@
     "roleFieldDelta": [],
     "typedBaseSchemaDelta": {},
     "reviewManifest": "scripts/api-key-operation-review-0.183.388.json",
-    "reviewManifestSha256": "4c6607772ea9389563731c807ea3ecad40010b8305e894f987d90e3a3065a4ac",
+    "reviewManifestSha256": "9202d3270669ec8436621e84322177cbb71d48e6cad560b98c4f6637c9b7f7bb",
     "cookieLifecycleAllWitness": {
       "scope": "SOURCE_ONLY_CURRENT_ORIGINAL_CI_AND_NATIVE_PENDING",
       "intermediateProducer": "c6505dc0337154b30a19cfe35436ed5260e7291e",
@@ -488,6 +488,53 @@
       "originalCi": null,
       "compiledProof": null,
       "nativePass": false
+    },
+    "cookieKeyScopeCompatibility": {
+      "scope": "SOURCE_ONLY_NEW_ORIGINAL_CI_AND_NATIVE_PENDING",
+      "intermediateProducer": "da6dd0cd7b7a003c43d808b65e539f8779703307",
+      "intermediateTree": "ac666d739e5bcb623f783b432c811e7bce95451d",
+      "failedSecurityRun": 42448564589,
+      "classification": "production Cookie versus stored Key scope regression",
+      "productPatchSha256": "a7297059d6c5885f34f896c67be1fb3544b877823d0135afe8877f81ea0598a2",
+      "sourceFreezeSha256": "f3f5ce3fa70b52cf783400e55151142c624678a1050e2400afb7d2a98c0f735c",
+      "newMethods": [
+        [
+          "io.cattle.platform.iaas.api.auth.change.AiLoadBalancerMetadataChangeTest",
+          "fullScopedAndLegacyKeyLifecycleSnapshotsAndCookieReadsKeepTheStoredKeyBoundary"
+        ]
+      ],
+      "preservedIntermediateRequired": 491,
+      "requiredTotal": 492,
+      "sourceInputs": 502,
+      "sourceFingerprint": "89df01043daf2dab7dcc9cc41fa1789b6a2af920825e84f4a62656be7d370afb",
+      "sourceDelta": [
+        {
+          "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiResourceChangeDomain.java",
+          "before": "79e8c1332e6353031b4a046c31873836bccae2ea6dc1b0ff3b48fe3399cc5ca8",
+          "after": "8f43371d4d9cd631be84754d2b1e160c04c70233c6d2357c5bafb71362853bac"
+        },
+        {
+          "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiResourceChangePlanService.java",
+          "before": "9db9d7e96367f5de7263aa497c001950ef4b939be7efdd04901428b0d303c49c",
+          "after": "af662d47b50d523f1e8bec9b5ea3fe819886ea3d3d7b30654d65f2ec97ce8759"
+        }
+      ],
+      "snapshotOwner": "current verified ApiKeyCredentialContext",
+      "receiptOwner": "persisted credentialId binding",
+      "legacyReceiptReadIsNotCompletionProof": true,
+      "malformedDeclaredCookieMarkerDenied": true,
+      "roleFieldDelta": [],
+      "typedSchemaDelta": {},
+      "newProducer": null,
+      "newCi": null,
+      "compiledProof": null,
+      "nativePass": false,
+      "testShapeCorrection": {
+        "patchSha256": "3236ee05e07952dee48d31383756b8563f183017a6d46bbdeae1868efc20b524",
+        "sourceFreezeSha256": "4b0e080b5cb9a7f0703bbc3412dc747d3c4558b7b0119e681de9b22c5fc4e813",
+        "afterTestSha256": "5f9b55d9c3bac17b1696009a904a4c1096ec193b3c4c0767e6df1a9ade66c27b",
+        "scope": "legacy apiKey/policyNull/revision0 snapshot and stored-Key receipt branch only; not full authorization matrix"
+      }
     },
     "previous": {
     "version": "unreleased-387-host-port-driver",
