@@ -61,7 +61,8 @@ public class AiServiceUpgradePlanService extends AbstractJooqDao {
     public static final String PLAN_ATTRIBUTE = "ai.service.upgrade.plan";
     public static final String SNAPSHOT_ATTRIBUTE = "ai.service.upgrade.snapshot";
     static final String ORIGINAL_PREVIEW_REJECTED = AiServiceUpgradePlanService.class.getName() + ".originalPreviewRejected";
-    private static final Set<String> PREVIEW_INPUTS = Set.of("serviceId", "image", "type", "startFirst", "batchSize", "intervalMillis", "ports", "healthCheck");
+    private static final Set<String> PREVIEW_INPUTS = Set.of("serviceId", "image", "type", "startFirst", "batchSize", "intervalMillis",
+            "ports", "healthCheck", "command", "entryPoint");
     // JSON/JavaScript's exact integer boundary, not a native product maximum.
     private static final long MAX_SAFE_INTEGER = 9007199254740991L;
     @Inject AiServiceUpgradePlanStore store;
@@ -354,12 +355,15 @@ public class AiServiceUpgradePlanService extends AbstractJooqDao {
             if (input.containsKey("ports")) changes.put("ports", AiServiceCreateChange.ports(input.get("ports")));
             if (input.containsKey("healthCheck")) changes.put("healthCheck", input.get("healthCheck") == null ? null
                     : AiServiceCreateChange.healthCheckChanges(input.get("healthCheck")));
+            for (String field : List.of("command", "entryPoint"))
+                if (input.containsKey(field)) changes.put(field, startupArguments(input.get(field)));
         } catch (ClientVisibleException | IllegalArgumentException invalid) { throw error(422, "UpgradeInputInvalid"); }
         return changes;
     }
 
     private static Object configurationValue(String field, Object value) {
         try {
+            if (Set.of("command", "entryPoint").contains(field)) return startupArguments(value);
             return "ports".equals(field) ? value == null ? List.of() : AiServiceCreateChange.ports(value)
                     : AiServiceCreateChange.canonicalHealth(value);
         } catch (ClientVisibleException | IllegalArgumentException unsupported) {
@@ -367,16 +371,29 @@ public class AiServiceUpgradePlanService extends AbstractJooqDao {
         }
     }
 
+    private static List<String> startupArguments(Object value) {
+        if (value == null) return null;
+        if (!(value instanceof List<?> values) || values.size() > 64) throw new IllegalArgumentException();
+        List<String> result = new ArrayList<>(); int length = 0;
+        for (Object item : values) {
+            if (!(item instanceof String text) || text.length() > 4096 || text.indexOf(0) >= 0) throw new IllegalArgumentException();
+            length += text.length();
+            if (length > 16384) throw new IllegalArgumentException();
+            result.add(text);
+        }
+        return List.copyOf(result);
+    }
+
     private static Map<String, Object> effectiveConfiguration(Map<String, Object> plan) {
         if (!plan.containsKey("launchConfigChanges")) return Map.of();
         if (!(plan.get("launchConfigChanges") instanceof Map<?, ?> changes) || changes.isEmpty()
-                || !Set.of("ports", "healthCheck").containsAll(changes.keySet())) throw error(422, "UpgradeInputInvalid");
+                || !Set.of("ports", "healthCheck", "command", "entryPoint").containsAll(changes.keySet())) throw error(422, "UpgradeInputInvalid");
         return configurationValues(changes);
     }
 
     private List<Map<String, Object>> configurationReview(Map<String, Object> primary, Map<String, Object> changes) {
         List<Map<String, Object>> result = new ArrayList<>();
-        for (String field : List.of("ports", "healthCheck")) {
+        for (String field : List.of("ports", "healthCheck", "command", "entryPoint")) {
             if (!changes.containsKey(field)) continue;
             Map<String, Object> row = new LinkedHashMap<>(); row.put("field", field);
             try {
