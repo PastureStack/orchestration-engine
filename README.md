@@ -8,45 +8,20 @@ Rancher 1.6 ecosystem. It is not affiliated with Rancher Labs or SUSE.
 This fork of [`rancher/cattle`](https://github.com/rancher/cattle) preserves
 upstream history, authorship, licenses, and dependency notices.
 
-## Current source candidate
-
-Engine **0.183.390** is not yet published. It extends reviewed Service upgrades
-with primary startup arguments through the existing native owner.
-Matching Web Console **1.6.231** / Bridge
-**0.2.33**, normal release checks and affected runtime acceptance are required.
-See the [candidate contract](docs/releases/orchestration-engine-0.183.390.md).
-
 ## Current component
 
-[Engine **0.183.389**](https://github.com/PastureStack/orchestration-engine/releases/tag/v0.183.389)
-is published. It adds human-reviewed
-Stack finish-upgrade, cancel-upgrade and rollback plans using the existing
-native Stack and Service owners. Rollback restores only currently eligible
-services; finished services and newly introduced active/inactive services remain.
-It does not delete added services or recreate removed services. Cancellation is
-a parent checkpoint rather than proof that child work has finished.
+[Engine **0.183.390**](https://github.com/PastureStack/orchestration-engine/releases/tag/v0.183.390)
+is published for matching Web Console **1.6.231** / Bridge **0.2.33**.
+Human-reviewed Service upgrades accept primary `command` and `entryPoint`
+arrays, preserving omission, `null` and `[]` as distinct native inputs.
+Exact configuration CAS, current role/Key ceilings, native validation and human
+confirmation remain required. See the [release note](docs/releases/orchestration-engine-0.183.390.md)
+for the explicit plan-input metadata additions and verified component evidence.
 
-The native Stack filter no longer prewrites every child's previous configuration;
-the existing per-Service rollback owner performs each authorized restore.
-Catalog/system ordinary Stacks retain their native capabilities. Current roles,
-live Key policy, exact identities/configuration CAS and own-process completion
-remain required. A matching Web Console review and Compose rollback executor
-must be qualified together. Original CI, all twelve anonymous assets and native
-release attestation passed. Matching Server deployment and native business
-acceptance remain separate. See the [release note](docs/releases/orchestration-engine-0.183.389.md).
-
-Human-reviewed Host
-activation and deactivation through the existing native Host actions. Cookie-origin
-Host, Service, Container, registry, load-balancer, external/DNS service and Stack
-lifecycle completion requires its own durable native process evidence. Stack fanout
-and restart chains retain their actual native identities; original readiness,
-instance retirement and every domain terminal predicate remain required.
-The framework insertion hook records correlation only; native authorization stays
-with its existing owner. Full and legacy clients need no new header.
-
-Deploy through the [Server installation guide](https://github.com/PastureStack/server#quick-start)
-using a qualified matching assembly. Matching Web Console support is required;
-component publication does not update an existing Server deployment.
+Install a qualified matching assembly through the
+[Server installation guide](https://github.com/PastureStack/server#quick-start).
+Component publication does not update a running Server. Supported AI workflows
+remain partial; deployment and runtime status are tracked in the Server documentation.
 
 ## Optional AI resource workflows
 
