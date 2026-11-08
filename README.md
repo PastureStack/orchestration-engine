@@ -10,27 +10,19 @@ upstream history, authorship, licenses, and dependency notices.
 
 ## Current component
 
-[Engine **0.183.390**](https://github.com/PastureStack/orchestration-engine/releases/tag/v0.183.390)
-is published for matching Web Console **1.6.231** / Bridge **0.2.33**.
-Human-reviewed Service upgrades accept primary `command` and `entryPoint`
-arrays, preserving omission, `null` and `[]` as distinct native inputs.
-Exact configuration CAS, current role/Key ceilings, native validation and human
-confirmation remain required. See the [release note](docs/releases/orchestration-engine-0.183.390.md)
-for the explicit plan-input metadata additions and verified component evidence.
+[Engine **0.183.391**](https://github.com/PastureStack/orchestration-engine/releases/tag/v0.183.391)
+is published for matching Web Console **1.6.232** / Bridge **0.2.34**.
+Human-reviewed removal of an inactive Registry uses its existing native owner,
+with the complete non-sensitive credential set rechecked under the shared
+parent/child lock. Credential values remain private. A scoped AI Bridge can
+resolve only its parent environment's identity through a readable Stack or
+Service; this grants no ordinary Project read or business access.
 
-## Next source candidate
-
-Engine **0.183.391** is a source candidate, not a published release. It adds
-human-reviewed removal of an inactive Registry through the existing native
-StoragePool delete owner. The complete non-sensitive credential set is captured
-and rechecked; credential values remain private. Native parent/child writers use
-the same Registry lock through transaction completion. Current roles, live Key
-policy, Full/legacy native behavior and one-time human confirmation remain
-required. An AI-purpose scoped Bridge may resolve only the four-field parent
-environment identity through an authorized child; this does not grant ordinary
-Project reads or business access. Matching Web Console **1.6.232** / Bridge **0.2.34**, original CI,
-compiled qualification, publication and affected native acceptance are pending.
-See the [candidate note](docs/releases/orchestration-engine-0.183.391.md).
+Current role/Key ceilings, Full/legacy native behavior, configuration CAS and
+human confirmation remain required. Reviewed Service upgrades retain distinct
+omitted, `null` and `[]` startup arguments. See the
+[release note](docs/releases/orchestration-engine-0.183.391.md) for verified
+component evidence and the remaining native-acceptance boundary.
 
 Install a qualified matching assembly through the
 [Server installation guide](https://github.com/PastureStack/server#quick-start).
@@ -76,9 +68,11 @@ with unknown completeness; ordinary detail reads do not query the graph.
 Ordinary-Service `update_links` replaces the complete plain or named-link set,
 including an explicit empty set to clear links. Native target/name pair identity
 is preserved. Port-qualified, remote or incomplete links remain outside this
-workflow. Registry plans activate or deactivate an
-existing Registry through its native StoragePool owner; private configuration
-stays server-side, and credential editing remains a separate human workflow.
+workflow. Registry plans separately activate, deactivate or remove an existing
+Registry through its native StoragePool owner. Removal requires an inactive
+Registry and review of its linked-credential count; an active Registry needs a
+separate approved stop first. Private configuration stays server-side, and
+credential editing remains a separate human workflow.
 Read-only process views use the native global owner and fixed diagnostic enums;
 Project ownership grants no global process access. Empty or unreadable results
 do not establish completeness or safe resource removal.
