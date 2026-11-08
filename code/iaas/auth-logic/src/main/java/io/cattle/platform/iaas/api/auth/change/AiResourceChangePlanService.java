@@ -26,6 +26,7 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import java.util.function.Supplier;
+import io.cattle.platform.util.type.CollectionUtils;
 
 /** Separate typed-resource workflow: persisted approval, CAS, dispatch claim and receipt. */
 public class AiResourceChangePlanService {
@@ -38,7 +39,8 @@ public class AiResourceChangePlanService {
     public Map<String, Object> preview(ApiRequest request) {
         String id = "aichange-" + UUID.randomUUID();
         Map<String, Object> denialReceipt = new LinkedHashMap<>(); denialReceipt.put("id", id);
-        return audited(request, "preview", denialReceipt, () -> {
+        return audited(request, "preview", denialReceipt, () -> portLocked(request,
+                CollectionUtils.toMap(request.getRequestObject()), () -> {
             requireEnabled();
             Map<String, Object> input = input(request, Set.of("type", "resourceType", "operation", "resourceId", "parameters"));
             if (!(input.get("resourceType") instanceof String) || !(input.get("operation") instanceof String)
@@ -53,6 +55,7 @@ public class AiResourceChangePlanService {
             Policy actor = domain.actor(request);
             if (target != null) {
                 Object visible = visibleTarget(request, descriptor, resourceId, target, parameters);
+                if (AiContainerNetworkChange.supports(descriptor)) domain.verifyContainerNetworkSelection(request, descriptor, target, parameters);
                 // Only a completed current native/Key read may identify a denied target.
                 // Raw input and a database lock alone do not attest visibility.
                 denialReceipt.put("resourceType", descriptor.resourceType());
@@ -99,7 +102,7 @@ public class AiResourceChangePlanService {
                 store.insert(plan); return output(plan);
             });
             return descriptor.changesArchive() ? domain.withArchiveChange(descriptor, target, save) : save.get();
-        });
+        }));
     }
 
     public Map<String, Object> get(String id, ApiRequest request) {
@@ -148,7 +151,8 @@ public class AiResourceChangePlanService {
 
     public Map<String, Object> action(String id, ApiRequest request) {
         String action = request.getAction();
-        return audited(request, action, id, () -> locked(validId(id), () -> {
+        return audited(request, action, id, () -> portLocked(request,
+                "cancel".equals(action) ? Map.of() : store.load(validId(id)), () -> locked(validId(id), () -> {
             if (!Set.of("confirm", "apply", "cancel").contains(action == null ? "" : action)) throw error(422, "ResourceChangeInputInvalid");
             if (!"apply".equals(action)) human(request);
             Map<String, Object> actionInput = input(request, Set.of("type", "action"));
@@ -238,7 +242,13 @@ public class AiResourceChangePlanService {
                 };
                 return descriptor.changesArchive() ? domain.withArchiveChange(descriptor, target, change) : change.get();
             });
-        }));
+        })));
+    }
+
+    private <T> T portLocked(ApiRequest request, Map<String, Object> projection, Supplier<T> action) {
+        if (projection == null || !"port".equals(projection.get("resourceType")) || !"update_public_port".equals(projection.get("operation"))
+                || projection.containsKey("status") && !"preview".equals(projection.get("status"))) return action.get();
+        return domain.withContainerPortWrite(request, projection, action);
     }
 
     private <T> T withServiceLinksLock(AiResourceChangeDescriptor descriptor, Map<String, Object> plan, Supplier<T> action) {
@@ -255,6 +265,7 @@ public class AiResourceChangePlanService {
 
     private Map<String, Object> targetSnapshot(ApiRequest request, AiResourceChangeDescriptor descriptor, Object target,
             Map<String, Object> parameters) {
+        if (AiContainerNetworkChange.supports(descriptor)) return domain.containerNetworkSnapshot(request, descriptor, target, parameters, true);
         if (AiStackGroupChange.supports(descriptor, parameters)) return domain.stackGroupSnapshot(request, target);
         return AiAliasServiceChange.ordinaryLinks(descriptor) ? domain.serviceLinksSnapshot(target)
                 : AiServiceUpgradeLifecycleChange.supports(descriptor) ? domain.upgradeLifecycleSnapshot(target)
@@ -264,6 +275,10 @@ public class AiResourceChangePlanService {
     private Object visibleTarget(ApiRequest request, AiResourceChangeDescriptor descriptor, String id, Object lockedTarget,
             Map<String, Object> parameters) {
         Object visible = domain.visible(request, descriptor, id);
+        if (AiContainerNetworkChange.supports(descriptor)
+                && !domain.containerNetworkSnapshot(request, descriptor, lockedTarget, parameters, true)
+                    .equals(domain.containerNetworkSnapshot(request, descriptor, visible, parameters, true)))
+            throw error(409, "ResourceChangePlanStale");
         if (AiStackGroupChange.supports(descriptor, parameters)
                 && !domain.stackGroupSnapshot(request, lockedTarget).equals(domain.stackGroupSnapshot(request, visible)))
             throw error(409, "ResourceChangePlanStale");
@@ -416,6 +431,8 @@ public class AiResourceChangePlanService {
         } else plan.remove("referenceSnapshot");
         if (plan.get("snapshot") instanceof Map<?, ?> && AiStackGroupChange.supports(descriptor(plan), map(plan.get("parameters"))))
             plan.put("stackGroupIdentity", AiStackGroupChange.identity(map(plan.get("snapshot"))));
+        if (AiContainerNetworkChange.supports(descriptor(plan)) && plan.get("snapshot") instanceof Map<?, ?>)
+            plan.put("containerNetworkIdentity", AiContainerNetworkChange.identity(map(plan.get("snapshot"))));
         plan.remove("snapshot"); plan.remove("parentSnapshot"); plan.remove("body");
         plan.remove("retirementSnapshot");
     }

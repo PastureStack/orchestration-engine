@@ -21,7 +21,7 @@ public final class ApiKeyQueryScopes {
     public static Condition condition(ApiKeyPolicy policy, String type, Table<?> table,
             String operation, BiFunction<String, String, Long> idParser) {
         String resourceType = canonical(type);
-        boolean instanceLink = "instanceLink".equals(resourceType);
+        boolean instanceLink = Set.of("instanceLink", "port").contains(resourceType);
         boolean supported = instanceLink || STACK_TYPES.contains(resourceType) || ApiKeyTargetResolver.PROJECT_ONLY.contains(type)
                 || ApiKeyTargetResolver.PLATFORM.contains(type) || resourceType.equals("project");
         Field<Long> id = table.field("id", Long.class);
@@ -69,9 +69,8 @@ public final class ApiKeyQueryScopes {
 
     private record Ancestry(Field<Long> stack, Condition valid) { }
 
-    /** Same persisted source/owner/Stack guard as the direct Link adapter. Reuse
-     * container ancestry, including managed and exact upgrade maps; the Link's
-     * target_instance_id is not its parent and remains an input-reference check.
+    /** Only the two registered native Instance-owned child types reuse source ancestry.
+     * A Link destination is never its parent; writable references still require their own read.
      */
     private static Ancestry instanceLinkAncestry(Table<?> table, Field<Long> account) {
         Field<Long> instanceId = table.field("instance_id", Long.class);

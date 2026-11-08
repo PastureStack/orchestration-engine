@@ -237,6 +237,77 @@ public class AiHostMetadataChangeTest {
         }
     }
 
+    @Test public void explicitHostResetUsesNativeEmptyNameAndCurrentRoleKeyCeilings() throws Exception {
+        var descriptor = descriptor(); Map<String, Object> intent = Map.of("resetName", true);
+        assertEquals(intent, descriptor.parameters(intent)); assertEquals(Map.of("name", ""), descriptor.body(intent));
+        for (Object bad : List.of(false, "true", 1))
+            assertThrows(ClientVisibleException.class, () -> descriptor.parameters(Map.of("resetName", bad)));
+        var nullFlag = new LinkedHashMap<String, Object>(); nullFlag.put("resetName", null);
+        assertThrows(ClientVisibleException.class, () -> descriptor.parameters(nullFlag));
+        assertThrows(ClientVisibleException.class, () -> descriptor.parameters(Map.of("resetName", true, "name", "another")));
+        assertThrows(ClientVisibleException.class, () -> descriptor.parameters(Map.of("name", "")));
+        assertThrows(ClientVisibleException.class, () -> AiResourceChangeDescriptor.require("service", "update_metadata").parameters(intent));
+        assertEquals("", io.github.ibuildthecloud.gdapi.validation.ValidationHandler.convertGenericType("name", "",
+                io.github.ibuildthecloud.gdapi.model.FieldType.STRING));
+        Object previous = ArchaiusUtil.getConfiguration().getProperty("api.ai.bridge.enabled");
+        try {
+            ArchaiusUtil.getConfiguration().setProperty("api.ai.bridge.enabled", true);
+            var f = fixture(); var row = host(); var manager = f.domain.managers.getResourceManagerByType("host");
+            nativeKeyAccess(f, new ApiKeyPolicy(ApiKeyPolicy.Mode.FULL, ApiKeyPolicy.Effect.ALLOW, null,
+                    List.of(), ApiKeyPolicy.Purpose.AI_BRIDGE));
+            when(manager.getById(eq("host"), eq("1h7"), any())).thenReturn(row);
+            when(f.domain.objects.loadResource("host", 7L)).thenReturn(row); when(f.policy.authorizeObject(row)).thenReturn(row);
+            when(manager.update(eq("host"), eq("1h7"), any())).thenAnswer(call -> {
+                ApiRequest request = call.getArgument(2); assertEquals(Map.of("name", ""), request.getRequestObject());
+                assertEquals("PUT", request.getMethod()); assertNull(request.getAction()); row.setName(""); return row;
+            });
+            f.name.setUpdate(false);
+            assertEquals(403, assertThrows(ClientVisibleException.class,
+                    () -> f.domain.prepare(f.request, descriptor, "1h7", intent)).getStatus());
+            verify(manager, never()).update(anyString(), anyString(), any()); f.name.setUpdate(true);
+            assertEquals(Map.of("name", ""), f.domain.prepare(f.request, descriptor, "1h7", intent));
+            assertSame(row, f.domain.dispatch(f.request, descriptor, "1h7", intent, "own-reset"));
+            assertEquals("node.example.test", AiHostMetadataChange.displayName(row));
+            nativeKeyAccess(f, new ApiKeyPolicy(ApiKeyPolicy.Mode.CUSTOM, ApiKeyPolicy.Effect.DENY, null,
+                    List.of(new ApiKeyPolicy.Rule("read", ApiKeyPolicy.Effect.ALLOW,
+                            ApiKeyPolicy.Scope.project("1a77"), Set.of("read"))), ApiKeyPolicy.Purpose.AI_BRIDGE));
+            assertEquals(403, assertThrows(ClientVisibleException.class,
+                    () -> f.domain.prepare(f.request, descriptor, "1h7", intent)).getStatus());
+            verify(manager, times(1)).update(anyString(), anyString(), any());
+        } finally {
+            if (previous == null) ArchaiusUtil.getConfiguration().clearProperty("api.ai.bridge.enabled");
+            else ArchaiusUtil.getConfiguration().setProperty("api.ai.bridge.enabled", previous);
+        }
+    }
+
+    @Test public void resetPreviewAndTerminalResultPinTheOriginalHostnameAndHumanPlan() {
+        var domain = new AiResourceChangeDomain(); domain.json = new JacksonJsonMapper(); var row = host();
+        Map<String, Object> intent = Map.of("resetName", true), before = domain.snapshot(row);
+        var changes = domain.changes(descriptor(), row, intent);
+        assertEquals("name", changes.get(0).get("field")); assertEquals("", changes.get(0).get("after"));
+        assertEquals("hostname", changes.get(1).get("field")); assertEquals("node.example.test", changes.get(1).get("after"));
+        assertEquals(changes.get(1).get("before"), changes.get(1).get("after"));
+        assertFalse(domain.complete(descriptor(), row, intent, before)); row.setName("");
+        assertTrue(domain.complete(descriptor(), row, intent, before));
+        for (Object invalidId : List.of(7.5, Double.NaN, "7", 0, -1)) {
+            var invalidBefore = new LinkedHashMap<>(before); invalidBefore.put("id", invalidId);
+            assertFalse(domain.complete(descriptor(), row, intent, invalidBefore));
+        }
+        DataAccessor.fields(row).withKey("hostname").set("changed.example.test");
+        assertFalse(domain.complete(descriptor(), row, intent, before));
+        DataAccessor.fields(row).withKey("hostname").set("node.example.test"); row.setUuid("changed");
+        assertFalse(domain.complete(descriptor(), row, intent, before)); row.setUuid("host-uuid");
+        var f = preview(intent); assertEquals(0, f.dispatched);
+        denied("ResourceChangeNeedsConfirmation", () -> f.apply(true));
+        var current = (HostRecord) f.domain.visible(f.request(null, true), descriptor(), "1h7");
+        DataAccessor.fields(current).withKey("hostname").set("changed.example.test");
+        denied("ResourceChangePlanStale", f::confirm); assertEquals(0, f.claims);
+        DataAccessor.fields(current).withKey("hostname").set("node.example.test"); f.confirm();
+        assertEquals("accepted", f.apply(true).get("status")); assertEquals(1, f.dispatched);
+        f.complete = true; assertEquals("succeeded", f.service.get(f.id, f.request(null, true)).get("status"));
+        f.apply(true); assertEquals(1, f.dispatched); assertEquals(1, f.claims);
+    }
+
     private static AiResourceChangeDescriptor descriptor() { return AiResourceChangeDescriptor.require("host", "update_metadata"); }
 
     private static HostRecord host() {
@@ -265,6 +336,10 @@ public class AiHostMetadataChangeTest {
     }
 
     private static AiResourceChangePlanServiceTest.Fixture preview() {
+        return preview(Map.of("description", "new private description"));
+    }
+
+    private static AiResourceChangePlanServiceTest.Fixture preview(Map<String, Object> parameters) {
         var f = new AiResourceChangePlanServiceTest.Fixture(); var row = host();
         var snapshotOwner = new AiResourceChangeDomain(); snapshotOwner.json = f.json;
         when(f.domain.visible(any(), any(), anyString())).thenReturn(row);
@@ -272,11 +347,14 @@ public class AiHostMetadataChangeTest {
         when(f.domain.receiptTarget(any(), any(), anyMap())).thenReturn(row);
         when(f.domain.snapshot(any())).thenAnswer(call -> snapshotOwner.snapshot(call.getArgument(0)));
         doAnswer(call -> {
-            f.dispatched++; row.setDescription("new private description"); return row;
+            f.dispatched++;
+            if (Boolean.TRUE.equals(parameters.get("resetName"))) row.setName("");
+            else row.setDescription("new private description");
+            return row;
         }).when(f.domain).dispatch(any(), any(), nullable(String.class), anyMap(), anyString());
         ApiRequest request = f.request(null, true); request.setId(null);
         request.setRequestObject(Map.of("resourceType", "host", "operation", "update_metadata", "resourceId", "1h7",
-                "parameters", Map.of("description", "new private description")));
+                "parameters", parameters));
         var plan = f.service.preview(request); f.id = (String) plan.get("id"); assertEquals("pending", plan.get("confirmationState")); return f;
     }
 
