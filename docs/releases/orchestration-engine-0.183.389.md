@@ -1,6 +1,6 @@
-# Orchestration Engine 0.183.389 candidate
+# Orchestration Engine 0.183.389
 
-This candidate adds bounded Stack `finish_upgrade`, `cancel_upgrade` and
+This published component adds bounded Stack `finish_upgrade`, `cancel_upgrade` and
 `rollback` plans through the existing preview, human confirmation and native
 action flow. Native state gates, roles, live Key policy and upgrade ceilings
 remain authoritative. Catalog/system ordinary Stacks are included; separate
@@ -32,10 +32,12 @@ Source registration preserves all 492 published required identities and adds
 10 first-current required names: nine truly new tests and one existing test
 whose obsolete bulk-prewrite assertion is corrected and renamed, now mandatory.
 That rename does not add a JUnit test; the source method count has a net increase
-of nine. Original CI XML must contain every required identity. Actual CI totals,
-compiled classes/C03, source fingerprints, immutable release and matched
-Web Console/Compose qualification remain pending. No runtime or native PASS is
-claimed by this source candidate.
+of nine. Original CI verified all 502 required identities and 4,315 tests with
+zero errors, zero failures and one inherited skip. Compiled-class/C03 and source
+qualification passed, as did all twelve anonymous release assets and thirteen
+release-attestation subjects. Matching Web Console 1.6.230 / Bridge 0.2.32 and
+Compose 0.14.44 components are published and qualified. Matching Server runtime
+and native business acceptance remain pending.
 
 No dependency, role grant, serialized schema or native request header is added.
 Matching Server assembly/deployment and affected native business acceptance
