@@ -10,18 +10,19 @@ upstream history, authorship, licenses, and dependency notices.
 
 ## Current component
 
-Engine **0.183.387** is the next release candidate. It adds human-reviewed Host
-custom-name reset, public-port changes and Container link-target changes. Port
-updates share the native allocation and collision checks; existing clients may
-still submit ordinary PUT requests without a new conditional header. Typed plans
-require their exact captured state. Driver-service removal uses the existing
-asynchronous deactivate/remove chain when a child is still activating.
+Engine **0.183.388** is the next release candidate. It adds human-reviewed Host
+activation and deactivation through the existing native Host actions. Cookie-origin
+Host, Service, Container, registry, load-balancer, external/DNS service and Stack
+lifecycle completion requires its own durable native process evidence. Stack fanout
+and restart chains retain their actual native identities; original readiness,
+instance retirement and every domain terminal predicate remain required.
+The framework insertion hook records correlation only; native authorization stays
+with its existing owner. Full and legacy clients need no new header.
 
-Human review, native authorization, live Key policy and resource identity checks
-remain. Component CI, immutable publication and matching Server native acceptance
-are pending for this candidate. The published baseline is
-[0.183.386](https://github.com/PastureStack/orchestration-engine/releases/tag/v0.183.386).
-See the [candidate release note](docs/releases/orchestration-engine-0.183.387.md).
+Component CI, immutable publication and matching Server native acceptance are
+pending. The published baseline is
+[0.183.387](https://github.com/PastureStack/orchestration-engine/releases/tag/v0.183.387).
+See the [candidate release note](docs/releases/orchestration-engine-0.183.388.md).
 
 Deploy through the [Server installation guide](https://github.com/PastureStack/server#quick-start)
 using a qualified matching assembly. Matching Web Console support is required;

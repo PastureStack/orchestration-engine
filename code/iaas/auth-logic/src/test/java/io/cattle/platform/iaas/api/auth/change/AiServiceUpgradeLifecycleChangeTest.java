@@ -271,7 +271,8 @@ public class AiServiceUpgradeLifecycleChangeTest {
         process.setResourceType("service"); process.setResourceId("7"); process.setProcessName("service.finishupgrade");
         process.setPhase("DONE"); process.setResult("SUCCESS"); process.setExitReason("DONE"); process.setEndTime(new Date(1));
         List<ProcessInstanceRecord> rows = new ArrayList<>(); var domain = new AiResourceChangeDomain(); domain.json = json;
-        domain.targets = mock(ApiKeyTargetResolver.class);
+        domain.targets = mock(ApiKeyTargetResolver.class); domain.processObserver = mock(AiResourceChangeProcessObserver.class);
+        when(domain.processObserver.sessionProcessId(anyMap(), any())).thenReturn(null);
         when(domain.targets.parseScopeId("credential", "1c7")).thenReturn(7L);
         var connection = new MockConnection(context -> {
             assertTrue(context.sql().contains("process_name")); assertTrue(context.sql().toLowerCase().contains("fetch next"));
@@ -281,11 +282,9 @@ public class AiServiceUpgradeLifecycleChangeTest {
         });
         domain.setConfiguration(new DefaultConfiguration().set(connection).set(SQLDialect.H2));
         Map<String, Object> plan = new LinkedHashMap<>(Map.of("id", "aichange-owned", "operation", "finish_upgrade", "processBaseline", 10));
-        assertEquals("running", domain.upgradeLifecycleProcessOutcome(plan, target)); rows.add(process);
-        assertEquals("succeeded", domain.upgradeLifecycleProcessOutcome(plan, target));
-        process.setEndTime(null); assertEquals("running", domain.upgradeLifecycleProcessOutcome(plan, target)); process.setEndTime(new Date(1));
-        process.setResult("CANCELED"); assertEquals("failed", domain.upgradeLifecycleProcessOutcome(plan, target)); process.setResult("SUCCESS");
-        rows.add(process); assertEquals("unknown", domain.upgradeLifecycleProcessOutcome(plan, target)); rows.removeLast();
+        // Cookie cannot borrow a coincidental native terminal row without its durable creation witness.
+        assertEquals("unknown", domain.upgradeLifecycleProcessOutcome(plan, target)); rows.add(process);
+        assertEquals("unknown", domain.upgradeLifecycleProcessOutcome(plan, target));
         plan.putAll(Map.of("credentialId", 7, "actorId", 42, "credentialRevision", 3));
         assertEquals("unknown", domain.upgradeLifecycleProcessOutcome(plan, target));
         Map<String, Object> metadata = new LinkedHashMap<>(Map.ofEntries(Map.entry("requestId", "aichange-owned"), Map.entry("operation", "upgrade"),
@@ -293,6 +292,9 @@ public class AiServiceUpgradeLifecycleChangeTest {
                 Map.entry("requestCollection", false), Map.entry("preview", false), Map.entry("accountId", 77), Map.entry("principalAccountId", 42),
                 Map.entry("policyRevision", 3), Map.entry("keyId", "1c7")));
         process.setData(Map.of(ProcessAuthorization.DATA_KEY, metadata)); assertEquals("succeeded", domain.upgradeLifecycleProcessOutcome(plan, target));
+        process.setEndTime(null); assertEquals("running", domain.upgradeLifecycleProcessOutcome(plan, target)); process.setEndTime(new Date(1));
+        process.setResult("CANCELED"); assertEquals("failed", domain.upgradeLifecycleProcessOutcome(plan, target)); process.setResult("SUCCESS");
+        rows.add(process); assertEquals("unknown", domain.upgradeLifecycleProcessOutcome(plan, target)); rows.removeLast();
         for (String field : List.of("requestId", "policyRevision", "targetId", "requestAction", "preview")) {
             var changed = new LinkedHashMap<>(metadata); changed.put(field, "wrong"); process.setData(Map.of(ProcessAuthorization.DATA_KEY, changed));
             assertEquals(field, "unknown", domain.upgradeLifecycleProcessOutcome(plan, target));

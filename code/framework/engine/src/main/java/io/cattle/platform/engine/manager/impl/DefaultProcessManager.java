@@ -99,7 +99,7 @@ public class DefaultProcessManager implements ProcessManager, InitializationTask
             throw new ProcessNotFoundException("Failed to construct ProcessState for [" + record.getProcessName() + "]");
 
         if (record.getId() == null && (schedule || !EngineContext.hasParentProcess()))
-            record = processRecordDao.insert(record);
+            record = insertProcess(record);
 
         ProcessServiceContext context = new ProcessServiceContext(lockManager, eventService, this, exceptionHandler, changeMonitors);
         context.setAuthorizationHooks(authorizationHooks);
@@ -109,6 +109,16 @@ public class DefaultProcessManager implements ProcessManager, InitializationTask
             queue(process);
 
         return process;
+    }
+
+    /** The default chain is exactly the native insert; no request marker is an authorization input. */
+    protected ProcessRecord insertProcess(ProcessRecord record) {
+        java.util.function.Supplier<ProcessRecord> insert = () -> processRecordDao.insert(record);
+        for (ProcessAuthorizationHook hook : authorizationHooks) {
+            java.util.function.Supplier<ProcessRecord> next = insert;
+            insert = () -> hook.createProcess(record, next);
+        }
+        return insert.get();
     }
 
     @Override

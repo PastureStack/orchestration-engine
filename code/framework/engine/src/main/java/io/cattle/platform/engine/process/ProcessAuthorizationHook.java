@@ -5,6 +5,11 @@ import java.util.Map;
 
 /** Optional metadata bridge; the authoritative authorization lives in its implementation. */
 public interface ProcessAuthorizationHook {
+    /** Correlation only: implementations may atomically record a newly inserted process, never grant authorization. */
+    default io.cattle.platform.engine.manager.impl.ProcessRecord createProcess(LaunchConfiguration config,
+            java.util.function.Supplier<io.cattle.platform.engine.manager.impl.ProcessRecord> insert) { return insert.get(); }
+    /** Optional correlation producer, after caller fields were stripped; never an authorization grant. */
+    default void prepareProcess(LaunchConfiguration config) { }
     default boolean authorizesExecution() { return false; }
     default boolean recordsCompletion() { return false; }
     default Map<String, Object> capture(LaunchConfiguration config) { return Collections.emptyMap(); }

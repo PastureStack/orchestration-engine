@@ -149,6 +149,44 @@ public class AiRegistryLifecycleChangeTest {
             when(owner.authorizeObject(pool)).thenReturn(pool); when(schema.getResourceMethods()).thenReturn(List.of("GET"));
         }
         assertFalse(new AiResourceChangePlanService().output(plan).containsKey("registryIdentity"));
+        assertFalse(plan.containsKey("cookieLifecycleIdentity")); assertNull(domain.processObserver);
+        domain.objects = mock(io.cattle.platform.object.ObjectManager.class);
+        var project = new io.cattle.platform.core.model.tables.records.AccountRecord(); project.setId(5L); project.setKind("project");
+        project.setUuid("project-uuid"); when(domain.objects.loadResource(io.cattle.platform.core.model.Account.class, 5L)).thenReturn(project);
+        domain.processObserver = new AiResourceChangeProcessObserver(); domain.processObserver.objects = domain.objects;
+        domain.processObserver.json = domain.json; domain.processObserver.store = mock(AiResourceChangePlanStore.class);
+        var service = new AiResourceChangePlanService(); service.domain = domain;
+        service.store = mock(AiResourceChangePlanStore.class); service.clock = java.time.Clock.systemUTC();
+        var snapshot = AiResourceChangePlanService.class.getDeclaredMethod("targetSnapshot",
+                io.github.ibuildthecloud.gdapi.request.ApiRequest.class, AiResourceChangeDescriptor.class, Object.class, Map.class);
+        snapshot.setAccessible(true);
+        var cookieBefore = (Map<String, Object>) snapshot.invoke(service, request, descriptor, pool, Map.of());
+        assertTrue(cookieBefore.containsKey(AiCookieLifecycleWitness.SNAPSHOT));
+        var cookie = new LinkedHashMap<String, Object>(Map.of("resourceType", "registry", "operation", "start", "resourceId", "1sp3",
+                "internalResourceId", 3L, "status", "accepted", "snapshot", cookieBefore, "verifiedResult", false));
+        assertSame(pool, domain.receiptTarget(request, descriptor, cookie));
+        for (Object broken : java.util.Arrays.asList(null, domain.json.readValue("{\"root\":null}"), Map.of(),
+                Map.of("root", "invalid"), Map.of("root", Map.of()), "invalid")) {
+            var invalid = new LinkedHashMap<>(cookie); var brokenSnapshot = new LinkedHashMap<>(cookieBefore);
+            brokenSnapshot.put(AiCookieLifecycleWitness.SNAPSHOT, broken); invalid.put("snapshot", brokenSnapshot);
+            var rejected = assertThrows(ClientVisibleException.class, () -> domain.receiptTarget(request, descriptor, invalid));
+            assertEquals(409, rejected.getStatus()); assertEquals("ResourceChangePlanStale", rejected.getCode());
+            assertEquals(false, invalid.get("verifiedResult"));
+        }
+        erase.invoke(service, cookie); assertSame(pool, domain.receiptTarget(request, descriptor, cookie));
+        var replaced = new LinkedHashMap<>((Map<String, Object>) cookie.get("cookieLifecycleIdentity")); replaced.put("uuid", "replaced");
+        for (Object broken : java.util.Arrays.asList(null, "invalid", Map.of(), replaced)) {
+            var invalid = new LinkedHashMap<>(cookie); invalid.put("cookieLifecycleIdentity", broken);
+            assertEquals(409, assertThrows(ClientVisibleException.class,
+                    () -> domain.receiptTarget(request, descriptor, invalid)).getStatus());
+        }
+        cookie.remove("cookieLifecycleIdentity");
+        assertSame(pool, domain.receiptTarget(request, descriptor, cookie)); // A native read is not new completion proof.
+        assertEquals("unknown", domain.cookieLifecycleOutcome(cookie, pool));
+        var missing = new LinkedHashMap<>(cookie); missing.put("snapshot", domain.snapshot(pool));
+        missing.put("dispatchAcknowledged", true); missing.put("id", "own-cookie-plan"); missing.put("parameters", Map.of());
+        pool.setState("active"); assertTrue(domain.complete(descriptor, pool, Map.of(), (Map<String, Object>) missing.get("snapshot")));
+        service.observe(missing, request); assertEquals("unknown", missing.get("status")); assertEquals(false, missing.get("verifiedResult"));
         io.github.ibuildthecloud.gdapi.context.ApiContext.remove();
     }
 }

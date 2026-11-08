@@ -344,11 +344,13 @@ public class AiResourceChangePlanServiceTest {
 
     @Test public void ordinaryLinkConfirmationAndApplyCasIncludeSourceParentMapAndConsumedUuid() {
         for (String field : List.of("uuid", "linkStackUuid", "mapUuid", "consumedUuid")) {
-            Fixture f = new Fixture(); Map<String, Object> state = new LinkedHashMap<>(Map.of("uuid", "source", "linkStackUuid", "stack", "mapUuid", "map", "consumedUuid", "target"));
+            Fixture f = new Fixture(); Map<String, Object> state = new LinkedHashMap<>(Map.of("uuid", "source", "linkStackUuid", "stack", "mapUuid",
+                    "map", "consumedUuid", "target"));
             when(f.domain.serviceLinksSnapshot(any())).thenAnswer(call -> new LinkedHashMap<>(state));
             when(f.domain.aliasReferenceSnapshot(any(), any(), anyString(), anyMap())).thenReturn(Map.of("before", List.of(), "after", List.of()));
             ApiRequest request = f.request(null, false); request.setId(null);
-            request.setRequestObject(Map.of("resourceType", "service", "operation", "update_links", "resourceId", "1s7", "parameters", Map.of("serviceIds", List.of())));
+            request.setRequestObject(Map.of("resourceType", "service", "operation", "update_links", "resourceId", "1s7", "parameters",
+                    Map.of("serviceIds", List.of())));
             f.id = (String) f.service.preview(request).get("id");
             Object original = state.put(field, "replacement");
             assertCode(409, "ResourceChangePlanStale", f::confirm); assertEquals(0, f.claims);
@@ -445,6 +447,8 @@ public class AiResourceChangePlanServiceTest {
                         row.getDescription());
                 snapshot.put("state", row.getState()); snapshot.put("data", row.getData()); return snapshot;
             });
+            when(domain.cookieLifecycleSnapshot(any(), any())).thenAnswer(call -> domain.snapshot(call.getArgument(1)));
+            when(domain.cookieLifecycleOutcome(anyMap(), any())).thenAnswer(call -> complete ? "succeeded" : "running");
             when(domain.prepare(any(), any(), nullable(String.class), anyMap())).thenAnswer(call -> prepare(call.getArgument(3)));
             when(domain.prepare(any(), any(), nullable(String.class), anyMap(), anyMap())).thenAnswer(call -> prepare(call.getArgument(3)));
             when(domain.targetPath(any(), any(), any(), anyMap())).thenReturn("Default / probe");

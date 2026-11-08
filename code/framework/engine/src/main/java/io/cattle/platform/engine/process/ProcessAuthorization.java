@@ -13,6 +13,7 @@ import java.util.Objects;
 /** Reserved, immutable metadata persisted alongside the existing process data. */
 public final class ProcessAuthorization {
     public static final String DATA_KEY = "_apiKeyAudit";
+    public static final String COOKIE_LIFECYCLE_CORRELATION = "_aiResourceChangeCorrelation";
     public static final String COMPLETION_PENDING_KEY = "_apiKeyAuditCompletionPending";
     public static final String VERIFIED_CHILD_KEY = "_apiKeyVerifiedChild";
     public static final String CAPTURED_EXECUTION_KEY = "_apiKeyCapturedExecution";
@@ -66,6 +67,7 @@ public final class ProcessAuthorization {
         if (config.getData() != null) {
             data.putAll(config.getData());
         }
+        data.remove(COOKIE_LIFECYCLE_CORRELATION);
         data.remove(DATA_KEY);
         data.remove(COMPLETION_PENDING_KEY);
         data.remove(VERIFIED_CHILD_KEY);
@@ -117,6 +119,7 @@ public final class ProcessAuthorization {
             }
         }
         config.setData(data);
+        for (ProcessAuthorizationHook hook : hooks) hook.prepareProcess(config);
         config.setAuthorizationCaptured(true);
     }
 

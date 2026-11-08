@@ -220,6 +220,346 @@
     "defaultProcesses": "ebf41ab873c349656c307511712674e0db434a9c4986e08d03ec35d92bdcd6a7"
   },
   "currentSourceReview": {
+    "version": "unreleased-388-host-cookie-process-witness",
+    "status": "SOURCE_ONLY_NOT_ARTIFACT_OR_RUNTIME_ACCEPTANCE",
+    "producerCommit": null,
+    "sourceInputs": {
+      "algorithm": "c03-source-inputs-v1",
+      "count": 502,
+      "sha256": "89df01043daf2dab7dcc9cc41fa1789b6a2af920825e84f4a62656be7d370afb",
+      "anchors": [
+        "AbstractObjectManager.java",
+        "AbstractSchemaFactory.java",
+        "AccountDaoImpl.java",
+        "AiAliasServiceChange.java",
+        "AiApiKeyReadView.java",
+        "AiAuditQuery.java",
+        "AiAuditQueryInputHandler.java",
+        "AiAuditQueryResourceManager.java",
+        "AiAuditQueryRunner.java",
+        "AiAuditQueryService.java",
+        "AiAuditSourcePage.java",
+        "AiAuditSourcePageInput.java",
+        "AiCatalogLaunchAccess.java",
+        "AiCatalogLaunchAccessTest.java",
+        "AiCatalogLaunchBinding.java",
+        "AiCatalogLaunchBindingTest.java",
+        "AiCatalogLaunchDelegation.java",
+        "AiCatalogLaunchDelegationTest.java",
+        "AiCatalogLaunchGateway.java",
+        "AiCatalogLaunchGraph.java",
+        "AiCatalogLaunchHumanInputTest.java",
+        "AiCatalogLaunchInput.java",
+        "AiCatalogLaunchMaterializer.java",
+        "AiCatalogLaunchMaterializerTest.java",
+        "AiCatalogLaunchObservation.java",
+        "AiCatalogLaunchObservationTest.java",
+        "AiCatalogLaunchOptionsResourceManager.java",
+        "AiCatalogLaunchOptionsService.java",
+        "AiCatalogLaunchOptionsStore.java",
+        "AiCatalogLaunchOptionsStoreTest.java",
+        "AiCatalogLaunchOwnerContractTest.java",
+        "AiCatalogLaunchPlanResourceManager.java",
+        "AiCatalogLaunchPlanService.java",
+        "AiCatalogLaunchPlanStore.java",
+        "AiCatalogLaunchPlanStoreTest.java",
+        "AiCatalogLaunchPrivate.java",
+        "AiCatalogLaunchPrivateTest.java",
+        "AiCatalogLaunchProspectiveParentTest.java",
+        "AiCatalogLaunchResponseFilter.java",
+        "AiCatalogLaunchRunner.java",
+        "AiCatalogLaunchWorkflowTest.java",
+        "AiContainerLogsInputHandler.java",
+        "AiContainerLogsRunner.java",
+        "AiContainerLogsService.java",
+        "AiContainerLogsTicket.java",
+        "AiContainerNetworkChange.java",
+        "AiCookieLifecycleWitness.java",
+        "AiCreatePorts.java",
+        "AiExternalServiceChange.java",
+        "AiHostLifecycleChange.java",
+        "AiHostMetadataChange.java",
+        "AiLoadBalancerCreateChange.java",
+        "AiNamedServiceLinks.java",
+        "AiProcessDiagnostics.java",
+        "AiProjectMetadataChange.java",
+        "AiRegistryLifecycleChange.java",
+        "AiResourceChangeDescriptor.java",
+        "AiResourceChangeDomain.java",
+        "AiResourceChangePlanService.java",
+        "AiResourceChangePlanStore.java",
+        "AiResourceChangeProcessObserver.java",
+        "AiResourceViewResourceManager.java",
+        "AiResourceViewService.java",
+        "AiServiceCreateChange.java",
+        "AiServiceUpgradeLifecycleChange.java",
+        "AiServiceUpgradePersistence.java",
+        "AiServiceUpgradePlanInputHandler.java",
+        "AiServiceUpgradePlanService.java",
+        "AiStackGroupChange.java",
+        "AiToolCallEventService.java",
+        "AiVolumeCreateChange.java",
+        "AllocateConstraintLock.java",
+        "ApiAuditPayload.java",
+        "ApiAuthenticator.java",
+        "ApiContainerLogsRead.java",
+        "ApiCookieAuthentication.java",
+        "ApiKeyAiBridgeGuard.java",
+        "ApiKeyAuditSink.java",
+        "ApiKeyAuthorizationService.java",
+        "ApiKeyOperations.java",
+        "ApiKeyProcessAuthorization.java",
+        "ApiKeyQueryScopes.java",
+        "ApiKeyTargetResolver.java",
+        "ApiServerConfig.java",
+        "AuditLogKeySelector.java",
+        "AuditLogOutPutFilter.java",
+        "AuditServiceImpl.java",
+        "CatalogLaunchTransformAuthorization.java",
+        "ClientToolAuditEvent.java",
+        "ContainerLogsActionHandler.java",
+        "DefaultAuthorizationProvider.java",
+        "DefaultObjectMetaDataManager.java",
+        "DefaultProcessInstanceImpl.java",
+        "DefaultProcessManager.java",
+        "DefaultProcessesParser.java",
+        "DriverServiceRemove.java",
+        "EngineContext.java",
+        "EventBasedProcessHandler.java",
+        "EventDiagnostics.java",
+        "ExternalDeploymentUnitInstance.java",
+        "ExternalDynamicExtensionHandler.java",
+        "FileSchemaFactory.java",
+        "GenericWhitelistedProxy.java",
+        "HostDao.java",
+        "HostDaoImpl.java",
+        "IaasApiConfig.java",
+        "InServiceUpgradeStrategy.java",
+        "InstanceCreatePortValidation.java",
+        "InstancePortsLock.java",
+        "InstancePortsValidationFilter.java",
+        "LaunchConfiguration.java",
+        "LoadBalancerServiceCreatePostListener.java",
+        "Lock.java",
+        "NotWritablePostProcessor.java",
+        "PortBindingAddress.java",
+        "PortConstants.java",
+        "PortPreflightDaoImpl.java",
+        "PortPreflightInputs.java",
+        "PortPreflightService.java",
+        "PortSpec.java",
+        "PortUpdateService.java",
+        "PortUpdateValidationFilter.java",
+        "ProcessAuthorization.java",
+        "ProcessAuthorizationHook.java",
+        "ProcessEventDecorator.java",
+        "ProjectAccessService.java",
+        "ProjectResourceManager.java",
+        "RequestReRouterHandler.java",
+        "ResourceManagerRequestHandler.java",
+        "SchemaFactoryImpl.java",
+        "ServiceConsumeMapDao.java",
+        "ServiceConsumeMapDaoImpl.java",
+        "ServiceCreate.java",
+        "ServiceCreateValidation.java",
+        "ServiceDao.java",
+        "ServiceDaoImpl.java",
+        "ServiceDiscoveryApiService.java",
+        "ServiceDiscoveryApiServiceImpl.java",
+        "ServiceDiscoveryServiceImpl.java",
+        "ServiceDiscoveryServiceSetLinksLock.java",
+        "ServiceUpgradeStrategy.java",
+        "ServiceUpgradeValidation.java",
+        "ServiceUpgradeValidationFilter.java",
+        "ServiceValidationFilter.java",
+        "SetServiceLinksActionHandler.java",
+        "StandardLock.java",
+        "SystemServicesConfig.java",
+        "TokenAuthLookup.java",
+        "TransformInspect.java",
+        "VolumeDao.java",
+        "VolumeDaoImpl.java",
+        "VolumePreflightInputs.java",
+        "VolumePreflightService.java"
+      ],
+      "markers": [
+        "@Type",
+        "@Actions",
+        " getLinkInternal(",
+        " getLink(",
+        " resourceActionInternal(",
+        " collectionActionInternal(",
+        " resourceAction(",
+        " collectionAction("
+      ]
+    },
+    "contractSha256": "b921c93b74fe07078285462a05540df89f7a5f2d9cc5d11214f7599d6a95af14",
+    "tupleCount": 1396,
+    "reviewManifest": "scripts/api-key-operation-review-0.183.388.json",
+    "reviewManifestSha256": "9202d3270669ec8436621e84322177cbb71d48e6cad560b98c4f6637c9b7f7bb",
+    "roleFieldDelta": [],
+    "cookieLifecycleAllWitness": {
+      "scope": "SOURCE_ONLY_CURRENT_ORIGINAL_CI_AND_NATIVE_PENDING",
+      "intermediateProducer": "c6505dc0337154b30a19cfe35436ed5260e7291e",
+      "intermediateTree": "b1b0d352066a1914547c6af58e60a615222b5ffe",
+      "productPatchSha256": "da30e58466b4512e2f045ddb6195cb24a5f53353f3e5bb50eb356882db0c74c5",
+      "runtimeSourceFreezeSha256": "8b66e2431ce8a63d5377a66259dbdf61e3ff337e17d9f552b31c467d3c0f8f14",
+      "newMethods": [
+        [
+          "io.cattle.platform.iaas.api.auth.change.AiCookieLifecycleWitnessTest",
+          "commonPrepareStripsForgedCorrelationAndWrongRuntimeParentsCannotSealAChain"
+        ],
+        [
+          "io.cattle.platform.iaas.api.auth.change.AiCookieLifecycleWitnessTest",
+          "emptyAndAlreadyDesiredStacksNeedAnActualClosedNativeDispatchAndStableExactIdentitySet"
+        ],
+        [
+          "io.cattle.platform.iaas.api.auth.change.AiCookieLifecycleWitnessTest",
+          "failedAttestationRollsBackTheNativeInsertAndCannotQueueOrLeakThePrivateScope"
+        ],
+        [
+          "io.cattle.platform.iaas.api.auth.change.AiCookieLifecycleWitnessTest",
+          "fourteenCookieActionsNeedTheirOwnNativeRowsAndNeverBorrowAnUnrelatedSuccess"
+        ],
+        [
+          "io.cattle.platform.iaas.api.auth.change.AiCookieLifecycleWitnessTest",
+          "fullPayloadJsonRoundtripKeepsChangedValuesTypesNullsFieldsAndArrayOrderDistinct"
+        ],
+        [
+          "io.cattle.platform.iaas.api.auth.change.AiCookieLifecycleWitnessTest",
+          "nativeRestartHandlersAndFrameworkScheduleChainBindEveryParentBeforeCompletion"
+        ],
+        [
+          "io.cattle.platform.iaas.api.auth.change.AiCookieLifecycleWitnessTest",
+          "nativeServiceRestartCountEnrichmentIsAcceptedButUnrelatedFieldsOrCountsNeverAttest"
+        ],
+        [
+          "io.cattle.platform.iaas.api.auth.change.AiCookieLifecycleWitnessTest",
+          "originalCompletionPredicateIsStillRequiredAfterTheOwnProcessSucceeds"
+        ],
+        [
+          "io.cattle.platform.iaas.api.auth.change.AiCookieLifecycleWitnessTest",
+          "originalStackHandlerPreservesTwoNamedAliasesToOneWaitTargetAndLateFanoutFailureStaysPartialUnknown"
+        ],
+        [
+          "io.cattle.platform.iaas.api.auth.change.AiCookieLifecycleWitnessTest",
+          "queuedChainsTrackActiveStatesAndKeepNativeQueuesWhenTrackingExpiresOrDisappears"
+        ],
+        [
+          "io.cattle.platform.iaas.api.auth.change.AiCookieLifecycleWitnessTest",
+          "stackFanoutPinsAllChildUuidsAndKeepsExplicitStableNoopsSeparateFromTransitionalSkips"
+        ],
+        [
+          "io.cattle.platform.iaas.api.auth.change.AiCookieLifecycleWitnessTest",
+          "trackerFailureDoesNotMarkNativeTransactionRollbackOnlyOrSwallowNativeInsertAndQueueErrors"
+        ]
+      ],
+      "currentRequired": 491,
+      "preservedIntermediateRequired": 479,
+      "sourceInputs": 502,
+      "sourceFingerprint": "79e369151a0ac278b4fce79154346784325414bbd33f75e61066ce1c84d0e884",
+      "selectedSourceDelta": [
+        {
+          "path": "code/framework/engine/src/main/java/io/cattle/platform/engine/process/LaunchConfiguration.java",
+          "before": null,
+          "after": "056e123d0d2e68883fb08085c572b78f6bef9a41af8f47996d9457453ceff978"
+        },
+        {
+          "path": "code/framework/engine/src/main/java/io/cattle/platform/engine/process/ProcessAuthorization.java",
+          "before": "c7ee36073ba3a56a75243c778dcc255d1200222b9ee8fbc19cf557623ac33ee5",
+          "after": "3b6ddba749d462fe0058a0233c4bbbb868c1c9a00f37c983eb63fcbbbed07e38"
+        },
+        {
+          "path": "code/framework/engine/src/main/java/io/cattle/platform/engine/process/ProcessAuthorizationHook.java",
+          "before": "ec98f748e21a9d71fa9ad2f61974e54950e5a15b05940d7a6d77850b83937fb5",
+          "after": "743f610e3ad806e324749bbab5ee92120c0363c1c8d6ec658e18ec78a7f86fca"
+        },
+        {
+          "path": "code/framework/engine/src/main/java/io/cattle/platform/engine/process/impl/DefaultProcessInstanceImpl.java",
+          "before": "986e14156ce42ac72033fad21289db4e3732469378cb6c9b0ae1d0a4c36376b0",
+          "after": "949028dbd6d628f09f649bae5686f4f2297af4e95a0a83f6ae9339536a1078fc"
+        },
+        {
+          "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiCookieLifecycleWitness.java",
+          "before": null,
+          "after": "47e2010db8be6923d88f4201992331d54dda54d4a1032f4352066b47f0618623"
+        },
+        {
+          "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiResourceChangeDomain.java",
+          "before": "c99d2ccb95cb4670b4998503376ce16dc26566330010640c81b078ccda0f852e",
+          "after": "79e8c1332e6353031b4a046c31873836bccae2ea6dc1b0ff3b48fe3399cc5ca8"
+        },
+        {
+          "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiResourceChangePlanService.java",
+          "before": "a8843dc4893cb6603b670f7dc2ca9e2316613ff78673fe9ab44d487a27d26653",
+          "after": "9db9d7e96367f5de7263aa497c001950ef4b939be7efdd04901428b0d303c49c"
+        },
+        {
+          "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiResourceChangePlanStore.java",
+          "before": "8751eb6a864cc5ff0afbf0457e7ebf8901c27339286c67b8cc571a8f95e531a6",
+          "after": "fd77e4413ecfb2706664ae37c3d68fda46a62fe3e3e57611dd4c5d367c103c95"
+        },
+        {
+          "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiResourceChangeProcessObserver.java",
+          "before": "a4d7ecb7e6622fe3b54a3432fdfb288dbd80efea29930f2161592791d093d375",
+          "after": "0c1487d790d95faff12043970191eddebaab5ec47b4d6f6e2eeae196361b49ad"
+        }
+      ],
+      "roleFieldDelta": [],
+      "typedBaseSchemaDelta": {},
+      "finalProducer": null,
+      "originalCi": null,
+      "compiledProof": null,
+      "nativePass": false
+    },
+    "cookieKeyScopeCompatibility": {
+      "scope": "SOURCE_ONLY_NEW_ORIGINAL_CI_AND_NATIVE_PENDING",
+      "intermediateProducer": "da6dd0cd7b7a003c43d808b65e539f8779703307",
+      "intermediateTree": "ac666d739e5bcb623f783b432c811e7bce95451d",
+      "failedSecurityRun": 42448564589,
+      "classification": "production Cookie versus stored Key scope regression",
+      "productPatchSha256": "a7297059d6c5885f34f896c67be1fb3544b877823d0135afe8877f81ea0598a2",
+      "sourceFreezeSha256": "f3f5ce3fa70b52cf783400e55151142c624678a1050e2400afb7d2a98c0f735c",
+      "newMethods": [
+        [
+          "io.cattle.platform.iaas.api.auth.change.AiLoadBalancerMetadataChangeTest",
+          "fullScopedAndLegacyKeyLifecycleSnapshotsAndCookieReadsKeepTheStoredKeyBoundary"
+        ]
+      ],
+      "preservedIntermediateRequired": 491,
+      "requiredTotal": 492,
+      "sourceInputs": 502,
+      "sourceFingerprint": "89df01043daf2dab7dcc9cc41fa1789b6a2af920825e84f4a62656be7d370afb",
+      "sourceDelta": [
+        {
+          "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiResourceChangeDomain.java",
+          "before": "79e8c1332e6353031b4a046c31873836bccae2ea6dc1b0ff3b48fe3399cc5ca8",
+          "after": "8f43371d4d9cd631be84754d2b1e160c04c70233c6d2357c5bafb71362853bac"
+        },
+        {
+          "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiResourceChangePlanService.java",
+          "before": "9db9d7e96367f5de7263aa497c001950ef4b939be7efdd04901428b0d303c49c",
+          "after": "af662d47b50d523f1e8bec9b5ea3fe819886ea3d3d7b30654d65f2ec97ce8759"
+        }
+      ],
+      "snapshotOwner": "current verified ApiKeyCredentialContext",
+      "receiptOwner": "persisted credentialId binding",
+      "legacyReceiptReadIsNotCompletionProof": true,
+      "malformedDeclaredCookieMarkerDenied": true,
+      "roleFieldDelta": [],
+      "typedSchemaDelta": {},
+      "newProducer": null,
+      "newCi": null,
+      "compiledProof": null,
+      "nativePass": false,
+      "testShapeCorrection": {
+        "patchSha256": "3236ee05e07952dee48d31383756b8563f183017a6d46bbdeae1868efc20b524",
+        "sourceFreezeSha256": "4b0e080b5cb9a7f0703bbc3412dc747d3c4558b7b0119e681de9b22c5fc4e813",
+        "afterTestSha256": "5f9b55d9c3bac17b1696009a904a4c1096ec193b3c4c0767e6df1a9ade66c27b",
+        "scope": "legacy apiKey/policyNull/revision0 snapshot and stored-Key receipt branch only; not full authorization matrix"
+      }
+    },
+    "previousReview": {
     "version": "unreleased-387-host-port-driver",
     "status": "SOURCE_ONLY_NOT_ARTIFACT_OR_RUNTIME_ACCEPTANCE",
     "producerCommit": null,
@@ -4513,6 +4853,7 @@
     },
     "reviewManifest": "scripts/api-key-operation-review-0.183.384.json",
     "reviewManifestSha256": "4d4f025af1215f0673505646189beed6e8fe4449c573804bdc899dbb611a4b5d"
+  }
   }
   }
   }

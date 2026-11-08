@@ -374,6 +374,22 @@ jobs:
                   'nativeRoleRemovalHttpFallbackAndBoundKeyRevocationFailBeforeMutation',
                   'nativeSchemaKeepsTopLevelTcpFieldsAndNoneWithoutAddingTimingDefaults',
               },
+              'io.cattle.platform.iaas.api.auth.change.AiHostLifecycleChangeTest': {
+                  'freshNativeRoleAndKeyCeilingAndExactReadIdRemainAuthoritativeBeforePlanCreation',
+                  'hostConfirmAndApplyCasRejectUuidStateAndConfigurationChangesBeforeAnyDispatch',
+                  'hostReadyAndTerminalAreIdentityAndConfigurationBoundWithoutStackChildrenOrPrivatePayload',
+                  'humanConfirmationCancelAndLiveBoundKeyDenialsRetainZeroDispatch',
+                  'matchingHostStateCannotQualifyUntilItsNativeProcessOutcomeSucceeds',
+                  'onlyEmptyHostStartAndStopMapToNativeSchedulingActions',
+                  'onlyNativeReadOnlyObservationsMayChangeAndUnknownConfigurationRemainsPrivateCas',
+              },
+              'io.cattle.platform.iaas.api.auth.change.AiHostLifecycleObserverTest': {
+                  'changedUuidConfigurationKindOrPersistedProcessCannotBorrowTheApprovedHostExecution',
+                  'fullAndScopedUpdateStillUseLiveNativeRoleKeyRevisionAndExactTarget',
+                  'hostOutcomeRequiresOneExactPostClaimProcessAndItsRealSuccessfulTerminalRow',
+                  'nativeAuthorizationDenialProjectsOnlyToTheSameCapturedOperationWithoutPrivateConfiguration',
+                  'serializedNativeHostExecutionPinsOneExactProcessForLegacyRevisionZero',
+              },
               'io.cattle.platform.iaas.api.auth.change.AiHostMetadataChangeTest': {
                   'actualHostTableLockRequiresTransactionAndReloadsTheMetadataSnapshot',
                   'boundPlanRequiresHumanApprovalAndExactOnceObservedCompletion',
@@ -400,6 +416,7 @@ jobs:
                   'unsupportedProtocolsCertificatesSelectorsRawConfigurationAndAmbiguousListenersFailClosed',
               },
               'io.cattle.platform.iaas.api.auth.change.AiLoadBalancerMetadataChangeTest': {
+                  'fullScopedAndLegacyKeyLifecycleSnapshotsAndCookieReadsKeepTheStoredKeyBoundary',
                   'freshNativeStackAndKeyChecksProtectTheSparsePutAndPrivateParentRead',
                   'loadBalancerLifecyclePlansKeepHumanApprovalConfigurationCasBoundKeyAndOneDispatch',
                   'loadBalancerLifecycleReceiptRequiresNativeReadinessStoppedInstancesAndEveryProtectedConfiguration',
@@ -503,6 +520,16 @@ jobs:
                   'processObservationUsesAnExactBoundedRootAndRejectsMissingOrConflictingExecutionEvidence',
                   'successfulFinishStillWaitsForExactOldUpgradeInstanceAndAttachmentRetirement',
                   'threeNativeCapabilitiesHaveEmptyParametersAndCancelRollbackRemainsUnsupported',
+              },
+              'io.cattle.platform.iaas.api.auth.change.AiSessionLifecycleWitnessTest': {
+                  'anotherCookieNativeSuccessAfterTheBaselineNeverSubstitutesForThisPlansExactWitness',
+                  'creationCallbackFailureRollsBackTheNewRowAndCannotSealADifferentOrSecondRoot',
+                  'nativeCreationDoesNotQueueAProcessWhenItsAtomicWitnessCallbackFails',
+                  'realPlanObservationAndsOwnSuccessfulProcessWithExistingServiceTerminalPredicates',
+                  'serviceOwnSuccessStillRequiresOriginalReadinessAndStoppedOrRetiredInstances',
+                  'synchronousNativeThrowRestoresScopeAndFollowingOrdinaryApiCreationIsCompletelyNoop',
+                  'trueCookieHostAndServiceLifecycleCaptureOneOwnNativeProcessWithoutAnyCredentialMetadata',
+                  'wrongRootActionUuidOwnerKindAndNonemptyPayloadFailBeforeAnyNativeInsert',
               },
               'io.cattle.platform.iaas.api.auth.change.AiStackGroupChangeTest': {
                   'groupAllowsNativeEditableOrdinaryNonemptyStatesButRejectsSystemCatalogAndRemovedStacks',
@@ -708,6 +735,20 @@ jobs:
               'io.github.ibuildthecloud.gdapi.validation.ValidationHandlerTest': {
                   'clientCannotSetServerOwnedVolumeNativeClassification',
               },
+              'io.cattle.platform.iaas.api.auth.change.AiCookieLifecycleWitnessTest': [
+                  'commonPrepareStripsForgedCorrelationAndWrongRuntimeParentsCannotSealAChain',
+                  'emptyAndAlreadyDesiredStacksNeedAnActualClosedNativeDispatchAndStableExactIdentitySet',
+                  'failedAttestationRollsBackTheNativeInsertAndCannotQueueOrLeakThePrivateScope',
+                  'fourteenCookieActionsNeedTheirOwnNativeRowsAndNeverBorrowAnUnrelatedSuccess',
+                  'fullPayloadJsonRoundtripKeepsChangedValuesTypesNullsFieldsAndArrayOrderDistinct',
+                  'nativeRestartHandlersAndFrameworkScheduleChainBindEveryParentBeforeCompletion',
+                  'nativeServiceRestartCountEnrichmentIsAcceptedButUnrelatedFieldsOrCountsNeverAttest',
+                  'originalCompletionPredicateIsStillRequiredAfterTheOwnProcessSucceeds',
+                  'originalStackHandlerPreservesTwoNamedAliasesToOneWaitTargetAndLateFanoutFailureStaysPartialUnknown',
+                  'queuedChainsTrackActiveStatesAndKeepNativeQueuesWhenTrackingExpiresOrDisappears',
+                  'stackFanoutPinsAllChildUuidsAndKeepsExplicitStableNoopsSeparateFromTransitionalSkips',
+                  'trackerFailureDoesNotMarkNativeTransactionRollbackOnlyOrSwallowNativeInsertAndQueueErrors',
+              ],
           }
           suites = []
           observed = {}

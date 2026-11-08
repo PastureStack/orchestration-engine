@@ -13,6 +13,7 @@ public class LaunchConfiguration {
     Map<String, Object> data;
     Predicate predicate;
     ProcessState parentProcessState;
+    Long chainParentProcessId;
     Date runAfter;
     boolean authorizationCaptured;
 
@@ -35,6 +36,7 @@ public class LaunchConfiguration {
         this.data = config.getData();
         this.predicate = config.getPredicate();
         this.parentProcessState = config.getParentProcessState();
+        this.chainParentProcessId = config.getChainParentProcessId();
         this.runAfter = config.getRunAfter();
         this.accountId = config.getAccountId();
         this.priority = config.getPriority();
@@ -95,6 +97,11 @@ public class LaunchConfiguration {
     public void setParentProcessState(ProcessState parentProcessState) {
         this.parentProcessState = parentProcessState;
     }
+
+    /** Runtime native-chain provenance only; never deserialized from request or process data. */
+    public Long getChainParentProcessId() { return chainParentProcessId; }
+
+    public void setChainParentProcessId(Long id) { chainParentProcessId = id; }
 
     public Date getRunAfter() {
         return runAfter;

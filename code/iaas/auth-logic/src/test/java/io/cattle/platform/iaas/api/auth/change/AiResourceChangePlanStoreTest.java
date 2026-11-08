@@ -16,6 +16,8 @@ public class AiResourceChangePlanStoreTest {
     @Test public void durableClaimSurvivesANewStoreAndNeverBecomesPreviewAgain() throws Exception {
         try (Connection connection = database()) {
             var first = store(connection); Map<String, Object> plan = plan("aichange-one", 42);
+            // The store claim is for a real supported Cookie metadata plan, not an incomplete generic document.
+            plan.put("resourceType", "stack"); plan.put("operation", "update_metadata"); plan.put("accountId", 5L);
             first.insert(plan); var restarted = store(connection); var stale = first.load("aichange-one");
             plan.put("status", "dispatching"); stale.put("status", "dispatching");
             assertTrue(restarted.claim(plan)); assertFalse(first.claim(stale));
