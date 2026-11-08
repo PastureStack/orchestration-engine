@@ -48,8 +48,16 @@ public class AiHostMetadataChangeTest {
         for (String field : List.of("hostname", "labels", "info", "credentials", "data", "accountId", "uuid", "state", "memory", "milliCpu"))
             assertEquals("ResourceChangeInputInvalid", assertThrows(ClientVisibleException.class,
                     () -> descriptor.parameters(Map.of(field, "PRIVATE-CANARY"))).getCode());
-        for (String operation : List.of("create", "remove", "start", "stop", "restore", "update_targets"))
+        for (String operation : List.of("create", "remove", "restore", "update_targets"))
             assertThrows(ClientVisibleException.class, () -> AiResourceChangeDescriptor.require("host", operation));
+        for (String operation : List.of("start", "stop")) {
+            var lifecycle = AiResourceChangeDescriptor.require("host", operation);
+            assertFalse(AiHostMetadataChange.supports(lifecycle)); assertTrue(AiHostLifecycleChange.supports(lifecycle));
+            assertEquals("POST", lifecycle.method()); assertEquals(operation.equals("start") ? "activate" : "deactivate", lifecycle.action());
+            assertEquals(Map.of(), lifecycle.body(lifecycle.parameters(Map.of())));
+            assertThrows(ClientVisibleException.class, () -> lifecycle.parameters(Map.of("name", "PRIVATE-CANARY")));
+            assertThrows(ClientVisibleException.class, () -> lifecycle.parameters(Map.of("description", "PRIVATE-CANARY")));
+        }
         assertThrows(ClientVisibleException.class, () -> descriptor.parameters(Map.of()));
         assertThrows(ClientVisibleException.class, () -> descriptor.parameters(Map.of("name", " ")));
         assertThrows(ClientVisibleException.class, () -> descriptor.parameters(Map.of("description", "x".repeat(1025))));
