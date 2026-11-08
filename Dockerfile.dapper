@@ -2,7 +2,7 @@ FROM golang:1.27.3-bookworm@sha256:972b4110ba0f47539a975c31e52c64765e1ff19f2d744
 
 ARG DOCKER_VERSION=29.9.2
 ARG DOCKER_CLI_COMMIT=a82e528901260c8df6073311379eac65f92db204
-ADD --checksum=sha256:cdc8005e1958e90c035971b838cf333dc7602868c4e3ee2ccec859cf0ddc3c78 https://github.com/docker/cli/archive/a82e528901260c8df6073311379eac65f92db204.tar.gz /tmp/docker-cli.tar.gz
+ADD --checksum=sha256:cdc8005e1958e90c035971b838cf333dc7602868c4e3ee2ccec859cf0ddc3c78 https://codeload.github.com/docker/cli/tar.gz/a82e528901260c8df6073311379eac65f92db204 /tmp/docker-cli.tar.gz
 RUN set -eux; \
     mkdir -p /go/src/github.com/docker/cli; \
     tar -xzf /tmp/docker-cli.tar.gz -C /go/src/github.com/docker/cli --strip-components=1; \

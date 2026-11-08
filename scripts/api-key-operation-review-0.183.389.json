@@ -3052,26 +3052,26 @@
     "algorithm": "c03-source-inputs-v1"
   },
   "sourceAmendments": {
-    "kind": "same-official-jdk-transport-only",
+    "kind": "same-official-jdk-and-docker-cli-transport-only",
     "sourceCommit": "2c023c0581411cc64fda1dcb6ccdd96fcae3ad38",
     "source": [
       {
         "path": "Dockerfile",
         "beforeSha256": "affb74a730c161a069d772fb513d86f7f8f52bf6026c9e8fb48d4ca22e0fb006",
-        "afterSha256": "e0796612f36184c9f7489dd77fa3c81a8fa8a3136a475e671a709b17e2fc59a5",
-        "bytes": 16950
+        "afterSha256": "c957527206cb9869013fe53ba0fd032bc3e828b45dfba521267e1865935e579d",
+        "bytes": 16951
       },
       {
         "path": "Dockerfile.dapper",
         "beforeSha256": "068a0e2f362ae00faf8a4b7499b4158bd7cd7d07bf532f481eb2b03978ffdf1b",
-        "afterSha256": "4ee8bc39c05e7beea3297c49867e0a590fa0a69a369be2212420bcc81374449f",
-        "bytes": 17484
+        "afterSha256": "1336ab55f3aa5e694ba2c07a7c602420a4ef3957379cfbc12279f010a8ac1a00",
+        "bytes": 17485
       },
       {
         "path": "scripts/check-pasturestack-source",
         "beforeSha256": "a2a5c0b3cd78a53448a507761d020dd1ef3e9ec2865d989fde28a364f6b860f9",
-        "afterSha256": "eb3c1268b96fd3beb270a6741e9290d7b60a762cd2813058f5d85ff5b314260e",
-        "bytes": 63568
+        "afterSha256": "2cbde0241f64384a306e39d86e9f9eb77695c46ee3ca182cae8f7846a68be432",
+        "bytes": 63570
       }
     ],
     "patches": [
@@ -3089,6 +3089,11 @@
         "name": "engine-runtime-and-dapper-jdk-range0.delta.patch",
         "bytes": 3625,
         "sha256": "ae35d8d172d9d9904b352d8b216a48b14088345707e69931c0a4a1e362c8792c"
+      },
+      {
+        "name": "engine-docker-cli-direct-codeload.delta.patch",
+        "bytes": 3404,
+        "sha256": "3c3263a4ef9206b715626152c7bdc10b31c595c27d0fddc85094e62e80224938"
       }
     ],
     "affectedMethods": [],
@@ -3099,6 +3104,31 @@
       "bytes": 141341188,
       "sha256": "68982529869257d0ee6b824ec5aa270ff8b118bb438670da0b97ebdab178d7fb",
       "apiUrl": "https://api.github.com/repos/adoptium/temurin25-binaries/releases/assets/665812068"
+    },
+    "officialDockerCliSource": {
+      "repository": "docker/cli",
+      "version": "29.9.2",
+      "commit": "a82e528901260c8df6073311379eac65f92db204",
+      "gitTree": "c30417b383d73aeaf333819b6a7db8967d115374",
+      "bytes": 7155166,
+      "sha256": "cdc8005e1958e90c035971b838cf333dc7602868c4e3ee2ccec859cf0ddc3c78",
+      "url": "https://codeload.github.com/docker/cli/tar.gz/a82e528901260c8df6073311379eac65f92db204",
+      "diagnosis": {
+        "basename": "diagnosis.json",
+        "bytes": 2380,
+        "sha256": "33929f05329ef8c637bc5dd3d6a7b696a79441e8411aeef35211bb3676f8e1f5"
+      },
+      "officialCommit": {
+        "basename": "official-commit.original.json",
+        "bytes": 2569,
+        "sha256": "a02e8c7ee52639c6f78bd6c0cb8536b7f145d8ad25932a3483f3958c081559ab"
+      },
+      "directReadback": {
+        "basename": "direct-codeload-readback.json",
+        "bytes": 416,
+        "sha256": "5bf1d3361084a8f65546fd31f9b53041852d7e105f1402fb31c423da01cc85d1"
+      },
+      "ciMismatchCause": "UNRESOLVED_WITHOUT_FAILED_RESPONSE_BYTES"
     }
   }
 }
