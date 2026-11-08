@@ -1,13 +1,23 @@
 # Compatibility Contract
 
-## Engine 0.183.390 source candidate
+## Engine 0.183.390 published
 
 Reviewed primary Service startup arguments preserve native omitted, null and
 empty-array semantics and use the existing native Service upgrade owner.
 The original role/Key ceilings, full configuration CAS and human confirmation
-remain required. Matching Web Console 1.6.231 / Bridge 0.2.33, normal release
-qualification and affected native acceptance are pending. See the
-[candidate contract](docs/releases/orchestration-engine-0.183.390.md).
+remain required. Matching Web Console **1.6.231** / Bridge **0.2.33** is published.
+The two base plan fields and six exact create/read role-field metadata entries
+are explicit additions; native role/Key grants and all 1,396 operation tuples
+remain unchanged.
+
+Original CI passed 484 suites / 4,319 tests with zero failures/errors and one
+inherited skip. All 506 required methods passed (502 retained, four new).
+Twelve public assets passed anonymous SHA256 readback, and the immutable release
+attestation covers thirteen subjects. Producer `c5899bca4c15c7c853d668d021024eeba62fc8f9`
+and normal merge/tag target `d5f3c291d62f520d8b811d46f71c10c426486da6` share the tested tree.
+See the [published metadata](https://github.com/PastureStack/orchestration-engine/releases/download/v0.183.390/engine390-release-metadata.json)
+and [release note](docs/releases/orchestration-engine-0.183.390.md).
+Server **1.6.588** assembly/deployment and affected native acceptance remain pending.
 
 ## Engine 0.183.389 published
 

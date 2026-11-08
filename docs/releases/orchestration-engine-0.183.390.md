@@ -1,8 +1,9 @@
-# Orchestration Engine 0.183.390 candidate
+# Orchestration Engine 0.183.390
 
-This source candidate is not published or deployed. It requires matching Web
-Console 1.6.231 / Bridge 0.2.33 and a separately qualified Server assembly.
-Existing published component and runtime evidence remains unchanged.
+[Engine 0.183.390](https://github.com/PastureStack/orchestration-engine/releases/tag/v0.183.390)
+is published and requires matching Web Console **1.6.231** / Bridge **0.2.33**.
+Component publication is separate from Server assembly, deployment and native
+workflow acceptance.
 
 ## Reviewed Service startup arguments
 
@@ -19,12 +20,35 @@ checks, one-time confirmation, native process ownership, readiness and instance
 retirement checks remain authoritative. This subset edits only the primary;
 secondary argument edits continue through the ordinary interface.
 
-## Validation status
+## Input metadata and authorization
 
-The startup-argument source candidate passed four new and six directly adjacent
-JUnit methods locally. Integrated release qualification is still
-pending. Every new required method must be observed in the original CI report;
-source registration or a green job alone is insufficient.
+The base `aiServiceUpgradePlan` schema adds the two nullable `array[string]`
+inputs with create enabled and update disabled. Admin, project and user role
+overlays each expose `command` and `entryPoint` as create/read plan inputs:
+six exact role-field metadata additions. The six effective compiled fields were
+verified. These metadata additions do not expand native role/Key grants;
+all 1,396 operation tuples and typed enums remain unchanged.
 
-Matching immutable publication, QA deployment and affected browser/native
-acceptance remain separate. There is no production deployment in this work.
+## Component qualification
+
+Original CI run **42505094500** passed 484 suites / 4,319 tests, with zero
+failures/errors and one inherited skip. All **506** required methods passed:
+502 retained identities and four new startup-argument methods. Packaged evidence
+covers 91 class roots: one current and 90 byte-identical carried families.
+C03 covers 503 source inputs with the same 1,396 operation tuples.
+
+The immutable release **438432470** passed anonymous bytes/SHA256 readback for
+all twelve assets and native cryptographic release verification covering
+thirteen subjects. Artifact and builder Critical/High and fixable findings
+remain zero under their existing qualified policies; raw lower-severity
+findings and registered no-fix decisions remain separate. The workflow did not
+provide a native SLSA attestation; no SLSA claim is made.
+
+[Published metadata](https://github.com/PastureStack/orchestration-engine/releases/download/v0.183.390/engine390-release-metadata.json)
+binds producer `c5899bca4c15c7c853d668d021024eeba62fc8f9`, tested tree
+`cedc66cd50fe9da8aa9a7f744e946a86ca472eed` and normal merge/tag target
+`d5f3c291d62f520d8b811d46f71c10c426486da6`.
+
+At component qualification, Server **1.6.588** assembly/deployment and affected
+browser/native acceptance, including the seven Stack composites, remained pending. Component qualification
+does not establish deployment or complete 243-group frontend coverage.
