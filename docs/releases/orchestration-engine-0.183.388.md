@@ -1,6 +1,6 @@
-# Orchestration Engine 0.183.388 candidate
+# Orchestration Engine 0.183.388
 
-This candidate adds bounded Host activation and deactivation through the existing
+This release adds bounded Host activation and deactivation through the existing
 query, preview, human confirmation and native execution flow. It does not evacuate
 workloads, stop Docker, or change Agent identity.
 
@@ -24,14 +24,26 @@ approved context. Current role, Key revision/revocation, UUID/account/CAS, human
 approval and cancellation controls remain. Full and legacy clients require no new
 header, dependency or schema change.
 
-The original 459 required test identities are retained. New owning methods and
-directly affected existing methods are enumerated in the normal release manifest;
-normal original CI must determine their actual execution results. Local focused
-results are development evidence, not component or native qualification.
+Original CI passed 4,306 tests in 483 suites, with zero failures/errors and
+one inherited skip. All 492 required methods and 89 packaged roots passed.
+Immutable release 438056242 and original workflow 42450335938 retain exact-source
+and cryptographic evidence.
 
-Normal CI, compiled classes, immutable publication and matching Server native
-acceptance remain pending. Host acceptance must use an owned or safely borrowed
+Component CI, compiled proof and immutable publication are qualified by their
+actual release records. Matching Server deployment and native acceptance remain
+pending or partial and are not established by component results. Host acceptance
+must use an owned or safely borrowed
 target with bounded expected transition and exact restoration; it must verify
 workload/scheduling impact without weakening global Host or storage protection.
 No data migration is introduced. Deploy through a matching qualified Server
 assembly and preserve its configuration, volumes and rollback image.
+
+## Published identity
+
+Producer: `09b12c0f0e5488fc8d25b3a58a228bec4e0c7da8`. Tested tree:
+`b91bb14f79350188f10223451038c4c3145cac8f`. Normal merge/tag:
+`c476998eff6af7ab6656db4d9fede5adfb92f7b7`. JAR SHA256:
+`2ad513ed2003c10723779cfb85d5b80276f742430a9605ad82e430ac73294bbb`.
+Twelve assets passed anonymous readback; immutable release verification covered
+thirteen cryptographic subjects. Workflow SLSA was not provided; no SLSA claim is
+made. These records do not establish Server deployment or native workflow PASS.
