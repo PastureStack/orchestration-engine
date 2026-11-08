@@ -24,6 +24,37 @@ public class AiResourceChangePlanStore extends AbstractJooqDao {
     static final String AUTHORIZATION_DENIED = "ResourceChangeAuthorizationDenied";
     static final String PROCESS_FAILED = "ResourceChangeProcessFailed";
     @Inject JsonMapper json;
+    @Inject @jakarta.inject.Named("CoreTransactionManager") org.springframework.transaction.PlatformTransactionManager transactions;
+
+    <T> T processCreation(java.util.function.Supplier<T> action) {
+        return new org.springframework.transaction.support.TransactionTemplate(transactions).execute(status -> action.get());
+    }
+
+    static boolean ordinaryLifecycle(AiResourceChangeDescriptor descriptor) {
+        return "service".equals(descriptor.resourceType()) && java.util.Set.of("start", "stop").contains(descriptor.operation());
+    }
+
+    static boolean lifecycle(AiResourceChangeDescriptor descriptor) {
+        return AiHostLifecycleChange.supports(descriptor) || ordinaryLifecycle(descriptor) || AiServiceUpgradeLifecycleChange.supports(descriptor);
+    }
+
+    static boolean sessionLifecycle(Map<String, Object> binding) {
+        if (binding == null || !Boolean.TRUE.equals(binding.get("sessionLifecycle")) || binding.containsKey("credentialId")) return false;
+        AiResourceChangeDescriptor descriptor = AiResourceChangeDescriptor.require((String) binding.get("resourceType"), (String) binding.get("operation"));
+        return lifecycle(descriptor) && "POST".equals(binding.get("method")) && descriptor.action().equals(binding.get("action"));
+    }
+
+    boolean sessionLifecycleActive(String id, Map<String, Object> binding) {
+        return sessionLifecycle(binding) && create().fetchCount(TABLE, ID.eq(id)
+                .and(STATE.in("dispatching", "accepted", "running", "unknown")).and(FAILURE.isNull()).and(EXECUTION.eq(encode(binding)))) == 1;
+    }
+
+    boolean attestSessionProcess(String id, Map<String, Object> before, Map<String, Object> after) {
+        if (!sessionLifecycle(before) || before.containsKey("rootProcessId")
+                || !(after.get("rootProcessId") instanceof Number process) || process.longValue() <= 0) return false;
+        Map<String, Object> expected = new java.util.LinkedHashMap<>(before); expected.put("rootProcessId", process);
+        return expected.equals(after) && attest(id, before, after);
+    }
 
     public void insert(Map<String, Object> plan) {
         create().insertInto(TABLE).set(ID, (String) plan.get("id")).set(STATE, "preview")
@@ -131,6 +162,17 @@ public class AiResourceChangePlanStore extends AbstractJooqDao {
                     || "stop".equals(binding.get("operation")) && "deactivate".equals(binding.get("action")));
     }
 
+    boolean hostLifecycleExecutionActive(String id, Map<String, Object> binding) {
+        return AiHostLifecycleChange.binding(binding) && create().fetchCount(TABLE, ID.eq(id)
+                .and(STATE.in("dispatching", "accepted", "running", "unknown")).and(FAILURE.isNull()).and(EXECUTION.eq(encode(binding)))) == 1;
+    }
+
+    boolean attestHostLifecycleProcess(String id, Map<String, Object> before, Map<String, Object> after) {
+        if (!AiHostLifecycleChange.binding(before) || before.containsKey("rootProcessId")) return false;
+        return create().update(TABLE).set(EXECUTION, encode(after)).where(ID.eq(id)
+                .and(STATE.in("dispatching", "accepted", "running", "unknown")).and(FAILURE.isNull()).and(EXECUTION.eq(encode(before)))).execute() == 1;
+    }
+
     boolean attestLoadBalancerMetadataProcess(String id, Map<String, Object> before, Map<String, Object> after) {
         if (!loadBalancerMetadata(before) || before.containsKey("rootProcessId")) return false;
         return create().update(TABLE).set(EXECUTION, encode(after))
@@ -230,14 +272,27 @@ public class AiResourceChangePlanStore extends AbstractJooqDao {
     }
 
     private Map<String, Object> execution(Map<String, Object> plan) {
-        if (!(plan.get("credentialId") instanceof Number)) return null;
         AiResourceChangeDescriptor descriptor = AiResourceChangeDescriptor.require((String) plan.get("resourceType"), (String) plan.get("operation"));
+        boolean session = !(plan.get("credentialId") instanceof Number);
+        if (session && !lifecycle(descriptor)) return null;
         Map<String, Object> binding = new java.util.LinkedHashMap<>();
         for (String field : List.of("id", "actorId", "accountId", "credentialId", "credentialRevision", "credentialKind"))
-            binding.put(field, plan.get(field));
+            if (plan.containsKey(field)) binding.put(field, plan.get(field));
+        if (session) {
+            if (!(plan.get("snapshot") instanceof Map<?, ?> snapshot) || !(snapshot.get("uuid") instanceof String uuid) || uuid.isBlank())
+                throw new IllegalStateException("Resource-change lifecycle identity unavailable");
+            binding.put("sessionLifecycle", true); binding.put("rootUuid", uuid);
+            if ("service".equals(descriptor.resourceType())) binding.put("rootStackId", snapshot.get("stackId"));
+        }
         binding.put("resourceType", descriptor.resourceType()); binding.put("operation", descriptor.operation());
         binding.put("method", descriptor.method()); binding.put("action", descriptor.action()); binding.put("keyOperation", descriptor.keyOperation());
         binding.put("rootId", plan.get("internalResourceId")); binding.put("initial", new java.util.ArrayList<>());
+        if (AiHostLifecycleChange.supports(descriptor) && plan.get("snapshot") instanceof Map<?, ?> snapshot) {
+            Map<String, Object> values = new java.util.LinkedHashMap<>();
+            for (var entry : snapshot.entrySet()) if (entry.getKey() instanceof String key) values.put(key, entry.getValue());
+            binding.put("rootUuid", snapshot.get("uuid")); binding.put("hostBeforeState", snapshot.get("state"));
+            binding.put("hostConfiguration", AiHostLifecycleChange.configuration(values));
+        }
         if (AiRegistryLifecycleChange.supports(descriptor) && plan.get("snapshot") instanceof Map<?, ?> snapshot) {
             Map<String, Object> values = new java.util.LinkedHashMap<>();
             for (var entry : snapshot.entrySet()) if (entry.getKey() instanceof String key) values.put(key, entry.getValue());

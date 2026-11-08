@@ -66,6 +66,8 @@ public record AiResourceChangeDescriptor(String resourceType, String operation, 
         add(result, "loadBalancerService", "scale", "PUT", null, "update", Set.of("scale"));
         add(result, "certificate", "update_metadata", "PUT", null, "update", Set.of("name", "description"));
         add(result, "host", "update_metadata", "PUT", null, "update", Set.of("name", "description", "resetName"));
+        for (String operation : Set.of("start", "stop"))
+            add(result, "host", operation, "POST", "start".equals(operation) ? "activate" : "deactivate", "update", Set.of());
         add(result, "project", "update_metadata", "PUT", null, "update", Set.of("name", "description"));
         for (String operation : Set.of("start", "stop"))
             add(result, "registry", operation, "POST", "start".equals(operation) ? "activate" : "deactivate", "update", Set.of());

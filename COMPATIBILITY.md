@@ -1,6 +1,20 @@
 # Compatibility Contract
 
-## Engine 0.183.387 candidate
+## Engine 0.183.388 candidate
+
+Host start/stop plans use native activate/deactivate actions, with no evacuation,
+daemon stop or Agent lifecycle operation. Cookie Host and ordinary Service
+start/stop or upgrade lifecycle plans require a durable witness of their own
+native root process. Matching terminal state from another request cannot establish
+completion. Original Service readiness, instance retirement, roles, live Key
+policy and Full/legacy native API contracts remain.
+
+The insertion hook is correlation-only and has no effect without the approved
+private execution scope. No dependency, role grant, schema or native header
+requirement is added. Normal CI, publication and matching Server native acceptance
+are pending. See the [candidate release note](docs/releases/orchestration-engine-0.183.388.md).
+
+## Engine 0.183.387 published
 
 Matching Web Console 1.6.227 / Bridge 0.2.29 adds Host custom-name reset and
 bounded Container public-port / link-target edits. Existing native clients retain
@@ -12,8 +26,8 @@ and confirmed-plan identity remain authoritative.
 Driver-service removal now uses the existing asynchronous deactivate/remove
 chain for activating children. Network and Storage drivers retain their own
 child-resource cleanup handlers; this does not change state gates or permissions.
-CI, publication and matching Server native acceptance are pending. See the
-[candidate release note](docs/releases/orchestration-engine-0.183.387.md).
+Normal component publication is complete. Matching Server workflow acceptance
+remains separate. See the [release note](docs/releases/orchestration-engine-0.183.387.md).
 
 ## Engine 0.183.386 published
 

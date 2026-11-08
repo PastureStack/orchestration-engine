@@ -49,7 +49,22 @@ public class AiResourceChangeProcessObserver implements ProcessAuthorizationHook
             } catch (java.io.IOException invalid) { throw new IllegalStateException("Approved TCP create body unavailable"); }
         }
         ApiKeyCredentialContext key = ApiKeyCredentialContext.get(request);
-        if (key == null) return operation.get();
+        if (key == null) {
+            Map<String, Object> session = store.execution(id);
+            if (!AiResourceChangePlanStore.sessionLifecycle(session)) return operation.get();
+            Policy owner = ApiUtils.getPolicy();
+            Map<String, Object> plan = store.load(id);
+            if (owner == null || number(session.get("actorId")) != owner.getAuthenticatedAsAccountId()
+                    || number(session.get("accountId")) != owner.getAccountId() || !requestMatches(session, request)
+                    || plan == null || !id.equals(plan.get("operationId")) || !"dispatching".equals(plan.get("status"))
+                    || !(plan.get("parameters") instanceof Map<?, ?> parameters) || !parameters.isEmpty()
+                    || !parameters.equals(plan.get("body")) || !parameters.equals(request.getRequestObject()))
+                throw new IllegalStateException("Approved lifecycle request unavailable");
+            Object previous = request.getAttribute(ATTRIBUTE);
+            request.setAttribute(ATTRIBUTE, new Dispatch(request, id));
+            try { return operation.get(); }
+            finally { request.setAttribute(ATTRIBUTE, previous); }
+        }
         Map<String, Object> binding = store.execution(id);
         Policy owner = ApiUtils.getPolicy();
         if (binding == null || !ordinaryIdentity(binding) || !id.equals(binding.get("id")) || !id.equals(request.getAttribute("apiKey.audit.requestId"))
@@ -76,6 +91,15 @@ public class AiResourceChangeProcessObserver implements ProcessAuthorizationHook
         }
         if (AiProjectMetadataChange.metadataBinding(binding) && !approvedProjectRequest(id, request))
             throw new IllegalStateException("Resource-change metadata request unavailable");
+        if (AiHostLifecycleChange.binding(binding)) {
+            Map<String, Object> plan = store.load(id);
+            if (plan == null || !id.equals(plan.get("operationId")) || !"dispatching".equals(plan.get("status"))
+                    || !Objects.equals(plan.get("resourceType"), binding.get("resourceType"))
+                    || !Objects.equals(plan.get("operation"), binding.get("operation"))
+                    || !(plan.get("parameters") instanceof Map<?, ?> approved) || !approved.isEmpty()
+                    || !approved.equals(plan.get("body")) || !approved.equals(request.getRequestObject()))
+                throw new IllegalStateException("Approved Host lifecycle request unavailable");
+        }
         Object previous = request.getAttribute(ATTRIBUTE);
         request.setAttribute(ATTRIBUTE, new Dispatch(request, id));
         try { return operation.get(); }
@@ -99,6 +123,8 @@ public class AiResourceChangeProcessObserver implements ProcessAuthorizationHook
             Object root = objects.loadResource(nativeType, rootId);
             if ("registry".equals(binding.get("resourceType")) && (!Objects.equals(binding.get("rootUuid"), uuid(root))
                     || !registryConfiguration(binding, root))) return Map.of();
+            if (AiHostLifecycleChange.binding(binding) && (!AiHostLifecycleChange.queuedRoot(binding, root, config)
+                    || !hostConfiguration(binding, root))) return Map.of();
             if (!ownedRoot(binding, root) || !resourceKind(binding, root)
                     || !Objects.equals(ObjectUtils.getId(root), rootId)
                     || !(AiProjectMetadataChange.metadataBinding(binding) ? config.getAccountId() == null
@@ -134,7 +160,78 @@ public class AiResourceChangeProcessObserver implements ProcessAuthorizationHook
         throw new IllegalStateException("Resource-change execution binding unavailable");
     }
 
+    /** The native insert and exact session witness commit or roll back together, before queue/execute. */
+    @Override public ProcessRecord createProcess(LaunchConfiguration config, Supplier<ProcessRecord> insert) {
+        ApiContext context = ApiContext.getContext();
+        ApiRequest request = context == null ? null : context.getApiRequest();
+        if (request == null || !(request.getAttribute(ATTRIBUTE) instanceof Dispatch scope) || scope.request() != request
+                || io.cattle.platform.engine.context.EngineContext.hasParentProcess()) return insert.get();
+        Map<String, Object> binding = store.execution(scope.id());
+        if (!AiResourceChangePlanStore.sessionLifecycle(binding)) return insert.get();
+        Policy owner = ApiUtils.getPolicy();
+        Map<String, Object> approved = store.load(scope.id());
+        if (owner == null || number(binding.get("actorId")) != owner.getAuthenticatedAsAccountId()
+                || number(binding.get("accountId")) != owner.getAccountId() || !requestMatches(binding, request)
+                || approved == null || !scope.id().equals(approved.get("operationId")) || !"dispatching".equals(approved.get("status"))
+                || !(approved.get("parameters") instanceof Map<?, ?> parameters) || !parameters.isEmpty()
+                || !parameters.equals(approved.get("body")) || !parameters.equals(request.getRequestObject())
+                || !sessionRoot(binding, config) || !emptyLifecyclePayload(config))
+            throw new IllegalStateException("Approved lifecycle process unavailable");
+        return store.processCreation(() -> {
+            Map<String, Object> before = store.execution(scope.id());
+            if (before == null || !before.equals(binding) || before.containsKey("rootProcessId"))
+                throw new IllegalStateException("Approved lifecycle process unavailable");
+            ProcessRecord record = insert.get();
+            if (record == null || record.getId() == null || record.getId() <= 0 || !sessionRoot(before, record)
+                    || !Objects.equals(config.getData(), record.getData()) || !emptyLifecyclePayload(record))
+                throw new IllegalStateException("Approved lifecycle process unavailable");
+            Map<String, Object> after = new LinkedHashMap<>(before); after.put("rootProcessId", record.getId());
+            if (!store.attestSessionProcess(scope.id(), before, after))
+                throw new IllegalStateException("Approved lifecycle process unavailable");
+            return record;
+        });
+    }
+
+    private boolean sessionRoot(Map<String, Object> binding, LaunchConfiguration config) {
+        Object root = objects.loadResource((String) binding.get("resourceType"), number(binding.get("rootId")));
+        return AiResourceChangePlanStore.sessionLifecycle(binding) && ownedRoot(binding, root) && resourceKind(binding, root)
+                && Objects.equals(binding.get("rootUuid"), uuid(root))
+                && number(config.getAccountId()) == number(binding.get("accountId"))
+                && Objects.equals(binding.get("resourceType"), config.getResourceType())
+                && Long.toString(number(binding.get("rootId"))).equals(config.getResourceId())
+                && initialProcess(binding).equals(config.getProcessName())
+                && list(binding.get("initial")).contains(initialIdentity(config, root))
+                && (AiHostLifecycleChange.binding(binding) ? AiHostLifecycleChange.queuedRoot(binding, root, config) && hostConfiguration(binding, root)
+                    : root instanceof Service service && "service".equals(service.getKind())
+                        && number(binding.get("rootStackId")) == number(service.getStackId()));
+    }
+
+    private static boolean emptyLifecyclePayload(LaunchConfiguration config) {
+        if (config.getData() == null || config.getData().isEmpty()) return true;
+        return config.getData().keySet().equals(Set.of("old")) && config.getData().get("old") instanceof Map<?, ?> old && old.isEmpty();
+    }
+
+    /** An absent or inconsistent durable witness is never reconstructed from current resource state. */
+    Long sessionProcessId(Map<String, Object> plan, Object target) {
+        Map<String, Object> binding = store.execution((String) plan.get("id"));
+        if (!AiResourceChangePlanStore.sessionLifecycle(binding) || !Objects.equals(binding.get("id"), plan.get("id"))
+                || !Objects.equals(binding.get("resourceType"), plan.get("resourceType"))
+                || !Objects.equals(binding.get("operation"), plan.get("operation")) || !Objects.equals(plan.get("id"), plan.get("operationId"))
+                || number(binding.get("actorId")) != number(plan.get("actorId"))
+                || number(binding.get("accountId")) != number(plan.get("accountId"))
+                || number(binding.get("rootId")) != number(ObjectUtils.getId(target)) || !ownedRoot(binding, target)
+                || !resourceKind(binding, target) || !Objects.equals(binding.get("rootUuid"), uuid(target))
+                || target instanceof Service service && (!"service".equals(service.getKind())
+                    || number(binding.get("rootStackId")) != number(service.getStackId()))
+                || !(binding.get("rootProcessId") instanceof Number process) || process.longValue() <= 0
+                || !store.sessionLifecycleActive((String) plan.get("id"), binding)) return null;
+        return process.longValue();
+    }
+
     @Override public void beforeExecution(LaunchConfiguration config, Map<String, Object> metadata) {
+        if ("host".equals(metadata.get("targetType")) && "POST".equals(metadata.get("requestMethod"))
+                && metadata.get("requestId") instanceof String hostId && hostId.matches("aichange-[0-9a-f-]{36}")
+                && !attestsHostLifecycle(config, metadata)) throw new ProcessAuthorizationDeniedException("OwnerPermissionDenied");
         if ("registry".equals(metadata.get("targetType")) && metadata.get("requestId") instanceof String registryId
                 && registryId.matches("aichange-[0-9a-f-]{36}") && !attestsRegistryLifecycle(config, metadata))
             throw new ProcessAuthorizationDeniedException("OwnerPermissionDenied");
@@ -172,7 +269,8 @@ public class AiResourceChangeProcessObserver implements ProcessAuthorizationHook
         for (int attempt = 0; attempt < 3; attempt++) {
             Map<String, Object> binding = store.execution(id);
             if (binding == null || list(binding.get("initial")).isEmpty() || !metadataMatches(binding, metadata)) return;
-            if ((AiProjectMetadataChange.metadataBinding(binding) || "registry".equals(binding.get("resourceType"))
+            if ((AiProjectMetadataChange.metadataBinding(binding) || AiHostLifecycleChange.binding(binding)
+                    || "registry".equals(binding.get("resourceType"))
                     || "loadBalancerService".equals(binding.get("resourceType"))
                     && "create".equals(binding.get("operation"))) && binding.get("rootProcessId") instanceof Number processId
                     && processId.longValue() != record.getId()) return;
@@ -526,6 +624,41 @@ public class AiResourceChangeProcessObserver implements ProcessAuthorizationHook
                     AiRegistryLifecycleChange.snapshot((io.cattle.platform.core.model.StoragePool) root)));
             return expected.equals(AiRegistryLifecycleChange.configuration(current));
         } catch (java.io.IOException unavailable) { throw new IllegalStateException("Resource-change execution binding unavailable", unavailable); }
+    }
+
+    private boolean hostConfiguration(Map<String, Object> binding, Object root) {
+        if (!AiHostLifecycleChange.binding(binding) || !AiHostLifecycleChange.host(root)
+                || !(binding.get("hostConfiguration") instanceof Map<?, ?> expected)) return false;
+        var host = (io.cattle.platform.core.model.Host) root;
+        var project = objects.loadResource(io.cattle.platform.core.model.Account.class, host.getAccountId());
+        return expected.equals(AiHostLifecycleChange.configuration(AiHostLifecycleChange.snapshot(host, project, json)));
+    }
+
+    private boolean attestsHostLifecycle(LaunchConfiguration config, Map<String, Object> metadata) {
+        if (!(config instanceof ProcessRecord record) || record.getId() == null || record.getId() <= 0
+                || !metadata.equals(ProcessAuthorization.metadata(config)) || config.getData() == null) return false;
+        Set<String> reserved = Set.of("old", ProcessAuthorization.DATA_KEY, ProcessAuthorization.CAPTURED_EXECUTION_KEY,
+                ProcessAuthorization.VERIFIED_CHILD_KEY, ProcessAuthorization.COMPLETION_PENDING_KEY);
+        if (!reserved.containsAll(config.getData().keySet())) return false;
+        if (config.getData().containsKey("old") && (!(config.getData().get("old") instanceof Map<?, ?> old) || !old.isEmpty())) return false;
+        String id = (String) metadata.get("requestId");
+        for (int attempt = 0; attempt < 2; attempt++) {
+            Map<String, Object> binding = store.execution(id);
+            Object root = binding == null ? null : objects.loadResource("host", number(binding.get("rootId")));
+            if (binding == null || !metadataMatches(binding, metadata) || !provenChild(binding, config, metadata)
+                    || !AiHostLifecycleChange.queuedRoot(binding, root, config) || !hostConfiguration(binding, root)) return false;
+            var persisted = objects.loadResource(io.cattle.platform.core.model.ProcessInstance.class, record.getId());
+            if (persisted == null || persisted.getEndTime() != null || !Objects.equals(persisted.getId(), record.getId())
+                    || !Objects.equals(persisted.getAccountId(), config.getAccountId()) || !Objects.equals(persisted.getData(), config.getData())
+                    || !Objects.equals(persisted.getProcessName(), config.getProcessName())
+                    || !Objects.equals(persisted.getResourceType(), config.getResourceType())
+                    || !Objects.equals(persisted.getResourceId(), config.getResourceId())) return false;
+            if (binding.get("rootProcessId") instanceof Number processId)
+                return processId.longValue() == record.getId() && store.hostLifecycleExecutionActive(id, binding);
+            Map<String, Object> after = new LinkedHashMap<>(binding); after.put("rootProcessId", record.getId());
+            if (store.attestHostLifecycleProcess(id, binding, after)) return true;
+        }
+        return false;
     }
     private boolean attestsRegistryLifecycle(LaunchConfiguration config, Map<String, Object> metadata) {
         if (!(config instanceof ProcessRecord record) || record.getId() == null || record.getId() <= 0

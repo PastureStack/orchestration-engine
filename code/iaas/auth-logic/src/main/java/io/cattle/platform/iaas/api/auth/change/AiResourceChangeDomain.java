@@ -165,7 +165,8 @@ public class AiResourceChangeDomain extends AbstractJooqDao {
             if ("project".equals(type)) return AiProjectMetadataChange.selectedReadable(row, selectedProject);
             if (row == null || ObjectUtils.getRemoved(row) != null || !matchesResourceType(type, row)
                     || !Objects.equals(ObjectUtils.getAccountId(row), ApiUtils.getPolicy().getAccountId())) throw error(404, "NotFound");
-            if (Set.of("registry", "volume").contains(type) && !Objects.equals(ObjectUtils.getId(row), internalId(type, publicId)))
+            if ((Set.of("registry", "volume").contains(type) || AiHostLifecycleChange.supports(descriptor) && "host".equals(type))
+                    && !Objects.equals(ObjectUtils.getId(row), internalId(type, publicId)))
                 throw error(404, "NotFound");
             return row;
         });
@@ -191,6 +192,8 @@ public class AiResourceChangeDomain extends AbstractJooqDao {
                 descriptor.method(), descriptor.action(), body);
         return authorized(original, request, () -> {
             if (boundPlan != null) keys.authorizeBoundDomain(boundPlan, request);
+            if (AiHostLifecycleChange.supports(descriptor) && !Map.of().equals(request.getRequestObject()))
+                throw error(403, "PermissionDenied");
             if (AiContainerNetworkChange.supports(descriptor)) {
                 if (!descriptor.body(parameters).equals(copyMap(request.getRequestObject()))) throw error(403, "PermissionDenied");
                 boolean write = !"GET".equals(original.getMethod());
@@ -367,6 +370,8 @@ public class AiResourceChangeDomain extends AbstractJooqDao {
         return authorized(original, request, () -> {
             if (AiHostMetadataChange.resets(descriptor, parameters)
                     && !descriptor.body(parameters).equals(copyMap(request.getRequestObject()))) throw error(403, "PermissionDenied");
+            if (AiHostLifecycleChange.supports(descriptor) && !Map.of().equals(request.getRequestObject()))
+                throw error(403, "PermissionDenied");
             if (AiContainerNetworkChange.supports(descriptor)) {
                 if (!descriptor.body(parameters).equals(copyMap(request.getRequestObject()))) throw error(403, "PermissionDenied");
             }
@@ -554,6 +559,11 @@ public class AiResourceChangeDomain extends AbstractJooqDao {
         return parent;
     }
 
+    public Map<String, Object> serviceLifecycleSnapshot(Object target) {
+        Service service = AiServiceUpgradeLifecycleChange.service(target);
+        Map<String, Object> result = snapshot(service); result.put("uuid", service.getUuid()); return result;
+    }
+
     public Map<String, Object> upgradeLifecycleSnapshot(Object target) { return AiServiceUpgradeLifecycleChange.snapshot(target, json); }
 
     /** Capture both the live generation and the native DAO's old upgrade set at apply, never at preview. */
@@ -618,9 +628,13 @@ public class AiResourceChangeDomain extends AbstractJooqDao {
     public String upgradeLifecycleProcessOutcome(Map<String, Object> plan, Object target) {
         Service service = AiServiceUpgradeLifecycleChange.service(target);
         AiResourceChangeDescriptor descriptor = AiResourceChangeDescriptor.require("service", (String) plan.get("operation"));
-        if (!AiServiceUpgradeLifecycleChange.supports(descriptor) || !(plan.get("processBaseline") instanceof Number baseline)
+        if (!(AiServiceUpgradeLifecycleChange.supports(descriptor) || AiResourceChangePlanStore.ordinaryLifecycle(descriptor))
+                || !(plan.get("processBaseline") instanceof Number baseline)
                 || baseline.longValue() < 0) return "unknown";
-        var rows = create().selectFrom(PROCESS_INSTANCE).where(PROCESS_INSTANCE.RESOURCE_TYPE.eq("service")
+        Long own = plan.get("credentialId") instanceof Number ? null : processObserver.sessionProcessId(plan, service);
+        if (!(plan.get("credentialId") instanceof Number) && own == null) return "unknown";
+        var rows = create().selectFrom(PROCESS_INSTANCE).where((own == null ? org.jooq.impl.DSL.trueCondition() : PROCESS_INSTANCE.ID.eq(own))
+                .and(PROCESS_INSTANCE.RESOURCE_TYPE.eq("service"))
                 .and(PROCESS_INSTANCE.RESOURCE_ID.eq(service.getId().toString()))
                 .and(PROCESS_INSTANCE.PROCESS_NAME.eq("service." + descriptor.action())).and(PROCESS_INSTANCE.ID.gt(baseline.longValue())))
                 .orderBy(PROCESS_INSTANCE.ID.asc()).limit(2).fetch();
@@ -631,7 +645,7 @@ public class AiResourceChangeDomain extends AbstractJooqDao {
         Object raw = process.getData() == null ? null : process.getData().get(io.cattle.platform.engine.process.ProcessAuthorization.DATA_KEY);
         Map<String, Object> metadata = raw instanceof Map<?, ?> values ? copyMap(values) : Map.of();
         if (plan.get("credentialId") instanceof Number credential) {
-            if (!Objects.equals(metadata.get("requestId"), plan.get("id")) || !"upgrade".equals(metadata.get("operation"))
+            if (!Objects.equals(metadata.get("requestId"), plan.get("id")) || !descriptor.keyOperation().equals(metadata.get("operation"))
                     || !"service".equals(metadata.get("targetType")) || !"POST".equals(metadata.get("requestMethod"))
                     || !descriptor.action().equals(metadata.get("requestAction")) || !Boolean.FALSE.equals(metadata.get("requestCollection"))
                     || !Boolean.FALSE.equals(metadata.get("preview")) || number(metadata.get("accountId")) != service.getAccountId()
@@ -639,6 +653,54 @@ public class AiResourceChangeDomain extends AbstractJooqDao {
                     || number(metadata.get("policyRevision")) != number(plan.get("credentialRevision"))
                     || !(metadata.get("keyId") instanceof String keyId)
                     || !Objects.equals(service.getId().toString(), metadata.get("targetId")) || metadata.containsKey("requestLink")) return "unknown";
+            try {
+                if (targets.parseScopeId("credential", keyId) != credential.longValue()) return "unknown";
+            } catch (ClientVisibleException invalid) { return "unknown"; }
+        } else if (!metadata.isEmpty()) return "unknown";
+        if (process.getEndTime() == null) return "running";
+        return "SUCCESS".equals(process.getResult()) && "DONE".equals(process.getPhase()) && "DONE".equals(process.getExitReason())
+                ? "succeeded" : "failed";
+    }
+
+    /** Latest locking read while the Host and plan are locked; previews never call this. */
+    public long hostLifecycleProcessBaseline(Object target) {
+        if (!AiHostLifecycleChange.host(target)) throw error(422, "ResourceChangeUnsupported");
+        Host host = (Host) target;
+        Long latest = create().select(PROCESS_INSTANCE.ID).from(PROCESS_INSTANCE)
+                .where(PROCESS_INSTANCE.RESOURCE_TYPE.eq("host").and(PROCESS_INSTANCE.RESOURCE_ID.eq(host.getId().toString())))
+                .orderBy(PROCESS_INSTANCE.ID.desc()).limit(1).forUpdate().fetchOne(PROCESS_INSTANCE.ID);
+        return latest == null ? 0 : latest;
+    }
+
+    /** A unique normal root process after the locked claim, never just a coincidental terminal state. */
+    public String hostLifecycleProcessOutcome(Map<String, Object> plan, Object target) {
+        if (!AiHostLifecycleChange.host(target)) throw error(422, "ResourceChangeUnsupported");
+        Host host = (Host) target;
+        AiResourceChangeDescriptor descriptor = AiResourceChangeDescriptor.require("host", (String) plan.get("operation"));
+        if (!AiHostLifecycleChange.supports(descriptor) || !(plan.get("processBaseline") instanceof Number baseline)
+                || baseline.longValue() < 0) return "unknown";
+        Long own = plan.get("credentialId") instanceof Number ? null : processObserver.sessionProcessId(plan, host);
+        if (!(plan.get("credentialId") instanceof Number) && own == null) return "unknown";
+        var rows = create().selectFrom(PROCESS_INSTANCE).where((own == null ? org.jooq.impl.DSL.trueCondition() : PROCESS_INSTANCE.ID.eq(own))
+                .and(PROCESS_INSTANCE.RESOURCE_TYPE.eq("host"))
+                .and(PROCESS_INSTANCE.RESOURCE_ID.eq(host.getId().toString()))
+                .and(PROCESS_INSTANCE.PROCESS_NAME.eq("host." + descriptor.action())).and(PROCESS_INSTANCE.ID.gt(baseline.longValue())))
+                .orderBy(PROCESS_INSTANCE.ID.asc()).limit(2).fetch();
+        if (rows.isEmpty()) return "running";
+        if (rows.size() != 1) return "unknown";
+        var process = rows.getFirst();
+        if (!Objects.equals(process.getAccountId(), host.getAccountId())) return "unknown";
+        Object raw = process.getData() == null ? null : process.getData().get(io.cattle.platform.engine.process.ProcessAuthorization.DATA_KEY);
+        Map<String, Object> metadata = raw instanceof Map<?, ?> values ? copyMap(values) : Map.of();
+        if (plan.get("credentialId") instanceof Number credential) {
+            if (!Objects.equals(metadata.get("requestId"), plan.get("id")) || !"update".equals(metadata.get("operation"))
+                    || !"host".equals(metadata.get("targetType")) || !"POST".equals(metadata.get("requestMethod"))
+                    || !descriptor.action().equals(metadata.get("requestAction")) || !Boolean.FALSE.equals(metadata.get("requestCollection"))
+                    || !Boolean.FALSE.equals(metadata.get("preview")) || number(metadata.get("accountId")) != host.getAccountId()
+                    || number(metadata.get("principalAccountId")) != number(plan.get("actorId"))
+                    || number(metadata.get("policyRevision")) != number(plan.get("credentialRevision"))
+                    || !(metadata.get("keyId") instanceof String keyId)
+                    || !Objects.equals(host.getId().toString(), metadata.get("targetId")) || metadata.containsKey("requestLink")) return "unknown";
             try {
                 if (targets.parseScopeId("credential", keyId) != credential.longValue()) return "unknown";
             } catch (ClientVisibleException invalid) { return "unknown"; }
@@ -823,6 +885,11 @@ public class AiResourceChangeDomain extends AbstractJooqDao {
         return copyMap(result);
     }
 
+    public Map<String, Object> hostLifecycleSnapshot(Object target) {
+        if (!(target instanceof Host host)) throw error(422, "ResourceChangeUnsupported");
+        return AiHostLifecycleChange.snapshot(host, objects.loadResource(Account.class, host.getAccountId()), json);
+    }
+
     /** Same native rows, sorted before locking so two typed plans cannot invert endpoint row locks. */
     public Object lockServiceLinkTargets(Map<String, Object> plan) {
         long sourceId = AiAliasServiceChange.nativeId(plan.get("internalResourceId"));
@@ -947,6 +1014,7 @@ public class AiResourceChangeDomain extends AbstractJooqDao {
     }
 
     private void ready(AiResourceChangeDescriptor descriptor, Object target, Object parent, boolean namedLinks) {
+        if (AiHostLifecycleChange.supports(descriptor)) { AiHostLifecycleChange.ready(descriptor, target); return; }
         if (AiRegistryLifecycleChange.supports(descriptor)) { AiRegistryLifecycleChange.ready(descriptor, target); return; }
         if (AiServiceUpgradeLifecycleChange.supports(descriptor)) {
             AiServiceUpgradeLifecycleChange.ready(descriptor, target, json); return;
@@ -1056,6 +1124,12 @@ public class AiResourceChangeDomain extends AbstractJooqDao {
                     || !Objects.equals(identity.get("uuid"), ObjectUtils.getPropertyIgnoreErrors(target, "uuid")))
                 throw error(409, "ResourceChangePlanStale");
         }
+        if (AiHostLifecycleChange.supports(descriptor)) {
+            Map<String, Object> identity = copyMap(plan.containsKey("hostLifecycleIdentity")
+                    ? plan.get("hostLifecycleIdentity") : AiHostLifecycleChange.identity(copyMap(plan.get("snapshot"))));
+            if (!identity.equals(AiHostLifecycleChange.identity(hostLifecycleSnapshot(target))))
+                throw error(409, "ResourceChangePlanStale");
+        }
         if (descriptor.createsResource() && Set.of("service", "loadBalancerService", "volume").contains(descriptor.resourceType())
                 && (number(ObjectUtils.getId(target)) != number(plan.get("internalResourceId"))
                     || !(plan.get("createdResourceUuid") instanceof String uuid) || uuid.isBlank()
@@ -1128,6 +1202,8 @@ public class AiResourceChangeDomain extends AbstractJooqDao {
     public boolean complete(AiResourceChangeDescriptor descriptor, Object target, Map<String, Object> parameters,
             Map<String, Object> before) {
         if (target == null) return false;
+        if (AiHostLifecycleChange.supports(descriptor)) return parameters.isEmpty() && target instanceof Host host
+                && AiHostLifecycleChange.complete(descriptor, host, before, objects.loadResource(Account.class, host.getAccountId()), json);
         if (AiContainerNetworkChange.supports(descriptor)) return containerNetworkComplete(descriptor, target, parameters, before);
         if (AiStackGroupChange.supports(descriptor, parameters)) {
             return AiStackGroupChange.complete(target, parameters, before,

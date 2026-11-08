@@ -346,6 +346,8 @@ public class AiResourceChangeProcessObserverTest {
             var result = new AiResourceChangePlanService(); result.store = store; result.domain = mock(AiResourceChangeDomain.class);
             when(result.domain.actor(any())).thenReturn(owner); when(result.domain.receiptTarget(any(), any(), anyMap())).thenReturn(service);
             when(result.domain.complete(any(), any(), anyMap(), anyMap())).thenReturn(complete);
+            // This fixture isolates the completion/failure race; the domain process owner is separately tested.
+            when(result.domain.upgradeLifecycleProcessOutcome(anyMap(), any())).thenReturn("succeeded");
             result.locks = mock(LockManager.class);
             when(result.locks.lock(any(), any())).thenAnswer(call -> ((LockCallback<?>) call.getArgument(1)).doWithLock());
             result.auditSinks = List.of(mock(ApiKeyAuditSink.class)); result.clock = Clock.fixed(Instant.EPOCH, ZoneOffset.UTC); return result;

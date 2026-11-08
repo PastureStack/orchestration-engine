@@ -9,8 +9,8 @@
   "scope": "Declared v1/v2 and source handler/process union; source-only review, not current artifact packaging, live role/state availability or asynchronous completion.",
   "sourceInputs": {
     "algorithm": "c03-source-inputs-v1",
-    "count": 497,
-    "sha256": "8ff1d335eeaa86472871324f88704ceed37273b219aca406fdeab1c49150daa9",
+    "count": 500,
+    "sha256": "d07135cc2dbe4e71845eb3abfa245c26ee6e180547047f211fb7fe2bc48af115",
     "anchors": [
       "AbstractObjectManager.java",
       "AbstractSchemaFactory.java",
@@ -60,6 +60,7 @@
       "AiContainerNetworkChange.java",
       "AiCreatePorts.java",
       "AiExternalServiceChange.java",
+      "AiHostLifecycleChange.java",
       "AiHostMetadataChange.java",
       "AiLoadBalancerCreateChange.java",
       "AiNamedServiceLinks.java",
@@ -103,6 +104,7 @@
       "DefaultAuthorizationProvider.java",
       "DefaultObjectMetaDataManager.java",
       "DefaultProcessInstanceImpl.java",
+      "DefaultProcessManager.java",
       "DefaultProcessesParser.java",
       "DriverServiceRemove.java",
       "EngineContext.java",
@@ -131,6 +133,7 @@
       "PortUpdateService.java",
       "PortUpdateValidationFilter.java",
       "ProcessAuthorization.java",
+      "ProcessAuthorizationHook.java",
       "ProcessEventDecorator.java",
       "ProjectAccessService.java",
       "ProjectResourceManager.java",
@@ -302,6 +305,55 @@
   "tupleCount": 1396,
   "tupleSha256": "8f1c0fb378663b0b3d272efba2f211cb210eb6f17cb8035aefa33b56feeaf36a",
   "extensionReview": {
+    "version": "unreleased-388-host-cookie-process-witness",
+    "status": "SOURCE_ONLY_NOT_ARTIFACT_OR_RUNTIME_ACCEPTANCE",
+    "sourceInputChanges": [
+      {
+        "path": "code/framework/engine/src/main/java/io/cattle/platform/engine/manager/impl/DefaultProcessManager.java",
+        "before": null,
+        "after": "62d2f4b20768a1ef0aa75b83235e0ad49c545ac4b4af6f3ddf82963b5a0d761d"
+      },
+      {
+        "path": "code/framework/engine/src/main/java/io/cattle/platform/engine/process/ProcessAuthorizationHook.java",
+        "before": null,
+        "after": "ec98f748e21a9d71fa9ad2f61974e54950e5a15b05940d7a6d77850b83937fb5"
+      },
+      {
+        "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiHostLifecycleChange.java",
+        "before": null,
+        "after": "65b12bb4304558c1a1417d963f34a0ca2a02862ad2f65b619ddaa32919d5453f"
+      },
+      {
+        "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiResourceChangeDescriptor.java",
+        "before": "ee8c36bf681274307f7746cf0930b5e5d17500abb2bdd7c945bbdc21310937a2",
+        "after": "bd07aa1b60aaff44c21429192b60451063fddb4510d91d6ad1bea8f0509c1715"
+      },
+      {
+        "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiResourceChangeDomain.java",
+        "before": "c46a34f3b6ed781ffbe3c3d7cc9b8a55b6980123565b2d2d0483764ab17ea57a",
+        "after": "c99d2ccb95cb4670b4998503376ce16dc26566330010640c81b078ccda0f852e"
+      },
+      {
+        "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiResourceChangePlanService.java",
+        "before": "a0a9fc9393a24c1cced672287fb19e35b439b1ace304144d654702761510dedd",
+        "after": "a8843dc4893cb6603b670f7dc2ca9e2316613ff78673fe9ab44d487a27d26653"
+      },
+      {
+        "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiResourceChangePlanStore.java",
+        "before": "6cbda0bf67546cee8e10050301b06b7e47503b288127093609ed13eba69349b0",
+        "after": "8751eb6a864cc5ff0afbf0457e7ebf8901c27339286c67b8cc571a8f95e531a6"
+      },
+      {
+        "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiResourceChangeProcessObserver.java",
+        "before": "7e94cc0635d7faead4bcf1a3bcbb6255a92cae1f29849a88ce6e27632cd254be",
+        "after": "a4d7ecb7e6622fe3b54a3432fdfb288dbd80efea29930f2161592791d093d375"
+      }
+    ],
+    "roleFieldDelta": [],
+    "typedBaseSchemaDelta": {},
+    "reviewManifest": "scripts/api-key-operation-review-0.183.388.json",
+    "reviewManifestSha256": "9c4c510828e3748f2b6581b5ab1965840acb756b7933e8ec11d473f7688fdac4",
+    "previous": {
     "version": "unreleased-387-host-port-driver",
     "status": "SOURCE_ONLY_NOT_ARTIFACT_OR_RUNTIME_ACCEPTANCE",
     "sourceInputChanges": [
@@ -3279,6 +3331,7 @@
         ]
       }
     ]
+  }
   }
   }
   },

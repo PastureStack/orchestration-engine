@@ -209,6 +209,8 @@ public class AiResourceChangePlanService {
                         plan.put("processBaseline", domain.upgradeLifecycleProcessBaseline(target));
                         if (!"cancel_upgrade".equals(descriptor.operation())) plan.put("retirementSnapshot", domain.upgradeLifecycleRetirementSnapshot(target));
                     }
+                    if (AiHostLifecycleChange.supports(descriptor)) plan.put("processBaseline", domain.hostLifecycleProcessBaseline(target));
+                    if (AiResourceChangePlanStore.ordinaryLifecycle(descriptor)) plan.put("processBaseline", domain.upgradeLifecycleProcessBaseline(target));
                     if (!store.claim(plan)) return output(owned(store.load(id), request));
                     try {
                         Object result = domain.dispatch(request, descriptor, text(plan.get("resourceId")), parameters, id);
@@ -265,6 +267,8 @@ public class AiResourceChangePlanService {
 
     private Map<String, Object> targetSnapshot(ApiRequest request, AiResourceChangeDescriptor descriptor, Object target,
             Map<String, Object> parameters) {
+        if (AiHostLifecycleChange.supports(descriptor)) return domain.hostLifecycleSnapshot(target);
+        if (AiResourceChangePlanStore.ordinaryLifecycle(descriptor)) return domain.serviceLifecycleSnapshot(target);
         if (AiContainerNetworkChange.supports(descriptor)) return domain.containerNetworkSnapshot(request, descriptor, target, parameters, true);
         if (AiStackGroupChange.supports(descriptor, parameters)) return domain.stackGroupSnapshot(request, target);
         return AiAliasServiceChange.ordinaryLinks(descriptor) ? domain.serviceLinksSnapshot(target)
@@ -275,6 +279,12 @@ public class AiResourceChangePlanService {
     private Object visibleTarget(ApiRequest request, AiResourceChangeDescriptor descriptor, String id, Object lockedTarget,
             Map<String, Object> parameters) {
         Object visible = domain.visible(request, descriptor, id);
+        if (AiResourceChangePlanStore.ordinaryLifecycle(descriptor)
+                && !domain.serviceLifecycleSnapshot(lockedTarget).equals(domain.serviceLifecycleSnapshot(visible)))
+            throw error(409, "ResourceChangePlanStale");
+        if (AiHostLifecycleChange.supports(descriptor)
+                && !domain.hostLifecycleSnapshot(lockedTarget).equals(domain.hostLifecycleSnapshot(visible)))
+            throw error(409, "ResourceChangePlanStale");
         if (AiContainerNetworkChange.supports(descriptor)
                 && !domain.containerNetworkSnapshot(request, descriptor, lockedTarget, parameters, true)
                     .equals(domain.containerNetworkSnapshot(request, descriptor, visible, parameters, true)))
@@ -323,7 +333,9 @@ public class AiResourceChangePlanService {
             before.put("volumeCreateAccountId", plan.get("accountId"));
         }
         if (AiLoadBalancerCreateChange.supports(descriptor)) before.put("loadBalancerCreateBody", plan.get("body"));
-        String lifecycleOutcome = AiServiceUpgradeLifecycleChange.supports(descriptor) ? domain.upgradeLifecycleProcessOutcome(plan, target) : null;
+        String lifecycleOutcome = AiHostLifecycleChange.supports(descriptor) ? Objects.toString(domain.hostLifecycleProcessOutcome(plan, target), "unknown")
+                : AiServiceUpgradeLifecycleChange.supports(descriptor) || AiResourceChangePlanStore.ordinaryLifecycle(descriptor)
+                    ? Objects.toString(domain.upgradeLifecycleProcessOutcome(plan, target), "unknown") : null;
         if (AiServiceUpgradeLifecycleChange.supports(descriptor)) before.put("retirementSnapshot", plan.get("retirementSnapshot"));
         if ((lifecycleOutcome == null || "succeeded".equals(lifecycleOutcome)) && domain.complete(descriptor, target, map(plan.get("parameters")), before)) {
             if (descriptor.createsResource() && "service".equals(descriptor.resourceType()) && map(plan.get("parameters")).containsKey("ports")) {
@@ -418,6 +430,8 @@ public class AiResourceChangePlanService {
     }
 
     private void eraseSnapshot(Map<String, Object> plan) {
+        if (AiHostLifecycleChange.supports(descriptor(plan)) && plan.get("snapshot") instanceof Map<?, ?>)
+            plan.put("hostLifecycleIdentity", AiHostLifecycleChange.identity(map(plan.get("snapshot"))));
         if ("registry".equals(plan.get("resourceType")) && plan.get("snapshot") instanceof Map<?, ?> registrySnapshot) {
             Map<String, Object> identity = new LinkedHashMap<>();
             for (String field : List.of("id", "uuid", "accountId", "kind")) identity.put(field, registrySnapshot.get(field));
