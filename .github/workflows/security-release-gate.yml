@@ -734,6 +734,20 @@ jobs:
               'io.github.ibuildthecloud.gdapi.validation.ValidationHandlerTest': {
                   'clientCannotSetServerOwnedVolumeNativeClassification',
               },
+              'io.cattle.platform.iaas.api.auth.change.AiCookieLifecycleWitnessTest': [
+                  'commonPrepareStripsForgedCorrelationAndWrongRuntimeParentsCannotSealAChain',
+                  'emptyAndAlreadyDesiredStacksNeedAnActualClosedNativeDispatchAndStableExactIdentitySet',
+                  'failedAttestationRollsBackTheNativeInsertAndCannotQueueOrLeakThePrivateScope',
+                  'fourteenCookieActionsNeedTheirOwnNativeRowsAndNeverBorrowAnUnrelatedSuccess',
+                  'fullPayloadJsonRoundtripKeepsChangedValuesTypesNullsFieldsAndArrayOrderDistinct',
+                  'nativeRestartHandlersAndFrameworkScheduleChainBindEveryParentBeforeCompletion',
+                  'nativeServiceRestartCountEnrichmentIsAcceptedButUnrelatedFieldsOrCountsNeverAttest',
+                  'originalCompletionPredicateIsStillRequiredAfterTheOwnProcessSucceeds',
+                  'originalStackHandlerPreservesTwoNamedAliasesToOneWaitTargetAndLateFanoutFailureStaysPartialUnknown',
+                  'queuedChainsTrackActiveStatesAndKeepNativeQueuesWhenTrackingExpiresOrDisappears',
+                  'stackFanoutPinsAllChildUuidsAndKeepsExplicitStableNoopsSeparateFromTransitionalSkips',
+                  'trackerFailureDoesNotMarkNativeTransactionRollbackOnlyOrSwallowNativeInsertAndQueueErrors',
+              ],
           }
           suites = []
           observed = {}

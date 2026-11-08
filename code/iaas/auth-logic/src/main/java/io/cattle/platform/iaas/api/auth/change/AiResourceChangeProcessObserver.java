@@ -28,6 +28,8 @@ import java.util.function.Supplier;
 public class AiResourceChangeProcessObserver implements ProcessAuthorizationHook {
     static final String ATTRIBUTE = "ai.resource.change.execution.owner";
     @Inject AiResourceChangePlanStore store;
+    final AiCookieLifecycleWitness cookieWitness = new AiCookieLifecycleWitness(this);
+    @Inject jakarta.inject.Provider<io.cattle.platform.servicediscovery.api.dao.ServiceExposeMapDao> restartMaps;
     @Inject ObjectManager objects;
     @Inject ApiKeyTargetResolver targets;
     @Inject io.cattle.platform.json.JsonMapper json;
@@ -51,6 +53,7 @@ public class AiResourceChangeProcessObserver implements ProcessAuthorizationHook
         ApiKeyCredentialContext key = ApiKeyCredentialContext.get(request);
         if (key == null) {
             Map<String, Object> session = store.execution(id);
+            if (AiCookieLifecycleWitness.binding(session)) return cookieWitness.dispatch(request, id, operation);
             if (!AiResourceChangePlanStore.sessionLifecycle(session)) return operation.get();
             Policy owner = ApiUtils.getPolicy();
             Map<String, Object> plan = store.load(id);
@@ -161,7 +164,13 @@ public class AiResourceChangeProcessObserver implements ProcessAuthorizationHook
     }
 
     /** The native insert and exact session witness commit or roll back together, before queue/execute. */
+    @Override public void prepareProcess(LaunchConfiguration config) { cookieWitness.prepare(config); }
+
     @Override public ProcessRecord createProcess(LaunchConfiguration config, Supplier<ProcessRecord> insert) {
+        return cookieWitness.create(config, () -> createOriginalProcess(config, insert));
+    }
+
+    private ProcessRecord createOriginalProcess(LaunchConfiguration config, Supplier<ProcessRecord> insert) {
         ApiContext context = ApiContext.getContext();
         ApiRequest request = context == null ? null : context.getApiRequest();
         if (request == null || !(request.getAttribute(ATTRIBUTE) instanceof Dispatch scope) || scope.request() != request

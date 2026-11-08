@@ -267,6 +267,7 @@ public class AiResourceChangePlanService {
 
     private Map<String, Object> targetSnapshot(ApiRequest request, AiResourceChangeDescriptor descriptor, Object target,
             Map<String, Object> parameters) {
+        if (AiCookieLifecycleWitness.supports(descriptor)) return domain.cookieLifecycleSnapshot(descriptor, target);
         if (AiHostLifecycleChange.supports(descriptor)) return domain.hostLifecycleSnapshot(target);
         if (AiResourceChangePlanStore.ordinaryLifecycle(descriptor)) return domain.serviceLifecycleSnapshot(target);
         if (AiContainerNetworkChange.supports(descriptor)) return domain.containerNetworkSnapshot(request, descriptor, target, parameters, true);
@@ -333,7 +334,9 @@ public class AiResourceChangePlanService {
             before.put("volumeCreateAccountId", plan.get("accountId"));
         }
         if (AiLoadBalancerCreateChange.supports(descriptor)) before.put("loadBalancerCreateBody", plan.get("body"));
-        String lifecycleOutcome = AiHostLifecycleChange.supports(descriptor) ? Objects.toString(domain.hostLifecycleProcessOutcome(plan, target), "unknown")
+        String lifecycleOutcome = AiCookieLifecycleWitness.supports(descriptor) && !(plan.get("credentialId") instanceof Number)
+                ? Objects.toString(domain.cookieLifecycleOutcome(plan, target), "unknown") : AiHostLifecycleChange.supports(descriptor) ?
+                        Objects.toString(domain.hostLifecycleProcessOutcome(plan, target), "unknown")
                 : AiServiceUpgradeLifecycleChange.supports(descriptor) || AiResourceChangePlanStore.ordinaryLifecycle(descriptor)
                     ? Objects.toString(domain.upgradeLifecycleProcessOutcome(plan, target), "unknown") : null;
         if (AiServiceUpgradeLifecycleChange.supports(descriptor)) before.put("retirementSnapshot", plan.get("retirementSnapshot"));
@@ -430,6 +433,8 @@ public class AiResourceChangePlanService {
     }
 
     private void eraseSnapshot(Map<String, Object> plan) {
+        if (AiCookieLifecycleWitness.supports(descriptor(plan)) && plan.get("snapshot") instanceof Map<?, ?> snapshot)
+            plan.put("cookieLifecycleIdentity", map(map(snapshot.get(AiCookieLifecycleWitness.SNAPSHOT)).get("root")));
         if (AiHostLifecycleChange.supports(descriptor(plan)) && plan.get("snapshot") instanceof Map<?, ?>)
             plan.put("hostLifecycleIdentity", AiHostLifecycleChange.identity(map(plan.get("snapshot"))));
         if ("registry".equals(plan.get("resourceType")) && plan.get("snapshot") instanceof Map<?, ?> registrySnapshot) {

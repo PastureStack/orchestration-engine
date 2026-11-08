@@ -35,7 +35,8 @@ public class AiResourceChangePlanStore extends AbstractJooqDao {
     }
 
     static boolean lifecycle(AiResourceChangeDescriptor descriptor) {
-        return AiHostLifecycleChange.supports(descriptor) || ordinaryLifecycle(descriptor) || AiServiceUpgradeLifecycleChange.supports(descriptor);
+        return AiHostLifecycleChange.supports(descriptor) || ordinaryLifecycle(descriptor) || AiServiceUpgradeLifecycleChange.supports(descriptor)
+                || AiCookieLifecycleWitness.supports(descriptor);
     }
 
     static boolean sessionLifecycle(Map<String, Object> binding) {
@@ -49,11 +50,67 @@ public class AiResourceChangePlanStore extends AbstractJooqDao {
                 .and(STATE.in("dispatching", "accepted", "running", "unknown")).and(FAILURE.isNull()).and(EXECUTION.eq(encode(binding)))) == 1;
     }
 
+    <T> T cookieTracking(java.util.function.Supplier<T> action) {
+        var tracking = new org.springframework.transaction.support.TransactionTemplate(transactions);
+        tracking.setPropagationBehavior(org.springframework.transaction.TransactionDefinition.PROPAGATION_NESTED);
+        return tracking.execute(status -> {
+            try { return action.get(); }
+            catch (RuntimeException failure) {
+                if (status.isRollbackOnly()) throw new org.springframework.transaction.UnexpectedRollbackException(
+                        "Native transaction is rollback-only", failure);
+                throw failure;
+            }
+        });
+    }
+
+    void markCookieTrackingUnavailable(String id) {
+        cookieTracking(() -> {
+            for (int attempt = 0; attempt < 2; attempt++) {
+                Map<String, Object> before = execution(id);
+                if (!AiCookieLifecycleWitness.binding(before)) return null;
+                Map<String, Object> after = new java.util.LinkedHashMap<>(before); after.put("cookieTrackingUnavailable", true);
+                if (create().update(TABLE).set(EXECUTION, encode(after)).where(ID.eq(id)
+                        .and(STATE.in("dispatching", "accepted", "running", "unknown")).and(FAILURE.isNull())
+                        .and(EXECUTION.eq(encode(before)))).execute() == 1) return null;
+            }
+            return null;
+        });
+    }
+
+    boolean attestCookieChain(String id, Map<String, Object> before, Map<String, Object> after) {
+        if (!AiCookieLifecycleWitness.binding(before) || !"container".equals(before.get("resourceType"))
+                || !"restart".equals(before.get("operation"))) return false;
+        Map<String, Object> original = new java.util.LinkedHashMap<>(before), changed = new java.util.LinkedHashMap<>(after);
+        original.remove("cookieProcesses"); changed.remove("cookieProcesses");
+        if (!original.equals(changed)) return false;
+        return create().update(TABLE).set(EXECUTION, encode(after)).where(ID.eq(id)
+                .and(STATE.in("dispatching", "accepted", "running", "unknown")).and(FAILURE.isNull())
+                .and(EXECUTION.eq(encode(before)))).execute() == 1;
+    }
+
+    void retainNativeTransactionFailure(RuntimeException failure) {
+        if (failure instanceof org.springframework.transaction.TransactionSystemException
+                || failure instanceof org.springframework.transaction.UnexpectedRollbackException) throw failure;
+        if (transactions instanceof org.springframework.transaction.support.ResourceTransactionManager manager) {
+            Object holder = org.springframework.transaction.support.TransactionSynchronizationManager.getResource(manager.getResourceFactory());
+            if (holder instanceof org.springframework.transaction.support.ResourceHolderSupport resource && resource.isRollbackOnly()) throw failure;
+        }
+        for (Throwable cause = failure; cause != null; cause = cause.getCause()) {
+            if (cause instanceof java.sql.SQLException sql && sql.getSQLState() != null && sql.getSQLState().startsWith("40")) throw failure;
+            if (cause.getCause() == cause) break;
+        }
+    }
+
     boolean attestSessionProcess(String id, Map<String, Object> before, Map<String, Object> after) {
         if (!sessionLifecycle(before) || before.containsKey("rootProcessId")
                 || !(after.get("rootProcessId") instanceof Number process) || process.longValue() <= 0) return false;
         Map<String, Object> expected = new java.util.LinkedHashMap<>(before); expected.put("rootProcessId", process);
         return expected.equals(after) && attest(id, before, after);
+    }
+
+    io.cattle.platform.core.model.tables.records.ProcessInstanceRecord lifecycleProcess(long id) {
+        var table = io.cattle.platform.core.model.tables.ProcessInstanceTable.PROCESS_INSTANCE;
+        return create().selectFrom(table).where(table.ID.eq(id)).fetchOne();
     }
 
     public void insert(Map<String, Object> plan) {
@@ -287,6 +344,11 @@ public class AiResourceChangePlanStore extends AbstractJooqDao {
         binding.put("resourceType", descriptor.resourceType()); binding.put("operation", descriptor.operation());
         binding.put("method", descriptor.method()); binding.put("action", descriptor.action()); binding.put("keyOperation", descriptor.keyOperation());
         binding.put("rootId", plan.get("internalResourceId")); binding.put("initial", new java.util.ArrayList<>());
+        if (session && AiCookieLifecycleWitness.supports(descriptor)) {
+            var snapshot = (Map<?, ?>) plan.get("snapshot");
+            binding.put(AiCookieLifecycleWitness.SNAPSHOT, snapshot.get(AiCookieLifecycleWitness.SNAPSHOT));
+            binding.put("cookieProcesses", Map.of()); binding.put("cookieDispatchClosed", false);
+        }
         if (AiHostLifecycleChange.supports(descriptor) && plan.get("snapshot") instanceof Map<?, ?> snapshot) {
             Map<String, Object> values = new java.util.LinkedHashMap<>();
             for (var entry : snapshot.entrySet()) if (entry.getKey() instanceof String key) values.put(key, entry.getValue());

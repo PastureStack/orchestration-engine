@@ -885,6 +885,17 @@ public class AiResourceChangeDomain extends AbstractJooqDao {
         return copyMap(result);
     }
 
+    public Map<String, Object> cookieLifecycleSnapshot(AiResourceChangeDescriptor descriptor, Object target) {
+        Map<String, Object> result = snapshot(target);
+        Map<String, Object> witness = processObserver.cookieWitness.snapshot(descriptor, target);
+        result.put(AiCookieLifecycleWitness.SNAPSHOT, witness);
+        result.put("uuid", ObjectUtils.getPropertyIgnoreErrors(target, "uuid")); return result;
+    }
+
+    public String cookieLifecycleOutcome(Map<String, Object> plan, Object target) {
+        return processObserver.cookieWitness.outcome(plan, target);
+    }
+
     public Map<String, Object> hostLifecycleSnapshot(Object target) {
         if (!(target instanceof Host host)) throw error(422, "ResourceChangeUnsupported");
         return AiHostLifecycleChange.snapshot(host, objects.loadResource(Account.class, host.getAccountId()), json);
@@ -1186,6 +1197,12 @@ public class AiResourceChangeDomain extends AbstractJooqDao {
                             throw error(409, "ResourceChangePlanStale");
                 }
             }
+        }
+        if (AiCookieLifecycleWitness.supports(descriptor)) {
+            Map<String, Object> identity = copyMap(plan.get("cookieLifecycleIdentity"));
+            if (plan.get("snapshot") instanceof Map<?, ?> snapshot)
+                identity = copyMap(copyMap(snapshot.get(AiCookieLifecycleWitness.SNAPSHOT)).get("root"));
+            if (!processObserver.cookieWitness.identityMatches(identity, target)) throw error(409, "ResourceChangePlanStale");
         }
         if (AiServiceUpgradeLifecycleChange.supports(descriptor)) {
             Map<String, Object> identity = copyMap(plan.get("lifecycleIdentity"));

@@ -4,12 +4,16 @@ This candidate adds bounded Host activation and deactivation through the existin
 query, preview, human confirmation and native execution flow. It does not evacuate
 workloads, stop Docker, or change Agent identity.
 
-Cookie-origin Host start/stop, ordinary Service start/stop and existing Service
-finish-upgrade, rollback and cancel-upgrade completion now require a durable
-witness of the exact native root process inserted for that approved plan. Another
-request reaching the same resource state cannot supply that evidence. Service
-readiness, prior-instance stopping and retirement/attachment cleanup remain
-required in addition to the own-process outcome.
+Cookie-origin Host, ordinary Service, registry, load-balancer, external/DNS
+service, Container and Stack lifecycle completion requires durable evidence of
+the exact native processes belonging to the approved plan. Restart binds the
+actual native stop/start chain; Stack binds the exact child identity set and
+explicit stable no-ops, including an empty Stack. Another request cannot supply
+this evidence. Every original domain terminal/readiness/retirement predicate
+remains required. Stack fanout can partially schedule and is not an atomic or
+zero-effect operation. A later tracking failure yields unknown rather than
+interrupting an already accepted native chain; native insert/queue errors retain
+their existing failure behavior.
 
 The framework insertion SPI permits a private observer to record correlation;
 it grants no authorization and carries no token, claims or caller-supplied marker.
@@ -21,7 +25,7 @@ approval and cancellation controls remain. Full and legacy clients require no ne
 header, dependency or schema change.
 
 The original 459 required test identities are retained. New owning methods and
-three affected existing methods are enumerated in the normal release manifest;
+directly affected existing methods are enumerated in the normal release manifest;
 normal original CI must determine their actual execution results. Local focused
 results are development evidence, not component or native qualification.
 

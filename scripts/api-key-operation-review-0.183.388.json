@@ -173,8 +173,8 @@
     },
     "reviewed": {
       "algorithm": "c03-source-inputs-v1",
-      "count": 500,
-      "sha256": "d07135cc2dbe4e71845eb3abfa245c26ee6e180547047f211fb7fe2bc48af115",
+      "count": 502,
+      "sha256": "79e369151a0ac278b4fce79154346784325414bbd33f75e61066ce1c84d0e884",
       "anchors": [
         "AbstractObjectManager.java",
         "AbstractSchemaFactory.java",
@@ -222,6 +222,7 @@
         "AiContainerLogsService.java",
         "AiContainerLogsTicket.java",
         "AiContainerNetworkChange.java",
+        "AiCookieLifecycleWitness.java",
         "AiCreatePorts.java",
         "AiExternalServiceChange.java",
         "AiHostLifecycleChange.java",
@@ -285,6 +286,7 @@
         "InstanceCreatePortValidation.java",
         "InstancePortsLock.java",
         "InstancePortsValidationFilter.java",
+        "LaunchConfiguration.java",
         "LoadBalancerServiceCreatePostListener.java",
         "Lock.java",
         "NotWritablePostProcessor.java",
@@ -347,9 +349,29 @@
       "after": "62d2f4b20768a1ef0aa75b83235e0ad49c545ac4b4af6f3ddf82963b5a0d761d"
     },
     {
+      "path": "code/framework/engine/src/main/java/io/cattle/platform/engine/process/LaunchConfiguration.java",
+      "before": null,
+      "after": "056e123d0d2e68883fb08085c572b78f6bef9a41af8f47996d9457453ceff978"
+    },
+    {
+      "path": "code/framework/engine/src/main/java/io/cattle/platform/engine/process/ProcessAuthorization.java",
+      "before": "c7ee36073ba3a56a75243c778dcc255d1200222b9ee8fbc19cf557623ac33ee5",
+      "after": "3b6ddba749d462fe0058a0233c4bbbb868c1c9a00f37c983eb63fcbbbed07e38"
+    },
+    {
       "path": "code/framework/engine/src/main/java/io/cattle/platform/engine/process/ProcessAuthorizationHook.java",
       "before": null,
-      "after": "ec98f748e21a9d71fa9ad2f61974e54950e5a15b05940d7a6d77850b83937fb5"
+      "after": "743f610e3ad806e324749bbab5ee92120c0363c1c8d6ec658e18ec78a7f86fca"
+    },
+    {
+      "path": "code/framework/engine/src/main/java/io/cattle/platform/engine/process/impl/DefaultProcessInstanceImpl.java",
+      "before": "986e14156ce42ac72033fad21289db4e3732469378cb6c9b0ae1d0a4c36376b0",
+      "after": "949028dbd6d628f09f649bae5686f4f2297af4e95a0a83f6ae9339536a1078fc"
+    },
+    {
+      "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiCookieLifecycleWitness.java",
+      "before": null,
+      "after": "47e2010db8be6923d88f4201992331d54dda54d4a1032f4352066b47f0618623"
     },
     {
       "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiHostLifecycleChange.java",
@@ -364,25 +386,25 @@
     {
       "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiResourceChangeDomain.java",
       "before": "c46a34f3b6ed781ffbe3c3d7cc9b8a55b6980123565b2d2d0483764ab17ea57a",
-      "after": "c99d2ccb95cb4670b4998503376ce16dc26566330010640c81b078ccda0f852e"
+      "after": "79e8c1332e6353031b4a046c31873836bccae2ea6dc1b0ff3b48fe3399cc5ca8"
     },
     {
       "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiResourceChangePlanService.java",
       "before": "a0a9fc9393a24c1cced672287fb19e35b439b1ace304144d654702761510dedd",
-      "after": "a8843dc4893cb6603b670f7dc2ca9e2316613ff78673fe9ab44d487a27d26653"
+      "after": "9db9d7e96367f5de7263aa497c001950ef4b939be7efdd04901428b0d303c49c"
     },
     {
       "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiResourceChangePlanStore.java",
       "before": "6cbda0bf67546cee8e10050301b06b7e47503b288127093609ed13eba69349b0",
-      "after": "8751eb6a864cc5ff0afbf0457e7ebf8901c27339286c67b8cc571a8f95e531a6"
+      "after": "fd77e4413ecfb2706664ae37c3d68fda46a62fe3e3e57611dd4c5d367c103c95"
     },
     {
       "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiResourceChangeProcessObserver.java",
       "before": "7e94cc0635d7faead4bcf1a3bcbb6255a92cae1f29849a88ce6e27632cd254be",
-      "after": "a4d7ecb7e6622fe3b54a3432fdfb288dbd80efea29930f2161592791d093d375"
+      "after": "0c1487d790d95faff12043970191eddebaab5ec47b4d6f6e2eeae196361b49ad"
     }
   ],
-  "requiredMethodCount": 479,
+  "requiredMethodCount": 491,
   "inheritedRequiredMethods": [
     [
       "io.cattle.platform.api.schema.FileSchemaFactoryTest",
@@ -2223,6 +2245,54 @@
   ],
   "newRequiredMethods": [
     [
+      "io.cattle.platform.iaas.api.auth.change.AiCookieLifecycleWitnessTest",
+      "commonPrepareStripsForgedCorrelationAndWrongRuntimeParentsCannotSealAChain"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiCookieLifecycleWitnessTest",
+      "emptyAndAlreadyDesiredStacksNeedAnActualClosedNativeDispatchAndStableExactIdentitySet"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiCookieLifecycleWitnessTest",
+      "failedAttestationRollsBackTheNativeInsertAndCannotQueueOrLeakThePrivateScope"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiCookieLifecycleWitnessTest",
+      "fourteenCookieActionsNeedTheirOwnNativeRowsAndNeverBorrowAnUnrelatedSuccess"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiCookieLifecycleWitnessTest",
+      "fullPayloadJsonRoundtripKeepsChangedValuesTypesNullsFieldsAndArrayOrderDistinct"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiCookieLifecycleWitnessTest",
+      "nativeRestartHandlersAndFrameworkScheduleChainBindEveryParentBeforeCompletion"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiCookieLifecycleWitnessTest",
+      "nativeServiceRestartCountEnrichmentIsAcceptedButUnrelatedFieldsOrCountsNeverAttest"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiCookieLifecycleWitnessTest",
+      "originalCompletionPredicateIsStillRequiredAfterTheOwnProcessSucceeds"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiCookieLifecycleWitnessTest",
+      "originalStackHandlerPreservesTwoNamedAliasesToOneWaitTargetAndLateFanoutFailureStaysPartialUnknown"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiCookieLifecycleWitnessTest",
+      "queuedChainsTrackActiveStatesAndKeepNativeQueuesWhenTrackingExpiresOrDisappears"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiCookieLifecycleWitnessTest",
+      "stackFanoutPinsAllChildUuidsAndKeepsExplicitStableNoopsSeparateFromTransitionalSkips"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiCookieLifecycleWitnessTest",
+      "trackerFailureDoesNotMarkNativeTransactionRollbackOnlyOrSwallowNativeInsertAndQueueErrors"
+    ],
+    [
       "io.cattle.platform.iaas.api.auth.change.AiHostLifecycleChangeTest",
       "freshNativeRoleAndKeyCeilingAndExactReadIdRemainAuthoritativeBeforePlanCreation"
     ],
@@ -2339,11 +2409,47 @@
   ],
   "affectedExistingRequiredMethods": [
     [
+      "io.cattle.platform.iaas.api.auth.change.AiHostMetadataChangeTest",
+      "onlyMetadataIntentAndFieldsAreAccepted"
+    ],
+    [
       "io.cattle.platform.iaas.api.auth.change.AiServiceUpgradeLifecycleChangeTest",
       "processObservationUsesAnExactBoundedRootAndRejectsMissingOrConflictingExecutionEvidence"
     ]
   ],
   "affectedExistingNonRequiredMethods": [
+    [
+      "io.cattle.platform.iaas.api.auth.apikey.ApiKeyProcessAuthorizationTest",
+      "currentOwnerSchemaStillConstrainsFullKey"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.apikey.ApiKeyProcessAuthorizationTest",
+      "fullAndLegacyKeepExistingActionBoundary"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.apikey.ApiKeyProcessAuthorizationTest",
+      "policyRevisionChangeDoesNotRunQueuedOldGrant"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiResourceChangePlanServiceTest",
+      "acceptedOperationIsDurableAndRepeatApplyNeverDispatchesAgain"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiResourceChangePlanServiceTest",
+      "cookieConfirmationNeverLendsItsAuthorityToABoundKey"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiResourceChangePlanServiceTest",
+      "lostDispatchResponseLeavesOneUnknownOperationWithoutReplay"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiResourceChangePlanServiceTest",
+      "previewIsAReadAndPublicOutputNeverContainsPrivateState"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiResourceChangePlanStoreTest",
+      "durableClaimSurvivesANewStoreAndNeverBecomesPreviewAgain"
+    ],
     [
       "io.cattle.platform.iaas.api.auth.change.AiResourceChangeProcessObserverTest",
       "failureBetweenObservationAndLateSuccessWriteCannotReturnVerifiedSuccess"
@@ -2353,7 +2459,7 @@
       "missingScalarForeignOperationAndCancelledOwnerDoNotTurnAnUnknownDispatchIntoFailure"
     ]
   ],
-  "newMethodCount": 20,
+  "newMethodCount": 32,
   "requiredPackagedRootSources": [
     "code/framework/api/src/main/java/io/cattle/platform/api/auth/ApiAuditPayload.java",
     "code/framework/api/src/main/java/io/cattle/platform/api/auth/ApiContainerLogsRead.java",
@@ -2362,8 +2468,10 @@
     "code/framework/auditing/src/main/java/io/cattle/platform/iaas/api/auditing/AuditLogKeySelector.java",
     "code/framework/auditing/src/main/java/io/cattle/platform/iaas/api/auditing/AuditServiceImpl.java",
     "code/framework/engine/src/main/java/io/cattle/platform/engine/manager/impl/DefaultProcessManager.java",
+    "code/framework/engine/src/main/java/io/cattle/platform/engine/process/LaunchConfiguration.java",
     "code/framework/engine/src/main/java/io/cattle/platform/engine/process/ProcessAuthorization.java",
     "code/framework/engine/src/main/java/io/cattle/platform/engine/process/ProcessAuthorizationHook.java",
+    "code/framework/engine/src/main/java/io/cattle/platform/engine/process/impl/DefaultProcessInstanceImpl.java",
     "code/framework/lock/src/main/java/io/cattle/platform/lock/Lock.java",
     "code/framework/lock/src/main/java/io/cattle/platform/lock/provider/impl/StandardLock.java",
     "code/framework/object/src/main/java/io/cattle/platform/object/impl/AbstractObjectManager.java",
@@ -2394,6 +2502,7 @@
     "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/apikey/ApiKeyTargetResolver.java",
     "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiAliasServiceChange.java",
     "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiContainerNetworkChange.java",
+    "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiCookieLifecycleWitness.java",
     "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiCreatePorts.java",
     "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiExternalServiceChange.java",
     "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiHostLifecycleChange.java",
@@ -2444,7 +2553,11 @@
   ],
   "currentSourceRoots": [
     "code/framework/engine/src/main/java/io/cattle/platform/engine/manager/impl/DefaultProcessManager.java",
+    "code/framework/engine/src/main/java/io/cattle/platform/engine/process/LaunchConfiguration.java",
+    "code/framework/engine/src/main/java/io/cattle/platform/engine/process/ProcessAuthorization.java",
     "code/framework/engine/src/main/java/io/cattle/platform/engine/process/ProcessAuthorizationHook.java",
+    "code/framework/engine/src/main/java/io/cattle/platform/engine/process/impl/DefaultProcessInstanceImpl.java",
+    "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiCookieLifecycleWitness.java",
     "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiHostLifecycleChange.java",
     "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiResourceChangeDescriptor.java",
     "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiResourceChangeDomain.java",
@@ -2452,696 +2565,453 @@
     "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiResourceChangePlanStore.java",
     "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiResourceChangeProcessObserver.java"
   ],
-  "currentRoots": 8,
-  "carriedSourceRoots": 78,
+  "currentRoots": 12,
+  "carriedSourceRoots": 77,
   "packagedRootPlan": [
     {
       "source": "code/framework/api/src/main/java/io/cattle/platform/api/auth/ApiAuditPayload.java",
       "class": "io.cattle.platform.api.auth.ApiAuditPayload",
-      "moduleArtifactId": "cattle-framework-api",
-      "sourceSha256": "744807719901aa0827e5aa092ea15926011cd918cade1678052e2b8e111f13ec",
-      "classification": "EXACT387_CARRY_CANDIDATE",
-      "compiledClassAndAllInnerClosure": "PENDING_ORIGINAL388_CI_PACKAGE_BYTES"
+      "classification": "PUBLISHED_BASELINE_CARRY_PENDING_BYTE_COMPARISON"
     },
     {
       "source": "code/framework/api/src/main/java/io/cattle/platform/api/auth/ApiContainerLogsRead.java",
       "class": "io.cattle.platform.api.auth.ApiContainerLogsRead",
-      "moduleArtifactId": "cattle-framework-api",
-      "sourceSha256": "a90a9e5424d51cf91d04d412442b6fed14d689ae17ee3320ab14b9d4d2082a4b",
-      "classification": "EXACT387_CARRY_CANDIDATE",
-      "compiledClassAndAllInnerClosure": "PENDING_ORIGINAL388_CI_PACKAGE_BYTES"
+      "classification": "PUBLISHED_BASELINE_CARRY_PENDING_BYTE_COMPARISON"
     },
     {
       "source": "code/framework/api/src/main/java/io/cattle/platform/api/auth/ApiKeyAuditSink.java",
       "class": "io.cattle.platform.api.auth.ApiKeyAuditSink",
-      "moduleArtifactId": "cattle-framework-api",
-      "sourceSha256": "f741c60482b35c88852d548968aef200f8308db9077ea09bb19b6c3110b49076",
-      "classification": "EXACT387_CARRY_CANDIDATE",
-      "compiledClassAndAllInnerClosure": "PENDING_ORIGINAL388_CI_PACKAGE_BYTES"
+      "classification": "PUBLISHED_BASELINE_CARRY_PENDING_BYTE_COMPARISON"
     },
     {
       "source": "code/framework/api/src/main/java/io/cattle/platform/api/auth/ClientToolAuditEvent.java",
       "class": "io.cattle.platform.api.auth.ClientToolAuditEvent",
-      "moduleArtifactId": "cattle-framework-api",
-      "sourceSha256": "d6673581f170e5232bd66cc69a92b58e2971b66820c43fc6bfa3f3a1158d8f32",
-      "classification": "EXACT387_CARRY_CANDIDATE",
-      "compiledClassAndAllInnerClosure": "PENDING_ORIGINAL388_CI_PACKAGE_BYTES"
+      "classification": "PUBLISHED_BASELINE_CARRY_PENDING_BYTE_COMPARISON"
     },
     {
       "source": "code/framework/auditing/src/main/java/io/cattle/platform/iaas/api/auditing/AuditLogKeySelector.java",
       "class": "io.cattle.platform.iaas.api.auditing.AuditLogKeySelector",
-      "moduleArtifactId": "cattle-framework-auditing",
-      "sourceSha256": "9baea35aa4f71d3ce594dec126325a6ca9267c084941ad754c699bb4098d1db0",
-      "classification": "EXACT387_CARRY_CANDIDATE",
-      "compiledClassAndAllInnerClosure": "PENDING_ORIGINAL388_CI_PACKAGE_BYTES"
+      "classification": "PUBLISHED_BASELINE_CARRY_PENDING_BYTE_COMPARISON"
     },
     {
       "source": "code/framework/auditing/src/main/java/io/cattle/platform/iaas/api/auditing/AuditServiceImpl.java",
       "class": "io.cattle.platform.iaas.api.auditing.AuditServiceImpl",
-      "moduleArtifactId": "cattle-framework-auditing",
-      "sourceSha256": "fc42a340651cc8b594a3213c1931e083d0f82b1b2835985dc3f4a7963c1643e3",
-      "classification": "EXACT387_CARRY_CANDIDATE",
-      "compiledClassAndAllInnerClosure": "PENDING_ORIGINAL388_CI_PACKAGE_BYTES"
+      "classification": "PUBLISHED_BASELINE_CARRY_PENDING_BYTE_COMPARISON"
     },
     {
       "source": "code/framework/engine/src/main/java/io/cattle/platform/engine/manager/impl/DefaultProcessManager.java",
       "class": "io.cattle.platform.engine.manager.impl.DefaultProcessManager",
-      "moduleArtifactId": "cattle-framework-engine",
-      "sourceSha256": "62d2f4b20768a1ef0aa75b83235e0ad49c545ac4b4af6f3ddf82963b5a0d761d",
-      "classification": "CURRENT",
-      "compiledClassAndAllInnerClosure": "PENDING_ORIGINAL388_CI_PACKAGE_BYTES"
+      "classification": "CURRENT"
+    },
+    {
+      "source": "code/framework/engine/src/main/java/io/cattle/platform/engine/process/LaunchConfiguration.java",
+      "class": "io.cattle.platform.engine.process.LaunchConfiguration",
+      "classification": "CURRENT"
     },
     {
       "source": "code/framework/engine/src/main/java/io/cattle/platform/engine/process/ProcessAuthorization.java",
       "class": "io.cattle.platform.engine.process.ProcessAuthorization",
-      "moduleArtifactId": "cattle-framework-engine",
-      "sourceSha256": "c7ee36073ba3a56a75243c778dcc255d1200222b9ee8fbc19cf557623ac33ee5",
-      "classification": "EXACT387_CARRY_CANDIDATE",
-      "compiledClassAndAllInnerClosure": "PENDING_ORIGINAL388_CI_PACKAGE_BYTES"
+      "classification": "CURRENT"
     },
     {
       "source": "code/framework/engine/src/main/java/io/cattle/platform/engine/process/ProcessAuthorizationHook.java",
       "class": "io.cattle.platform.engine.process.ProcessAuthorizationHook",
-      "moduleArtifactId": "cattle-framework-engine",
-      "sourceSha256": "ec98f748e21a9d71fa9ad2f61974e54950e5a15b05940d7a6d77850b83937fb5",
-      "classification": "CURRENT",
-      "compiledClassAndAllInnerClosure": "PENDING_ORIGINAL388_CI_PACKAGE_BYTES"
+      "classification": "CURRENT"
+    },
+    {
+      "source": "code/framework/engine/src/main/java/io/cattle/platform/engine/process/impl/DefaultProcessInstanceImpl.java",
+      "class": "io.cattle.platform.engine.process.impl.DefaultProcessInstanceImpl",
+      "classification": "CURRENT"
     },
     {
       "source": "code/framework/lock/src/main/java/io/cattle/platform/lock/Lock.java",
       "class": "io.cattle.platform.lock.Lock",
-      "moduleArtifactId": "cattle-framework-lock",
-      "sourceSha256": "0953f18cecac031df06e733a5ced55f08b7253af8c3300c0eb72743fc050cba5",
-      "classification": "EXACT387_CARRY_CANDIDATE",
-      "compiledClassAndAllInnerClosure": "PENDING_ORIGINAL388_CI_PACKAGE_BYTES"
+      "classification": "PUBLISHED_BASELINE_CARRY_PENDING_BYTE_COMPARISON"
     },
     {
       "source": "code/framework/lock/src/main/java/io/cattle/platform/lock/provider/impl/StandardLock.java",
       "class": "io.cattle.platform.lock.provider.impl.StandardLock",
-      "moduleArtifactId": "cattle-framework-lock",
-      "sourceSha256": "7b479eb0b9a025204a8b63fd5b7b806a8c6443249ea510898254cc282d075f1d",
-      "classification": "EXACT387_CARRY_CANDIDATE",
-      "compiledClassAndAllInnerClosure": "PENDING_ORIGINAL388_CI_PACKAGE_BYTES"
+      "classification": "PUBLISHED_BASELINE_CARRY_PENDING_BYTE_COMPARISON"
     },
     {
       "source": "code/framework/object/src/main/java/io/cattle/platform/object/impl/AbstractObjectManager.java",
       "class": "io.cattle.platform.object.impl.AbstractObjectManager",
-      "moduleArtifactId": "cattle-framework-object",
-      "sourceSha256": "db0328ff05701ca146e2f770d9bcb34af1d91a73a3e4d59ae432a2c749649539",
-      "classification": "EXACT387_CARRY_CANDIDATE",
-      "compiledClassAndAllInnerClosure": "PENDING_ORIGINAL388_CI_PACKAGE_BYTES"
+      "classification": "PUBLISHED_BASELINE_CARRY_PENDING_BYTE_COMPARISON"
     },
     {
       "source": "code/iaas/allocator/src/main/java/io/cattle/platform/allocator/lock/AllocateConstraintLock.java",
       "class": "io.cattle.platform.allocator.lock.AllocateConstraintLock",
-      "moduleArtifactId": "cattle-iaas-allocator",
-      "sourceSha256": "09cc196cdc5fcadacbcf3861ababa7d941639b8413aeb1fd5fa285262fdfcb1d",
-      "classification": "EXACT387_CARRY_CANDIDATE",
-      "compiledClassAndAllInnerClosure": "PENDING_ORIGINAL388_CI_PACKAGE_BYTES"
+      "classification": "PUBLISHED_BASELINE_CARRY_PENDING_BYTE_COMPARISON"
     },
     {
       "source": "code/iaas/api-logic/src/main/java/io/cattle/platform/iaas/api/filter/instance/InstancePortsValidationFilter.java",
       "class": "io.cattle.platform.iaas.api.filter.instance.InstancePortsValidationFilter",
-      "moduleArtifactId": "cattle-iaas-api-logic",
-      "sourceSha256": "da7a8a056b42c76c17fd6368d9b4e6d7e45cbbbbc04cabcb9caec9666c423d7d",
-      "classification": "EXACT387_CARRY_CANDIDATE",
-      "compiledClassAndAllInnerClosure": "PENDING_ORIGINAL388_CI_PACKAGE_BYTES"
+      "classification": "PUBLISHED_BASELINE_CARRY_PENDING_BYTE_COMPARISON"
     },
     {
       "source": "code/iaas/api-logic/src/main/java/io/cattle/platform/iaas/api/filter/port/PortUpdateValidationFilter.java",
       "class": "io.cattle.platform.iaas.api.filter.port.PortUpdateValidationFilter",
-      "moduleArtifactId": "cattle-iaas-api-logic",
-      "sourceSha256": "a6411f65b80e36f304d8491cb0d6913f6ae8bcdc81319452bfa6a09bbb4c95fe",
-      "classification": "EXACT387_CARRY_CANDIDATE",
-      "compiledClassAndAllInnerClosure": "PENDING_ORIGINAL388_CI_PACKAGE_BYTES"
+      "classification": "PUBLISHED_BASELINE_CARRY_PENDING_BYTE_COMPARISON"
     },
     {
       "source": "code/iaas/api-logic/src/main/java/io/cattle/platform/iaas/api/port/InstanceCreatePortValidation.java",
       "class": "io.cattle.platform.iaas.api.port.InstanceCreatePortValidation",
-      "moduleArtifactId": "cattle-iaas-api-logic",
-      "sourceSha256": "1aa810d0d45b8cd2691ec051ce78c9645ab93050b5a990caf03a1eb11dd2f721",
-      "classification": "EXACT387_CARRY_CANDIDATE",
-      "compiledClassAndAllInnerClosure": "PENDING_ORIGINAL388_CI_PACKAGE_BYTES"
+      "classification": "PUBLISHED_BASELINE_CARRY_PENDING_BYTE_COMPARISON"
     },
     {
       "source": "code/iaas/api-logic/src/main/java/io/cattle/platform/iaas/api/port/PortPreflightDaoImpl.java",
       "class": "io.cattle.platform.iaas.api.port.PortPreflightDaoImpl",
-      "moduleArtifactId": "cattle-iaas-api-logic",
-      "sourceSha256": "bbc43aef09060b8b0a92bed3ee23ddb0689d5dc8eddff25cbd76f70f4fd84c14",
-      "classification": "EXACT387_CARRY_CANDIDATE",
-      "compiledClassAndAllInnerClosure": "PENDING_ORIGINAL388_CI_PACKAGE_BYTES"
+      "classification": "PUBLISHED_BASELINE_CARRY_PENDING_BYTE_COMPARISON"
     },
     {
       "source": "code/iaas/api-logic/src/main/java/io/cattle/platform/iaas/api/port/PortUpdateService.java",
       "class": "io.cattle.platform.iaas.api.port.PortUpdateService",
-      "moduleArtifactId": "cattle-iaas-api-logic",
-      "sourceSha256": "b6f523091b6d5ef1abe516fa497fee7d48b9b97d1795a61137e1e1fb5336a732",
-      "classification": "EXACT387_CARRY_CANDIDATE",
-      "compiledClassAndAllInnerClosure": "PENDING_ORIGINAL388_CI_PACKAGE_BYTES"
+      "classification": "PUBLISHED_BASELINE_CARRY_PENDING_BYTE_COMPARISON"
     },
     {
       "source": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/ai/AiToolCallEventService.java",
       "class": "io.cattle.platform.iaas.api.auth.ai.AiToolCallEventService",
-      "moduleArtifactId": "cattle-iaas-auth-logic",
-      "sourceSha256": "674eda9608124e050b10b8ee9c38b7b64dbce2fa3d7ceb1abac17c07594dd3fe",
-      "classification": "EXACT387_CARRY_CANDIDATE",
-      "compiledClassAndAllInnerClosure": "PENDING_ORIGINAL388_CI_PACKAGE_BYTES"
+      "classification": "PUBLISHED_BASELINE_CARRY_PENDING_BYTE_COMPARISON"
     },
     {
       "source": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/ai/audit/AiAuditQueryInputHandler.java",
       "class": "io.cattle.platform.iaas.api.auth.ai.audit.AiAuditQueryInputHandler",
-      "moduleArtifactId": "cattle-iaas-auth-logic",
-      "sourceSha256": "46abd6c96d543f84b3884d1dafd4f41db9f6111e0edf9f770a8289f5604390a1",
-      "classification": "EXACT387_CARRY_CANDIDATE",
-      "compiledClassAndAllInnerClosure": "PENDING_ORIGINAL388_CI_PACKAGE_BYTES"
+      "classification": "PUBLISHED_BASELINE_CARRY_PENDING_BYTE_COMPARISON"
     },
     {
       "source": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/ai/audit/AiAuditQueryService.java",
       "class": "io.cattle.platform.iaas.api.auth.ai.audit.AiAuditQueryService",
-      "moduleArtifactId": "cattle-iaas-auth-logic",
-      "sourceSha256": "01f316fb38aefd1e43f81773dab71576ff53ef37c4b8a9e844ae6d2556df3aca",
-      "classification": "EXACT387_CARRY_CANDIDATE",
-      "compiledClassAndAllInnerClosure": "PENDING_ORIGINAL388_CI_PACKAGE_BYTES"
+      "classification": "PUBLISHED_BASELINE_CARRY_PENDING_BYTE_COMPARISON"
     },
     {
       "source": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/ai/catalog/AiCatalogLaunchAccess.java",
       "class": "io.cattle.platform.iaas.api.auth.ai.catalog.AiCatalogLaunchAccess",
-      "moduleArtifactId": "cattle-iaas-auth-logic",
-      "sourceSha256": "18c9a38db699f6f0413a2c6601971ec7b7f753e1e8c26f54331df53562ecc782",
-      "classification": "EXACT387_CARRY_CANDIDATE",
-      "compiledClassAndAllInnerClosure": "PENDING_ORIGINAL388_CI_PACKAGE_BYTES"
+      "classification": "PUBLISHED_BASELINE_CARRY_PENDING_BYTE_COMPARISON"
     },
     {
       "source": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/ai/catalog/AiCatalogLaunchDelegation.java",
       "class": "io.cattle.platform.iaas.api.auth.ai.catalog.AiCatalogLaunchDelegation",
-      "moduleArtifactId": "cattle-iaas-auth-logic",
-      "sourceSha256": "27f232a3190210e1a34c158bd379c71d6356e39fbca58a069b2fc0378f91bdd2",
-      "classification": "EXACT387_CARRY_CANDIDATE",
-      "compiledClassAndAllInnerClosure": "PENDING_ORIGINAL388_CI_PACKAGE_BYTES"
+      "classification": "PUBLISHED_BASELINE_CARRY_PENDING_BYTE_COMPARISON"
     },
     {
       "source": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/ai/catalog/AiCatalogLaunchPlanResourceManager.java",
       "class": "io.cattle.platform.iaas.api.auth.ai.catalog.AiCatalogLaunchPlanResourceManager",
-      "moduleArtifactId": "cattle-iaas-auth-logic",
-      "sourceSha256": "b81b7e746d7557bd740b164123bd7584cf399b8b5a2bd57e258535392fe67b3d",
-      "classification": "EXACT387_CARRY_CANDIDATE",
-      "compiledClassAndAllInnerClosure": "PENDING_ORIGINAL388_CI_PACKAGE_BYTES"
+      "classification": "PUBLISHED_BASELINE_CARRY_PENDING_BYTE_COMPARISON"
     },
     {
       "source": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/ai/catalog/AiCatalogLaunchPlanService.java",
       "class": "io.cattle.platform.iaas.api.auth.ai.catalog.AiCatalogLaunchPlanService",
-      "moduleArtifactId": "cattle-iaas-auth-logic",
-      "sourceSha256": "119c0347b3e6b984a76e1250fb2d2fee79337b77b13ed9dd87d888518efa818a",
-      "classification": "EXACT387_CARRY_CANDIDATE",
-      "compiledClassAndAllInnerClosure": "PENDING_ORIGINAL388_CI_PACKAGE_BYTES"
+      "classification": "PUBLISHED_BASELINE_CARRY_PENDING_BYTE_COMPARISON"
     },
     {
       "source": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/ai/logs/AiContainerLogsInputHandler.java",
       "class": "io.cattle.platform.iaas.api.auth.ai.logs.AiContainerLogsInputHandler",
-      "moduleArtifactId": "cattle-iaas-auth-logic",
-      "sourceSha256": "70a033bfd1c47e65fc8ea554f285114d9c6a344c44c61758cedd11bf05222c04",
-      "classification": "EXACT387_CARRY_CANDIDATE",
-      "compiledClassAndAllInnerClosure": "PENDING_ORIGINAL388_CI_PACKAGE_BYTES"
+      "classification": "PUBLISHED_BASELINE_CARRY_PENDING_BYTE_COMPARISON"
     },
     {
       "source": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/ai/logs/AiContainerLogsRunner.java",
       "class": "io.cattle.platform.iaas.api.auth.ai.logs.AiContainerLogsRunner",
-      "moduleArtifactId": "cattle-iaas-auth-logic",
-      "sourceSha256": "8362b7821b5495773fae9760131cbe9bb8cba91c915846d76a340c20b9691653",
-      "classification": "EXACT387_CARRY_CANDIDATE",
-      "compiledClassAndAllInnerClosure": "PENDING_ORIGINAL388_CI_PACKAGE_BYTES"
+      "classification": "PUBLISHED_BASELINE_CARRY_PENDING_BYTE_COMPARISON"
     },
     {
       "source": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/ai/logs/AiContainerLogsService.java",
       "class": "io.cattle.platform.iaas.api.auth.ai.logs.AiContainerLogsService",
-      "moduleArtifactId": "cattle-iaas-auth-logic",
-      "sourceSha256": "8851a6e0a741a5db0c983fdaf2d51f1854ea8e8140004364ed0ed97f85af6c0f",
-      "classification": "EXACT387_CARRY_CANDIDATE",
-      "compiledClassAndAllInnerClosure": "PENDING_ORIGINAL388_CI_PACKAGE_BYTES"
+      "classification": "PUBLISHED_BASELINE_CARRY_PENDING_BYTE_COMPARISON"
     },
     {
       "source": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/ai/logs/AiContainerLogsTicket.java",
       "class": "io.cattle.platform.iaas.api.auth.ai.logs.AiContainerLogsTicket",
-      "moduleArtifactId": "cattle-iaas-auth-logic",
-      "sourceSha256": "6bf6691d381f1ca32acbb9eb0a2ece078777e618afc1705ad3983582fd7d002d",
-      "classification": "EXACT387_CARRY_CANDIDATE",
-      "compiledClassAndAllInnerClosure": "PENDING_ORIGINAL388_CI_PACKAGE_BYTES"
+      "classification": "PUBLISHED_BASELINE_CARRY_PENDING_BYTE_COMPARISON"
     },
     {
       "source": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/ai/view/AiApiKeyReadView.java",
       "class": "io.cattle.platform.iaas.api.auth.ai.view.AiApiKeyReadView",
-      "moduleArtifactId": "cattle-iaas-auth-logic",
-      "sourceSha256": "d4f461ec4bdde2e830021fe6ba4b1b2e75a66c36018cae35f88865e6187f3700",
-      "classification": "EXACT387_CARRY_CANDIDATE",
-      "compiledClassAndAllInnerClosure": "PENDING_ORIGINAL388_CI_PACKAGE_BYTES"
+      "classification": "PUBLISHED_BASELINE_CARRY_PENDING_BYTE_COMPARISON"
     },
     {
       "source": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/ai/view/AiAuditSourcePage.java",
       "class": "io.cattle.platform.iaas.api.auth.ai.view.AiAuditSourcePage",
-      "moduleArtifactId": "cattle-iaas-auth-logic",
-      "sourceSha256": "1d4fce7baabc938b415bbb0f1ee95b93634f33015ad9deead48c955215ae2069",
-      "classification": "EXACT387_CARRY_CANDIDATE",
-      "compiledClassAndAllInnerClosure": "PENDING_ORIGINAL388_CI_PACKAGE_BYTES"
+      "classification": "PUBLISHED_BASELINE_CARRY_PENDING_BYTE_COMPARISON"
     },
     {
       "source": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/ai/view/AiProcessDiagnostics.java",
       "class": "io.cattle.platform.iaas.api.auth.ai.view.AiProcessDiagnostics",
-      "moduleArtifactId": "cattle-iaas-auth-logic",
-      "sourceSha256": "d35bab52f96dc7cb9a074c93c26f6a4f54173d7944b9ea38ac48209c7e159c8a",
-      "classification": "EXACT387_CARRY_CANDIDATE",
-      "compiledClassAndAllInnerClosure": "PENDING_ORIGINAL388_CI_PACKAGE_BYTES"
+      "classification": "PUBLISHED_BASELINE_CARRY_PENDING_BYTE_COMPARISON"
     },
     {
       "source": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/ai/view/AiResourceViewService.java",
       "class": "io.cattle.platform.iaas.api.auth.ai.view.AiResourceViewService",
-      "moduleArtifactId": "cattle-iaas-auth-logic",
-      "sourceSha256": "5b72f58e9a6c2b385c6d6119ab4d06b8fe9f9d29d042c2d885037fa937a448aa",
-      "classification": "EXACT387_CARRY_CANDIDATE",
-      "compiledClassAndAllInnerClosure": "PENDING_ORIGINAL388_CI_PACKAGE_BYTES"
+      "classification": "PUBLISHED_BASELINE_CARRY_PENDING_BYTE_COMPARISON"
     },
     {
       "source": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/apikey/ApiKeyAiBridgeGuard.java",
       "class": "io.cattle.platform.iaas.api.auth.apikey.ApiKeyAiBridgeGuard",
-      "moduleArtifactId": "cattle-iaas-auth-logic",
-      "sourceSha256": "a9b8bf651edbd350d4c2149a326de7010058c73e13a5b89517275db6132f1c2f",
-      "classification": "EXACT387_CARRY_CANDIDATE",
-      "compiledClassAndAllInnerClosure": "PENDING_ORIGINAL388_CI_PACKAGE_BYTES"
+      "classification": "PUBLISHED_BASELINE_CARRY_PENDING_BYTE_COMPARISON"
     },
     {
       "source": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/apikey/ApiKeyProcessAuthorization.java",
       "class": "io.cattle.platform.iaas.api.auth.apikey.ApiKeyProcessAuthorization",
-      "moduleArtifactId": "cattle-iaas-auth-logic",
-      "sourceSha256": "685f177243737ca7d017a94e5be7e5212ce6a8fc6425493669b734503b9a4c43",
-      "classification": "EXACT387_CARRY_CANDIDATE",
-      "compiledClassAndAllInnerClosure": "PENDING_ORIGINAL388_CI_PACKAGE_BYTES"
+      "classification": "PUBLISHED_BASELINE_CARRY_PENDING_BYTE_COMPARISON"
     },
     {
       "source": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/apikey/ApiKeyQueryScopes.java",
       "class": "io.cattle.platform.iaas.api.auth.apikey.ApiKeyQueryScopes",
-      "moduleArtifactId": "cattle-iaas-auth-logic",
-      "sourceSha256": "dc19c77dfc3b37fe9b88467d6aa76ef401d1cd4d33b65282d8549557e1c038b5",
-      "classification": "EXACT387_CARRY_CANDIDATE",
-      "compiledClassAndAllInnerClosure": "PENDING_ORIGINAL388_CI_PACKAGE_BYTES"
+      "classification": "PUBLISHED_BASELINE_CARRY_PENDING_BYTE_COMPARISON"
     },
     {
       "source": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/apikey/ApiKeyTargetResolver.java",
       "class": "io.cattle.platform.iaas.api.auth.apikey.ApiKeyTargetResolver",
-      "moduleArtifactId": "cattle-iaas-auth-logic",
-      "sourceSha256": "5aa4ab54b3c8f41f3d8fef297fbeef67067b64d9be13d44e1398bb1ff3458cd2",
-      "classification": "EXACT387_CARRY_CANDIDATE",
-      "compiledClassAndAllInnerClosure": "PENDING_ORIGINAL388_CI_PACKAGE_BYTES"
+      "classification": "PUBLISHED_BASELINE_CARRY_PENDING_BYTE_COMPARISON"
     },
     {
       "source": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiAliasServiceChange.java",
       "class": "io.cattle.platform.iaas.api.auth.change.AiAliasServiceChange",
-      "moduleArtifactId": "cattle-iaas-auth-logic",
-      "sourceSha256": "58dfde85b7327f3ce86121a3f6c4195ebc1fed27ca93ba78ca20bc74c42a4b7e",
-      "classification": "EXACT387_CARRY_CANDIDATE",
-      "compiledClassAndAllInnerClosure": "PENDING_ORIGINAL388_CI_PACKAGE_BYTES"
+      "classification": "PUBLISHED_BASELINE_CARRY_PENDING_BYTE_COMPARISON"
     },
     {
       "source": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiContainerNetworkChange.java",
       "class": "io.cattle.platform.iaas.api.auth.change.AiContainerNetworkChange",
-      "moduleArtifactId": "cattle-iaas-auth-logic",
-      "sourceSha256": "e49917e606aeafc4d53787604c53576e7af3d5894781596f47f90cba8338e5c8",
-      "classification": "EXACT387_CARRY_CANDIDATE",
-      "compiledClassAndAllInnerClosure": "PENDING_ORIGINAL388_CI_PACKAGE_BYTES"
+      "classification": "PUBLISHED_BASELINE_CARRY_PENDING_BYTE_COMPARISON"
+    },
+    {
+      "source": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiCookieLifecycleWitness.java",
+      "class": "io.cattle.platform.iaas.api.auth.change.AiCookieLifecycleWitness",
+      "classification": "CURRENT"
     },
     {
       "source": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiCreatePorts.java",
       "class": "io.cattle.platform.iaas.api.auth.change.AiCreatePorts",
-      "moduleArtifactId": "cattle-iaas-auth-logic",
-      "sourceSha256": "f5ef92842b607e42e841b3236d8b4ac610d646b8cff0ac3130c86e3d93834319",
-      "classification": "EXACT387_CARRY_CANDIDATE",
-      "compiledClassAndAllInnerClosure": "PENDING_ORIGINAL388_CI_PACKAGE_BYTES"
+      "classification": "PUBLISHED_BASELINE_CARRY_PENDING_BYTE_COMPARISON"
     },
     {
       "source": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiExternalServiceChange.java",
       "class": "io.cattle.platform.iaas.api.auth.change.AiExternalServiceChange",
-      "moduleArtifactId": "cattle-iaas-auth-logic",
-      "sourceSha256": "e2249037bb18a217b055fc2c2399bc1e82494bc0ece0ebf2d95e5438deb1d118",
-      "classification": "EXACT387_CARRY_CANDIDATE",
-      "compiledClassAndAllInnerClosure": "PENDING_ORIGINAL388_CI_PACKAGE_BYTES"
+      "classification": "PUBLISHED_BASELINE_CARRY_PENDING_BYTE_COMPARISON"
     },
     {
       "source": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiHostLifecycleChange.java",
       "class": "io.cattle.platform.iaas.api.auth.change.AiHostLifecycleChange",
-      "moduleArtifactId": "cattle-iaas-auth-logic",
-      "sourceSha256": "65b12bb4304558c1a1417d963f34a0ca2a02862ad2f65b619ddaa32919d5453f",
-      "classification": "CURRENT",
-      "compiledClassAndAllInnerClosure": "PENDING_ORIGINAL388_CI_PACKAGE_BYTES"
+      "classification": "CURRENT"
     },
     {
       "source": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiHostMetadataChange.java",
       "class": "io.cattle.platform.iaas.api.auth.change.AiHostMetadataChange",
-      "moduleArtifactId": "cattle-iaas-auth-logic",
-      "sourceSha256": "72375c65ef1c1ddcf1adf93f732f97a8134840fa4d3e05647876d9743e9d6c8d",
-      "classification": "EXACT387_CARRY_CANDIDATE",
-      "compiledClassAndAllInnerClosure": "PENDING_ORIGINAL388_CI_PACKAGE_BYTES"
+      "classification": "PUBLISHED_BASELINE_CARRY_PENDING_BYTE_COMPARISON"
     },
     {
       "source": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiLoadBalancerCreateChange.java",
       "class": "io.cattle.platform.iaas.api.auth.change.AiLoadBalancerCreateChange",
-      "moduleArtifactId": "cattle-iaas-auth-logic",
-      "sourceSha256": "418bad174023c68676eceb9ab4ab3511eddef869a36ecc2652afc505e681486f",
-      "classification": "EXACT387_CARRY_CANDIDATE",
-      "compiledClassAndAllInnerClosure": "PENDING_ORIGINAL388_CI_PACKAGE_BYTES"
+      "classification": "PUBLISHED_BASELINE_CARRY_PENDING_BYTE_COMPARISON"
     },
     {
       "source": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiNamedServiceLinks.java",
       "class": "io.cattle.platform.iaas.api.auth.change.AiNamedServiceLinks",
-      "moduleArtifactId": "cattle-iaas-auth-logic",
-      "sourceSha256": "e01c33991ef947615af36dd29e7f067be6250a121ad3cd296942507a6d39997d",
-      "classification": "EXACT387_CARRY_CANDIDATE",
-      "compiledClassAndAllInnerClosure": "PENDING_ORIGINAL388_CI_PACKAGE_BYTES"
+      "classification": "PUBLISHED_BASELINE_CARRY_PENDING_BYTE_COMPARISON"
     },
     {
       "source": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiProjectMetadataChange.java",
       "class": "io.cattle.platform.iaas.api.auth.change.AiProjectMetadataChange",
-      "moduleArtifactId": "cattle-iaas-auth-logic",
-      "sourceSha256": "bf7c0c7c82f4c5d7e5d5c2706ae58bdb05c180584e5aecdd9b9ca4bf77ef2510",
-      "classification": "EXACT387_CARRY_CANDIDATE",
-      "compiledClassAndAllInnerClosure": "PENDING_ORIGINAL388_CI_PACKAGE_BYTES"
+      "classification": "PUBLISHED_BASELINE_CARRY_PENDING_BYTE_COMPARISON"
     },
     {
       "source": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiRegistryLifecycleChange.java",
       "class": "io.cattle.platform.iaas.api.auth.change.AiRegistryLifecycleChange",
-      "moduleArtifactId": "cattle-iaas-auth-logic",
-      "sourceSha256": "a5f0a92693457dcb4b8f2db0627aefc3b875e720f3e41c5b0bb007b39a8c37c3",
-      "classification": "EXACT387_CARRY_CANDIDATE",
-      "compiledClassAndAllInnerClosure": "PENDING_ORIGINAL388_CI_PACKAGE_BYTES"
+      "classification": "PUBLISHED_BASELINE_CARRY_PENDING_BYTE_COMPARISON"
     },
     {
       "source": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiResourceChangeDescriptor.java",
       "class": "io.cattle.platform.iaas.api.auth.change.AiResourceChangeDescriptor",
-      "moduleArtifactId": "cattle-iaas-auth-logic",
-      "sourceSha256": "bd07aa1b60aaff44c21429192b60451063fddb4510d91d6ad1bea8f0509c1715",
-      "classification": "CURRENT",
-      "compiledClassAndAllInnerClosure": "PENDING_ORIGINAL388_CI_PACKAGE_BYTES"
+      "classification": "CURRENT"
     },
     {
       "source": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiResourceChangeDomain.java",
       "class": "io.cattle.platform.iaas.api.auth.change.AiResourceChangeDomain",
-      "moduleArtifactId": "cattle-iaas-auth-logic",
-      "sourceSha256": "c99d2ccb95cb4670b4998503376ce16dc26566330010640c81b078ccda0f852e",
-      "classification": "CURRENT",
-      "compiledClassAndAllInnerClosure": "PENDING_ORIGINAL388_CI_PACKAGE_BYTES"
+      "classification": "CURRENT"
     },
     {
       "source": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiResourceChangePlanResourceManager.java",
       "class": "io.cattle.platform.iaas.api.auth.change.AiResourceChangePlanResourceManager",
-      "moduleArtifactId": "cattle-iaas-auth-logic",
-      "sourceSha256": "17ba569ba4f5265d7d3a8e50cc3ce2d21d220232c354e169be511b74ce212b17",
-      "classification": "EXACT387_CARRY_CANDIDATE",
-      "compiledClassAndAllInnerClosure": "PENDING_ORIGINAL388_CI_PACKAGE_BYTES"
+      "classification": "PUBLISHED_BASELINE_CARRY_PENDING_BYTE_COMPARISON"
     },
     {
       "source": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiResourceChangePlanService.java",
       "class": "io.cattle.platform.iaas.api.auth.change.AiResourceChangePlanService",
-      "moduleArtifactId": "cattle-iaas-auth-logic",
-      "sourceSha256": "a8843dc4893cb6603b670f7dc2ca9e2316613ff78673fe9ab44d487a27d26653",
-      "classification": "CURRENT",
-      "compiledClassAndAllInnerClosure": "PENDING_ORIGINAL388_CI_PACKAGE_BYTES"
+      "classification": "CURRENT"
     },
     {
       "source": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiResourceChangePlanStore.java",
       "class": "io.cattle.platform.iaas.api.auth.change.AiResourceChangePlanStore",
-      "moduleArtifactId": "cattle-iaas-auth-logic",
-      "sourceSha256": "8751eb6a864cc5ff0afbf0457e7ebf8901c27339286c67b8cc571a8f95e531a6",
-      "classification": "CURRENT",
-      "compiledClassAndAllInnerClosure": "PENDING_ORIGINAL388_CI_PACKAGE_BYTES"
+      "classification": "CURRENT"
     },
     {
       "source": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiResourceChangeProcessObserver.java",
       "class": "io.cattle.platform.iaas.api.auth.change.AiResourceChangeProcessObserver",
-      "moduleArtifactId": "cattle-iaas-auth-logic",
-      "sourceSha256": "a4d7ecb7e6622fe3b54a3432fdfb288dbd80efea29930f2161592791d093d375",
-      "classification": "CURRENT",
-      "compiledClassAndAllInnerClosure": "PENDING_ORIGINAL388_CI_PACKAGE_BYTES"
+      "classification": "CURRENT"
     },
     {
       "source": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiServiceCreateChange.java",
       "class": "io.cattle.platform.iaas.api.auth.change.AiServiceCreateChange",
-      "moduleArtifactId": "cattle-iaas-auth-logic",
-      "sourceSha256": "184c2a0644647b67e1aa33f6de7e39cad319047239babc98d6665fadbbad3b11",
-      "classification": "EXACT387_CARRY_CANDIDATE",
-      "compiledClassAndAllInnerClosure": "PENDING_ORIGINAL388_CI_PACKAGE_BYTES"
+      "classification": "PUBLISHED_BASELINE_CARRY_PENDING_BYTE_COMPARISON"
     },
     {
       "source": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiServiceUpgradeLifecycleChange.java",
       "class": "io.cattle.platform.iaas.api.auth.change.AiServiceUpgradeLifecycleChange",
-      "moduleArtifactId": "cattle-iaas-auth-logic",
-      "sourceSha256": "b582c1d2d234d14e6acd0b7644e8f1ed3da89f6b357091ffc3fb1cc5ba1749cf",
-      "classification": "EXACT387_CARRY_CANDIDATE",
-      "compiledClassAndAllInnerClosure": "PENDING_ORIGINAL388_CI_PACKAGE_BYTES"
+      "classification": "PUBLISHED_BASELINE_CARRY_PENDING_BYTE_COMPARISON"
     },
     {
       "source": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiStackGroupChange.java",
       "class": "io.cattle.platform.iaas.api.auth.change.AiStackGroupChange",
-      "moduleArtifactId": "cattle-iaas-auth-logic",
-      "sourceSha256": "eed8acdc9402a9e5f3b4e04b086c475da5ea3f6cf994f3359b7302b690c3dde6",
-      "classification": "EXACT387_CARRY_CANDIDATE",
-      "compiledClassAndAllInnerClosure": "PENDING_ORIGINAL388_CI_PACKAGE_BYTES"
+      "classification": "PUBLISHED_BASELINE_CARRY_PENDING_BYTE_COMPARISON"
     },
     {
       "source": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiVolumeCreateChange.java",
       "class": "io.cattle.platform.iaas.api.auth.change.AiVolumeCreateChange",
-      "moduleArtifactId": "cattle-iaas-auth-logic",
-      "sourceSha256": "784963fb087377899b51bdb24477db5519d4e58f4bda0f0d9047b8f38f794872",
-      "classification": "EXACT387_CARRY_CANDIDATE",
-      "compiledClassAndAllInnerClosure": "PENDING_ORIGINAL388_CI_PACKAGE_BYTES"
+      "classification": "PUBLISHED_BASELINE_CARRY_PENDING_BYTE_COMPARISON"
     },
     {
       "source": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/integration/internal/rancher/TokenAuthLookup.java",
       "class": "io.cattle.platform.iaas.api.auth.integration.internal.rancher.TokenAuthLookup",
-      "moduleArtifactId": "cattle-iaas-auth-logic",
-      "sourceSha256": "43c4f0454308e88c7aa59cdd5927951484cc35b02d6c0dc9a9e92f4c1014f216",
-      "classification": "EXACT387_CARRY_CANDIDATE",
-      "compiledClassAndAllInnerClosure": "PENDING_ORIGINAL388_CI_PACKAGE_BYTES"
+      "classification": "PUBLISHED_BASELINE_CARRY_PENDING_BYTE_COMPARISON"
     },
     {
       "source": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/projects/ProjectAccessService.java",
       "class": "io.cattle.platform.iaas.api.auth.projects.ProjectAccessService",
-      "moduleArtifactId": "cattle-iaas-auth-logic",
-      "sourceSha256": "6a49ef97f73049b8bb13ba69951af300339dd787d775ba574babc5b2c7eb0c28",
-      "classification": "EXACT387_CARRY_CANDIDATE",
-      "compiledClassAndAllInnerClosure": "PENDING_ORIGINAL388_CI_PACKAGE_BYTES"
+      "classification": "PUBLISHED_BASELINE_CARRY_PENDING_BYTE_COMPARISON"
     },
     {
       "source": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/projects/ProjectResourceManager.java",
       "class": "io.cattle.platform.iaas.api.auth.projects.ProjectResourceManager",
-      "moduleArtifactId": "cattle-iaas-auth-logic",
-      "sourceSha256": "22804d21bb8bde8d6158e86c10719b0795b5b7f8757c4c953ca9f147e4e657b7",
-      "classification": "EXACT387_CARRY_CANDIDATE",
-      "compiledClassAndAllInnerClosure": "PENDING_ORIGINAL388_CI_PACKAGE_BYTES"
+      "classification": "PUBLISHED_BASELINE_CARRY_PENDING_BYTE_COMPARISON"
     },
     {
       "source": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/upgrade/AiServiceUpgradePlanInputHandler.java",
       "class": "io.cattle.platform.iaas.api.auth.upgrade.AiServiceUpgradePlanInputHandler",
-      "moduleArtifactId": "cattle-iaas-auth-logic",
-      "sourceSha256": "a38c9fece7444a5fd5385b48f9b9ca2997e8218c82c91096473115cc87ee69aa",
-      "classification": "EXACT387_CARRY_CANDIDATE",
-      "compiledClassAndAllInnerClosure": "PENDING_ORIGINAL388_CI_PACKAGE_BYTES"
+      "classification": "PUBLISHED_BASELINE_CARRY_PENDING_BYTE_COMPARISON"
     },
     {
       "source": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/upgrade/AiServiceUpgradePlanResourceManager.java",
       "class": "io.cattle.platform.iaas.api.auth.upgrade.AiServiceUpgradePlanResourceManager",
-      "moduleArtifactId": "cattle-iaas-auth-logic",
-      "sourceSha256": "30cb1cdae0766c0f0a6c7f3f4c27187ca0bd565002bda4e311368e420e88d9a7",
-      "classification": "EXACT387_CARRY_CANDIDATE",
-      "compiledClassAndAllInnerClosure": "PENDING_ORIGINAL388_CI_PACKAGE_BYTES"
+      "classification": "PUBLISHED_BASELINE_CARRY_PENDING_BYTE_COMPARISON"
     },
     {
       "source": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/upgrade/AiServiceUpgradePlanService.java",
       "class": "io.cattle.platform.iaas.api.auth.upgrade.AiServiceUpgradePlanService",
-      "moduleArtifactId": "cattle-iaas-auth-logic",
-      "sourceSha256": "0db7885e92e533f6cf20dd399cc239295d985c26dc0da431953f5c5b65ccea31",
-      "classification": "EXACT387_CARRY_CANDIDATE",
-      "compiledClassAndAllInnerClosure": "PENDING_ORIGINAL388_CI_PACKAGE_BYTES"
+      "classification": "PUBLISHED_BASELINE_CARRY_PENDING_BYTE_COMPARISON"
     },
     {
       "source": "code/iaas/logic/src/main/java/io/cattle/platform/process/driver/DriverServiceRemove.java",
       "class": "io.cattle.platform.process.driver.DriverServiceRemove",
-      "moduleArtifactId": "cattle-iaas-logic",
-      "sourceSha256": "fd1a52eec999a513a4c1e49f05d45fd16357c91186cff974aaf22ce57ce06953",
-      "classification": "EXACT387_CARRY_CANDIDATE",
-      "compiledClassAndAllInnerClosure": "PENDING_ORIGINAL388_CI_PACKAGE_BYTES"
+      "classification": "PUBLISHED_BASELINE_CARRY_PENDING_BYTE_COMPARISON"
     },
     {
       "source": "code/iaas/logic/src/main/java/io/cattle/platform/process/lock/InstancePortsLock.java",
       "class": "io.cattle.platform.process.lock.InstancePortsLock",
-      "moduleArtifactId": "cattle-iaas-logic",
-      "sourceSha256": "859844ed7ad23cb63e7ab5ff3a4f802115f814d1fe18f9a806a911b71a16d0bc",
-      "classification": "EXACT387_CARRY_CANDIDATE",
-      "compiledClassAndAllInnerClosure": "PENDING_ORIGINAL388_CI_PACKAGE_BYTES"
+      "classification": "PUBLISHED_BASELINE_CARRY_PENDING_BYTE_COMPARISON"
     },
     {
       "source": "code/iaas/model/src/main/java/io/cattle/platform/core/constants/PortConstants.java",
       "class": "io.cattle.platform.core.constants.PortConstants",
-      "moduleArtifactId": "cattle-iaas-model",
-      "sourceSha256": "48eb2a37928ef50645b7d3cb7444217f91741fa031d58a8cc1ea4d38a0b3f8f1",
-      "classification": "EXACT387_CARRY_CANDIDATE",
-      "compiledClassAndAllInnerClosure": "PENDING_ORIGINAL388_CI_PACKAGE_BYTES"
+      "classification": "PUBLISHED_BASELINE_CARRY_PENDING_BYTE_COMPARISON"
     },
     {
       "source": "code/iaas/model/src/main/java/io/cattle/platform/core/dao/HostDao.java",
       "class": "io.cattle.platform.core.dao.HostDao",
-      "moduleArtifactId": "cattle-iaas-model",
-      "sourceSha256": "eace82dc713adf92ea4d5b5f0f19db96ad978528956b6abce249b3bf436a25ad",
-      "classification": "EXACT387_CARRY_CANDIDATE",
-      "compiledClassAndAllInnerClosure": "PENDING_ORIGINAL388_CI_PACKAGE_BYTES"
+      "classification": "PUBLISHED_BASELINE_CARRY_PENDING_BYTE_COMPARISON"
     },
     {
       "source": "code/iaas/model/src/main/java/io/cattle/platform/core/dao/ServiceDao.java",
       "class": "io.cattle.platform.core.dao.ServiceDao",
-      "moduleArtifactId": "cattle-iaas-model",
-      "sourceSha256": "27bb54b90c1c1a1949177ee6f50a039cc89c6dd4abf6bd2edfc78d09fe4143b2",
-      "classification": "EXACT387_CARRY_CANDIDATE",
-      "compiledClassAndAllInnerClosure": "PENDING_ORIGINAL388_CI_PACKAGE_BYTES"
+      "classification": "PUBLISHED_BASELINE_CARRY_PENDING_BYTE_COMPARISON"
     },
     {
       "source": "code/iaas/model/src/main/java/io/cattle/platform/core/dao/VolumeDao.java",
       "class": "io.cattle.platform.core.dao.VolumeDao",
-      "moduleArtifactId": "cattle-iaas-model",
-      "sourceSha256": "8fbeb7ef1b63fa000d1788e2603d39de5e6e7dd83eec19df126bcb84510d3823",
-      "classification": "EXACT387_CARRY_CANDIDATE",
-      "compiledClassAndAllInnerClosure": "PENDING_ORIGINAL388_CI_PACKAGE_BYTES"
+      "classification": "PUBLISHED_BASELINE_CARRY_PENDING_BYTE_COMPARISON"
     },
     {
       "source": "code/iaas/model/src/main/java/io/cattle/platform/core/dao/impl/AccountDaoImpl.java",
       "class": "io.cattle.platform.core.dao.impl.AccountDaoImpl",
-      "moduleArtifactId": "cattle-iaas-model",
-      "sourceSha256": "e008fc112888c09f7c22da2a641991bf922b2896f4b338cc0a91aeb0b6d94e0c",
-      "classification": "EXACT387_CARRY_CANDIDATE",
-      "compiledClassAndAllInnerClosure": "PENDING_ORIGINAL388_CI_PACKAGE_BYTES"
+      "classification": "PUBLISHED_BASELINE_CARRY_PENDING_BYTE_COMPARISON"
     },
     {
       "source": "code/iaas/model/src/main/java/io/cattle/platform/core/dao/impl/HostDaoImpl.java",
       "class": "io.cattle.platform.core.dao.impl.HostDaoImpl",
-      "moduleArtifactId": "cattle-iaas-model",
-      "sourceSha256": "ae0fff79276ce84e8ab5ec19b80b09a78f7c91740c24706e6129be0f15f0f483",
-      "classification": "EXACT387_CARRY_CANDIDATE",
-      "compiledClassAndAllInnerClosure": "PENDING_ORIGINAL388_CI_PACKAGE_BYTES"
+      "classification": "PUBLISHED_BASELINE_CARRY_PENDING_BYTE_COMPARISON"
     },
     {
       "source": "code/iaas/model/src/main/java/io/cattle/platform/core/dao/impl/ServiceDaoImpl.java",
       "class": "io.cattle.platform.core.dao.impl.ServiceDaoImpl",
-      "moduleArtifactId": "cattle-iaas-model",
-      "sourceSha256": "0b81fbf09fb773d97a9d5294efd6d9c6bda541ffcd842935ee0f39bf36a06884",
-      "classification": "EXACT387_CARRY_CANDIDATE",
-      "compiledClassAndAllInnerClosure": "PENDING_ORIGINAL388_CI_PACKAGE_BYTES"
+      "classification": "PUBLISHED_BASELINE_CARRY_PENDING_BYTE_COMPARISON"
     },
     {
       "source": "code/iaas/model/src/main/java/io/cattle/platform/core/dao/impl/VolumeDaoImpl.java",
       "class": "io.cattle.platform.core.dao.impl.VolumeDaoImpl",
-      "moduleArtifactId": "cattle-iaas-model",
-      "sourceSha256": "b0a41797307b7a02d44ad5ac08f00bad3fa21fb78143825ac4a01774a8ddcfe6",
-      "classification": "EXACT387_CARRY_CANDIDATE",
-      "compiledClassAndAllInnerClosure": "PENDING_ORIGINAL388_CI_PACKAGE_BYTES"
+      "classification": "PUBLISHED_BASELINE_CARRY_PENDING_BYTE_COMPARISON"
     },
     {
       "source": "code/iaas/service-discovery/api/src/main/java/io/cattle/platform/servicediscovery/api/action/SetServiceLinksActionHandler.java",
       "class": "io.cattle.platform.servicediscovery.api.action.SetServiceLinksActionHandler",
-      "moduleArtifactId": "cattle-iaas-service-discovery-api",
-      "sourceSha256": "9771a055a52c4d76ec1b34657c58ea105391854e0535991505b588f2d7d7152c",
-      "classification": "EXACT387_CARRY_CANDIDATE",
-      "compiledClassAndAllInnerClosure": "PENDING_ORIGINAL388_CI_PACKAGE_BYTES"
+      "classification": "PUBLISHED_BASELINE_CARRY_PENDING_BYTE_COMPARISON"
     },
     {
       "source": "code/iaas/service-discovery/api/src/main/java/io/cattle/platform/servicediscovery/api/dao/ServiceConsumeMapDao.java",
       "class": "io.cattle.platform.servicediscovery.api.dao.ServiceConsumeMapDao",
-      "moduleArtifactId": "cattle-iaas-service-discovery-api",
-      "sourceSha256": "0fbdb9d9d3cef47f7db394127dcbc24d500cc2c8b15bd7c40ec956fd6d4f85c5",
-      "classification": "EXACT387_CARRY_CANDIDATE",
-      "compiledClassAndAllInnerClosure": "PENDING_ORIGINAL388_CI_PACKAGE_BYTES"
+      "classification": "PUBLISHED_BASELINE_CARRY_PENDING_BYTE_COMPARISON"
     },
     {
       "source": "code/iaas/service-discovery/api/src/main/java/io/cattle/platform/servicediscovery/api/filter/AiServiceUpgradePersistence.java",
       "class": "io.cattle.platform.servicediscovery.api.filter.AiServiceUpgradePersistence",
-      "moduleArtifactId": "cattle-iaas-service-discovery-api",
-      "sourceSha256": "b437da188b9a2ad3ef8b59098c4d9ba61ed6a919a08243bbf788b1f8510ea664",
-      "classification": "EXACT387_CARRY_CANDIDATE",
-      "compiledClassAndAllInnerClosure": "PENDING_ORIGINAL388_CI_PACKAGE_BYTES"
+      "classification": "PUBLISHED_BASELINE_CARRY_PENDING_BYTE_COMPARISON"
     },
     {
       "source": "code/iaas/service-discovery/api/src/main/java/io/cattle/platform/servicediscovery/api/filter/ServiceUpgradeValidationFilter.java",
       "class": "io.cattle.platform.servicediscovery.api.filter.ServiceUpgradeValidationFilter",
-      "moduleArtifactId": "cattle-iaas-service-discovery-api",
-      "sourceSha256": "1adcf76557b3392161a46393d795b67a0ccc781a49d544fa8672aafe49475a63",
-      "classification": "EXACT387_CARRY_CANDIDATE",
-      "compiledClassAndAllInnerClosure": "PENDING_ORIGINAL388_CI_PACKAGE_BYTES"
+      "classification": "PUBLISHED_BASELINE_CARRY_PENDING_BYTE_COMPARISON"
     },
     {
       "source": "code/iaas/service-discovery/api/src/main/java/io/cattle/platform/servicediscovery/api/lock/ServiceDiscoveryServiceSetLinksLock.java",
       "class": "io.cattle.platform.servicediscovery.api.lock.ServiceDiscoveryServiceSetLinksLock",
-      "moduleArtifactId": "cattle-iaas-service-discovery-api",
-      "sourceSha256": "c5a03f231eb3c5a1555941ee5c376608270019f95df0f365888c375e99d11a5b",
-      "classification": "EXACT387_CARRY_CANDIDATE",
-      "compiledClassAndAllInnerClosure": "PENDING_ORIGINAL388_CI_PACKAGE_BYTES"
+      "classification": "PUBLISHED_BASELINE_CARRY_PENDING_BYTE_COMPARISON"
     },
     {
       "source": "code/iaas/service-discovery/api/src/main/java/io/cattle/platform/servicediscovery/api/service/ServiceDiscoveryApiService.java",
       "class": "io.cattle.platform.servicediscovery.api.service.ServiceDiscoveryApiService",
-      "moduleArtifactId": "cattle-iaas-service-discovery-api",
-      "sourceSha256": "8771322c0d54a2713f302feeafcc1972bcb4f8f8cf387e0336f8701d21cdb5db",
-      "classification": "EXACT387_CARRY_CANDIDATE",
-      "compiledClassAndAllInnerClosure": "PENDING_ORIGINAL388_CI_PACKAGE_BYTES"
+      "classification": "PUBLISHED_BASELINE_CARRY_PENDING_BYTE_COMPARISON"
     },
     {
       "source": "code/iaas/service-discovery/api/src/main/java/io/cattle/platform/servicediscovery/api/service/ServiceUpgradeValidation.java",
       "class": "io.cattle.platform.servicediscovery.api.service.ServiceUpgradeValidation",
-      "moduleArtifactId": "cattle-iaas-service-discovery-api",
-      "sourceSha256": "ffcf91e17f0aaffe821acf297d1e125768a5332c062c1bf5c435114035255cf1",
-      "classification": "EXACT387_CARRY_CANDIDATE",
-      "compiledClassAndAllInnerClosure": "PENDING_ORIGINAL388_CI_PACKAGE_BYTES"
+      "classification": "PUBLISHED_BASELINE_CARRY_PENDING_BYTE_COMPARISON"
     },
     {
       "source": "code/iaas/service-discovery/api/src/main/java/io/cattle/platform/servicediscovery/api/service/impl/ServiceDiscoveryApiServiceImpl.java",
       "class": "io.cattle.platform.servicediscovery.api.service.impl.ServiceDiscoveryApiServiceImpl",
-      "moduleArtifactId": "cattle-iaas-service-discovery-api",
-      "sourceSha256": "4d378362ed3c3f67496e96ecb33d62f7d0a658634c5719e7a5dc4ef9457e627d",
-      "classification": "EXACT387_CARRY_CANDIDATE",
-      "compiledClassAndAllInnerClosure": "PENDING_ORIGINAL388_CI_PACKAGE_BYTES"
+      "classification": "PUBLISHED_BASELINE_CARRY_PENDING_BYTE_COMPARISON"
     },
     {
       "source": "code/iaas/service-discovery/server/src/main/java/io/cattle/platform/servicediscovery/dao/impl/ServiceConsumeMapDaoImpl.java",
       "class": "io.cattle.platform.servicediscovery.dao.impl.ServiceConsumeMapDaoImpl",
-      "moduleArtifactId": "cattle-iaas-service-discovery-server",
-      "sourceSha256": "153ddbeebbcc22109da13e258ae7524015a15a8dec5bf2ee05a9f6be8a7f772f",
-      "classification": "EXACT387_CARRY_CANDIDATE",
-      "compiledClassAndAllInnerClosure": "PENDING_ORIGINAL388_CI_PACKAGE_BYTES"
+      "classification": "PUBLISHED_BASELINE_CARRY_PENDING_BYTE_COMPARISON"
     },
     {
       "source": "code/iaas/service-discovery/server/src/main/java/io/cattle/platform/servicediscovery/process/LoadBalancerServiceCreatePostListener.java",
       "class": "io.cattle.platform.servicediscovery.process.LoadBalancerServiceCreatePostListener",
-      "moduleArtifactId": "cattle-iaas-service-discovery-server",
-      "sourceSha256": "3d58058d1fe8734e55f725a479676a882c31abbd7ad8561ae963fe4cb0f041f1",
-      "classification": "EXACT387_CARRY_CANDIDATE",
-      "compiledClassAndAllInnerClosure": "PENDING_ORIGINAL388_CI_PACKAGE_BYTES"
+      "classification": "PUBLISHED_BASELINE_CARRY_PENDING_BYTE_COMPARISON"
     },
     {
       "source": "code/implementation/docker/api/src/main/java/io/cattle/platform/docker/api/ContainerLogsActionHandler.java",
       "class": "io.cattle.platform.docker.api.ContainerLogsActionHandler",
-      "moduleArtifactId": "cattle-docker-api",
-      "sourceSha256": "ba87316a24c049d588dfe135ad3e29a76eeac44f4001fe3d5a27d46a4e4e04f3",
-      "classification": "EXACT387_CARRY_CANDIDATE",
-      "compiledClassAndAllInnerClosure": "PENDING_ORIGINAL388_CI_PACKAGE_BYTES"
+      "classification": "PUBLISHED_BASELINE_CARRY_PENDING_BYTE_COMPARISON"
     },
     {
       "source": "code/packaging/app-config/src/main/java/io/cattle/platform/app/IaasApiConfig.java",
       "class": "io.cattle.platform.app.IaasApiConfig",
-      "moduleArtifactId": "cattle-app-config",
-      "sourceSha256": "82654b566626c486a10d64473df82ae2192c06bd412d3e652e03bfa63584b716",
-      "classification": "EXACT387_CARRY_CANDIDATE",
-      "compiledClassAndAllInnerClosure": "PENDING_ORIGINAL388_CI_PACKAGE_BYTES"
+      "classification": "PUBLISHED_BASELINE_CARRY_PENDING_BYTE_COMPARISON"
     },
     {
       "source": "code/packaging/app-config/src/main/java/io/cattle/platform/app/SystemServicesConfig.java",
       "class": "io.cattle.platform.app.SystemServicesConfig",
-      "moduleArtifactId": "cattle-app-config",
-      "sourceSha256": "32dba774946a48c2d6a9ec9030fcb5b2ca324ba98cd3269478aec237984a75a8",
-      "classification": "EXACT387_CARRY_CANDIDATE",
-      "compiledClassAndAllInnerClosure": "PENDING_ORIGINAL388_CI_PACKAGE_BYTES"
+      "classification": "PUBLISHED_BASELINE_CARRY_PENDING_BYTE_COMPARISON"
     }
   ],
   "roleFieldDelta": [],
@@ -3162,5 +3032,169 @@
   "extractor": {
     "source": "normal C03 refresh-integrated-operation-contract.py",
     "sha256": "078ffe48881469fe5eb3cb43a15fa41b480fe70e11bd5f63102ded6b35a6d076"
+  },
+  "cookieLifecycleAllNewMethods": [
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiCookieLifecycleWitnessTest",
+      "commonPrepareStripsForgedCorrelationAndWrongRuntimeParentsCannotSealAChain"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiCookieLifecycleWitnessTest",
+      "emptyAndAlreadyDesiredStacksNeedAnActualClosedNativeDispatchAndStableExactIdentitySet"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiCookieLifecycleWitnessTest",
+      "failedAttestationRollsBackTheNativeInsertAndCannotQueueOrLeakThePrivateScope"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiCookieLifecycleWitnessTest",
+      "fourteenCookieActionsNeedTheirOwnNativeRowsAndNeverBorrowAnUnrelatedSuccess"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiCookieLifecycleWitnessTest",
+      "fullPayloadJsonRoundtripKeepsChangedValuesTypesNullsFieldsAndArrayOrderDistinct"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiCookieLifecycleWitnessTest",
+      "nativeRestartHandlersAndFrameworkScheduleChainBindEveryParentBeforeCompletion"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiCookieLifecycleWitnessTest",
+      "nativeServiceRestartCountEnrichmentIsAcceptedButUnrelatedFieldsOrCountsNeverAttest"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiCookieLifecycleWitnessTest",
+      "originalCompletionPredicateIsStillRequiredAfterTheOwnProcessSucceeds"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiCookieLifecycleWitnessTest",
+      "originalStackHandlerPreservesTwoNamedAliasesToOneWaitTargetAndLateFanoutFailureStaysPartialUnknown"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiCookieLifecycleWitnessTest",
+      "queuedChainsTrackActiveStatesAndKeepNativeQueuesWhenTrackingExpiresOrDisappears"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiCookieLifecycleWitnessTest",
+      "stackFanoutPinsAllChildUuidsAndKeepsExplicitStableNoopsSeparateFromTransitionalSkips"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiCookieLifecycleWitnessTest",
+      "trackerFailureDoesNotMarkNativeTransactionRollbackOnlyOrSwallowNativeInsertAndQueueErrors"
+    ]
+  ],
+  "cookieLifecycleAllWitness": {
+    "scope": "SOURCE_ONLY_CURRENT_ORIGINAL_CI_AND_NATIVE_PENDING",
+    "intermediateProducer": "c6505dc0337154b30a19cfe35436ed5260e7291e",
+    "intermediateTree": "b1b0d352066a1914547c6af58e60a615222b5ffe",
+    "productPatchSha256": "da30e58466b4512e2f045ddb6195cb24a5f53353f3e5bb50eb356882db0c74c5",
+    "runtimeSourceFreezeSha256": "8b66e2431ce8a63d5377a66259dbdf61e3ff337e17d9f552b31c467d3c0f8f14",
+    "newMethods": [
+      [
+        "io.cattle.platform.iaas.api.auth.change.AiCookieLifecycleWitnessTest",
+        "commonPrepareStripsForgedCorrelationAndWrongRuntimeParentsCannotSealAChain"
+      ],
+      [
+        "io.cattle.platform.iaas.api.auth.change.AiCookieLifecycleWitnessTest",
+        "emptyAndAlreadyDesiredStacksNeedAnActualClosedNativeDispatchAndStableExactIdentitySet"
+      ],
+      [
+        "io.cattle.platform.iaas.api.auth.change.AiCookieLifecycleWitnessTest",
+        "failedAttestationRollsBackTheNativeInsertAndCannotQueueOrLeakThePrivateScope"
+      ],
+      [
+        "io.cattle.platform.iaas.api.auth.change.AiCookieLifecycleWitnessTest",
+        "fourteenCookieActionsNeedTheirOwnNativeRowsAndNeverBorrowAnUnrelatedSuccess"
+      ],
+      [
+        "io.cattle.platform.iaas.api.auth.change.AiCookieLifecycleWitnessTest",
+        "fullPayloadJsonRoundtripKeepsChangedValuesTypesNullsFieldsAndArrayOrderDistinct"
+      ],
+      [
+        "io.cattle.platform.iaas.api.auth.change.AiCookieLifecycleWitnessTest",
+        "nativeRestartHandlersAndFrameworkScheduleChainBindEveryParentBeforeCompletion"
+      ],
+      [
+        "io.cattle.platform.iaas.api.auth.change.AiCookieLifecycleWitnessTest",
+        "nativeServiceRestartCountEnrichmentIsAcceptedButUnrelatedFieldsOrCountsNeverAttest"
+      ],
+      [
+        "io.cattle.platform.iaas.api.auth.change.AiCookieLifecycleWitnessTest",
+        "originalCompletionPredicateIsStillRequiredAfterTheOwnProcessSucceeds"
+      ],
+      [
+        "io.cattle.platform.iaas.api.auth.change.AiCookieLifecycleWitnessTest",
+        "originalStackHandlerPreservesTwoNamedAliasesToOneWaitTargetAndLateFanoutFailureStaysPartialUnknown"
+      ],
+      [
+        "io.cattle.platform.iaas.api.auth.change.AiCookieLifecycleWitnessTest",
+        "queuedChainsTrackActiveStatesAndKeepNativeQueuesWhenTrackingExpiresOrDisappears"
+      ],
+      [
+        "io.cattle.platform.iaas.api.auth.change.AiCookieLifecycleWitnessTest",
+        "stackFanoutPinsAllChildUuidsAndKeepsExplicitStableNoopsSeparateFromTransitionalSkips"
+      ],
+      [
+        "io.cattle.platform.iaas.api.auth.change.AiCookieLifecycleWitnessTest",
+        "trackerFailureDoesNotMarkNativeTransactionRollbackOnlyOrSwallowNativeInsertAndQueueErrors"
+      ]
+    ],
+    "currentRequired": 491,
+    "preservedIntermediateRequired": 479,
+    "sourceInputs": 502,
+    "sourceFingerprint": "79e369151a0ac278b4fce79154346784325414bbd33f75e61066ce1c84d0e884",
+    "selectedSourceDelta": [
+      {
+        "path": "code/framework/engine/src/main/java/io/cattle/platform/engine/process/LaunchConfiguration.java",
+        "before": null,
+        "after": "056e123d0d2e68883fb08085c572b78f6bef9a41af8f47996d9457453ceff978"
+      },
+      {
+        "path": "code/framework/engine/src/main/java/io/cattle/platform/engine/process/ProcessAuthorization.java",
+        "before": "c7ee36073ba3a56a75243c778dcc255d1200222b9ee8fbc19cf557623ac33ee5",
+        "after": "3b6ddba749d462fe0058a0233c4bbbb868c1c9a00f37c983eb63fcbbbed07e38"
+      },
+      {
+        "path": "code/framework/engine/src/main/java/io/cattle/platform/engine/process/ProcessAuthorizationHook.java",
+        "before": "ec98f748e21a9d71fa9ad2f61974e54950e5a15b05940d7a6d77850b83937fb5",
+        "after": "743f610e3ad806e324749bbab5ee92120c0363c1c8d6ec658e18ec78a7f86fca"
+      },
+      {
+        "path": "code/framework/engine/src/main/java/io/cattle/platform/engine/process/impl/DefaultProcessInstanceImpl.java",
+        "before": "986e14156ce42ac72033fad21289db4e3732469378cb6c9b0ae1d0a4c36376b0",
+        "after": "949028dbd6d628f09f649bae5686f4f2297af4e95a0a83f6ae9339536a1078fc"
+      },
+      {
+        "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiCookieLifecycleWitness.java",
+        "before": null,
+        "after": "47e2010db8be6923d88f4201992331d54dda54d4a1032f4352066b47f0618623"
+      },
+      {
+        "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiResourceChangeDomain.java",
+        "before": "c99d2ccb95cb4670b4998503376ce16dc26566330010640c81b078ccda0f852e",
+        "after": "79e8c1332e6353031b4a046c31873836bccae2ea6dc1b0ff3b48fe3399cc5ca8"
+      },
+      {
+        "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiResourceChangePlanService.java",
+        "before": "a8843dc4893cb6603b670f7dc2ca9e2316613ff78673fe9ab44d487a27d26653",
+        "after": "9db9d7e96367f5de7263aa497c001950ef4b939be7efdd04901428b0d303c49c"
+      },
+      {
+        "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiResourceChangePlanStore.java",
+        "before": "8751eb6a864cc5ff0afbf0457e7ebf8901c27339286c67b8cc571a8f95e531a6",
+        "after": "fd77e4413ecfb2706664ae37c3d68fda46a62fe3e3e57611dd4c5d367c103c95"
+      },
+      {
+        "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiResourceChangeProcessObserver.java",
+        "before": "a4d7ecb7e6622fe3b54a3432fdfb288dbd80efea29930f2161592791d093d375",
+        "after": "0c1487d790d95faff12043970191eddebaab5ec47b4d6f6e2eeae196361b49ad"
+      }
+    ],
+    "roleFieldDelta": [],
+    "typedBaseSchemaDelta": {},
+    "finalProducer": null,
+    "originalCi": null,
+    "compiledProof": null,
+    "nativePass": false
   }
 }

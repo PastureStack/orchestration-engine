@@ -12,8 +12,10 @@ upstream history, authorship, licenses, and dependency notices.
 
 Engine **0.183.388** is the next release candidate. It adds human-reviewed Host
 activation and deactivation through the existing native Host actions. Cookie-origin
-Host and Service lifecycle completion requires the exact native process captured
-for that approved plan; Service readiness and instance retirement remain required.
+Host, Service, Container, registry, load-balancer, external/DNS service and Stack
+lifecycle completion requires its own durable native process evidence. Stack fanout
+and restart chains retain their actual native identities; original readiness,
+instance retirement and every domain terminal predicate remain required.
 The framework insertion hook records correlation only; native authorization stays
 with its existing owner. Full and legacy clients need no new header.
 

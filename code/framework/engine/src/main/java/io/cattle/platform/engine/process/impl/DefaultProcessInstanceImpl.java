@@ -661,6 +661,7 @@ public class DefaultProcessInstanceImpl implements ProcessInstance {
         final LaunchConfiguration config = new LaunchConfiguration(chainProcess, record.getResourceType(), record.getResourceId(), record.getAccountId(),
                 record.getPriority(), state.getData());
         config.setParentProcessState(state);
+        config.setChainParentProcessId(record.getId());
 
         ExecutionExceptionHandler handler = this.context.getExceptionHandler();
 

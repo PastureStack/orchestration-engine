@@ -3,10 +3,10 @@
 ## Engine 0.183.388 candidate
 
 Host start/stop plans use native activate/deactivate actions, with no evacuation,
-daemon stop or Agent lifecycle operation. Cookie Host and ordinary Service
-start/stop or upgrade lifecycle plans require a durable witness of their own
-native root process. Matching terminal state from another request cannot establish
-completion. Original Service readiness, instance retirement, roles, live Key
+daemon stop or Agent lifecycle operation. Cookie lifecycle plans require durable
+evidence of their own native root processes, exact restart chains or Stack fanout.
+Explicit stable native no-ops remain separate from skipped transitional targets.
+Matching terminal state or another request cannot establish completion. Original Service readiness, instance retirement, roles, live Key
 policy and Full/legacy native API contracts remain.
 
 The insertion hook is correlation-only and has no effect without the approved
