@@ -388,10 +388,10 @@
         " collectionAction("
       ]
     },
-    "contractSha256": "a11d1eb26728b28b361e860fe528772c89ea10ad717aa0359833dfe660bad8f6",
+    "contractSha256": "5f74eedb2cdb504acad1829f9ebd076bf00ffb1ae9740a5f9a82bfa7d4d3a756",
     "tupleCount": 1396,
     "reviewManifest": "scripts/api-key-operation-review-0.183.387.json",
-    "reviewManifestSha256": "747240fe8f489b05db1f52dd6c97f1057bacec9966bdcb48c1c40da6f5dd7f99",
+    "reviewManifestSha256": "fe30d5c977295ab1fd111671e42a6843448abae886208190dea60120204caa99",
     "roleFieldDelta": [],
     "previousReview": {
     "version": "unreleased-386-links-http-lb-scale",

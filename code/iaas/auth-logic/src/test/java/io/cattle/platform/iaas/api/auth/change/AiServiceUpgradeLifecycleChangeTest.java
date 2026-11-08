@@ -63,8 +63,9 @@ public class AiServiceUpgradeLifecycleChangeTest {
         for (String operation : List.of("finish_upgrade", "rollback", "cancel_upgrade")) assertTrue(operations.contains(operation));
         assertFalse(operations.contains("cancel_rollback"));
         assertEquals(Set.of("start", "stop", "restart", "remove", "create", "update_metadata", "update_targets", "update_links",
-                "scale", "archive", "restore", "finish_upgrade", "rollback", "cancel_upgrade"), Set.copyOf(operations));
-        assertEquals(14, operations.size());
+                "scale", "archive", "restore", "finish_upgrade", "rollback", "cancel_upgrade", "update_public_port", "update_target"),
+                Set.copyOf(operations));
+        assertEquals(16, operations.size());
     }
 
     @Test public void threeNativeCapabilitiesHaveEmptyParametersAndCancelRollbackRemainsUnsupported() {

@@ -3063,5 +3063,32 @@
   "extractor": {
     "path": "refresh-integrated-operation-contract.py",
     "sha256": "078ffe48881469fe5eb3cb43a15fa41b480fe70e11bd5f63102ded6b35a6d076"
+  },
+  "modifiedExistingRequiredMethods": [
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiServiceUpgradeLifecycleChangeTest",
+      "nativeSchemaAdmitsTheSameThreeActionsWithoutAddingCancelRollback"
+    ]
+  ],
+  "modifiedExistingTestFixtures": [
+    {
+      "path": "code/iaas/auth-logic/src/test/java/io/cattle/platform/iaas/api/auth/change/AiServiceUpgradeLifecycleChangeTest.java",
+      "method": [
+        "io.cattle.platform.iaas.api.auth.change.AiServiceUpgradeLifecycleChangeTest",
+        "nativeSchemaAdmitsTheSameThreeActionsWithoutAddingCancelRollback"
+      ],
+      "beforeCommit": "ae1537d4b497952737f9286644bab9dfaa30294f",
+      "beforeGitLfSha256": "65aca00f8c553bcedc8c61ad8c9e045ee22fd0e5d6e687408a55560c6a30890e",
+      "afterGitLfSha256": "353215794bf4792f34ff62a1412ac4398268b382564bfd97993c8f075efde58e",
+      "classification": "EXISTING_REQUIRED_SCHEMA_FIXTURE_REPAIR_NOT_A_NEW_METHOD",
+      "change": "Add the two declared operations to the full-set expected fixture; preserve the three upgrade actions and cancel_rollback rejection",
+      "actualCiPass": false
+    }
+  ],
+  "existingFixtureFailurePreserved": {
+    "securityRun": 42428427081,
+    "classification": "OLD_FULL_ENUM_EXPECTED_SET",
+    "originalFailureRewritten": false,
+    "newRuntimeOrCiPassClaimed": false
   }
 }
