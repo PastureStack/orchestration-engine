@@ -1,9 +1,16 @@
-# Engine 0.183.393 candidate
+# Engine 0.183.393 published
 
-This source candidate requires immutable distributed-cache-runtime 5.7.7,
-including relocated org.json 20260719. It retains cluster protocol 5.7.3,
-Jackson 2.22.3/3.2.3, and all Engine392 role, session and process contracts.
-Required CI and Server native acceptance remain pending.
+Consumes immutable distributed-cache-runtime 5.7.7 with relocated org.json
+20260719 for CVE-2026-59171. Cluster protocol 5.7.3, Jackson 2.22.3/3.2.3,
+all Engine392 authorization/session/process contracts and 94 protected class
+families remain unchanged. All 528 inherited mandatory tests passed; original
+CI has 488 suites / 4341 tests, zero errors/failures and one inherited skip.
+All 183 native build-package rows match Engine392. The artifact scan has zero
+findings; the separate effective Dapper scan retains 41 Medium and 5 Low
+tracked findings without official fixes. Raw reports are preserved separately.
+Anonymous asset readback and immutable release attestation passed. Matching
+Server packaging, deployment and native workflow acceptance are separate.
+See the [release note](docs/releases/orchestration-engine-0.183.393.md).
 
 # Compatibility Contract
 
