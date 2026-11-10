@@ -400,7 +400,7 @@
     },
     "contractSha256": "35af5223f09f87aa03d608dde907fb898b3d621932e2c879a369ed500d4e6719",
     "tupleCount": 1396,
-    "reviewManifest": "scripts/api-key-operation-review-0.183.391.json",
+    "reviewManifest": "scripts/api-key-operation-review-0.183.392.json",
     "reviewManifestSha256": "9b2909b9e089334f6b6dba580009d280de2a96c0481228e3203172505387b6a3",
     "roleFieldDelta": [],
     "typedFieldDelta": [],

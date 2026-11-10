@@ -59,6 +59,10 @@ jobs:
           import xml.etree.ElementTree as ET
 
           required = {
+              'io.cattle.platform.app.MachineDriverExecutorIsolationTest': {
+                  'threeAwaitingDriversCannotStarveStackReplay',
+                  'explicitDriverRouteOverrideIsStillHonored',
+              },
               'io.cattle.platform.iaas.api.auth.ai.view.AiBridgeContextViewTest': {
                   'contextSelectorPurposeAndRevisionAreClosedBeforeAnyNativeRead',
                   'explicitParentDenialsAndMissingOrdinaryChildAuthorityNeverYieldContextIdentity',

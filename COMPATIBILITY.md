@@ -1,6 +1,6 @@
 # Compatibility Contract
 
-## Engine 0.183.391 source candidate
+## Engine 0.183.392 source candidate
 
 Typed Registry removal is an empty native DELETE of an inactive Registry after
 human review. Exact parent identity, the full non-sensitive credential set,
@@ -24,7 +24,7 @@ methods are registered (523 total: eleven Registry and six Bridge context).
 Normal C03 source extraction covers 506 inputs and preserves all 1,396 native
 HTTP tuples. This is source enumeration, not executed JUnit or compiled evidence. Matching Web Console 1.6.232 / Bridge 0.2.34, original CI,
 compiled/source qualification, component publication and native acceptance are
-pending. See the [candidate note](docs/releases/orchestration-engine-0.183.391.md).
+pending. See the [candidate note](docs/releases/orchestration-engine-0.183.392.md).
 
 ## Engine 0.183.390 published
 

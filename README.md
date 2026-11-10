@@ -10,7 +10,7 @@ upstream history, authorship, licenses, and dependency notices.
 
 ## Current component
 
-[Engine **0.183.391**](https://github.com/PastureStack/orchestration-engine/releases/tag/v0.183.391)
+[Engine **0.183.392**](https://github.com/PastureStack/orchestration-engine/releases/tag/v0.183.392)
 is published for matching Web Console **1.6.232** / Bridge **0.2.34**.
 Human-reviewed removal of an inactive Registry uses its existing native owner,
 with the complete non-sensitive credential set rechecked under the shared
@@ -21,7 +21,7 @@ Service; this grants no ordinary Project read or business access.
 Current role/Key ceilings, Full/legacy native behavior, configuration CAS and
 human confirmation remain required. Reviewed Service upgrades retain distinct
 omitted, `null` and `[]` startup arguments. See the
-[release note](docs/releases/orchestration-engine-0.183.391.md) for verified
+[release note](docs/releases/orchestration-engine-0.183.392.md) for verified
 component evidence and the remaining native-acceptance boundary.
 
 Install a qualified matching assembly through the
