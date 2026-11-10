@@ -226,7 +226,8 @@ RUN curl -fsSL --retry 5 --retry-all-errors --retry-delay 2 --connect-timeout 10
     echo 'b530942257fb935f8b2cfaa5f8eb5bd59c555fd8e8d01b8ce98912e077ea606c  /tmp/guava-33.7.2-jre.jar' | sha256sum -c -
 
 RUN mkdir -p ${JAVA_HOME} /usr/lib/jvm && \
-    curl -fsSL -H 'Accept: application/octet-stream' --range 0- --retry 5 --retry-all-errors --retry-delay 2 --connect-timeout 10 --max-time 600 -o /tmp/temurin-jdk25.tar.gz "${TEMURIN_JDK25_URL}" && \
+    (curl -fsSL -H 'Accept: application/octet-stream' --range 0- --retry 5 --retry-all-errors --retry-delay 2 --connect-timeout 10 --max-time 600 -o /tmp/temurin-jdk25.tar.gz "${TEMURIN_JDK25_URL}" || \
+     curl -fsSL --retry 5 --retry-all-errors --retry-delay 2 --connect-timeout 10 --max-time 600 -o /tmp/temurin-jdk25.tar.gz "https://github.com/adoptium/temurin25-binaries/releases/download/jdk-25.0.5%2B8/OpenJDK25U-jdk_x64_linux_hotspot_25.0.5_8.tar.gz") && \
     echo "${TEMURIN_JDK25_SHA256}  /tmp/temurin-jdk25.tar.gz" | sha256sum -c - && \
     tar -xzf /tmp/temurin-jdk25.tar.gz -C ${JAVA_HOME} --strip-components=1 && \
     rm -f /tmp/temurin-jdk25.tar.gz && \
