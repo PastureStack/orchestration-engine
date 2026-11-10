@@ -60,7 +60,8 @@ public final class ApiKeyQueryScopes {
                     // direct-ID reads. Apply both grants and denials before
                     // LIMIT, but only to persisted registry rows, never to an
                     // unrelated pool or a caller-supplied schema alias.
-                    if ("registry".equals(scopedType) && "storagePool".equals(resourceType)
+                    if ((("registry".equals(scopedType) && "storagePool".equals(resourceType))
+                            || ("storagePool".equals(scopedType) && "registry".equals(resourceType)))
                             && table instanceof StoragePoolTable) {
                         Field<String> kind = table.field("kind", String.class);
                         yield kind == null ? DSL.falseCondition()

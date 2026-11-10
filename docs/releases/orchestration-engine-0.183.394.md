@@ -8,14 +8,19 @@ so a parent alias cannot hide a policy denial from its audit decision.
 The predicate now recognizes the registered native table
 and requires its persisted kind to be `registry`. It keeps the original owner
 restriction, exact resource ID, deny precedence and pre-pagination filtering.
+Existing StoragePool rules continue to match the same persisted Registry ID.
+Parent and subtype denials both win; a Registry grant cannot authorize an
+ordinary StoragePool, and native owner authorization remains required.
 
 Full/legacy Keys retain the existing authorization path. Other StoragePool
 kinds, schema fields, API methods, database migrations, dependencies, OIDC/MFA,
 human approval and Registry removal/retention are unchanged.
 
 The six SQL regressions reproduce three failures; three direct-authorization
-cases separately expose two parent-alias failures. Both groups and adjacent
-query/evaluator tests pass after the fix (43 tests). Component
+cases separately expose two parent-alias failures. An additional regression
+and the existing Registry process test reproduce the parent-rule mismatch.
+All 67 directly related query, evaluator, Registry view and lifecycle tests
+pass after the fix, including the unchanged parent-denial expectation. Component
 CI, immutable publication and Server/8080 integration are still pending.
 
 The builder already installs Canonical's SHA256-pinned rust-coreutils0.10

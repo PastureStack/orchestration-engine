@@ -180,7 +180,11 @@ public final class ApiKeyPolicyEvaluator {
             case GLOBAL -> true;
             case PROJECT -> scope.resourceId().equals(target.projectId());
             case STACK -> scope.resourceId().equals(target.stackId());
-            case RESOURCE -> scope.resourceType().equals(target.resourceType())
+            // Registry is the persisted StoragePool subtype. A parent rule
+            // keeps its meaning for that same ID after kind normalization;
+            // a Registry rule must never authorize an ordinary pool.
+            case RESOURCE -> (scope.resourceType().equals(target.resourceType())
+                    || ("storagePool".equals(scope.resourceType()) && "registry".equals(target.resourceType())))
                     && scope.resourceId().equals(target.resourceId());
         };
     }

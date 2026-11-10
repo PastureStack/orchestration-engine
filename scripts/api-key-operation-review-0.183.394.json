@@ -185,7 +185,7 @@
     "reviewed": {
       "algorithm": "c03-source-inputs-v1",
       "count": 506,
-      "sha256": "d34db47a1f6c0f17eb16200c3bc4e5ab662f831494e004631a8887b4b1e05682",
+      "sha256": "3628213e9acaf7545776ab206890a16c57e4d4c457aedf0aa71ba635d8311175",
       "anchors": [
         "AbstractObjectManager.java",
         "AbstractSchemaFactory.java",
@@ -363,7 +363,7 @@
     {
       "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/apikey/ApiKeyQueryScopes.java",
       "before": "dc19c77dfc3b37fe9b88467d6aa76ef401d1cd4d33b65282d8549557e1c038b5",
-      "after": "687e29cb1b50c5c315c506f10c4f96d63ce69284fb28a2dc83edb50390e9560f"
+      "after": "d508d5805b757bf3edc3a1ffd7277dc6f391cdb382831ea94d76faa58923e7fd"
     },
     {
       "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/apikey/ApiKeyTargetResolver.java",
@@ -2487,6 +2487,10 @@
   ],
   "newRequiredMethods": [
     [
+      "io.cattle.platform.iaas.api.auth.apikey.ApiKeyPolicyEvaluatorTest",
+      "parentStoragePoolScopePreservesExactRegistryIdentityAndDenyPrecedence"
+    ],
+    [
       "io.cattle.platform.iaas.api.auth.apikey.ApiKeyRegistryQueryScopeTest",
       "aRegistryRuleCannotGrantAnOrdinaryPoolWithTheSameSuppliedId"
     ],
@@ -2523,14 +2527,14 @@
       "parentAliasCannotHideRegistryPolicyDeniedFromAuthorizationOrAudit"
     ]
   ],
-  "requiredMethodCount": 537,
-  "newMethodCount": 9,
+  "requiredMethodCount": 538,
+  "newMethodCount": 10,
   "sourceMethodReplacements": [],
   "sourceMethodClassification": {
-    "trueNewTestMethods": 9,
+    "trueNewTestMethods": 10,
     "existingRenamedFirstMandatory": 0,
-    "newSourceNamesAndRequiredIdentities": 9,
-    "netDeclaredMethodDelta": 9
+    "newSourceNamesAndRequiredIdentities": 10,
+    "netDeclaredMethodDelta": 10
   },
   "affectedExistingRequiredMethods": [],
   "affectedExistingNonRequiredMethods": [],
@@ -2631,11 +2635,12 @@
     "code/packaging/app-config/src/main/java/io/cattle/platform/app/SystemServicesConfig.java"
   ],
   "currentSourceRoots": [
+    "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/apikey/ApiKeyPolicyEvaluator.java",
     "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/apikey/ApiKeyQueryScopes.java",
     "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/apikey/ApiKeyTargetResolver.java"
   ],
-  "currentRoots": 2,
-  "carriedSourceRoots": 92,
+  "currentRoots": 3,
+  "carriedSourceRoots": 91,
   "packagedRootPlan": [
     {
       "source": "code/framework/api/src/main/java/io/cattle/platform/api/auth/ApiAuditPayload.java",

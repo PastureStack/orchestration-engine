@@ -10,8 +10,9 @@ upstream history, authorship, licenses, and dependency notices.
 
 ## Candidate 0.183.394
 
-Fixes exact Registry API Key grants/denials in native StoragePool queries.
-The six new database regressions and adjacent unit tests pass locally; immutable
+Fixes exact Registry API Key grants/denials in native StoragePool queries while
+preserving parent-rule denials on the same Registry. The 67 related database,
+authorization, view and lifecycle tests pass locally; immutable
 publication and Server acceptance remain pending. See the [candidate note](docs/releases/orchestration-engine-0.183.394.md).
 
 ## Current published component

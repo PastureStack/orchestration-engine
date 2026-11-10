@@ -60,6 +60,9 @@ jobs:
           import xml.etree.ElementTree as ET
 
           required = {
+              'io.cattle.platform.iaas.api.auth.apikey.ApiKeyPolicyEvaluatorTest': {
+                  'parentStoragePoolScopePreservesExactRegistryIdentityAndDenyPrecedence',
+              },
               'io.cattle.platform.iaas.api.auth.apikey.ApiKeyRegistryTargetScopeTest': {
                   'exactRegistryGrantUsesPersistedKindThroughBothNativeSchemaNames',
                   'parentAliasCannotHideRegistryPolicyDeniedFromAuthorizationOrAudit',
