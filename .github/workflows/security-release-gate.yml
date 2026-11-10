@@ -38,6 +38,7 @@ jobs:
           : > evidence/source-status.txt
           sha256sum ubuntu-apt.lock ubuntu-security-packages.lock scripts/install-ubuntu-security-updates.sh .mvn/wrapper/maven-wrapper.properties > evidence/source-locks.sha256
           python3 tools/pip-security-overlay/test-pip-vex.py -v
+          python3 scripts/test-rust-coreutils-fixed-vex.py -v
           python3 .github/scripts/test_runtime_vulnerability_policy.py
 
       - name: Build and test all Maven modules
@@ -984,7 +985,41 @@ jobs:
             --vex evidence/dapper-apt-fixed.openvex.json \
             --native evidence/dapper-image-vulnerabilities.apt-fixed-pip-qualified.json \
             --proof evidence/dapper-apt-fixed-vex-proof.json
-          cp evidence/dapper-image-vulnerabilities.apt-fixed-pip-qualified.json evidence/dapper-image-vulnerabilities.json
+          # Canonical's updates-pocket backport is installed already. Keep the
+          # raw reports and qualify only its exact native ELF/PURL/CVE subjects.
+          cp security/ubuntu-rust-coreutils-fixed.openvex.json evidence/dapper-rust-fixed.openvex.json
+          cp security/ubuntu-rust-coreutils-fixed-review.json evidence/dapper-rust-official-review.json
+          docker run --rm --network none --entrypoint sha256sum "$DAPPER_IMAGE" \
+            /usr/bin/coreutils > evidence/dapper-rust-installed-elf.sha256
+          python3 scripts/check-rust-coreutils-fixed-vex.py \
+            --dpkg evidence/dapper-dpkg.tsv --inspect evidence/dapper-image-inspect.json \
+            --raw evidence/dapper-image-vulnerabilities.apt-fixed-pip-qualified.json \
+            --installed evidence/dapper-rust-installed-elf.sha256 \
+            --vex evidence/dapper-rust-fixed.openvex.json --inputs-only
+          docker run --rm --network none \
+            -v /var/run/docker.sock:/var/run/docker.sock \
+            -v "$PWD:/work" -w /work \
+            -v "$trivy_cache:/root/.cache/trivy" \
+            "$TRIVY_IMAGE" image \
+            --offline-scan --scanners vuln --list-all-pkgs \
+            --skip-db-update --skip-java-db-update --skip-vex-repo-update \
+            --vex /work/evidence/dapper-rust-fixed.openvex.json \
+            --format json --output /work/evidence/dapper-image-vulnerabilities.apt-rust-fixed.json \
+            "$DAPPER_IMAGE"
+          python3 tools/pip-security-overlay/filter-pip-vendor-findings.py \
+            --raw evidence/dapper-image-vulnerabilities.apt-rust-fixed.json \
+            --proof evidence/dapper-pip-vendor-proof.json \
+            --output evidence/dapper-image-vulnerabilities.apt-rust-fixed-pip-qualified.json \
+            --vex evidence/dapper-pip-vendor.rust-qualified.vex.json \
+            --subject "$dapper_subject"
+          python3 scripts/check-rust-coreutils-fixed-vex.py \
+            --dpkg evidence/dapper-dpkg.tsv --inspect evidence/dapper-image-inspect.json \
+            --raw evidence/dapper-image-vulnerabilities.apt-fixed-pip-qualified.json \
+            --installed evidence/dapper-rust-installed-elf.sha256 \
+            --vex evidence/dapper-rust-fixed.openvex.json \
+            --native evidence/dapper-image-vulnerabilities.apt-rust-fixed-pip-qualified.json \
+            --proof evidence/dapper-rust-fixed-vex-proof.json
+          cp evidence/dapper-image-vulnerabilities.apt-rust-fixed-pip-qualified.json evidence/dapper-image-vulnerabilities.json
           # A scanner which misses an ELF is not a clean Go dependency scan.
           jq -e 'any(.Results[]?; .Type == "gobinary" and
             (.Target | endswith("/docker")) and (.Packages | length > 0))' \
