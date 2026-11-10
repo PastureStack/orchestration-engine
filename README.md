@@ -1,11 +1,5 @@
 # PastureStack Orchestration Engine
 
-Development candidate `0.183.393` updates the maintained Hazelcast artifact to
-`5.7.7` with official org.json `20260719` for CVE-2026-59171. Cluster protocol
-metadata remains `5.7.3`; Engine authorization, session and lifecycle code is
-unchanged. Publication and downstream acceptance are pending. The current
-published release below remains immutable.
-
 Orchestration Engine implements the platform API, authorization, metadata,
 scheduling, storage, networking, and resource lifecycle.
 
@@ -16,8 +10,11 @@ upstream history, authorship, licenses, and dependency notices.
 
 ## Current component
 
-[Engine **0.183.392**](https://github.com/PastureStack/orchestration-engine/releases/tag/v0.183.392)
+[Engine **0.183.393**](https://github.com/PastureStack/orchestration-engine/releases/tag/v0.183.393)
 is published for matching Web Console **1.6.233** / Bridge **0.2.35**.
+The maintained Hazelcast **5.7.7** artifact includes official org.json
+**20260719** for CVE-2026-59171. Its cluster protocol remains **5.7.3**;
+Engine authorization, session and lifecycle implementation is retained.
 Machine Driver lifecycle waits use the existing blocking executor so they do
 not occupy the control workers needed for recovery after a Server restart.
 Human confirmation retains the original Key/session binding of a lifecycle
@@ -34,7 +31,7 @@ Server acceptance.
 Current role/Key ceilings, Full/legacy native behavior, configuration CAS and
 human confirmation remain required. Reviewed Service upgrades retain distinct
 omitted, `null` and `[]` startup arguments. See the
-[release note](docs/releases/orchestration-engine-0.183.392.md) for verified
+[release note](docs/releases/orchestration-engine-0.183.393.md) for verified
 component evidence and the remaining native-acceptance boundary.
 
 Install a qualified matching assembly through the
