@@ -192,7 +192,7 @@ public class AiResourceChangePlanService {
                     if (!Objects.equals(current.get("snapshot"), plan.get("snapshot")) || !Objects.equals(current.get("body"), plan.get("body")))
                         throw error(409, "ResourceChangePlanStale");
                 } else {
-                    if (!targetSnapshot(request, descriptor, target, parameters).equals(plan.get("snapshot"))
+                    if (!targetSnapshot(request, descriptor, target, parameters, plan).equals(plan.get("snapshot"))
                             || !parentSnapshot(descriptor, parent).equals(plan.get("parentSnapshot")))
                         throw error(409, "ResourceChangePlanStale");
                     if (!descriptor.createsResource()) visibleTarget(request, descriptor, text(plan.get("resourceId")), target, parameters);
@@ -280,8 +280,17 @@ public class AiResourceChangePlanService {
 
     private Map<String, Object> targetSnapshot(ApiRequest request, AiResourceChangeDescriptor descriptor, Object target,
             Map<String, Object> parameters) {
+        return targetSnapshot(request, descriptor, target, parameters, null);
+    }
+
+    private Map<String, Object> targetSnapshot(ApiRequest request, AiResourceChangeDescriptor descriptor, Object target,
+            Map<String, Object> parameters, Map<String, Object> boundPlan) {
         if (AiRegistryRemovalChange.supports(descriptor)) return domain.registryRemovalSnapshot(target);
-        if (AiCookieLifecycleWitness.supports(descriptor) && ApiKeyCredentialContext.get(request) == null)
+        // A human Cookie confirms Key plans too. The persisted plan, not that
+        // transport change, selects the snapshot captured during preview.
+        boolean sessionPlan = boundPlan == null ? ApiKeyCredentialContext.get(request) == null
+                : !(boundPlan.get("credentialId") instanceof Number);
+        if (AiCookieLifecycleWitness.supports(descriptor) && sessionPlan)
             return domain.cookieLifecycleSnapshot(descriptor, target);
         if (AiStackUpgradeLifecycleChange.supports(descriptor)) return domain.stackUpgradeLifecycleSnapshot(descriptor, target, true);
         if (AiHostLifecycleChange.supports(descriptor)) return domain.hostLifecycleSnapshot(target);

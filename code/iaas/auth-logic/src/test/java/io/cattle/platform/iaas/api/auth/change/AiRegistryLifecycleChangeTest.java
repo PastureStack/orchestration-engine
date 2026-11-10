@@ -91,6 +91,58 @@ public class AiRegistryLifecycleChangeTest {
         }
     }
 
+    @Test public void keyPlanHumanConfirmationKeepsItsOriginalSnapshotAcrossLifecycleTypes() {
+        for (String type : List.of("registry", "loadBalancerService", "externalService", "dnsService", "stack", "container", "service")) {
+            var f = new AiResourceChangePlanServiceTest.Fixture(); distinctCookieWitness(f);
+            previewLifecycle(f, type, true);
+            assertFalse(((Map<?, ?>) f.documents.get(f.id).get("snapshot")).containsKey(AiCookieLifecycleWitness.SNAPSHOT));
+            assertThrows(ClientVisibleException.class, () -> f.service.action(f.id, f.request("confirm", true)));
+            f.confirm();
+            assertEquals("approved", f.documents.get(f.id).get("confirmationState"));
+            verify(f.domain, never()).cookieLifecycleSnapshot(any(), any());
+            assertThrows(ClientVisibleException.class, () -> f.apply(false));
+            f.apply(true); assertEquals(1, f.claims); assertEquals(1, f.dispatched);
+        }
+    }
+
+    @Test public void cookiePlanKeepsItsWitnessAndNeverBorrowsAKeySnapshot() {
+        for (String type : List.of("registry", "loadBalancerService", "externalService", "dnsService", "stack", "container", "service")) {
+            var f = new AiResourceChangePlanServiceTest.Fixture(); distinctCookieWitness(f);
+            previewLifecycle(f, type, false);
+            var before = f.copy((Map<String, Object>) f.documents.get(f.id).get("snapshot"));
+            assertTrue(before.containsKey(AiCookieLifecycleWitness.SNAPSHOT)); f.confirm();
+            assertEquals(before, f.documents.get(f.id).get("snapshot"));
+            assertThrows(ClientVisibleException.class, () -> f.apply(true));
+            assertEquals(0, f.claims); assertEquals(0, f.dispatched);
+        }
+    }
+
+    @Test public void humanKeyPlanConfirmationStillChecksLiveAuthorityAndSnapshot() {
+        for (boolean revoke : List.of(false, true)) {
+            var f = new AiResourceChangePlanServiceTest.Fixture(); distinctCookieWitness(f);
+            previewLifecycle(f, "registry", true);
+            if (revoke) f.writeAllowed = false; else f.target.setDescription("concurrent change");
+            var error = assertThrows(ClientVisibleException.class, f::confirm);
+            assertEquals(revoke ? 403 : 409, error.getStatus());
+            assertEquals(0, f.claims); assertEquals(0, f.dispatched);
+        }
+    }
+
+    private void distinctCookieWitness(AiResourceChangePlanServiceTest.Fixture f) {
+        doAnswer(call -> {
+            var snapshot = new LinkedHashMap<>(f.domain.snapshot(call.getArgument(1)));
+            snapshot.put(AiCookieLifecycleWitness.SNAPSHOT, Map.of("root", Map.of("id", "7", "uuid", "owned-root"), "children", List.of()));
+            return snapshot;
+        }).when(f.domain).cookieLifecycleSnapshot(any(), any());
+    }
+
+    private void previewLifecycle(AiResourceChangePlanServiceTest.Fixture f, String type, boolean key) {
+        var request = f.request(null, key); request.setId(null);
+        request.setRequestObject(Map.of("resourceType", type, "operation", List.of("container", "service").contains(type) ? "restart" : "start",
+                "resourceId", "registry".equals(type) ? "1sp7" : "1s7", "parameters", Map.of()));
+        f.id = (String) f.service.preview(request).get("id");
+    }
+
     private void preview(AiResourceChangePlanServiceTest.Fixture f, boolean key) {
         var request = f.request(null, key); request.setId(null);
         request.setRequestObject(Map.of("resourceType", "registry", "operation", "start", "resourceId", "1sp7", "parameters", Map.of()));

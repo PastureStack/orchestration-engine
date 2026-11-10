@@ -34,6 +34,8 @@ ADD --checksum=sha256:7c0b37592f83a629cc22f0c98effa176da9edbd6d77b3f38184a9d0ddc
 ADD --checksum=sha256:bedeef1cf3268f90338c411cdb0a45b224d0660fd2240f310f380316c8244606 https://security.ubuntu.com/ubuntu/pool/main/b/brotli/libbrotli1_1.2.0-3ubuntu0.1_amd64.deb /tmp/libbrotli1.deb
 ADD --checksum=sha256:44ebbeb6493eacffbc460ca71446959ba86a00b2e23515e4cfb1a5cc317d6672 https://security.ubuntu.com/ubuntu/pool/main/p/pcre2/libpcre2-8-0_10.46-1ubuntu0.1_amd64.deb /tmp/libpcre2-8-0.deb
 ADD --checksum=sha256:44605ea665673a359927d014f4a027c50fe6472af8bc956bd1b1c43ddc07a1cd https://security.ubuntu.com/ubuntu/pool/main/p/pcre2/libpcre2-posix3_10.46-1ubuntu0.1_amd64.deb /tmp/libpcre2-posix3.deb
+# Official Resolute backport: retain the existing providers/alternatives and upgrade only this installed package.
+ADD --checksum=sha256:963dbc5efa92141e7056a9e9f3431ec7f352f2a7c762f2b3242443df39be9115 https://security.ubuntu.com/ubuntu/pool/main/r/rust-coreutils/rust-coreutils_0.10.0-1ubuntu2~26.04.1_amd64.deb /tmp/rust-coreutils.deb
 
 # USN-8996-1: replace vulnerable APT before its first package operation.
 ADD --checksum=sha256:0de729b8fe0e1c67c04e8e8d5bd6e0420dbd47f75b93f0b71c8e740edc2d5ffc https://security.ubuntu.com/ubuntu/pool/main/a/apt/apt_3.2.1ubuntu0.1_amd64.deb /tmp/apt.deb
@@ -186,6 +188,24 @@ RUN set -eux; \
         test "$(dpkg-deb -f "/tmp/${package}.deb" Architecture)" = amd64; \
     done; \
     dpkg -i /tmp/libpcre2-8-0.deb /tmp/libpcre2-posix3.deb; \
+    test "$(dpkg-query -W -f='${db:Status-Status}' rust-coreutils)" = installed; \
+    test "$(dpkg-deb -f /tmp/rust-coreutils.deb Package)" = rust-coreutils; \
+    test "$(dpkg-deb -f /tmp/rust-coreutils.deb Version)" = '0.10.0-1ubuntu2~26.04.1'; \
+    test "$(dpkg-deb -f /tmp/rust-coreutils.deb Architecture)" = amd64; \
+    dpkg-query -W -f='${binary:Package}\t${db:Status-Status}\n' | LC_ALL=C sort > /tmp/packages-before-rust-update; \
+    for command in cat cp mv rm sha256sum sort stat; do command -v "$command" | xargs readlink -f; done > /tmp/providers-before-rust-update; \
+    dpkg -i /tmp/rust-coreutils.deb; \
+    dpkg-query -W -f='${binary:Package}\t${db:Status-Status}\n' | LC_ALL=C sort > /tmp/packages-after-rust-update; \
+    for command in cat cp mv rm sha256sum sort stat; do command -v "$command" | xargs readlink -f; done > /tmp/providers-after-rust-update; \
+    cmp /tmp/packages-before-rust-update /tmp/packages-after-rust-update; \
+    cmp /tmp/providers-before-rust-update /tmp/providers-after-rust-update; \
+    mkdir /tmp/rust-coreutils-regression; \
+    touch /tmp/rust-coreutils-regression/existing; chmod 600 /tmp/rust-coreutils-regression/existing; \
+    if /usr/bin/coreutils mkfifo /tmp/rust-coreutils-regression/existing; then exit 1; fi; \
+    test "$(stat -c '%a' /tmp/rust-coreutils-regression/existing)" = 600; \
+    /usr/bin/coreutils mkfifo -m 600 /tmp/rust-coreutils-regression/new-fifo; \
+    test -p /tmp/rust-coreutils-regression/new-fifo; \
+    test "$(stat -c '%a' /tmp/rust-coreutils-regression/new-fifo)" = 600; \
     sh /usr/local/bin/install-ubuntu-security-updates /licenses/ubuntu-security-packages.lock /etc/ssl/certs/ca-certificates.crt; \
     for package in libpcre2-8-0 libpcre2-posix3; do \
         test "$(dpkg-query -W -f='${Version}' "${package}")" = 10.46-1ubuntu0.1; \

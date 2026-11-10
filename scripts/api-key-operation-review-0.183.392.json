@@ -1,0 +1,3288 @@
+{
+  "schemaVersion": 1,
+  "version": "0.183.392",
+  "scope": "SOURCE_ONLY_NOT_ARTIFACT_OR_RUNTIME_ACCEPTANCE",
+  "reviewedBaseCommit": "d51c7e420ad766c974b81aa905b972d2f83e9ed2",
+  "producerCommit": null,
+  "producerTree": null,
+  "sourceInputs": {
+    "algorithm": "c03-source-inputs-v1",
+    "baseline": {
+      "algorithm": "c03-source-inputs-v1",
+      "count": 506,
+      "sha256": "4f434e86895fd58619a04e0e99a08d52803d64de176186d64284b4d38df3ef37",
+      "anchors": [
+        "AbstractObjectManager.java",
+        "AbstractSchemaFactory.java",
+        "AccountDaoImpl.java",
+        "AiAliasServiceChange.java",
+        "AiApiKeyReadView.java",
+        "AiAuditQuery.java",
+        "AiAuditQueryInputHandler.java",
+        "AiAuditQueryResourceManager.java",
+        "AiAuditQueryRunner.java",
+        "AiAuditQueryService.java",
+        "AiAuditSourcePage.java",
+        "AiAuditSourcePageInput.java",
+        "AiBridgeContextView.java",
+        "AiCatalogLaunchAccess.java",
+        "AiCatalogLaunchAccessTest.java",
+        "AiCatalogLaunchBinding.java",
+        "AiCatalogLaunchBindingTest.java",
+        "AiCatalogLaunchDelegation.java",
+        "AiCatalogLaunchDelegationTest.java",
+        "AiCatalogLaunchGateway.java",
+        "AiCatalogLaunchGraph.java",
+        "AiCatalogLaunchHumanInputTest.java",
+        "AiCatalogLaunchInput.java",
+        "AiCatalogLaunchMaterializer.java",
+        "AiCatalogLaunchMaterializerTest.java",
+        "AiCatalogLaunchObservation.java",
+        "AiCatalogLaunchObservationTest.java",
+        "AiCatalogLaunchOptionsResourceManager.java",
+        "AiCatalogLaunchOptionsService.java",
+        "AiCatalogLaunchOptionsStore.java",
+        "AiCatalogLaunchOptionsStoreTest.java",
+        "AiCatalogLaunchOwnerContractTest.java",
+        "AiCatalogLaunchPlanResourceManager.java",
+        "AiCatalogLaunchPlanService.java",
+        "AiCatalogLaunchPlanStore.java",
+        "AiCatalogLaunchPlanStoreTest.java",
+        "AiCatalogLaunchPrivate.java",
+        "AiCatalogLaunchPrivateTest.java",
+        "AiCatalogLaunchProspectiveParentTest.java",
+        "AiCatalogLaunchResponseFilter.java",
+        "AiCatalogLaunchRunner.java",
+        "AiCatalogLaunchWorkflowTest.java",
+        "AiContainerLogsInputHandler.java",
+        "AiContainerLogsRunner.java",
+        "AiContainerLogsService.java",
+        "AiContainerLogsTicket.java",
+        "AiContainerNetworkChange.java",
+        "AiCookieLifecycleWitness.java",
+        "AiCreatePorts.java",
+        "AiExternalServiceChange.java",
+        "AiHostLifecycleChange.java",
+        "AiHostMetadataChange.java",
+        "AiLoadBalancerCreateChange.java",
+        "AiNamedServiceLinks.java",
+        "AiProcessDiagnostics.java",
+        "AiProjectMetadataChange.java",
+        "AiRegistryLifecycleChange.java",
+        "AiRegistryRemovalChange.java",
+        "AiResourceChangeDescriptor.java",
+        "AiResourceChangeDomain.java",
+        "AiResourceChangePlanService.java",
+        "AiResourceChangePlanStore.java",
+        "AiResourceChangeProcessObserver.java",
+        "AiResourceViewResourceManager.java",
+        "AiResourceViewService.java",
+        "AiServiceCreateChange.java",
+        "AiServiceUpgradeLifecycleChange.java",
+        "AiServiceUpgradePersistence.java",
+        "AiServiceUpgradePlanInputHandler.java",
+        "AiServiceUpgradePlanService.java",
+        "AiStackGroupChange.java",
+        "AiStackUpgradeLifecycleChange.java",
+        "AiToolCallEventService.java",
+        "AiVolumeCreateChange.java",
+        "AllocateConstraintLock.java",
+        "ApiAuditPayload.java",
+        "ApiAuthenticator.java",
+        "ApiContainerLogsRead.java",
+        "ApiCookieAuthentication.java",
+        "ApiKeyAiBridgeGuard.java",
+        "ApiKeyAuditSink.java",
+        "ApiKeyAuthorizationService.java",
+        "ApiKeyOperations.java",
+        "ApiKeyProcessAuthorization.java",
+        "ApiKeyQueryScopes.java",
+        "ApiKeyTargetResolver.java",
+        "ApiServerConfig.java",
+        "AuditLogKeySelector.java",
+        "AuditLogOutPutFilter.java",
+        "AuditServiceImpl.java",
+        "CatalogLaunchTransformAuthorization.java",
+        "ClientToolAuditEvent.java",
+        "ContainerLogsActionHandler.java",
+        "DefaultAuthorizationProvider.java",
+        "DefaultObjectMetaDataManager.java",
+        "DefaultProcessInstanceImpl.java",
+        "DefaultProcessManager.java",
+        "DefaultProcessesParser.java",
+        "DriverServiceRemove.java",
+        "EngineContext.java",
+        "EventBasedProcessHandler.java",
+        "EventDiagnostics.java",
+        "ExternalDeploymentUnitInstance.java",
+        "ExternalDynamicExtensionHandler.java",
+        "FileSchemaFactory.java",
+        "GenericWhitelistedProxy.java",
+        "HostDao.java",
+        "HostDaoImpl.java",
+        "IaasApiConfig.java",
+        "InServiceUpgradeStrategy.java",
+        "InstanceCreatePortValidation.java",
+        "InstancePortsLock.java",
+        "InstancePortsValidationFilter.java",
+        "LaunchConfiguration.java",
+        "LoadBalancerServiceCreatePostListener.java",
+        "Lock.java",
+        "NotWritablePostProcessor.java",
+        "PortBindingAddress.java",
+        "PortConstants.java",
+        "PortPreflightDaoImpl.java",
+        "PortPreflightInputs.java",
+        "PortPreflightService.java",
+        "PortSpec.java",
+        "PortUpdateService.java",
+        "PortUpdateValidationFilter.java",
+        "ProcessAuthorization.java",
+        "ProcessAuthorizationHook.java",
+        "ProcessEventDecorator.java",
+        "ProjectAccessService.java",
+        "ProjectResourceManager.java",
+        "RegistryCredentialReferenceGuard.java",
+        "RequestReRouterHandler.java",
+        "ResourceManagerRequestHandler.java",
+        "SchemaFactoryImpl.java",
+        "ServiceConsumeMapDao.java",
+        "ServiceConsumeMapDaoImpl.java",
+        "ServiceCreate.java",
+        "ServiceCreateValidation.java",
+        "ServiceDao.java",
+        "ServiceDaoImpl.java",
+        "ServiceDiscoveryApiService.java",
+        "ServiceDiscoveryApiServiceImpl.java",
+        "ServiceDiscoveryServiceImpl.java",
+        "ServiceDiscoveryServiceSetLinksLock.java",
+        "ServiceUpgradeStrategy.java",
+        "ServiceUpgradeValidation.java",
+        "ServiceUpgradeValidationFilter.java",
+        "ServiceValidationFilter.java",
+        "SetServiceLinksActionHandler.java",
+        "StackValidationFilter.java",
+        "StandardLock.java",
+        "SystemServicesConfig.java",
+        "TokenAuthLookup.java",
+        "TransformInspect.java",
+        "VolumeDao.java",
+        "VolumeDaoImpl.java",
+        "VolumePreflightInputs.java",
+        "VolumePreflightService.java"
+      ],
+      "markers": [
+        "@Type",
+        "@Actions",
+        " getLinkInternal(",
+        " getLink(",
+        " resourceActionInternal(",
+        " collectionActionInternal(",
+        " resourceAction(",
+        " collectionAction("
+      ]
+    },
+    "reviewed": {
+      "algorithm": "c03-source-inputs-v1",
+      "count": 506,
+      "sha256": "c7551e9d14693c2b7b8ddecc0599681232ace72d67b7f79ce5e0fef46a560e23",
+      "anchors": [
+        "AbstractObjectManager.java",
+        "AbstractSchemaFactory.java",
+        "AccountDaoImpl.java",
+        "AiAliasServiceChange.java",
+        "AiApiKeyReadView.java",
+        "AiAuditQuery.java",
+        "AiAuditQueryInputHandler.java",
+        "AiAuditQueryResourceManager.java",
+        "AiAuditQueryRunner.java",
+        "AiAuditQueryService.java",
+        "AiAuditSourcePage.java",
+        "AiAuditSourcePageInput.java",
+        "AiBridgeContextView.java",
+        "AiCatalogLaunchAccess.java",
+        "AiCatalogLaunchAccessTest.java",
+        "AiCatalogLaunchBinding.java",
+        "AiCatalogLaunchBindingTest.java",
+        "AiCatalogLaunchDelegation.java",
+        "AiCatalogLaunchDelegationTest.java",
+        "AiCatalogLaunchGateway.java",
+        "AiCatalogLaunchGraph.java",
+        "AiCatalogLaunchHumanInputTest.java",
+        "AiCatalogLaunchInput.java",
+        "AiCatalogLaunchMaterializer.java",
+        "AiCatalogLaunchMaterializerTest.java",
+        "AiCatalogLaunchObservation.java",
+        "AiCatalogLaunchObservationTest.java",
+        "AiCatalogLaunchOptionsResourceManager.java",
+        "AiCatalogLaunchOptionsService.java",
+        "AiCatalogLaunchOptionsStore.java",
+        "AiCatalogLaunchOptionsStoreTest.java",
+        "AiCatalogLaunchOwnerContractTest.java",
+        "AiCatalogLaunchPlanResourceManager.java",
+        "AiCatalogLaunchPlanService.java",
+        "AiCatalogLaunchPlanStore.java",
+        "AiCatalogLaunchPlanStoreTest.java",
+        "AiCatalogLaunchPrivate.java",
+        "AiCatalogLaunchPrivateTest.java",
+        "AiCatalogLaunchProspectiveParentTest.java",
+        "AiCatalogLaunchResponseFilter.java",
+        "AiCatalogLaunchRunner.java",
+        "AiCatalogLaunchWorkflowTest.java",
+        "AiContainerLogsInputHandler.java",
+        "AiContainerLogsRunner.java",
+        "AiContainerLogsService.java",
+        "AiContainerLogsTicket.java",
+        "AiContainerNetworkChange.java",
+        "AiCookieLifecycleWitness.java",
+        "AiCreatePorts.java",
+        "AiExternalServiceChange.java",
+        "AiHostLifecycleChange.java",
+        "AiHostMetadataChange.java",
+        "AiLoadBalancerCreateChange.java",
+        "AiNamedServiceLinks.java",
+        "AiProcessDiagnostics.java",
+        "AiProjectMetadataChange.java",
+        "AiRegistryLifecycleChange.java",
+        "AiRegistryRemovalChange.java",
+        "AiResourceChangeDescriptor.java",
+        "AiResourceChangeDomain.java",
+        "AiResourceChangePlanService.java",
+        "AiResourceChangePlanStore.java",
+        "AiResourceChangeProcessObserver.java",
+        "AiResourceViewResourceManager.java",
+        "AiResourceViewService.java",
+        "AiServiceCreateChange.java",
+        "AiServiceUpgradeLifecycleChange.java",
+        "AiServiceUpgradePersistence.java",
+        "AiServiceUpgradePlanInputHandler.java",
+        "AiServiceUpgradePlanService.java",
+        "AiStackGroupChange.java",
+        "AiStackUpgradeLifecycleChange.java",
+        "AiToolCallEventService.java",
+        "AiVolumeCreateChange.java",
+        "AllocateConstraintLock.java",
+        "ApiAuditPayload.java",
+        "ApiAuthenticator.java",
+        "ApiContainerLogsRead.java",
+        "ApiCookieAuthentication.java",
+        "ApiKeyAiBridgeGuard.java",
+        "ApiKeyAuditSink.java",
+        "ApiKeyAuthorizationService.java",
+        "ApiKeyOperations.java",
+        "ApiKeyProcessAuthorization.java",
+        "ApiKeyQueryScopes.java",
+        "ApiKeyTargetResolver.java",
+        "ApiServerConfig.java",
+        "AuditLogKeySelector.java",
+        "AuditLogOutPutFilter.java",
+        "AuditServiceImpl.java",
+        "CatalogLaunchTransformAuthorization.java",
+        "ClientToolAuditEvent.java",
+        "ContainerLogsActionHandler.java",
+        "DefaultAuthorizationProvider.java",
+        "DefaultObjectMetaDataManager.java",
+        "DefaultProcessInstanceImpl.java",
+        "DefaultProcessManager.java",
+        "DefaultProcessesParser.java",
+        "DriverServiceRemove.java",
+        "EngineContext.java",
+        "EventBasedProcessHandler.java",
+        "EventDiagnostics.java",
+        "ExternalDeploymentUnitInstance.java",
+        "ExternalDynamicExtensionHandler.java",
+        "FileSchemaFactory.java",
+        "GenericWhitelistedProxy.java",
+        "HostDao.java",
+        "HostDaoImpl.java",
+        "IaasApiConfig.java",
+        "InServiceUpgradeStrategy.java",
+        "InstanceCreatePortValidation.java",
+        "InstancePortsLock.java",
+        "InstancePortsValidationFilter.java",
+        "LaunchConfiguration.java",
+        "LoadBalancerServiceCreatePostListener.java",
+        "Lock.java",
+        "NotWritablePostProcessor.java",
+        "PortBindingAddress.java",
+        "PortConstants.java",
+        "PortPreflightDaoImpl.java",
+        "PortPreflightInputs.java",
+        "PortPreflightService.java",
+        "PortSpec.java",
+        "PortUpdateService.java",
+        "PortUpdateValidationFilter.java",
+        "ProcessAuthorization.java",
+        "ProcessAuthorizationHook.java",
+        "ProcessEventDecorator.java",
+        "ProjectAccessService.java",
+        "ProjectResourceManager.java",
+        "RegistryCredentialReferenceGuard.java",
+        "RequestReRouterHandler.java",
+        "ResourceManagerRequestHandler.java",
+        "SchemaFactoryImpl.java",
+        "ServiceConsumeMapDao.java",
+        "ServiceConsumeMapDaoImpl.java",
+        "ServiceCreate.java",
+        "ServiceCreateValidation.java",
+        "ServiceDao.java",
+        "ServiceDaoImpl.java",
+        "ServiceDiscoveryApiService.java",
+        "ServiceDiscoveryApiServiceImpl.java",
+        "ServiceDiscoveryServiceImpl.java",
+        "ServiceDiscoveryServiceSetLinksLock.java",
+        "ServiceUpgradeStrategy.java",
+        "ServiceUpgradeValidation.java",
+        "ServiceUpgradeValidationFilter.java",
+        "ServiceValidationFilter.java",
+        "SetServiceLinksActionHandler.java",
+        "StackValidationFilter.java",
+        "StandardLock.java",
+        "SystemServicesConfig.java",
+        "TokenAuthLookup.java",
+        "TransformInspect.java",
+        "VolumeDao.java",
+        "VolumeDaoImpl.java",
+        "VolumePreflightInputs.java",
+        "VolumePreflightService.java"
+      ],
+      "markers": [
+        "@Type",
+        "@Actions",
+        " getLinkInternal(",
+        " getLink(",
+        " resourceActionInternal(",
+        " collectionActionInternal(",
+        " resourceAction(",
+        " collectionAction("
+      ]
+    },
+    "addedAnchors": []
+  },
+  "delta": [
+    {
+      "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiResourceChangePlanService.java",
+      "before": "f609aeaf8f714be0204e14e842a325704acb09f9aff104bba6fc63e6ba41db77",
+      "after": "487403775238c359795a56e67bc902586e586911c2098fb31202673e263003f6"
+    }
+  ],
+  "inheritedRequiredMethods": [
+    [
+      "io.cattle.platform.api.schema.FileSchemaFactoryTest",
+      "preservesCreateOnlyApiKeyFlagInThePackagedFrozenV1UserSchema"
+    ],
+    [
+      "io.cattle.platform.api.schema.FileSchemaFactoryTest",
+      "restoresOnlyNativeReadFieldInPackagedFrozenVolumeRoleSchemas"
+    ],
+    [
+      "io.cattle.platform.api.utils.ApiUtilsCreateOnlyTest",
+      "nullRequestFailsClosedForBothValueSources"
+    ],
+    [
+      "io.cattle.platform.api.utils.ApiUtilsCreateOnlyTest",
+      "postActionsRedactBothValueSourcesWithoutRedactingUnflaggedNames"
+    ],
+    [
+      "io.cattle.platform.api.utils.ApiUtilsCreateOnlyTest",
+      "readUpdateAndDeleteCannotUseTheCreateException"
+    ],
+    [
+      "io.cattle.platform.api.utils.ApiUtilsCreateOnlyTest",
+      "trueCreateAllowsBeanAndAdditionalFieldValuesInBothRoots"
+    ],
+    [
+      "io.cattle.platform.app.AiCatalogLaunchObjectLifecycleWiringTest",
+      "actualSpringFactoryLazilyBindsNativeStackBeforeCreateProcessScheduling"
+    ],
+    [
+      "io.cattle.platform.app.AiCatalogLaunchObjectLifecycleWiringTest",
+      "emptyHandlersAndLegacyListOverrideRemainValidWithoutEagerDependencyCycles"
+    ],
+    [
+      "io.cattle.platform.app.AiCatalogLaunchObjectLifecycleWiringTest",
+      "nativeCreateBindsExactlyOnceAndNestedFailureRestoresThreadLocalEnvelope"
+    ],
+    [
+      "io.cattle.platform.app.AiResourceSchemaAuthorizationTest",
+      "allRealRolesExposeOnlyTheTypedPlanInputAndSafeViewInput"
+    ],
+    [
+      "io.cattle.platform.app.AuditKeySelectorAuthorizationIntegrationTest",
+      "nativeKeyScopeAndTenantBoundsRemainAndedBeforePagination"
+    ],
+    [
+      "io.cattle.platform.app.AuditKeySelectorAuthorizationIntegrationTest",
+      "unsupportedDialectsPreserveOldBoundedReadsAndRejectExplicitSelector"
+    ],
+    [
+      "io.cattle.platform.app.AuditKeySelectorSchemaAdmissionTest",
+      "allThreeRoleOverlaysAdmitOnlyTheClosedInputWithoutAddingResourceMethods"
+    ],
+    [
+      "io.cattle.platform.core.dao.impl.HostWorkloadDaoTest",
+      "bindsExactHostAndAllTenantOwnersAndRechecksMovedOrRemovedMappings"
+    ],
+    [
+      "io.cattle.platform.core.dao.impl.HostWorkloadDaoTest",
+      "boundsNativeHostMappingsBeforeMaterializationAndKeepsStoppedContainers"
+    ],
+    [
+      "io.cattle.platform.core.dao.impl.NativeContainerNameRefreshDaoTest",
+      "compareAndSwapContainsEveryOriginalColumnIncludingBinaryTextAndJson"
+    ],
+    [
+      "io.cattle.platform.core.dao.impl.NativeContainerNameRefreshDaoTest",
+      "emitsReadOnlyLifecycleSelectFromTheActualProductionCondition"
+    ],
+    [
+      "io.cattle.platform.core.dao.impl.NativeContainerNameRefreshDaoTest",
+      "everyNonremovedMapMustBeUniqueAtSelectionAndAtCas"
+    ],
+    [
+      "io.cattle.platform.core.dao.impl.NativeContainerNameRefreshDaoTest",
+      "exactExistingImportedSnapshotAndNameOnlyCas"
+    ],
+    [
+      "io.cattle.platform.core.dao.impl.NativeContainerNameRefreshDaoTest",
+      "foreignSourceOrWrongResourceAccountNeverReachesQuery"
+    ],
+    [
+      "io.cattle.platform.core.dao.impl.NativeContainerNameRefreshDaoTest",
+      "lifecyclePairsAreCorrelatedInBothSelectedAndCasSqlAndBindings"
+    ],
+    [
+      "io.cattle.platform.core.dao.impl.NativeContainerNameRefreshDaoTest",
+      "managedServiceSystemEnvironmentAndLifecycleRowsAreRejected"
+    ],
+    [
+      "io.cattle.platform.core.dao.impl.NativeContainerNameRefreshDaoTest",
+      "renderedPairContractTruthTableAcceptsOnlyTheTwoStablePairs"
+    ],
+    [
+      "io.cattle.platform.core.dao.impl.NativeContainerNameRefreshDaoTest",
+      "unknownDuplicateOrWrongExactDockerIdCannotBecomeSnapshot"
+    ],
+    [
+      "io.cattle.platform.core.dao.impl.NativeContainerNameRefreshDaoTest",
+      "zeroRowCasAndSameNameDoNotReportSuccess"
+    ],
+    [
+      "io.cattle.platform.core.dao.impl.StackGraphDaoTest",
+      "boundedGraphCandidatesKeepBothTenantAndStackJoinsWithoutPayloadsOrWrites"
+    ],
+    [
+      "io.cattle.platform.core.dao.impl.UsageServiceDaoTest",
+      "finalNativeQueryRequiresCapturedUniqueSemServiceStackAndOptionalExactHostMapping"
+    ],
+    [
+      "io.cattle.platform.core.dao.impl.UsageServiceDaoTest",
+      "latePersistedStackAssignmentInvalidatesCapturedNullSemFallbackForHostAndVolume"
+    ],
+    [
+      "io.cattle.platform.core.dao.impl.UsageServiceDaoTest",
+      "nativeSemUsesTwoDistinctServiceSentinelAndBindsAllOwnersIncludingLegacyNullStack"
+    ],
+    [
+      "io.cattle.platform.core.dao.impl.VolumeUsageDaoTest",
+      "nativeSqlBoundsRelationshipCandidatesBeforeMaterializationIncludingStoppedContainers"
+    ],
+    [
+      "io.cattle.platform.core.dao.impl.VolumeUsageDaoTest",
+      "nativeSqlExcludesEveryForeignRemovedAndNonContainerRelationshipWithoutWrites"
+    ],
+    [
+      "io.cattle.platform.engine.process.ProcessAuthorizationProjectUpdateTest",
+      "capturedNativeProjectUpdateProofCannotBeForgedRetargetedOrGrowFields"
+    ],
+    [
+      "io.cattle.platform.engine.process.ProcessAuthorizationTest",
+      "legacyVerifiedFramesWithoutProcessNamesKeepTheirExistingChildProof"
+    ],
+    [
+      "io.cattle.platform.engine.process.ProcessAuthorizationTest",
+      "nativeAgentCleanupProofRequiresTheExactNativeParentProcess"
+    ],
+    [
+      "io.cattle.platform.engine.process.ProcessAuthorizationTest",
+      "nativeAgentSetupProofRecordsAncestryWithoutDomainAuthorization"
+    ],
+    [
+      "io.cattle.platform.ha.monitor.impl.PingInstancesMonitorImplTest",
+      "changedUuidHintUsesExactKnownDockerIdWithoutNamePairing"
+    ],
+    [
+      "io.cattle.platform.ha.monitor.impl.PingInstancesMonitorImplTest",
+      "testDetermineSyncActions"
+    ],
+    [
+      "io.cattle.platform.ha.monitor.impl.PingInstancesMonitorImplTest",
+      "unknownRemovedAndAmbiguousKnownDockerIdsCannotBecomeNameCandidates"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auditing.AiServiceUpgradeAuditTest",
+      "bindingReasonDetailSurvivesJsonOutboxReplayAndCanonicalProjectionAsClientEvidence"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auditing.AiServiceUpgradeAuditTest",
+      "invalidInputPortConflictAuditPersistsWithoutInventingAReasonDetail"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auditing.AiServiceUpgradeAuditTest",
+      "privateProjectCaptureKeepsSelectedAuditScopeForPrimaryAndQueueOutcomes"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auditing.AuditLogKeySelectorTest",
+      "fixedJsonPathUsesBoundCanonicalAndLegacyValuesWithExactByteComparison"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auditing.AuditLogKeySelectorTest",
+      "malformedOrUnadmittedSelectorsNeverFallBackAndOtherPathsStayUnchanged"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auditing.CompleteCohortAuditIntersectionTest",
+      "logsMetadataAndRegistryVolumeTargetsShareTheClosedDeliveryOwnerWithoutPayloads"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auditing.ContainerLogsAuditTest",
+      "allowAndDenyPersistOnlyFixedMetadataNeverBodyContents"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auditing.ContainerLogsAuditTest",
+      "arbitraryReasonCannotSmuggleContentsIntoAudit"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auditing.TypedResourceAuditContractTest",
+      "everyRegisteredTypedDomainHasRealClosedMetadataAuditAllowAndDeny"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auditing.TypedVolumeCreateAuditContractTest",
+      "registeredVolumeCreateHasRealClosedAllowDenyAuditWithoutPrivatePayload"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.ai.AiToolCallEventServiceTest",
+      "bindingDetailCapabilityKeepsLegacyConstructorAndDurableReadonlyAcksCompatible"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.ai.AiToolCallEventServiceTest",
+      "invalidReasonDetailsNeverReachDurableSink"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.ai.AiToolCallEventServiceTest",
+      "portConflictPublicReasonKeepsTheExistingNativeInvalidInputAuditContract"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.ai.audit.AiAuditQueryServiceTest",
+      "originalFieldCaptureIsOnlyTheAuditCollectionOwnerAndPrecedesTheRealSchemaValidator"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.ai.audit.AiAuditQueryServiceTest",
+      "originalQueryParametersAreClosedButValidTypedQueriesKeepTheirCanonicalSuccess"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.ai.audit.AiAuditQueryServiceTest",
+      "realParserAndSchemaCannotEraseOriginalUnknownFieldsBeforeCanonicalError"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.ai.catalog.AiCatalogLaunchAccessTest",
+      "operandSnapshotRechecksOriginalKeyWithoutRetainingCredentialRowLock"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.ai.catalog.AiCatalogLaunchDelegationTest",
+      "nativeVersionRootSchemaHandshakeIsRepeatableOwnerMetadataWithoutChildWrites"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.ai.catalog.AiCatalogLaunchDelegationTest",
+      "versionRootAuditsVerifiedDenialsWithoutAttributingForgedProofToPlanOrKey"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.ai.catalog.AiCatalogLaunchDelegationTest",
+      "versionRootRechecksEventProofOriginalOwnerSourceAndFrozenStackBeforeMetadata"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.ai.catalog.AiCatalogLaunchDelegationTest",
+      "versionRootRejectsUnknownPathsMethodsQueriesAndContradictoryRouteShapesWithSafe403"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.ai.catalog.AiCatalogLaunchLockOrderTest",
+      "nativeActionPrefetchAndConcurrentNativeGetCompleteWithApplicationBeforeRowLock"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.ai.catalog.AiCatalogLaunchLockOrderTest",
+      "onlyExactInternalActionOperandUsesSnapshotAndOrdinaryGetStillChecksSource"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.ai.catalog.AiCatalogLaunchLockOrderTest",
+      "snapshotRetainsOwnerProjectRoleKeyBindingAndDoesNotAuthorizeUnconfirmedApply"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.ai.catalog.AiCatalogLaunchMaterializerTest",
+      "dynamicProjectionKeepsRestrictedSchemaAndNonCreateResponseRules"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.ai.catalog.AiCatalogLaunchMaterializerTest",
+      "realTransformerDynamicFieldsReachNativeRoleSchemaProjection"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.ai.catalog.AiCatalogLaunchPrivateWireTest",
+      "decodedJsonLimitAllowsLargeNativeWireAndRejectsOneByteOverflow"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.ai.catalog.AiCatalogLaunchPrivateWireTest",
+      "nativeCryptoEnvelopeRejectsEveryPlanActorProjectAndOriginalKeyRebinding"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.ai.catalog.AiCatalogLaunchPrivateWireTest",
+      "nativeCryptoHttpRoundTripOpensExactlyOneGoBase64JsonLayer"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.ai.catalog.AiCatalogLaunchPrivateWireTest",
+      "strictWireRejectsMalformedNoncanonicalNestedRawJsonAndUnknownEnvelope"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.ai.logs.ContainerLogsOwnerTest",
+      "brokerIdentityCannotUseFloatingPointOrNumericStringAliases"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.ai.logs.ContainerLogsOwnerTest",
+      "cookieSessionUsesRealOwnerBeforeAndAfterReadAndRevocationDiscards"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.ai.logs.ContainerLogsOwnerTest",
+      "expiredBoundNativeProofFailsClosedWhileLegacyRequestKeepsDefaultExpiry"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.ai.logs.ContainerLogsOwnerTest",
+      "finalBrokerParserIsCanonicalAndRejectsDuplicateTrailingAndNonMapJson"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.ai.logs.ContainerLogsOwnerTest",
+      "forgedOutputIdentityUnknownFieldsAndUnboundedContentsAreRejected"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.ai.logs.ContainerLogsOwnerTest",
+      "inputAndOutputRemainClosedAndAuditFailureWithholdsContent"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.ai.logs.ContainerLogsOwnerTest",
+      "keyRevokeAndRevisionChangeDuringReadDiscardAllContents"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.ai.logs.ContainerLogsOwnerTest",
+      "logsGrantUsesNativeActionAndReturnsOnlyBoundedUntrustedData"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.ai.logs.ContainerLogsOwnerTest",
+      "metadataReadGrantDoesNotGrantLogs"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.ai.logs.ContainerLogsOwnerTest",
+      "nativeCanonicalContainerIdParserRejectsRawCrossTypeAndImpreciseInputs"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.ai.logs.ContainerLogsOwnerTest",
+      "nativeProofRejectsForgeriesCopiesMutationsAndFollow"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.ai.logs.ContainerLogsOwnerTest",
+      "readonlyNativeSchemaAndCrossProjectUuidCannotBeBypassed"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.ai.logs.ContainerLogsOwnerTest",
+      "requestBoundTicketConsumesOnceAndWrongIdentityBurnsIt"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.ai.logs.ContainerLogsOwnerTest",
+      "uuidRoleAndOwnerChangeDuringReadDiscardAllContents"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.ai.logs.LogsFeatureContractTest",
+      "fixedBoundedLogsOwnerExists"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.ai.logs.LogsFeatureContractTest",
+      "genuineSessionOwnerExportsCaptureInterface"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.ai.view.AiApiKeyReadViewTest",
+      "all128ConfiguredRulesAndDenialsRemainWhileScopeReadsAreDeduplicatedAndCeilingsStayPartial"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.ai.view.AiApiKeyReadViewTest",
+      "freshPolicyRevisionFieldAndCredentialRevocationCannotBecomeAConfiguredPolicySnapshot"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.ai.view.AiApiKeyReadViewTest",
+      "nativeScopeDenialWrongKindAndForeignReadbackStayIncompleteWithoutTargetIdentifiers"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.ai.view.AiApiKeyReadViewTest",
+      "normalNativeConvertChainReadsLegacyAndRestrictedConfiguredPolicyWithoutSecretsOrListExpansion"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.ai.view.AiApiKeyReadViewTest",
+      "realDefaultFormatterPreservesWirePreviewAndExactEvaluatorSemanticsWithoutRewritingConfiguredScopes"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.ai.view.AiAuditSourcePageTest",
+      "auditKeySelectorIsPassedToNativeReadWithoutWeakeningCurrentAuthority"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.ai.view.AiAuditSourcePageTest",
+      "auditKeySelectorRejectsWrongCategoryFormatAndUnknownSourceFields"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.ai.view.AiAuditSourcePageTest",
+      "fixedAuditCapabilityRejectsMixedInputAndKeepsRevisionAndRevocationGuards"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.ai.view.AiAuditSourcePageTest",
+      "fixedAuditCapabilityUsesFreshAuthorityWithoutRowsOrSelectorFallback"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.ai.view.AiBridgeContextViewTest",
+      "contextSelectorPurposeAndRevisionAreClosedBeforeAnyNativeRead"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.ai.view.AiBridgeContextViewTest",
+      "explicitParentDenialsAndMissingOrdinaryChildAuthorityNeverYieldContextIdentity"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.ai.view.AiBridgeContextViewTest",
+      "fullAiPurposeUsesItsOrdinaryProjectOwnerAndIgnoresStaleCustomRuleDenials"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.ai.view.AiBridgeContextViewTest",
+      "generalLegacyAndCookieProjectReadsKeepTheirOriginalDomainPathAndProjection"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.ai.view.AiBridgeContextViewTest",
+      "keyRoleAndNativeIdentityChangesBeforeCompletionFailClosedAndRestoreTheOriginalContext"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.ai.view.AiBridgeContextViewTest",
+      "scopedStackReadProvesOnlyItsFreshFourFieldParentAndNeverLendsAProjectGrant"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.ai.view.AiHostWorkloadViewTest",
+      "boundUnknownSnapshotsExcludeMovedForeignRemovedAndUnreadableChildrenOrStackNames"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.ai.view.AiHostWorkloadViewTest",
+      "cookieFullAndLegacyHostMetadataMatchesActualNativeWrappingAndHostsFilter"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.ai.view.AiHostWorkloadViewTest",
+      "parentRbacAndKeyRevocationFailClosedBeforeRelationshipOutputAndRestoreContext"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.ai.view.AiHostWorkloadViewTest",
+      "realScopedKeyNativePredicateHidesChildrenAndTheirAuditIdentitiesButDirectTargetStillDenies"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.ai.view.AiHostWorkloadViewTest",
+      "sameNameRunningAndStoppedChildrenUseFreshContainerAndStackOwnersWithoutDtoAugmentation"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.ai.view.AiProcessDiagnosticsTest",
+      "boundedChildReadsRequireFreshParentAndExactRelationshipAndDoNotExportChildren"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.ai.view.AiProcessDiagnosticsTest",
+      "freshGlobalSchemaAndKeyDecisionsPrecedeNativeReadsWithoutProjectRoleFallback"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.ai.view.AiProcessDiagnosticsTest",
+      "globalEntryBudgetTruncatesAcrossRootsWithoutRejectingSmallOrOneHundredHandlerLogs"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.ai.view.AiProcessDiagnosticsTest",
+      "globalUtf8BudgetChargesBytesAndReturnsOnlyFixedTruncationMetadata"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.ai.view.AiProcessDiagnosticsTest",
+      "hiddenChildFieldsDeniedKeysAndChangingParentFailClosedWithoutCountsOrWrites"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.ai.view.AiProcessDiagnosticsTest",
+      "nativeChildLimitReportsSourceTruncationWithoutParsingRowsOrRetainingPartialConclusions"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.ai.view.AiProcessDiagnosticsTest",
+      "nativeListsRetainFiftyRowCursorAndOnlyEscapedProcessNameConditions"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.ai.view.AiProcessDiagnosticsTest",
+      "onlyRegisteredRootHandlersAreProjectedAndEmptyOrOversizedLogsStayUnknown"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.ai.view.AiProcessDiagnosticsTest",
+      "registeredNamesAndClosedEnumsReplaceAllPersistedLabelsAndPayloadText"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.ai.view.AiProjectCollectionOwnerTest",
+      "adminNativeFullAndLegacySeeNonMembershipProjectsWithoutWideningMemberOrReadonly"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.ai.view.AiProjectCollectionOwnerTest",
+      "allIsPrivateToTypedProjectCollectionAndNeverChangesSingleGetOrOtherTypesOrAcceptsModelAll"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.ai.view.AiProjectCollectionOwnerTest",
+      "exactProjectCustomDenyAndReadonlyKeysRetainExactSetsThroughNativeCommonCollectionFilter"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.ai.view.AiRegistryLifecycleViewTest",
+      "registryEndpointSearchRetainsBoundedNativeRoleAndKeyQueryWithoutInventingNameMatches"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.ai.view.AiStackGraphReadTest",
+      "graphOptInKeepsBothNativeEndpointsParentsAndHiddenCandidateCountsPrivate"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.ai.view.AiStackGraphReadTest",
+      "graphRejectsSourceUuidAndStackReplacementBetweenNativeReads"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.ai.view.AiStackGraphReadTest",
+      "graphRejectsWrongSelectorReadDenialRevocationAndLateUuidReplacementWithoutFallback"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.ai.view.AiUsageServiceStackViewTest",
+      "exactCapturedSemAndStackRaceDropsFormerNameWhileChangedKeyAbortsTheWholeRead"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.ai.view.AiUsageServiceStackViewTest",
+      "hiddenTransformedNonNullDirectOrMultipleSemRelationsNeverBypassReadableSchemaOrLeakNames"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.ai.view.AiUsageServiceStackViewTest",
+      "realNativeNullInstanceStackAndNoStackFieldUsesReadableSemServiceStackForHostAndVolume"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.ai.view.AiVolumeUsageViewTest",
+      "activeAndStoppedSameNameReferencesUseFreshOwnersAndAuthorizedStackNames"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.ai.view.AiVolumeUsageViewTest",
+      "boundedSnapshotAndEmptyOrLegacyMetadataNeverClaimUnusedOrComplete"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.ai.view.AiVolumeUsageViewTest",
+      "hiddenForeignRemovedOrUnreadableParentsNeverExposeIdentitiesOrCounts"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.ai.view.AiVolumeUsageViewTest",
+      "laterTargetKeyRevisionRevocationAbortsTheWholeReadAndRestoresContext"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.ai.view.AiVolumeUsageViewTest",
+      "nativeCoreProjectionRetainsSchemaFieldVisibilityAndNeverInvokesDtoAugmentation"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.ai.view.AiVolumeUsageViewTest",
+      "realCustomKeyOwnerAuditsAllowAndDenyWithReadOnlyDispatchAndNoExtraGrant"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.ai.view.AiVolumeUsageViewTest",
+      "unattestedCustomKeyManagerReturnsUnknownWithoutTargetInspectionOrFallback"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.ai.view.AiVolumeUsageViewTest",
+      "volumeScalarsMatchOriginalNativeWrappingForJwtFullAndLegacyIncludingSchemaAliasesAndTransforms"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.apikey.ApiKeyAliasServiceDependencyTest",
+      "legacyRevisionZeroRetainsNativeQueuedAuthorizationAndFreshReadCeilings"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.apikey.ApiKeyAliasServiceDependencyTest",
+      "namedOrdinaryLinksPinAliasToTheSameVerifiedFrameAndKeepAllCurrentCeilings"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.apikey.ApiKeyAliasServiceDependencyTest",
+      "ordinaryQueuedCapabilityRequiresThePrivateTypedOwnerAndCannotComeFromPayload"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.apikey.ApiKeyAliasServiceDependencyTest",
+      "plainFrameReferenceShapeAndUntrustedNativeCallBoundaryStayUnchanged"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.apikey.ApiKeyAliasServiceDependencyTest",
+      "typedOrdinaryLinksCaptureExactNativeMapsAndRecheckLiveAuthority"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.apikey.ApiKeyLoadBalancerAgentDependencyTest",
+      "aCapturedQueuedRetryStillRechecksExpiryRevocationRevisionAndOwner"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.apikey.ApiKeyLoadBalancerAgentDependencyTest",
+      "anUnrelatedAgentOrUnverifiedDetachedWorkCannotInheritTheLbGrant"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.apikey.ApiKeyLoadBalancerAgentDependencyTest",
+      "capturedCleanupAllowsRetiredParentsButRejectsChangedIdentityAndOwnership"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.apikey.ApiKeyLoadBalancerAgentDependencyTest",
+      "cleanupCannotBorrowAnUnrelatedOrUnverifiedNativeParent"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.apikey.ApiKeyLoadBalancerAgentDependencyTest",
+      "cleanupRechecksRevocationExpiryRevisionAndCustomExplicitDenials"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.apikey.ApiKeyLoadBalancerAgentDependencyTest",
+      "customLbAuthorityInheritsOnlyTheVerifiedClosureAndExplicitChildDenialsWin"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.apikey.ApiKeyLoadBalancerAgentDependencyTest",
+      "factoryAgentCreateUsesVerifiedInstanceBeforeAgentIdIsWrittenBack"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.apikey.ApiKeyLoadBalancerAgentDependencyTest",
+      "genericNativeAncestryDoesNotAuthorizeNonLbOrOtherOperations"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.apikey.ApiKeyLoadBalancerAgentDependencyTest",
+      "liveRootOwnerKeyExpiryRevocationAndRevisionStillApplyToInternalAgentCreation"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.apikey.ApiKeyLoadBalancerAgentDependencyTest",
+      "nativeAgentAccountAndCredentialCreationUseTheSameFactoryRelation"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.apikey.ApiKeyLoadBalancerAgentDependencyTest",
+      "nativeLbCleanupCoversTheExactAgentAccountAndCredentialProcesses"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.apikey.ApiKeyLoadBalancerAgentDependencyTest",
+      "nativeLbUpgradeAndRollbackUseTheirRegisteredOperation"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.apikey.ApiKeyLoadBalancerAgentDependencyTest",
+      "stackActivationUsesOnlyTheExactPersistedManagedLb"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.apikey.ApiKeyLoadBalancerAgentDependencyTest",
+      "staleFactoryUuidsAndForgedAccountOrCredentialRelationsAreRejected"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.apikey.ApiKeyPortScopeTest",
+      "exactPortUpdateAndReadDoNotGrantTheSourceContainerAndClosedExpiredStillFail"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.apikey.ApiKeyPortScopeTest",
+      "portQueryUsesLiveSourceProjectStackAndExplicitDenyBeforePagination"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.apikey.ApiKeyPortScopeTest",
+      "registeredPortUsesOnlyItsPersistedSourceAncestryAndNeverAnInputParentGrant"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.apikey.ApiKeyProcessAuthorizationTest",
+      "rollbackMountVolumeEdgeRequiresTheOriginalVerifiedSchedulingProof"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.apikey.ApiKeyProcessAuthorizationTest",
+      "rollbackRetirementUsesTheExistingVerifiedServiceChainAndKeepsExplicitChildDenials"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.apikey.ApiKeyRegistryLifecycleTest",
+      "aRegistryGrantCannotExecuteAnotherPoolIdKindOrUuidEvenForFullAndLegacyKeys"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.apikey.ApiKeyRegistryLifecycleTest",
+      "liveReadonlyRoleReadCeilingKeyRevisionRevocationExpiryAndExplicitDeniesRemainBinding"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.apikey.ApiKeyRegistryLifecycleTest",
+      "nativeStoragePoolRootUsesTheExactRegistryRoleAndRealCanonicalIdParser"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.apikey.ApiKeyRegistryLifecycleTest",
+      "registryDeleteKeepsTheOriginalFullLegacyAndExactScopedDeleteCeilings"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.apikey.ApiKeyTargetResolverTest",
+      "loadBalancerImageEnsureRejectsWrongKindRootOwnerFrameAndAllocation"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.apikey.ApiKeyTargetResolverTest",
+      "loadBalancerImageEnsureRevalidatesLiveKeyRevisionRoleAndDependencyDenials"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.apikey.ApiKeyTargetResolverTest",
+      "loadBalancerImageEnsureUsesExactSubtypeAndOwnedNativeVolume"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.apikey.ApiKeyTargetResolverTest",
+      "loadBalancerOwnedImageCleanupRejectsWrongKindRootOwnerAndFrame"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.apikey.ApiKeyTargetResolverTest",
+      "loadBalancerOwnedImageCleanupUsesExactSubtypeAndOriginalVolumeFrames"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.apikey.StandaloneImageCleanupTest",
+      "customNativeDeleteCleansOnlyItsPrivateRootImageAndCache"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.apikey.StandaloneImageCleanupTest",
+      "everyActualDependencyExplicitDenyStillWinsOverTheContainerGrant"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.apikey.StandaloneImageCleanupTest",
+      "exactRemoveFramesAreRequiredAndPublicImageDoesNotGainAuthority"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.apikey.StandaloneImageCleanupTest",
+      "freshKeyRevisionExpiryOwnerSchemaAndRootGrantAreNeverBypassed"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.apikey.StandaloneImageCleanupTest",
+      "nonDeleteOrForgedChildMetadataCannotBorrowTheNativeFrames"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.apikey.StandaloneImageCleanupTest",
+      "nonOsForeignSharedOrReboundGraphStillFailsClosed"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.apikey.StandaloneVolumePoolCleanupTest",
+      "actualRootVolumeMapAndPoolExplicitDenialsAlwaysWin"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.apikey.StandaloneVolumePoolCleanupTest",
+      "delayedCleanupRechecksCredentialRevisionExpiryRoleSchemaAndRootGrant"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.apikey.StandaloneVolumePoolCleanupTest",
+      "delayedExecutionRejectsEveryReboundUuidForeignKeyAndOwner"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.apikey.StandaloneVolumePoolCleanupTest",
+      "detachedMetadataCannotInventOrReplaceTheSchedulingProof"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.apikey.StandaloneVolumePoolCleanupTest",
+      "historicalAncestorsCannotReviveUnpinnedForgedOrUnboundJobs"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.apikey.StandaloneVolumePoolCleanupTest",
+      "namedSharedManagedOrInconsistentStorageDoesNotGainCleanupAuthority"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.apikey.StandaloneVolumePoolCleanupTest",
+      "nestedVolumeDeallocationPinsTheSameExactNativeCleanup"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.apikey.StandaloneVolumePoolCleanupTest",
+      "onlyTheActualRemoveFramesMayPinTheFutureCleanup"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.apikey.StandaloneVolumePoolCleanupTest",
+      "pinnedDirectCleanupSurvivesPurgingAndPurgedAncestors"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.apikey.StandaloneVolumePoolCleanupTest",
+      "pinnedNestedCleanupSurvivesPurgingAndPurgedAncestors"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.apikey.StandaloneVolumePoolCleanupTest",
+      "publicNonDeleteOrDifferentParentCannotBorrowTheNativeCleanupEdge"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.apikey.StandaloneVolumePoolCleanupTest",
+      "scheduledOsAllocationRemovalSurvivesItsExactParentCompletion"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.apikey.StandaloneVolumePoolCleanupTest",
+      "unpinnedLiveAncillaryVolumesRetainTheirExistingLifecycleAuthorization"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiAliasServiceObserverTest",
+      "invalidOrdinaryRevisionsCannotCaptureOrProjectAnotherOperationOutcome"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiAliasServiceObserverTest",
+      "legacyRevisionZeroCapturesItsRealInitialMapAndProjectsTerminalAuthorizationDenial"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiAliasServiceObserverTest",
+      "ordinaryLinkCallbacksBindOnlyTheSameOperationSourceAndCompleteTargetIdentity"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiAliasServiceObserverTest",
+      "persistedOrdinaryIdentityNumbersMustBePositiveExactNativeIntegers"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiContainerCreatePortsTest",
+      "exactPortsReviewNeedsHumanConfirmationAndTheExistingDurableClaimRemainsIdempotent"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiContainerCreatePortsTest",
+      "nativeDuplicateConflictAndLostAvailabilityRejectBeforeClaimAtConfirmationAndApply"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiContainerCreatePortsTest",
+      "nativeRoleFieldAndKeyDenialsCannotDropPortsOrUseAnotherWriteRoute"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiContainerCreatePortsTest",
+      "ordinaryNativeFilterKeepsTheOriginalRequestAndStillParsesBeforeDispatch"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiContainerCreatePortsTest",
+      "realNativePreflightPreservesNameImageAndArgumentsWithoutCreateOrPortAllocation"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiContainerCreatePortsTest",
+      "sharedNativePortBoundaryKeepsFullCreateFieldsAndRejectsUnrelatedConfiguration"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiContainerCreatePortsTest",
+      "stoppedContainerReadbackVerifiesConfigurationAndNeverClaimsServiceDynamicAllocation"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiContainerNetworkChangeTest",
+      "currentNativeRoleFieldKeyAndValidatorCeilingsCannotBeBypassed"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiContainerNetworkChangeTest",
+      "currentParentReadCannotUseAnOlderRepeatableReadProjectionOrBorrowChildAuthority"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiContainerNetworkChangeTest",
+      "linkNativePutDoesNotEnterThePortOwnerOrChangeItsSourceAndAlias"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiContainerNetworkChangeTest",
+      "linkTargetNeedsTheExactSameProjectAndNativeHostConstraintWithoutChangingSourceOrAlias"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiContainerNetworkChangeTest",
+      "nativeUiChildChangeAndUuidOrSourceRebindInvalidateTheActualPlanBeforeClaim"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiContainerNetworkChangeTest",
+      "normalNativeManagerOwnsTheOnlyPutAndPreflightUsesTheWholePreservedPortConfiguration"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiContainerNetworkChangeTest",
+      "oneApprovedDispatchIsNeverReplayedAndTerminalIdentityRetainsTheChildAndParent"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiContainerNetworkChangeTest",
+      "oneExistingChildHasAnExactNativeBodyAndNoOtherWritableFields"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiContainerNetworkChangeTest",
+      "pendingReadReauthorizesWithoutTakingNativeMutationLocks"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiContainerNetworkChangeTest",
+      "runningAndStoppedConfigurationCompletionRequiresDerivedPortsAndPreservesContainerIdentity"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiContainerNetworkChangeTest",
+      "shippedNativePlanSchemaAdmitsOnlyTheNewTypedOperationsAndKeepsPinsInsideExistingJsonParameters"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiContainerStartFailureObserverTest",
+      "exactCanceledRootReportsFixedFailureWithoutInferringItFromStoppedState"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiContainerStartFailureObserverTest",
+      "fixedFailureWinsLateSuccessSaveAndAuthorizationDenialRemainsMoreSpecific"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiContainerStartFailureObserverTest",
+      "foreignIdentityMetadataAndDuplicateRootCannotPoisonTheReceipt"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiContainerStartFailureObserverTest",
+      "retriesInflightAndChildStopCancellationNeverBecomeStartFailure"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiContainerStartFailureObserverTest",
+      "successStillRequiresOriginalFreshReadbackAndOrdinaryNativeStartIsUnchanged"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiCookieLifecycleWitnessTest",
+      "commonPrepareStripsForgedCorrelationAndWrongRuntimeParentsCannotSealAChain"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiCookieLifecycleWitnessTest",
+      "emptyAndAlreadyDesiredStacksNeedAnActualClosedNativeDispatchAndStableExactIdentitySet"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiCookieLifecycleWitnessTest",
+      "failedAttestationRollsBackTheNativeInsertAndCannotQueueOrLeakThePrivateScope"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiCookieLifecycleWitnessTest",
+      "fourteenCookieActionsNeedTheirOwnNativeRowsAndNeverBorrowAnUnrelatedSuccess"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiCookieLifecycleWitnessTest",
+      "fullPayloadJsonRoundtripKeepsChangedValuesTypesNullsFieldsAndArrayOrderDistinct"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiCookieLifecycleWitnessTest",
+      "nativeRestartHandlersAndFrameworkScheduleChainBindEveryParentBeforeCompletion"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiCookieLifecycleWitnessTest",
+      "nativeServiceRestartCountEnrichmentIsAcceptedButUnrelatedFieldsOrCountsNeverAttest"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiCookieLifecycleWitnessTest",
+      "originalCompletionPredicateIsStillRequiredAfterTheOwnProcessSucceeds"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiCookieLifecycleWitnessTest",
+      "originalStackHandlerPreservesTwoNamedAliasesToOneWaitTargetAndLateFanoutFailureStaysPartialUnknown"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiCookieLifecycleWitnessTest",
+      "queuedChainsTrackActiveStatesAndKeepNativeQueuesWhenTrackingExpiresOrDisappears"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiCookieLifecycleWitnessTest",
+      "stackFanoutPinsAllChildUuidsAndKeepsExplicitStableNoopsSeparateFromTransitionalSkips"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiCookieLifecycleWitnessTest",
+      "trackerFailureDoesNotMarkNativeTransactionRollbackOnlyOrSwallowNativeInsertAndQueueErrors"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiExternalServiceChangeTest",
+      "createReceiptRequiresExactTcpReadbackAndOmittedHealthCheckStaysNone"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiExternalServiceChangeTest",
+      "tcpCreateCopiesOnlyTheApprovedFieldsAndKeepsNativeTcpMarkerPrivate"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiExternalServiceChangeTest",
+      "tcpHealthCheckIsClosedCreateOnlyAndRejectsInvalidNumbersWithoutDefaults"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiExternalServiceTcpHealthCheckTest",
+      "approvedTcpSurvivesJsonReloadHumanReviewNativeDispatchAndOneReceipt"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiExternalServiceTcpHealthCheckTest",
+      "changedApprovedTcpBodyAndCurrentRoleCannotReachTheDurableClaim"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiExternalServiceTcpHealthCheckTest",
+      "externalHttpCreateUsesExistingBoundAndStillRequiresExactNativeFields"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiExternalServiceTcpHealthCheckTest",
+      "nativeRoleRemovalHttpFallbackAndBoundKeyRevocationFailBeforeMutation"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiExternalServiceTcpHealthCheckTest",
+      "nativeSchemaKeepsTopLevelTcpFieldsAndNoneWithoutAddingTimingDefaults"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiHostLifecycleChangeTest",
+      "freshNativeRoleAndKeyCeilingAndExactReadIdRemainAuthoritativeBeforePlanCreation"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiHostLifecycleChangeTest",
+      "hostConfirmAndApplyCasRejectUuidStateAndConfigurationChangesBeforeAnyDispatch"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiHostLifecycleChangeTest",
+      "hostReadyAndTerminalAreIdentityAndConfigurationBoundWithoutStackChildrenOrPrivatePayload"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiHostLifecycleChangeTest",
+      "humanConfirmationCancelAndLiveBoundKeyDenialsRetainZeroDispatch"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiHostLifecycleChangeTest",
+      "matchingHostStateCannotQualifyUntilItsNativeProcessOutcomeSucceeds"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiHostLifecycleChangeTest",
+      "onlyEmptyHostStartAndStopMapToNativeSchedulingActions"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiHostLifecycleChangeTest",
+      "onlyNativeReadOnlyObservationsMayChangeAndUnknownConfigurationRemainsPrivateCas"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiHostLifecycleObserverTest",
+      "changedUuidConfigurationKindOrPersistedProcessCannotBorrowTheApprovedHostExecution"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiHostLifecycleObserverTest",
+      "fullAndScopedUpdateStillUseLiveNativeRoleKeyRevisionAndExactTarget"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiHostLifecycleObserverTest",
+      "hostOutcomeRequiresOneExactPostClaimProcessAndItsRealSuccessfulTerminalRow"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiHostLifecycleObserverTest",
+      "nativeAuthorizationDenialProjectsOnlyToTheSameCapturedOperationWithoutPrivateConfiguration"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiHostLifecycleObserverTest",
+      "serializedNativeHostExecutionPinsOneExactProcessForLegacyRevisionZero"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiHostMetadataChangeTest",
+      "actualHostTableLockRequiresTransactionAndReloadsTheMetadataSnapshot"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiHostMetadataChangeTest",
+      "boundPlanRequiresHumanApprovalAndExactOnceObservedCompletion"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiHostMetadataChangeTest",
+      "casAndLiveWriteRevocationNeverClaimOrDispatch"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiHostMetadataChangeTest",
+      "durableSnapshotAndSummaryExcludeMaterialAndObserveExactMetadata"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiHostMetadataChangeTest",
+      "explicitHostResetUsesNativeEmptyNameAndCurrentRoleKeyCeilings"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiHostMetadataChangeTest",
+      "hostSchemaRejectsWrongNativeModelEvenWhenItsKindClaimsHost"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiHostMetadataChangeTest",
+      "nativeDockerHostFullKeyUsesModelForVisiblePutAndReceipt"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiHostMetadataChangeTest",
+      "nativeDockerHostReadKeyCanReadButRealWriteAuthorizationStillDenies"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiHostMetadataChangeTest",
+      "nativeMethodFieldAndCrossProjectCeilingsRejectBeforeMutation"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiHostMetadataChangeTest",
+      "nativePutUsesRealRevisionGuardAndRestoresContext"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiHostMetadataChangeTest",
+      "onlyMetadataIntentAndFieldsAreAccepted"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiHostMetadataChangeTest",
+      "resetPreviewAndTerminalResultPinTheOriginalHostnameAndHumanPlan"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiLoadBalancerCreateChangeTest",
+      "actualCreatedConfigurationAndNativeReadinessAreRequiredInsteadOfCreate202OrInactiveCoincidence"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiLoadBalancerCreateChangeTest",
+      "approvedTcpBodyCannotBeSilentlyStrippedOrRewrittenByTheNativeSchema"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiLoadBalancerCreateChangeTest",
+      "exactTcpRulesUseNativeLbConfigAndPublicOrInternalPortBindingsWithoutDroppingOrGuessing"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiLoadBalancerCreateChangeTest",
+      "freshNativeTargetAndStackReadsPreserveRoleKeyRevisionAndCrossProjectKindBoundariesBeforeCreate"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiLoadBalancerCreateChangeTest",
+      "humanApprovalAndDurableClaimDispatchExactlyOneNativeCreateAndKeepUnknownOperationsNonReplayable"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiLoadBalancerCreateChangeTest",
+      "ordinaryNativeCreatesRemainUnmodifiedWhileTypedCreateWithoutPrivateBindingCannotEnterTheQueue"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiLoadBalancerCreateChangeTest",
+      "privateApprovedBodyIsCheckedBeforeCookieCreateWithoutRejectingNativeJsonNumberNormalization"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiLoadBalancerCreateChangeTest",
+      "realFrameworkReferenceConversionPreservesLongServiceIdsInFullSubmittedBodyAndReceiptButRejectsUnsafeNumbers"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiLoadBalancerCreateChangeTest",
+      "unsupportedProtocolsCertificatesSelectorsRawConfigurationAndAmbiguousListenersFailClosed"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiLoadBalancerMetadataChangeTest",
+      "freshNativeStackAndKeyChecksProtectTheSparsePutAndPrivateParentRead"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiLoadBalancerMetadataChangeTest",
+      "fullScopedAndLegacyKeyLifecycleSnapshotsAndCookieReadsKeepTheStoredKeyBoundary"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiLoadBalancerMetadataChangeTest",
+      "loadBalancerLifecyclePlansKeepHumanApprovalConfigurationCasBoundKeyAndOneDispatch"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiLoadBalancerMetadataChangeTest",
+      "loadBalancerLifecycleReceiptRequiresNativeReadinessStoppedInstancesAndEveryProtectedConfiguration"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiLoadBalancerMetadataChangeTest",
+      "loadBalancerManualScaleNativePrepareIsZeroWriteAndKeepsFreshFieldParentKeyAndCrossIdCeilings"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiLoadBalancerMetadataChangeTest",
+      "loadBalancerManualScalePlansKeepApprovalPrivateConfigCasAuditAndOneClaim"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiLoadBalancerMetadataChangeTest",
+      "loadBalancerManualScalePreservesConfigurationIdentityAndInactiveState"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiLoadBalancerMetadataChangeTest",
+      "loadBalancerManualScaleUsesUiMinimumNativeIntAndOriginalServiceLimits"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiLoadBalancerMetadataChangeTest",
+      "loadBalancerMetadataLocksActualServiceRowAndDetectsNativeScalarChanges"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiLoadBalancerMetadataChangeTest",
+      "loadBalancerPlanKeepsHumanApprovalSnapshotCasRevocationAndOneClaim"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiLoadBalancerMetadataChangeTest",
+      "loadBalancerStartStopUseOnlyFreshNativeActionsEmptyBodiesAndOriginalParentKeyCeilings"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiLoadBalancerMetadataChangeTest",
+      "onlyLoadBalancerMetadataFieldsAndIntentAreAdmitted"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiLoadBalancerMetadataChangeTest",
+      "ordinaryNativeV1V2FullAndLegacyCaptureNeverEnterTheAiMandatoryBranch"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiLoadBalancerMetadataChangeTest",
+      "queuedLoadBalancerActivateDeactivateRetainFreshOwnerActionKeyRevisionAndRevocationBounds"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiLoadBalancerMetadataChangeTest",
+      "queuedNativeOwnerRetainsFullLegacySchemaRevisionAndRevocationChecks"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiLoadBalancerMetadataChangeTest",
+      "queuedNativeServiceUpdateUsesExactLbKindUuidStackAndCapturedProcess"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiLoadBalancerMetadataChangeTest",
+      "scalarSnapshotsAndStackContextCasExcludeConfigurationAndRejectScopeOrMovement"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiLoadBalancerScaleExecutionTest",
+      "approvedScaleTwoHasItsOwnExactActiveAndInactiveFullAndLegacyFrame"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiLoadBalancerScaleExecutionTest",
+      "scaleAttestationKeepsLiveFullCustomReadRevocationRoleAndGlobalChecks"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiLoadBalancerScaleExecutionTest",
+      "scaleCannotBorrowMetadataForeignIdentityOrMutatedProcessPayload"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiOrdinaryServiceLinksTest",
+      "beforeSetIsCollectedFromAllNativeMapsAndComplexOrOversizedSetsReject"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiOrdinaryServiceLinksTest",
+      "completionReadsTheActualSettledSetAndPreservesStateConfigurationAndInstanceStarts"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiOrdinaryServiceLinksTest",
+      "namedLinksAddRenameRemoveClearAndPreserveCurrentServiceConfiguration"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiOrdinaryServiceLinksTest",
+      "namedLinksUseNativePairIdentityAndLeaveLegacyBranchClosed"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiOrdinaryServiceLinksTest",
+      "nativeIdentityPinsNeverTruncateFractionalNonFiniteOverflowOrStringValues"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiOrdinaryServiceLinksTest",
+      "nativePlanInputSchemaAdmitsOnlyTheNewTypedOperationWithoutExposingPrivatePins"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiOrdinaryServiceLinksTest",
+      "ordinaryDependencyLinksUseOnlyTheClosedNativeSetAction"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiOrdinaryServiceLinksTest",
+      "revisionZeroIsAnExactNonnegativeIntegerWhileEntityIdsStayPositive"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiOrdinaryServiceLinksTest",
+      "terminalReceiptsEraseConfigurationButFreshlyAuthorizeBothReviewedSides"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiProjectMetadataChangeTest",
+      "accountRootLockUsesTheActualAccountRowAndDetectsConcurrentMetadataChange"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiProjectMetadataChangeTest",
+      "capturedProjectAccountUpdateRevalidatesItsOriginalProcessInNativeUpdatingActiveState"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiProjectMetadataChangeTest",
+      "customReadKeyDoesNotBorrowGlobalOwnerWriteAuthority"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiProjectMetadataChangeTest",
+      "deniedOriginalProjectUpdateRecordsTerminalFailureWhileForeignProcessCannotCompleteIt"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiProjectMetadataChangeTest",
+      "durableAccountUpdateBindingUsesSelectedRootAndSeparateNativePrincipal"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiProjectMetadataChangeTest",
+      "metadataOwnerUsesNativeProjectOwnerAndGlobalSchemaWithoutGrantingObjects"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiProjectMetadataChangeTest",
+      "projectDescriptorIsMetadataOnlyAndKeepsNativeTextBounds"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiProjectMetadataChangeTest",
+      "selectedAccountIdentityAndScalarSnapshotNeverCopyConfigurationOrCredentials"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiProjectMetadataChangeTest",
+      "selectedProjectReadAndPreflightUseFreshGlobalNativeOwnerThenRestoreSelectedContext"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiProjectMetadataChangeTest",
+      "typedProjectProcessCannotFallbackWhenDurableBindingIsMissingOrMismatched"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiProjectMetadataChangeTest",
+      "unknownProjectExecutionKeepsOnlyItsOriginalDurableProcessWithoutReplayOrTerminalAuthority"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiProjectMetadataChangeTest",
+      "updatingActiveProjectIsReadableWithoutAdmittingAnotherMetadataWriteOrPrematureReceipt"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiRegistryLifecycleChangeTest",
+      "actualRegistryIdentityAndFullConfigurationArePreservedAcrossStateChanges"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiRegistryLifecycleChangeTest",
+      "addressProjectionIsExplicitAndNeverInventsANameOrExposesCredentialText"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiRegistryLifecycleChangeTest",
+      "nativeGetAndTerminalReadReauthorizeTheExactRegistryIdUuidKindOwnerAndCurrentReadSchema"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiRegistryLifecycleChangeTest",
+      "onlyEmptyRegistryStartAndStopReachTheNativeActions"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiRegistryLifecycleChangeTest",
+      "registryConfirmationAndApplyCasRejectChangedUuidStateAndConfigurationBeforeDispatch"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiRegistryLifecycleChangeTest",
+      "registryConfirmationRemainsHumanOnlyBoundKeyIsFreshAndAcceptedOrUnknownApplyNeverReplays"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiRegistryLifecycleObserverTest",
+      "changedUuidConfigurationKindOrPersistedProcessCannotBorrowTheApprovedRegistryExecution"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiRegistryLifecycleObserverTest",
+      "cookieRemovalUsesOnlyItsOwnAtomicNativeInsertWitnessAndNeverBorrowsAKeyGrantOrAnotherProcess"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiRegistryLifecycleObserverTest",
+      "nativeAuthorizationDenialProjectsOnlyToTheSameCapturedOperationWithoutPrivateConfiguration"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiRegistryLifecycleObserverTest",
+      "removalWorkerAttestsTheExactNativeDeleteAndRejectsCredentialSetDrift"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiRegistryLifecycleObserverTest",
+      "serializedNativeStoragePoolExecutionPinsOneExactProcessForLegacyRevisionZero"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiRegistryRemovalChangeTest",
+      "confirmationAndApplyFenceAllChildMetadataAndKeepHumanKeyAndCancellationRules"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiRegistryRemovalChangeTest",
+      "logicalCompletionRequiresEveryCapturedChildAndRejectsNewOrReassignedCredentials"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiRegistryRemovalChangeTest",
+      "realSqlPinsTheCompleteNonSensitiveCredentialSetAndRejectsForeignOrTruncatedSets"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiRegistryRemovalChangeTest",
+      "removalIsAnEmptyNativeDeleteOfTheInactiveRegistryNotAnotherCredentialApi"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiResourceChangeDomainTest",
+      "aliasNonemptyTargetsUseTheRealNativeValidationBeforeProjectBinding"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiResourceChangeLockOrderTest",
+      "exactSnapshotRetainsOwnerProjectKeyAndReceiptPermissionsWhileGetStillObservesAndApplyRequiresConfirmation"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiResourceChangeLockOrderTest",
+      "nativeActionReceiptPrefetchAndConcurrentGetDoNotInvertObservationWriteLocks"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiResourceChangePlanServiceTest",
+      "deniedPreviewAuditsOnlyTheCurrentNativeVisibleTarget"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiResourceChangePlanServiceTest",
+      "nativeAndDirectDenialsKeepOnlyTheirStatusAndCodeBeforeAnyPlanIsStored"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiResourceChangePlanServiceTest",
+      "ordinaryLinkConfirmationAndApplyCasIncludeSourceParentMapAndConsumedUuid"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiResourceChangePlanServiceTest",
+      "staleInboxExceptionNeverRescuesRoleKeyTargetOrOtherConflicts"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiResourceChangePlanServiceTest",
+      "staleOrdinaryLinkInboxRemainsCancellableWithoutLendingApplyAuthority"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiResourceChangePlanServiceTest",
+      "unreadableAndEarlyInvalidPreviewsNeverAttestTheRequestedTarget"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiResourceChangeValidationFieldTest",
+      "failedAuditRemainsFailClosedBeforeAnyValidationFieldCanBeReturned"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiResourceChangeValidationFieldTest",
+      "malformedOversizedAndUnknownValidationPathsKeepOnlySanitizedStatusCode"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiResourceChangeValidationFieldTest",
+      "safeNativeValidationFieldRetainsStatusCodeWithoutValuesOrPrivateNativeText"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiResourceChangeValidationFieldTest",
+      "unavailableOrUnboundedSchemaMetadataCannotExposeAValidationPathOrPayload"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiServiceLinksCasLockTest",
+      "nativeClearOrReplaceWinningTheSharedMutexMakesTypedApplyStaleBeforeClaim"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiServiceLinksCasLockTest",
+      "sharedNativeMutexCoversTheRealSpringCommitAndRollbackTailWithoutLeaking"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiServiceLinksCasLockTest",
+      "singularNativeAddOrRemoveWinningTheSameMutexAlsoMakesTypedApplyStale"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiServiceLinksCasLockTest",
+      "singularNativeOwnersCannotMutateBetweenTypedFreshCasAndDispatch"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiServiceLinksCasLockTest",
+      "typedCasHoldsTheOriginalNativeMutexAndTheNormalHandlerReentersIt"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiServiceLinksCurrentReadTest",
+      "endpointRowsUseOneSortedOrderAndARealRemovingOrReboundTargetRejectsBeforeCas"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiServiceLinksCurrentReadTest",
+      "nativeUpgradeRowThenLinksCannotDeadlockTypedLinksThenEndpointRows"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiServiceLinksCurrentReadTest",
+      "shippedSpringReadSuspendsAnOldRrViewAndRejectsAnAlreadyScheduledMapRemoval"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiServiceUpgradeLifecycleChangeTest",
+      "approvalAndActualProcessAreRequiredAndCapturedHumanDiffNeverChanges"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiServiceUpgradeLifecycleChangeTest",
+      "nativeFullLegacyAndCustomUpgradeUseTheNormalActionAndFreshStackScope"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiServiceUpgradeLifecycleChangeTest",
+      "nativeRollbackReadsPreviousConfigurationsAndCancelOnlyProvesACheckpoint"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiServiceUpgradeLifecycleChangeTest",
+      "nativeSchemaAdmitsTheSameThreeActionsWithoutAddingCancelRollback"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiServiceUpgradeLifecycleChangeTest",
+      "phaseGenerationStackAndLateAuthorityDriftNeverClaimAnOperation"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiServiceUpgradeLifecycleChangeTest",
+      "privateGenerationCasKeepsLegacyAndSecondaryConfigurationsButExcludesWorkerProgress"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiServiceUpgradeLifecycleChangeTest",
+      "processObservationUsesAnExactBoundedRootAndRejectsMissingOrConflictingExecutionEvidence"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiServiceUpgradeLifecycleChangeTest",
+      "successfulFinishStillWaitsForExactOldUpgradeInstanceAndAttachmentRetirement"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiServiceUpgradeLifecycleChangeTest",
+      "threeNativeCapabilitiesHaveEmptyParametersAndCancelRollbackRemainsUnsupported"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiSessionLifecycleWitnessTest",
+      "anotherCookieNativeSuccessAfterTheBaselineNeverSubstitutesForThisPlansExactWitness"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiSessionLifecycleWitnessTest",
+      "creationCallbackFailureRollsBackTheNewRowAndCannotSealADifferentOrSecondRoot"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiSessionLifecycleWitnessTest",
+      "nativeCreationDoesNotQueueAProcessWhenItsAtomicWitnessCallbackFails"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiSessionLifecycleWitnessTest",
+      "realPlanObservationAndsOwnSuccessfulProcessWithExistingServiceTerminalPredicates"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiSessionLifecycleWitnessTest",
+      "serviceOwnSuccessStillRequiresOriginalReadinessAndStoppedOrRetiredInstances"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiSessionLifecycleWitnessTest",
+      "synchronousNativeThrowRestoresScopeAndFollowingOrdinaryApiCreationIsCompletelyNoop"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiSessionLifecycleWitnessTest",
+      "trueCookieHostAndServiceLifecycleCaptureOneOwnNativeProcessWithoutAnyCredentialMetadata"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiSessionLifecycleWitnessTest",
+      "wrongRootActionUuidOwnerKindAndNonemptyPayloadFailBeforeAnyNativeInsert"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiStackGroupChangeTest",
+      "groupAllowsNativeEditableOrdinaryNonemptyStatesButRejectsSystemCatalogAndRemovedStacks"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiStackGroupChangeTest",
+      "groupCompletionRequiresExactRequestedFieldsAndPreservesAllOtherConfiguration"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiStackGroupChangeTest",
+      "groupParametersPreserveNativeTextNullAndEmptyWithoutExtendingOtherWorkflows"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiStackGroupChangeTest",
+      "groupPlanRetainsHumanConfirmationAndDetectsGroupAndParentUuidDriftBeforeDispatch"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiStackGroupChangeTest",
+      "groupSnapshotAndTerminalReceiptRequireCurrentReadableFieldRoleAndExactIdentity"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiStackGroupChangeTest",
+      "groupSnapshotBindsNativeColumnIdentityProjectAndConfigurationWithoutCopyingSecrets"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiStackGroupChangeTest",
+      "groupStillRequiresNativePutFieldCeilingAndCurrentBoundKeyBeforeDispatch"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiStackUpgradeLifecycleChangeTest",
+      "catalogSystemAllNativeServiceKindsAndCompletePrivateGenerationArePreserved"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiStackUpgradeLifecycleChangeTest",
+      "completeStillAndsEveryChildReadinessAndOriginalOldInstanceRetirement"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiStackUpgradeLifecycleChangeTest",
+      "cookieStackOwnRootIsDurableAndInitialAttestationFailureHasRealSqlRollbackAndZeroQueue"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiStackUpgradeLifecycleChangeTest",
+      "finishRollbackAndCancelRespectNativeReplyConfigurationAndCheckpointSemantics"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiStackUpgradeLifecycleChangeTest",
+      "nativeEligibilityKeepsFinishedAndNewChildrenAndDoesNotRebuildOldMembership"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiStackUpgradeLifecycleChangeTest",
+      "normalHumanPlanRequiresApprovalUnchangedGenerationAndOwnRootBeforeOriginalCompletion"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiStackUpgradeLifecycleChangeTest",
+      "originalStackActionKeepsFullLegacyScopeUpgradeAndRoleCeilingsWithoutChildWrites"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiStackUpgradeLifecycleChangeTest",
+      "threeNativeStackActionsHaveEmptyBodiesExactStatesAndFourSafeHumanRows"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiVolumeCreateChangeTest",
+      "boundKeyRevocationPropagatesWithoutDroppingTheExistingKeyGuard"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiVolumeCreateChangeTest",
+      "exactNativeFactoryAcceptsOnlyNameDescriptionAndNeverWritableReadonlyFlags"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiVolumeCreateChangeTest",
+      "exactNewUuidAndLogicalDetachedReadbackDoNotAdoptSameNameOldOrAllocatedVolumes"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiVolumeCreateChangeTest",
+      "freshNativePostSchemaAndReadonlyFieldsRemainTheAuthorityBoundary"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiVolumeCreateChangeTest",
+      "humanCreateReviewUsesTheSameNativeInactiveTerminalState"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiVolumeCreateChangeTest",
+      "noMountOrStoragePoolMayBeMistakenForUnallocatedLogicalCompletion"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiVolumeCreateChangeTest",
+      "onlyCompletedNativeCreateStateCanVerifyTheNewUnallocatedRecord"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiVolumeCreateChangeTest",
+      "projectUuidDriftAndPluginShadowingCannotReuseAnApprovedLocalScope"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiVolumeCreateChangeTest",
+      "rawIdsPathsOptionsCredentialsAndMalformedNamesRejectBeforeNativeCreate"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiVolumeCreateChangeTest",
+      "terminalReadUsesRealCanonicalCodecExactIdUuidAndFreshOwner"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiVolumeCreatePlanOwnerTest",
+      "lostNativeResponseStaysUnknownAndNeverResetsTheClaim"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiVolumeCreatePlanOwnerTest",
+      "nativeCreateResultPinsExactUuidAndDurableApplyRetryDoesNotCreateAgain"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiVolumeCreatePlanOwnerTest",
+      "nativeRoleRevocationBeforeConfirmOrApplyStopsBeforeClaim"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiVolumeCreatePlanOwnerTest",
+      "onlyHumanCanConfirmAndAnUnapprovedPlanCannotCreateAnything"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.integration.internal.rancher.TokenSessionBoundaryTest",
+      "capturesSameDurableSessionWithoutExportingHandleFields"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.integration.internal.rancher.TokenSessionBoundaryTest",
+      "differentRequestContextChangedCookieAndNullHandleAreDenied"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.integration.internal.rancher.TokenSessionBoundaryTest",
+      "expiredJwtCannotMintAuthorityFromVerifiedMarkerAndFutureDurableExpiry"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.integration.internal.rancher.TokenSessionBoundaryTest",
+      "inactiveActorAndForgedProvenanceDoNotBecomeLiveAuthority"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.integration.internal.rancher.TokenSessionBoundaryTest",
+      "nonpositiveDurableTokenAccountCannotBecomeSessionAuthority"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.integration.internal.rancher.TokenSessionBoundaryTest",
+      "rawJwtCompatibilityNeverBecomesDurableSessionAuthority"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.integration.internal.rancher.TokenSessionBoundaryTest",
+      "recordGenerationActorAccountProviderVersionAndJwtAreBound"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.integration.internal.rancher.TokenSessionBoundaryTest",
+      "revokeAndExpiredDurableRecordAreDenied"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.mfa.WebAuthnConfigurationTest",
+      "acceptsExactHttpsOriginAndRelyingParty"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.mfa.WebAuthnConfigurationTest",
+      "acceptsHttpOnlyForLoopbackDevelopment"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.mfa.WebAuthnConfigurationTest",
+      "credentialDataStorageRoundTripPreservesPublicKeyAndCredentialId"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.mfa.WebAuthnConfigurationTest",
+      "objectConverterCborRoundTripsNormalValuesAndBinaryData"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.mfa.WebAuthnConfigurationTest",
+      "objectConverterJsonRoundTripsNormalWebAuthnValues"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.mfa.WebAuthnConfigurationTest",
+      "rejectsInsecureLanOrigin"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.mfa.WebAuthnConfigurationTest",
+      "rejectsPublicSuffixAsRelyingParty"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.mfa.WebAuthnConfigurationTest",
+      "rejectsUnrelatedRelyingParty"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.projects.NativeProjectQueuedOwnerTest",
+      "ordinaryNativeOwnerFullLegacyCustomAndLiveDenialsUseManagerCaptureWithoutAi"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.upgrade.AiServiceUpgradeConfigurationTest",
+      "approvalCannotOverrideConfigurationAndCancelKeepsNativeUntouched"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.upgrade.AiServiceUpgradeConfigurationTest",
+      "canonicalHealthNoopDoesNotManufactureUpgrade"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.upgrade.AiServiceUpgradeConfigurationTest",
+      "clearAndOmitHaveDistinctRealParserSemantics"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.upgrade.AiServiceUpgradeConfigurationTest",
+      "configOnlyReceiptRequiresNativeFinishExactReadbackAndReadiness"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.upgrade.AiServiceUpgradeConfigurationTest",
+      "configOnlyRechecksExactBoundKeyAndRoleWithoutAnAlternateWriter"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.upgrade.AiServiceUpgradeConfigurationTest",
+      "configOnlyUsesRealParserAndPreservesImage"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.upgrade.AiServiceUpgradeConfigurationTest",
+      "configurationPlanAlsoFencesExactTargetUuid"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.upgrade.AiServiceUpgradeConfigurationTest",
+      "equivalentNativePortNotationCannotManufactureAnUpgrade"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.upgrade.AiServiceUpgradeConfigurationTest",
+      "exactFullPrimarySecondaryPayloadAndOneDispatchArePreserved"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.upgrade.AiServiceUpgradeConfigurationTest",
+      "explicitSameImageRequiresRealDeltaAndNoopDoesNotCreatePlan"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.upgrade.AiServiceUpgradeConfigurationTest",
+      "healthPatchPreservesOmittedSupportedFieldsIncludingNoneStrategy"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.upgrade.AiServiceUpgradeConfigurationTest",
+      "legacyImageOnlyPlanKeepsItsOriginalDefaults"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.upgrade.AiServiceUpgradeConfigurationTest",
+      "originalConfirmationRechecksTheKey"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.upgrade.AiServiceUpgradeConfigurationTest",
+      "originalHumanAndKeyBoundaryStillHolds"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.upgrade.AiServiceUpgradeConfigurationTest",
+      "originalRevokedRoleStillDeniesAndAudits"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.upgrade.AiServiceUpgradeConfigurationTest",
+      "originalStrategyFenceStillRejectsDrift"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.upgrade.AiServiceUpgradeConfigurationTest",
+      "preCoercionGuardRejectsMalformedUnknownAndForgedConfiguration"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.upgrade.AiServiceUpgradeConfigurationTest",
+      "startupArgumentsKeepNativeNullEmptyOmitAndNoopDistinct"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.upgrade.AiServiceUpgradeConfigurationTest",
+      "startupArgumentsRejectRawCoercionAndEveryClosedArrayLimitBeforeNativeValidation"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.upgrade.AiServiceUpgradeConfigurationTest",
+      "startupArgumentsRequireFreshBoundApprovalExactNativeReadbackAndReadiness"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.upgrade.AiServiceUpgradeConfigurationTest",
+      "startupArgumentsUseRealParserAndPreserveTheWholeApprovedLaunchConfiguration"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.upgrade.AiServiceUpgradeConfigurationTest",
+      "targetDriftAndApprovedOperandDriftCannotClaimOrDispatch"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.upgrade.AiServiceUpgradeConfigurationTest",
+      "terminalReadbackRequiresRequestedConfigAndEveryOtherSetting"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.upgrade.AiServiceUpgradeConfigurationTest",
+      "unsupportedHealthIsPreservedWhenOmittedButCannotBeEditedOrClearedWithoutCompleteReview"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.upgrade.AiServiceUpgradePlanLockOrderTest",
+      "acceptedUpgradeNativeActionPrefetchAndConcurrentGetKeepApplicationBeforeRowLock"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.upgrade.AiServiceUpgradePlanLockOrderTest",
+      "concurrentNativeUpgradeAppliesShareOneDurableClaimAndDispatch"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.upgrade.AiServiceUpgradePlanLockOrderTest",
+      "onlyExactNativeUpgradeActionMarkerUsesReadSnapshotAndOrdinaryGetStillObserves"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.upgrade.AiServiceUpgradePlanLockOrderTest",
+      "runningUpgradeNativeActionPrefetchAndConcurrentGetKeepApplicationBeforeRowLock"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.upgrade.AiServiceUpgradePlanLockOrderTest",
+      "upgradeActionReloadsSnapshotRoleAndKeyAuthorityAfterOperandLookupAndClaimsOnlyOnce"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.upgrade.AiServiceUpgradePlanLockOrderTest",
+      "upgradeActionSnapshotRetainsOwnerProjectRoleVisibilityAndBoundKeyChecks"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.upgrade.AiServiceUpgradePlanServiceTest",
+      "approvedStrategyIsDetachedReviewedAndDispatchedOnceWithoutActionOverrides"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.upgrade.AiServiceUpgradePlanServiceTest",
+      "invalidOptionalStrategyRejectsBeforePlanOrDispatchAndNativePreflightIsRequired"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.upgrade.AiServiceUpgradePlanServiceTest",
+      "legacySnapshotWithoutStrategyOrFenceStillConfirmsAndAppliesDefaults"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.upgrade.AiServiceUpgradePlanServiceTest",
+      "newCustomAndDefaultPlansFenceLegacySnapshotBeforeClaim"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.upgrade.AiServiceUpgradePlanServiceTest",
+      "omittedAndLegacyStrategiesKeepTheOriginalEffectiveDispatchDefaults"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.upgrade.AiServiceUpgradePlanServiceTest",
+      "originalPreviewGuardLeavesOrdinaryUpgradeAndPlanActionsUntouchedAndRunsBeforeNativeValidation"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.upgrade.AiServiceUpgradePlanServiceTest",
+      "realPreviewPipelineRejectsUnknownAndCoercedStrategyWithoutPlanOrDispatch"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.upgrade.AiServiceUpgradePlanServiceTest",
+      "reloadedFencedStrategyRemainsImmutableAndDispatchesOnlyOnce"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.upgrade.AiServiceUpgradePlanServiceTest",
+      "strategyAndSnapshotFenceDriftCannotClaimOrDispatch"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.upgrade.AiServiceUpgradePlanServiceTest",
+      "strategyUsesNativeMinimaAndExactJsonIntegerBoundaryWithoutClamping"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.upgrade.AiServiceUpgradeStrategyPreflightTest",
+      "nativeRetainIpStartFirstInvariantRejectsBeforeAnyPlanOrResourceMutation"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.upgrade.AiServiceUpgradeStrategyPreflightTest",
+      "nativeVolumePreflightReceivesApprovedStartFirstAndNativeBatchNormalization"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.upgrade.AiServiceUpgradeStrategyPreflightTest",
+      "realStartFirstPortCapacityRejectsAtPreviewConfirmationAndBeforeClaim"
+    ],
+    [
+      "io.cattle.platform.iaas.api.filter.registry.RegistryCredentialReferenceGuardTest",
+      "acceptedRemovingFencesCreateAndUpdateThroughTheRealCommitTailWithoutAChildWrite"
+    ],
+    [
+      "io.cattle.platform.iaas.api.filter.registry.RegistryCredentialReferenceGuardTest",
+      "createAndReparentCompleteBeforeTheSameNativeRemovingTransitionCanCommit"
+    ],
+    [
+      "io.cattle.platform.iaas.api.filter.registry.RegistryCredentialReferenceGuardTest",
+      "originalCredentialKindsAndEveryPreviouslyLegalRegistryParentStateKeepTheirNativeWriter"
+    ],
+    [
+      "io.cattle.platform.iaas.api.filter.registry.RegistryCredentialReferenceGuardTest",
+      "typedFullSetPreconditionRunsInsideTheNativeOwnerAndLegacyDeleteStillUsesTheOriginalScheduler"
+    ],
+    [
+      "io.cattle.platform.iaas.api.port.PortUpdateOwnerConcurrencyTest",
+      "existingProjectPreflightReadsNativeScopedFieldsAndRetainsItsProjectProjection"
+    ],
+    [
+      "io.cattle.platform.iaas.api.port.PortUpdateOwnerConcurrencyTest",
+      "explicitNonoverlappingBindingsAndProtocolKeepTheirNativeMeaning"
+    ],
+    [
+      "io.cattle.platform.iaas.api.port.PortUpdateOwnerConcurrencyTest",
+      "hiddenHostNetworkPrivatePortIsARealGlobalPublishedConflict"
+    ],
+    [
+      "io.cattle.platform.iaas.api.port.PortUpdateOwnerConcurrencyTest",
+      "hiddenOtherProjectOnTheSamePhysicalHostBlocksWithoutIdentityDisclosure"
+    ],
+    [
+      "io.cattle.platform.iaas.api.port.PortUpdateOwnerConcurrencyTest",
+      "independentEngineLockProvidersStillSerializeOnThePhysicalHostDatabaseRows"
+    ],
+    [
+      "io.cattle.platform.iaas.api.port.PortUpdateOwnerConcurrencyTest",
+      "missingBeforeForeignAccountAndDeniedNativeSaveNeverGrantOrPersist"
+    ],
+    [
+      "io.cattle.platform.iaas.api.port.PortUpdateOwnerConcurrencyTest",
+      "nativeFilterDelegatesTheOriginalManagerAndPreservesItsKeyDenial"
+    ],
+    [
+      "io.cattle.platform.iaas.api.port.PortUpdateOwnerConcurrencyTest",
+      "productionNativeBeansAndLockNamesStaySharedWithoutCreateDeleteOrGrantAdapters"
+    ],
+    [
+      "io.cattle.platform.iaas.api.port.PortUpdateOwnerConcurrencyTest",
+      "staleUiBeforeAndParentOrChildRebindingFailBeforeAnySave"
+    ],
+    [
+      "io.cattle.platform.iaas.api.port.PortUpdateOwnerConcurrencyTest",
+      "theActualUiHeaderIsConditionalAndMalformedOrStaleInputNeverSaves"
+    ],
+    [
+      "io.cattle.platform.iaas.api.port.PortUpdateOwnerConcurrencyTest",
+      "twoRunningWritersOnOneHostCannotBothClaimOnePublishedPort"
+    ],
+    [
+      "io.cattle.platform.iaas.api.port.PortUpdateOwnerConcurrencyTest",
+      "typedDispatchReusesOnlyItsActiveServerOwnedNativeScope"
+    ],
+    [
+      "io.cattle.platform.iaas.api.volume.AiTypedLocalVolumeNativeContractTest",
+      "builtinLocalUsesTheExistingNativeFilterAndOrdinaryPluginApiIsUnchanged"
+    ],
+    [
+      "io.cattle.platform.iaas.api.volume.AiTypedLocalVolumeNativeContractTest",
+      "nativeMissingDriverAndUnsupportedSizeStillRejectWithoutDispatch"
+    ],
+    [
+      "io.cattle.platform.process.containerevent.NativeContainerNameRefreshTest",
+      "absentCandidateOrForeignHostCannotInspectOrCreate"
+    ],
+    [
+      "io.cattle.platform.process.containerevent.NativeContainerNameRefreshTest",
+      "actualAgentInspectRequestUsesOnlyFullDockerIdNeverNameFallback"
+    ],
+    [
+      "io.cattle.platform.process.containerevent.NativeContainerNameRefreshTest",
+      "casMissDoesNotNotifyOrRetryAndDelayedHintCannotRollNameBack"
+    ],
+    [
+      "io.cattle.platform.process.containerevent.NativeContainerNameRefreshTest",
+      "currentInspectNameNotUuidHintIsWrittenOnceAndNotificationIsScoped"
+    ],
+    [
+      "io.cattle.platform.process.containerevent.NativeContainerNameRefreshTest",
+      "inspectFailureWrongIdOrMalformedNameNeverWritesHint"
+    ],
+    [
+      "io.cattle.platform.process.containerevent.NativeContainerNameRefreshTest",
+      "managedLabelShortIdOrDifferentStateCannotReachInspection"
+    ],
+    [
+      "io.cattle.platform.process.containerevent.NativeContainerNameRefreshTest",
+      "notificationFailurePreservesKnownCommittedUpdateWithoutRetry"
+    ],
+    [
+      "io.cattle.platform.process.containerevent.NativeContainerNameRefreshTest",
+      "runningContainerAndSecondDistinctFullIdUseExactIndependentAuthority"
+    ],
+    [
+      "io.cattle.platform.process.containerevent.NativeContainerNameRefreshTest",
+      "sourceAccountChangedAfterLockSelectionCannotRefreshForeignInstance"
+    ],
+    [
+      "io.cattle.platform.process.driver.DriverServiceRemoveTest",
+      "activatingActiveAndInactiveUseOnlyLegalNativeSchedulingForBothDriverKinds"
+    ],
+    [
+      "io.cattle.platform.process.driver.DriverServiceRemoveTest",
+      "authorizationAndSchedulingFailuresRemainVisibleWithoutMutatingOrRemovingTheChild"
+    ],
+    [
+      "io.cattle.platform.process.driver.DriverServiceRemoveTest",
+      "nativeHelperRetainsCapturedActorKeyAndParentOperationWithoutCreatingAGrant"
+    ],
+    [
+      "io.cattle.platform.process.driver.DriverServiceRemoveTest",
+      "terminalChildrenAreSkippedAndDuplicateChildRowsDoNotDuplicateScheduling"
+    ],
+    [
+      "io.cattle.platform.resources.FrozenGenericObjectRoleSchemaTest",
+      "lowRoleFrozenSchemasCannotRevealGenericStorageCapabilities"
+    ],
+    [
+      "io.cattle.platform.resources.FrozenGenericObjectRoleSchemaTest",
+      "privilegedProjectSchemasRetainPluginStorage"
+    ],
+    [
+      "io.cattle.platform.schema.processor.GenericObjectAuthOverlayTest",
+      "inheritedStorageFieldsCannotReintroduceCapabilities"
+    ],
+    [
+      "io.cattle.platform.schema.processor.GenericObjectAuthOverlayTest",
+      "lowRolesHideCapabilitiesAtTheSharedResponseBoundary"
+    ],
+    [
+      "io.cattle.platform.schema.processor.GenericObjectAuthOverlayTest",
+      "privilegedProjectClientsKeepPluginStorage"
+    ],
+    [
+      "io.cattle.platform.schema.processor.GenericObjectAuthOverlayTest",
+      "pullTaskStorageRemainsPrivateWithoutRemovingTypedStatus"
+    ],
+    [
+      "io.cattle.platform.schema.processor.VolumeNativeSchemaAuthorizationTest",
+      "currentRoleOverlaysExposeNativeClassificationWithoutGrantingMutation"
+    ],
+    [
+      "io.cattle.platform.schema.processor.VolumeNativeSchemaAuthorizationTest",
+      "readonlyPipelinePreservesCrudWhileRetainingServerOwnedNativeReadField"
+    ],
+    [
+      "io.cattle.platform.servicediscovery.api.filter.AiServiceUpgradeConfigurationPersistenceTest",
+      "configUpgradeCasRejectsUuidStateSettingsAndOwnerDriftAtTheCommit"
+    ],
+    [
+      "io.cattle.platform.servicediscovery.api.filter.AiServiceUpgradeConfigurationPersistenceTest",
+      "legacyImageOnlySnapshotWithoutUuidKeepsItsExactOriginalCas"
+    ],
+    [
+      "io.cattle.platform.servicediscovery.api.filter.ServiceRollbackValidationFilterTypesTest",
+      "everyNativeServiceRollbackRestoresOnlyItsOwnConfigurationsBeforeForwarding"
+    ],
+    [
+      "io.cattle.platform.servicediscovery.api.filter.StackRollbackValidationFilterTest",
+      "stackRollbackDelegatesWithoutReadingOrPrewritingAnyChildConfiguration"
+    ],
+    [
+      "io.cattle.platform.servicediscovery.api.service.impl.ServiceLinksStateMutationGuardTest",
+      "descendingNestedSourcesRetryInsteadOfDeadlockingAnAscendingWriter"
+    ],
+    [
+      "io.cattle.platform.servicediscovery.api.service.impl.ServiceLinksStateMutationGuardTest",
+      "everyMapRemovalStateUsesTheSharedMutexAndRetriesWithoutTerminalDenial"
+    ],
+    [
+      "io.cattle.platform.servicediscovery.api.service.impl.ServiceNamedLinkPairOwnerTest",
+      "replacementRemovesOnlyTheExactAliasWhileLegacyNullRemovalKeepsItsContract"
+    ],
+    [
+      "io.cattle.platform.servicediscovery.dao.impl.ServiceLinksMutationCurrentReadTest",
+      "bulkCloneTakesEverySourceMutexInSortedOrderBeforeAnyEdge"
+    ],
+    [
+      "io.cattle.platform.servicediscovery.dao.impl.ServiceLinksMutationCurrentReadTest",
+      "directCloneDaoWaitsForTheWholeSetOwnerBeforeTakingItsEdgeLock"
+    ],
+    [
+      "io.cattle.platform.servicediscovery.dao.impl.ServiceLinksMutationCurrentReadTest",
+      "fullSetExactPairCreateKeepsLegacyNullLookupAndSupportsAliasToPlain"
+    ],
+    [
+      "io.cattle.platform.servicediscovery.dao.impl.ServiceLinksMutationCurrentReadTest",
+      "mutationUsesCurrentRowsWhilePreMutexValidationRemainsNonLocking"
+    ],
+    [
+      "io.cattle.platform.servicediscovery.dao.impl.ServiceLinksMutationCurrentReadTest",
+      "originalLbListenerAlsoRetriesDescendingSourceContentionThroughTheCommonOwner"
+    ],
+    [
+      "io.cattle.platform.servicediscovery.deployment.impl.unit.ExternalDeploymentUnitInstanceLifecycleTest",
+      "absentAndEmptyTargetsRetireExistingMapsInsteadOfDefaultingHealthy"
+    ],
+    [
+      "io.cattle.platform.servicediscovery.deployment.impl.unit.ExternalDeploymentUnitInstanceLifecycleTest",
+      "aliasNoopPlannerDoesNotCollectOrWriteExternalTargetMaps"
+    ],
+    [
+      "io.cattle.platform.servicediscovery.deployment.impl.unit.ExternalDeploymentUnitInstanceLifecycleTest",
+      "existingTargetRetainsActiveErrorRemovedAndStopSemantics"
+    ],
+    [
+      "io.cattle.platform.servicediscovery.deployment.impl.unit.ExternalDeploymentUnitInstanceLifecycleTest",
+      "hostnameReplacementRequiresAnExactTargetMatch"
+    ],
+    [
+      "io.cattle.platform.servicediscovery.deployment.impl.unit.ExternalDeploymentUnitInstanceLifecycleTest",
+      "hostnameToIpClassifiesTheOldMapForCleanupAndRetainsTheDesiredIp"
+    ],
+    [
+      "io.cattle.platform.servicediscovery.deployment.impl.unit.ExternalDeploymentUnitInstanceLifecycleTest",
+      "ipReplacementCleansOnlyTheNoLongerDesiredAddress"
+    ],
+    [
+      "io.cattle.platform.servicediscovery.deployment.impl.unit.ExternalDeploymentUnitInstanceLifecycleTest",
+      "ipToHostnameClassifiesTheOldMapForCleanupAndRetainsTheDesiredHostname"
+    ],
+    [
+      "io.cattle.platform.servicediscovery.deployment.impl.unit.ExternalDeploymentUnitInstanceLifecycleTest",
+      "missingDesiredMapIsNotStartedAndStopDoesNotScheduleANullResource"
+    ],
+    [
+      "io.github.ibuildthecloud.gdapi.model.impl.CreateOnlyCallerTest",
+      "managerConstructResourceUsesTheRequestActionNotOnlyPostMethod"
+    ],
+    [
+      "io.github.ibuildthecloud.gdapi.model.impl.CreateOnlyCallerTest",
+      "responseWriterCreateResourceUsesTheActualContextRequest"
+    ],
+    [
+      "io.github.ibuildthecloud.gdapi.model.impl.CreateOnlyWrappedResourceTest",
+      "methodOnlyLegacyConstructorsFailClosedInsteadOfGuessingCreation"
+    ],
+    [
+      "io.github.ibuildthecloud.gdapi.model.impl.CreateOnlyWrappedResourceTest",
+      "postActionsCannotRevealCreateOnlyValues"
+    ],
+    [
+      "io.github.ibuildthecloud.gdapi.model.impl.CreateOnlyWrappedResourceTest",
+      "priorityFieldsCannotBypassTheCreateOnlyBoundary"
+    ],
+    [
+      "io.github.ibuildthecloud.gdapi.model.impl.CreateOnlyWrappedResourceTest",
+      "readUpdateDeleteAndUnknownMethodsStillRedact"
+    ],
+    [
+      "io.github.ibuildthecloud.gdapi.model.impl.CreateOnlyWrappedResourceTest",
+      "rolesWithoutCreateOnlyRestrictionKeepTheirExistingReadContract"
+    ],
+    [
+      "io.github.ibuildthecloud.gdapi.model.impl.CreateOnlyWrappedResourceTest",
+      "trueCreationRetainsTheFirstSecretInBothApiVersions"
+    ],
+    [
+      "io.github.ibuildthecloud.gdapi.model.impl.VolumeNativeWrappedResourceTest",
+      "formatterRetainsTheActualServerTrueAndFalseClassification"
+    ],
+    [
+      "io.github.ibuildthecloud.gdapi.model.impl.VolumeNativeWrappedResourceTest",
+      "onlyAnExplicitSchemaContractCanProvideTheServerDefault"
+    ],
+    [
+      "io.github.ibuildthecloud.gdapi.request.handler.BodyParserRequestHandlerTest",
+      "malformedJsonReturnsInvalidBodyContentBadRequest"
+    ],
+    [
+      "io.github.ibuildthecloud.gdapi.request.handler.BodyParserRequestHandlerTest",
+      "mergeListRecursivelyMergesAllowedMapItems"
+    ],
+    [
+      "io.github.ibuildthecloud.gdapi.request.handler.BodyParserRequestHandlerTest",
+      "mergeMapKeepsRequestParamsAndLetsBodyOverride"
+    ],
+    [
+      "io.github.ibuildthecloud.gdapi.request.handler.BodyParserRequestHandlerTest",
+      "parsesListWithRealMapperAndMergesObjectItems"
+    ],
+    [
+      "io.github.ibuildthecloud.gdapi.request.handler.BodyParserRequestHandlerTest",
+      "parsesObjectUnicodeAndAdditionalFieldsWithRealMapper"
+    ],
+    [
+      "io.github.ibuildthecloud.gdapi.request.handler.BodyParserRequestHandlerTest",
+      "typedMapperIgnoresUnknownFieldsAndRoundTripsUnicode"
+    ],
+    [
+      "io.github.ibuildthecloud.gdapi.util.RequestUtilsTest",
+      "creationRequiresPostAndAbsentActionNotAStatusCode"
+    ],
+    [
+      "io.github.ibuildthecloud.gdapi.validation.ValidationHandlerTest",
+      "clientCannotSetServerOwnedVolumeNativeClassification"
+    ]
+  ],
+  "newRequiredMethods": [
+    [
+      "io.cattle.platform.app.MachineDriverExecutorIsolationTest",
+      "explicitDriverRouteOverrideIsStillHonored"
+    ],
+    [
+      "io.cattle.platform.app.MachineDriverExecutorIsolationTest",
+      "threeAwaitingDriversCannotStarveStackReplay"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiRegistryLifecycleChangeTest",
+      "cookiePlanKeepsItsWitnessAndNeverBorrowsAKeySnapshot"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiRegistryLifecycleChangeTest",
+      "humanKeyPlanConfirmationStillChecksLiveAuthorityAndSnapshot"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiRegistryLifecycleChangeTest",
+      "keyPlanHumanConfirmationKeepsItsOriginalSnapshotAcrossLifecycleTypes"
+    ]
+  ],
+  "requiredMethodCount": 528,
+  "newMethodCount": 5,
+  "sourceMethodReplacements": [],
+  "sourceMethodClassification": {
+    "trueNewTestMethods": 5,
+    "existingRenamedFirstMandatory": 0,
+    "newSourceNamesAndRequiredIdentities": 5,
+    "netDeclaredMethodDelta": 5
+  },
+  "affectedExistingRequiredMethods": [
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiRegistryLifecycleChangeTest",
+      "actualRegistryIdentityAndFullConfigurationArePreservedAcrossStateChanges"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiRegistryLifecycleChangeTest",
+      "addressProjectionIsExplicitAndNeverInventsANameOrExposesCredentialText"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiRegistryLifecycleChangeTest",
+      "nativeGetAndTerminalReadReauthorizeTheExactRegistryIdUuidKindOwnerAndCurrentReadSchema"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiRegistryLifecycleChangeTest",
+      "onlyEmptyRegistryStartAndStopReachTheNativeActions"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiRegistryLifecycleChangeTest",
+      "registryConfirmationAndApplyCasRejectChangedUuidStateAndConfigurationBeforeDispatch"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiRegistryLifecycleChangeTest",
+      "registryConfirmationRemainsHumanOnlyBoundKeyIsFreshAndAcceptedOrUnknownApplyNeverReplays"
+    ]
+  ],
+  "affectedExistingNonRequiredMethods": [],
+  "requiredPackagedRootSources": [
+    "code/framework/api/src/main/java/io/cattle/platform/api/auth/ApiAuditPayload.java",
+    "code/framework/api/src/main/java/io/cattle/platform/api/auth/ApiContainerLogsRead.java",
+    "code/framework/api/src/main/java/io/cattle/platform/api/auth/ApiKeyAuditSink.java",
+    "code/framework/api/src/main/java/io/cattle/platform/api/auth/ClientToolAuditEvent.java",
+    "code/framework/auditing/src/main/java/io/cattle/platform/iaas/api/auditing/AuditLogKeySelector.java",
+    "code/framework/auditing/src/main/java/io/cattle/platform/iaas/api/auditing/AuditServiceImpl.java",
+    "code/framework/engine/src/main/java/io/cattle/platform/engine/manager/impl/DefaultProcessManager.java",
+    "code/framework/engine/src/main/java/io/cattle/platform/engine/process/LaunchConfiguration.java",
+    "code/framework/engine/src/main/java/io/cattle/platform/engine/process/ProcessAuthorization.java",
+    "code/framework/engine/src/main/java/io/cattle/platform/engine/process/ProcessAuthorizationHook.java",
+    "code/framework/engine/src/main/java/io/cattle/platform/engine/process/impl/DefaultProcessInstanceImpl.java",
+    "code/framework/lock/src/main/java/io/cattle/platform/lock/Lock.java",
+    "code/framework/lock/src/main/java/io/cattle/platform/lock/provider/impl/StandardLock.java",
+    "code/framework/object/src/main/java/io/cattle/platform/object/impl/AbstractObjectManager.java",
+    "code/iaas/allocator/src/main/java/io/cattle/platform/allocator/lock/AllocateConstraintLock.java",
+    "code/iaas/api-logic/src/main/java/io/cattle/platform/iaas/api/filter/instance/InstancePortsValidationFilter.java",
+    "code/iaas/api-logic/src/main/java/io/cattle/platform/iaas/api/filter/port/PortUpdateValidationFilter.java",
+    "code/iaas/api-logic/src/main/java/io/cattle/platform/iaas/api/filter/registry/RegistryCredentialReferenceGuard.java",
+    "code/iaas/api-logic/src/main/java/io/cattle/platform/iaas/api/port/InstanceCreatePortValidation.java",
+    "code/iaas/api-logic/src/main/java/io/cattle/platform/iaas/api/port/PortPreflightDaoImpl.java",
+    "code/iaas/api-logic/src/main/java/io/cattle/platform/iaas/api/port/PortUpdateService.java",
+    "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/ai/AiToolCallEventService.java",
+    "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/ai/audit/AiAuditQueryInputHandler.java",
+    "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/ai/audit/AiAuditQueryService.java",
+    "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/ai/catalog/AiCatalogLaunchAccess.java",
+    "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/ai/catalog/AiCatalogLaunchDelegation.java",
+    "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/ai/catalog/AiCatalogLaunchPlanResourceManager.java",
+    "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/ai/catalog/AiCatalogLaunchPlanService.java",
+    "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/ai/logs/AiContainerLogsInputHandler.java",
+    "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/ai/logs/AiContainerLogsRunner.java",
+    "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/ai/logs/AiContainerLogsService.java",
+    "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/ai/logs/AiContainerLogsTicket.java",
+    "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/ai/view/AiApiKeyReadView.java",
+    "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/ai/view/AiAuditSourcePage.java",
+    "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/ai/view/AiBridgeContextView.java",
+    "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/ai/view/AiProcessDiagnostics.java",
+    "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/ai/view/AiResourceViewService.java",
+    "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/apikey/ApiKeyAiBridgeGuard.java",
+    "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/apikey/ApiKeyProcessAuthorization.java",
+    "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/apikey/ApiKeyQueryScopes.java",
+    "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/apikey/ApiKeyTargetResolver.java",
+    "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiAliasServiceChange.java",
+    "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiContainerNetworkChange.java",
+    "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiCookieLifecycleWitness.java",
+    "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiCreatePorts.java",
+    "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiExternalServiceChange.java",
+    "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiHostLifecycleChange.java",
+    "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiHostMetadataChange.java",
+    "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiLoadBalancerCreateChange.java",
+    "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiNamedServiceLinks.java",
+    "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiProjectMetadataChange.java",
+    "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiRegistryLifecycleChange.java",
+    "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiRegistryRemovalChange.java",
+    "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiResourceChangeDescriptor.java",
+    "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiResourceChangeDomain.java",
+    "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiResourceChangePlanResourceManager.java",
+    "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiResourceChangePlanService.java",
+    "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiResourceChangePlanStore.java",
+    "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiResourceChangeProcessObserver.java",
+    "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiServiceCreateChange.java",
+    "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiServiceUpgradeLifecycleChange.java",
+    "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiStackGroupChange.java",
+    "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiStackUpgradeLifecycleChange.java",
+    "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiVolumeCreateChange.java",
+    "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/integration/internal/rancher/TokenAuthLookup.java",
+    "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/projects/ProjectAccessService.java",
+    "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/projects/ProjectResourceManager.java",
+    "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/upgrade/AiServiceUpgradePlanInputHandler.java",
+    "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/upgrade/AiServiceUpgradePlanResourceManager.java",
+    "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/upgrade/AiServiceUpgradePlanService.java",
+    "code/iaas/logic/src/main/java/io/cattle/platform/process/driver/DriverServiceRemove.java",
+    "code/iaas/logic/src/main/java/io/cattle/platform/process/lock/InstancePortsLock.java",
+    "code/iaas/model/src/main/java/io/cattle/platform/core/constants/PortConstants.java",
+    "code/iaas/model/src/main/java/io/cattle/platform/core/dao/HostDao.java",
+    "code/iaas/model/src/main/java/io/cattle/platform/core/dao/ServiceDao.java",
+    "code/iaas/model/src/main/java/io/cattle/platform/core/dao/VolumeDao.java",
+    "code/iaas/model/src/main/java/io/cattle/platform/core/dao/impl/AccountDaoImpl.java",
+    "code/iaas/model/src/main/java/io/cattle/platform/core/dao/impl/HostDaoImpl.java",
+    "code/iaas/model/src/main/java/io/cattle/platform/core/dao/impl/ServiceDaoImpl.java",
+    "code/iaas/model/src/main/java/io/cattle/platform/core/dao/impl/VolumeDaoImpl.java",
+    "code/iaas/service-discovery/api/src/main/java/io/cattle/platform/servicediscovery/api/action/SetServiceLinksActionHandler.java",
+    "code/iaas/service-discovery/api/src/main/java/io/cattle/platform/servicediscovery/api/dao/ServiceConsumeMapDao.java",
+    "code/iaas/service-discovery/api/src/main/java/io/cattle/platform/servicediscovery/api/filter/AiServiceUpgradePersistence.java",
+    "code/iaas/service-discovery/api/src/main/java/io/cattle/platform/servicediscovery/api/filter/ServiceUpgradeValidationFilter.java",
+    "code/iaas/service-discovery/api/src/main/java/io/cattle/platform/servicediscovery/api/filter/StackValidationFilter.java",
+    "code/iaas/service-discovery/api/src/main/java/io/cattle/platform/servicediscovery/api/lock/ServiceDiscoveryServiceSetLinksLock.java",
+    "code/iaas/service-discovery/api/src/main/java/io/cattle/platform/servicediscovery/api/service/ServiceDiscoveryApiService.java",
+    "code/iaas/service-discovery/api/src/main/java/io/cattle/platform/servicediscovery/api/service/ServiceUpgradeValidation.java",
+    "code/iaas/service-discovery/api/src/main/java/io/cattle/platform/servicediscovery/api/service/impl/ServiceDiscoveryApiServiceImpl.java",
+    "code/iaas/service-discovery/server/src/main/java/io/cattle/platform/servicediscovery/dao/impl/ServiceConsumeMapDaoImpl.java",
+    "code/iaas/service-discovery/server/src/main/java/io/cattle/platform/servicediscovery/process/LoadBalancerServiceCreatePostListener.java",
+    "code/implementation/docker/api/src/main/java/io/cattle/platform/docker/api/ContainerLogsActionHandler.java",
+    "code/packaging/app-config/src/main/java/io/cattle/platform/app/IaasApiConfig.java",
+    "code/packaging/app-config/src/main/java/io/cattle/platform/app/SystemServicesConfig.java"
+  ],
+  "currentSourceRoots": [
+    "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiResourceChangePlanService.java"
+  ],
+  "currentRoots": 1,
+  "carriedSourceRoots": 93,
+  "packagedRootPlan": [
+    {
+      "source": "code/framework/api/src/main/java/io/cattle/platform/api/auth/ApiAuditPayload.java",
+      "class": "io.cattle.platform.api.auth.ApiAuditPayload",
+      "classification": "PUBLISHED_BASELINE_CARRY_PENDING_BYTE_COMPARISON"
+    },
+    {
+      "source": "code/framework/api/src/main/java/io/cattle/platform/api/auth/ApiContainerLogsRead.java",
+      "class": "io.cattle.platform.api.auth.ApiContainerLogsRead",
+      "classification": "PUBLISHED_BASELINE_CARRY_PENDING_BYTE_COMPARISON"
+    },
+    {
+      "source": "code/framework/api/src/main/java/io/cattle/platform/api/auth/ApiKeyAuditSink.java",
+      "class": "io.cattle.platform.api.auth.ApiKeyAuditSink",
+      "classification": "PUBLISHED_BASELINE_CARRY_PENDING_BYTE_COMPARISON"
+    },
+    {
+      "source": "code/framework/api/src/main/java/io/cattle/platform/api/auth/ClientToolAuditEvent.java",
+      "class": "io.cattle.platform.api.auth.ClientToolAuditEvent",
+      "classification": "PUBLISHED_BASELINE_CARRY_PENDING_BYTE_COMPARISON"
+    },
+    {
+      "source": "code/framework/auditing/src/main/java/io/cattle/platform/iaas/api/auditing/AuditLogKeySelector.java",
+      "class": "io.cattle.platform.iaas.api.auditing.AuditLogKeySelector",
+      "classification": "PUBLISHED_BASELINE_CARRY_PENDING_BYTE_COMPARISON"
+    },
+    {
+      "source": "code/framework/auditing/src/main/java/io/cattle/platform/iaas/api/auditing/AuditServiceImpl.java",
+      "class": "io.cattle.platform.iaas.api.auditing.AuditServiceImpl",
+      "classification": "PUBLISHED_BASELINE_CARRY_PENDING_BYTE_COMPARISON"
+    },
+    {
+      "source": "code/framework/engine/src/main/java/io/cattle/platform/engine/manager/impl/DefaultProcessManager.java",
+      "class": "io.cattle.platform.engine.manager.impl.DefaultProcessManager",
+      "classification": "PUBLISHED_BASELINE_CARRY_PENDING_BYTE_COMPARISON"
+    },
+    {
+      "source": "code/framework/engine/src/main/java/io/cattle/platform/engine/process/LaunchConfiguration.java",
+      "class": "io.cattle.platform.engine.process.LaunchConfiguration",
+      "classification": "PUBLISHED_BASELINE_CARRY_PENDING_BYTE_COMPARISON"
+    },
+    {
+      "source": "code/framework/engine/src/main/java/io/cattle/platform/engine/process/ProcessAuthorization.java",
+      "class": "io.cattle.platform.engine.process.ProcessAuthorization",
+      "classification": "PUBLISHED_BASELINE_CARRY_PENDING_BYTE_COMPARISON"
+    },
+    {
+      "source": "code/framework/engine/src/main/java/io/cattle/platform/engine/process/ProcessAuthorizationHook.java",
+      "class": "io.cattle.platform.engine.process.ProcessAuthorizationHook",
+      "classification": "PUBLISHED_BASELINE_CARRY_PENDING_BYTE_COMPARISON"
+    },
+    {
+      "source": "code/framework/engine/src/main/java/io/cattle/platform/engine/process/impl/DefaultProcessInstanceImpl.java",
+      "class": "io.cattle.platform.engine.process.impl.DefaultProcessInstanceImpl",
+      "classification": "PUBLISHED_BASELINE_CARRY_PENDING_BYTE_COMPARISON"
+    },
+    {
+      "source": "code/framework/lock/src/main/java/io/cattle/platform/lock/Lock.java",
+      "class": "io.cattle.platform.lock.Lock",
+      "classification": "PUBLISHED_BASELINE_CARRY_PENDING_BYTE_COMPARISON"
+    },
+    {
+      "source": "code/framework/lock/src/main/java/io/cattle/platform/lock/provider/impl/StandardLock.java",
+      "class": "io.cattle.platform.lock.provider.impl.StandardLock",
+      "classification": "PUBLISHED_BASELINE_CARRY_PENDING_BYTE_COMPARISON"
+    },
+    {
+      "source": "code/framework/object/src/main/java/io/cattle/platform/object/impl/AbstractObjectManager.java",
+      "class": "io.cattle.platform.object.impl.AbstractObjectManager",
+      "classification": "PUBLISHED_BASELINE_CARRY_PENDING_BYTE_COMPARISON"
+    },
+    {
+      "source": "code/iaas/allocator/src/main/java/io/cattle/platform/allocator/lock/AllocateConstraintLock.java",
+      "class": "io.cattle.platform.allocator.lock.AllocateConstraintLock",
+      "classification": "PUBLISHED_BASELINE_CARRY_PENDING_BYTE_COMPARISON"
+    },
+    {
+      "source": "code/iaas/api-logic/src/main/java/io/cattle/platform/iaas/api/filter/instance/InstancePortsValidationFilter.java",
+      "class": "io.cattle.platform.iaas.api.filter.instance.InstancePortsValidationFilter",
+      "classification": "PUBLISHED_BASELINE_CARRY_PENDING_BYTE_COMPARISON"
+    },
+    {
+      "source": "code/iaas/api-logic/src/main/java/io/cattle/platform/iaas/api/filter/port/PortUpdateValidationFilter.java",
+      "class": "io.cattle.platform.iaas.api.filter.port.PortUpdateValidationFilter",
+      "classification": "PUBLISHED_BASELINE_CARRY_PENDING_BYTE_COMPARISON"
+    },
+    {
+      "source": "code/iaas/api-logic/src/main/java/io/cattle/platform/iaas/api/filter/registry/RegistryCredentialReferenceGuard.java",
+      "class": "io.cattle.platform.iaas.api.filter.registry.RegistryCredentialReferenceGuard",
+      "classification": "PUBLISHED_BASELINE_CARRY_PENDING_BYTE_COMPARISON"
+    },
+    {
+      "source": "code/iaas/api-logic/src/main/java/io/cattle/platform/iaas/api/port/InstanceCreatePortValidation.java",
+      "class": "io.cattle.platform.iaas.api.port.InstanceCreatePortValidation",
+      "classification": "PUBLISHED_BASELINE_CARRY_PENDING_BYTE_COMPARISON"
+    },
+    {
+      "source": "code/iaas/api-logic/src/main/java/io/cattle/platform/iaas/api/port/PortPreflightDaoImpl.java",
+      "class": "io.cattle.platform.iaas.api.port.PortPreflightDaoImpl",
+      "classification": "PUBLISHED_BASELINE_CARRY_PENDING_BYTE_COMPARISON"
+    },
+    {
+      "source": "code/iaas/api-logic/src/main/java/io/cattle/platform/iaas/api/port/PortUpdateService.java",
+      "class": "io.cattle.platform.iaas.api.port.PortUpdateService",
+      "classification": "PUBLISHED_BASELINE_CARRY_PENDING_BYTE_COMPARISON"
+    },
+    {
+      "source": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/ai/AiToolCallEventService.java",
+      "class": "io.cattle.platform.iaas.api.auth.ai.AiToolCallEventService",
+      "classification": "PUBLISHED_BASELINE_CARRY_PENDING_BYTE_COMPARISON"
+    },
+    {
+      "source": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/ai/audit/AiAuditQueryInputHandler.java",
+      "class": "io.cattle.platform.iaas.api.auth.ai.audit.AiAuditQueryInputHandler",
+      "classification": "PUBLISHED_BASELINE_CARRY_PENDING_BYTE_COMPARISON"
+    },
+    {
+      "source": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/ai/audit/AiAuditQueryService.java",
+      "class": "io.cattle.platform.iaas.api.auth.ai.audit.AiAuditQueryService",
+      "classification": "PUBLISHED_BASELINE_CARRY_PENDING_BYTE_COMPARISON"
+    },
+    {
+      "source": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/ai/catalog/AiCatalogLaunchAccess.java",
+      "class": "io.cattle.platform.iaas.api.auth.ai.catalog.AiCatalogLaunchAccess",
+      "classification": "PUBLISHED_BASELINE_CARRY_PENDING_BYTE_COMPARISON"
+    },
+    {
+      "source": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/ai/catalog/AiCatalogLaunchDelegation.java",
+      "class": "io.cattle.platform.iaas.api.auth.ai.catalog.AiCatalogLaunchDelegation",
+      "classification": "PUBLISHED_BASELINE_CARRY_PENDING_BYTE_COMPARISON"
+    },
+    {
+      "source": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/ai/catalog/AiCatalogLaunchPlanResourceManager.java",
+      "class": "io.cattle.platform.iaas.api.auth.ai.catalog.AiCatalogLaunchPlanResourceManager",
+      "classification": "PUBLISHED_BASELINE_CARRY_PENDING_BYTE_COMPARISON"
+    },
+    {
+      "source": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/ai/catalog/AiCatalogLaunchPlanService.java",
+      "class": "io.cattle.platform.iaas.api.auth.ai.catalog.AiCatalogLaunchPlanService",
+      "classification": "PUBLISHED_BASELINE_CARRY_PENDING_BYTE_COMPARISON"
+    },
+    {
+      "source": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/ai/logs/AiContainerLogsInputHandler.java",
+      "class": "io.cattle.platform.iaas.api.auth.ai.logs.AiContainerLogsInputHandler",
+      "classification": "PUBLISHED_BASELINE_CARRY_PENDING_BYTE_COMPARISON"
+    },
+    {
+      "source": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/ai/logs/AiContainerLogsRunner.java",
+      "class": "io.cattle.platform.iaas.api.auth.ai.logs.AiContainerLogsRunner",
+      "classification": "PUBLISHED_BASELINE_CARRY_PENDING_BYTE_COMPARISON"
+    },
+    {
+      "source": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/ai/logs/AiContainerLogsService.java",
+      "class": "io.cattle.platform.iaas.api.auth.ai.logs.AiContainerLogsService",
+      "classification": "PUBLISHED_BASELINE_CARRY_PENDING_BYTE_COMPARISON"
+    },
+    {
+      "source": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/ai/logs/AiContainerLogsTicket.java",
+      "class": "io.cattle.platform.iaas.api.auth.ai.logs.AiContainerLogsTicket",
+      "classification": "PUBLISHED_BASELINE_CARRY_PENDING_BYTE_COMPARISON"
+    },
+    {
+      "source": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/ai/view/AiApiKeyReadView.java",
+      "class": "io.cattle.platform.iaas.api.auth.ai.view.AiApiKeyReadView",
+      "classification": "PUBLISHED_BASELINE_CARRY_PENDING_BYTE_COMPARISON"
+    },
+    {
+      "source": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/ai/view/AiAuditSourcePage.java",
+      "class": "io.cattle.platform.iaas.api.auth.ai.view.AiAuditSourcePage",
+      "classification": "PUBLISHED_BASELINE_CARRY_PENDING_BYTE_COMPARISON"
+    },
+    {
+      "source": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/ai/view/AiBridgeContextView.java",
+      "class": "io.cattle.platform.iaas.api.auth.ai.view.AiBridgeContextView",
+      "classification": "PUBLISHED_BASELINE_CARRY_PENDING_BYTE_COMPARISON"
+    },
+    {
+      "source": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/ai/view/AiProcessDiagnostics.java",
+      "class": "io.cattle.platform.iaas.api.auth.ai.view.AiProcessDiagnostics",
+      "classification": "PUBLISHED_BASELINE_CARRY_PENDING_BYTE_COMPARISON"
+    },
+    {
+      "source": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/ai/view/AiResourceViewService.java",
+      "class": "io.cattle.platform.iaas.api.auth.ai.view.AiResourceViewService",
+      "classification": "PUBLISHED_BASELINE_CARRY_PENDING_BYTE_COMPARISON"
+    },
+    {
+      "source": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/apikey/ApiKeyAiBridgeGuard.java",
+      "class": "io.cattle.platform.iaas.api.auth.apikey.ApiKeyAiBridgeGuard",
+      "classification": "PUBLISHED_BASELINE_CARRY_PENDING_BYTE_COMPARISON"
+    },
+    {
+      "source": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/apikey/ApiKeyProcessAuthorization.java",
+      "class": "io.cattle.platform.iaas.api.auth.apikey.ApiKeyProcessAuthorization",
+      "classification": "PUBLISHED_BASELINE_CARRY_PENDING_BYTE_COMPARISON"
+    },
+    {
+      "source": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/apikey/ApiKeyQueryScopes.java",
+      "class": "io.cattle.platform.iaas.api.auth.apikey.ApiKeyQueryScopes",
+      "classification": "PUBLISHED_BASELINE_CARRY_PENDING_BYTE_COMPARISON"
+    },
+    {
+      "source": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/apikey/ApiKeyTargetResolver.java",
+      "class": "io.cattle.platform.iaas.api.auth.apikey.ApiKeyTargetResolver",
+      "classification": "PUBLISHED_BASELINE_CARRY_PENDING_BYTE_COMPARISON"
+    },
+    {
+      "source": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiAliasServiceChange.java",
+      "class": "io.cattle.platform.iaas.api.auth.change.AiAliasServiceChange",
+      "classification": "PUBLISHED_BASELINE_CARRY_PENDING_BYTE_COMPARISON"
+    },
+    {
+      "source": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiContainerNetworkChange.java",
+      "class": "io.cattle.platform.iaas.api.auth.change.AiContainerNetworkChange",
+      "classification": "PUBLISHED_BASELINE_CARRY_PENDING_BYTE_COMPARISON"
+    },
+    {
+      "source": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiCookieLifecycleWitness.java",
+      "class": "io.cattle.platform.iaas.api.auth.change.AiCookieLifecycleWitness",
+      "classification": "PUBLISHED_BASELINE_CARRY_PENDING_BYTE_COMPARISON"
+    },
+    {
+      "source": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiCreatePorts.java",
+      "class": "io.cattle.platform.iaas.api.auth.change.AiCreatePorts",
+      "classification": "PUBLISHED_BASELINE_CARRY_PENDING_BYTE_COMPARISON"
+    },
+    {
+      "source": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiExternalServiceChange.java",
+      "class": "io.cattle.platform.iaas.api.auth.change.AiExternalServiceChange",
+      "classification": "PUBLISHED_BASELINE_CARRY_PENDING_BYTE_COMPARISON"
+    },
+    {
+      "source": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiHostLifecycleChange.java",
+      "class": "io.cattle.platform.iaas.api.auth.change.AiHostLifecycleChange",
+      "classification": "PUBLISHED_BASELINE_CARRY_PENDING_BYTE_COMPARISON"
+    },
+    {
+      "source": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiHostMetadataChange.java",
+      "class": "io.cattle.platform.iaas.api.auth.change.AiHostMetadataChange",
+      "classification": "PUBLISHED_BASELINE_CARRY_PENDING_BYTE_COMPARISON"
+    },
+    {
+      "source": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiLoadBalancerCreateChange.java",
+      "class": "io.cattle.platform.iaas.api.auth.change.AiLoadBalancerCreateChange",
+      "classification": "PUBLISHED_BASELINE_CARRY_PENDING_BYTE_COMPARISON"
+    },
+    {
+      "source": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiNamedServiceLinks.java",
+      "class": "io.cattle.platform.iaas.api.auth.change.AiNamedServiceLinks",
+      "classification": "PUBLISHED_BASELINE_CARRY_PENDING_BYTE_COMPARISON"
+    },
+    {
+      "source": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiProjectMetadataChange.java",
+      "class": "io.cattle.platform.iaas.api.auth.change.AiProjectMetadataChange",
+      "classification": "PUBLISHED_BASELINE_CARRY_PENDING_BYTE_COMPARISON"
+    },
+    {
+      "source": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiRegistryLifecycleChange.java",
+      "class": "io.cattle.platform.iaas.api.auth.change.AiRegistryLifecycleChange",
+      "classification": "PUBLISHED_BASELINE_CARRY_PENDING_BYTE_COMPARISON"
+    },
+    {
+      "source": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiRegistryRemovalChange.java",
+      "class": "io.cattle.platform.iaas.api.auth.change.AiRegistryRemovalChange",
+      "classification": "PUBLISHED_BASELINE_CARRY_PENDING_BYTE_COMPARISON"
+    },
+    {
+      "source": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiResourceChangeDescriptor.java",
+      "class": "io.cattle.platform.iaas.api.auth.change.AiResourceChangeDescriptor",
+      "classification": "PUBLISHED_BASELINE_CARRY_PENDING_BYTE_COMPARISON"
+    },
+    {
+      "source": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiResourceChangeDomain.java",
+      "class": "io.cattle.platform.iaas.api.auth.change.AiResourceChangeDomain",
+      "classification": "PUBLISHED_BASELINE_CARRY_PENDING_BYTE_COMPARISON"
+    },
+    {
+      "source": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiResourceChangePlanResourceManager.java",
+      "class": "io.cattle.platform.iaas.api.auth.change.AiResourceChangePlanResourceManager",
+      "classification": "PUBLISHED_BASELINE_CARRY_PENDING_BYTE_COMPARISON"
+    },
+    {
+      "source": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiResourceChangePlanService.java",
+      "class": "io.cattle.platform.iaas.api.auth.change.AiResourceChangePlanService",
+      "classification": "CURRENT"
+    },
+    {
+      "source": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiResourceChangePlanStore.java",
+      "class": "io.cattle.platform.iaas.api.auth.change.AiResourceChangePlanStore",
+      "classification": "PUBLISHED_BASELINE_CARRY_PENDING_BYTE_COMPARISON"
+    },
+    {
+      "source": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiResourceChangeProcessObserver.java",
+      "class": "io.cattle.platform.iaas.api.auth.change.AiResourceChangeProcessObserver",
+      "classification": "PUBLISHED_BASELINE_CARRY_PENDING_BYTE_COMPARISON"
+    },
+    {
+      "source": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiServiceCreateChange.java",
+      "class": "io.cattle.platform.iaas.api.auth.change.AiServiceCreateChange",
+      "classification": "PUBLISHED_BASELINE_CARRY_PENDING_BYTE_COMPARISON"
+    },
+    {
+      "source": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiServiceUpgradeLifecycleChange.java",
+      "class": "io.cattle.platform.iaas.api.auth.change.AiServiceUpgradeLifecycleChange",
+      "classification": "PUBLISHED_BASELINE_CARRY_PENDING_BYTE_COMPARISON"
+    },
+    {
+      "source": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiStackGroupChange.java",
+      "class": "io.cattle.platform.iaas.api.auth.change.AiStackGroupChange",
+      "classification": "PUBLISHED_BASELINE_CARRY_PENDING_BYTE_COMPARISON"
+    },
+    {
+      "source": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiStackUpgradeLifecycleChange.java",
+      "class": "io.cattle.platform.iaas.api.auth.change.AiStackUpgradeLifecycleChange",
+      "classification": "PUBLISHED_BASELINE_CARRY_PENDING_BYTE_COMPARISON"
+    },
+    {
+      "source": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiVolumeCreateChange.java",
+      "class": "io.cattle.platform.iaas.api.auth.change.AiVolumeCreateChange",
+      "classification": "PUBLISHED_BASELINE_CARRY_PENDING_BYTE_COMPARISON"
+    },
+    {
+      "source": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/integration/internal/rancher/TokenAuthLookup.java",
+      "class": "io.cattle.platform.iaas.api.auth.integration.internal.rancher.TokenAuthLookup",
+      "classification": "PUBLISHED_BASELINE_CARRY_PENDING_BYTE_COMPARISON"
+    },
+    {
+      "source": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/projects/ProjectAccessService.java",
+      "class": "io.cattle.platform.iaas.api.auth.projects.ProjectAccessService",
+      "classification": "PUBLISHED_BASELINE_CARRY_PENDING_BYTE_COMPARISON"
+    },
+    {
+      "source": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/projects/ProjectResourceManager.java",
+      "class": "io.cattle.platform.iaas.api.auth.projects.ProjectResourceManager",
+      "classification": "PUBLISHED_BASELINE_CARRY_PENDING_BYTE_COMPARISON"
+    },
+    {
+      "source": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/upgrade/AiServiceUpgradePlanInputHandler.java",
+      "class": "io.cattle.platform.iaas.api.auth.upgrade.AiServiceUpgradePlanInputHandler",
+      "classification": "PUBLISHED_BASELINE_CARRY_PENDING_BYTE_COMPARISON"
+    },
+    {
+      "source": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/upgrade/AiServiceUpgradePlanResourceManager.java",
+      "class": "io.cattle.platform.iaas.api.auth.upgrade.AiServiceUpgradePlanResourceManager",
+      "classification": "PUBLISHED_BASELINE_CARRY_PENDING_BYTE_COMPARISON"
+    },
+    {
+      "source": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/upgrade/AiServiceUpgradePlanService.java",
+      "class": "io.cattle.platform.iaas.api.auth.upgrade.AiServiceUpgradePlanService",
+      "classification": "PUBLISHED_BASELINE_CARRY_PENDING_BYTE_COMPARISON"
+    },
+    {
+      "source": "code/iaas/logic/src/main/java/io/cattle/platform/process/driver/DriverServiceRemove.java",
+      "class": "io.cattle.platform.process.driver.DriverServiceRemove",
+      "classification": "PUBLISHED_BASELINE_CARRY_PENDING_BYTE_COMPARISON"
+    },
+    {
+      "source": "code/iaas/logic/src/main/java/io/cattle/platform/process/lock/InstancePortsLock.java",
+      "class": "io.cattle.platform.process.lock.InstancePortsLock",
+      "classification": "PUBLISHED_BASELINE_CARRY_PENDING_BYTE_COMPARISON"
+    },
+    {
+      "source": "code/iaas/model/src/main/java/io/cattle/platform/core/constants/PortConstants.java",
+      "class": "io.cattle.platform.core.constants.PortConstants",
+      "classification": "PUBLISHED_BASELINE_CARRY_PENDING_BYTE_COMPARISON"
+    },
+    {
+      "source": "code/iaas/model/src/main/java/io/cattle/platform/core/dao/HostDao.java",
+      "class": "io.cattle.platform.core.dao.HostDao",
+      "classification": "PUBLISHED_BASELINE_CARRY_PENDING_BYTE_COMPARISON"
+    },
+    {
+      "source": "code/iaas/model/src/main/java/io/cattle/platform/core/dao/ServiceDao.java",
+      "class": "io.cattle.platform.core.dao.ServiceDao",
+      "classification": "PUBLISHED_BASELINE_CARRY_PENDING_BYTE_COMPARISON"
+    },
+    {
+      "source": "code/iaas/model/src/main/java/io/cattle/platform/core/dao/VolumeDao.java",
+      "class": "io.cattle.platform.core.dao.VolumeDao",
+      "classification": "PUBLISHED_BASELINE_CARRY_PENDING_BYTE_COMPARISON"
+    },
+    {
+      "source": "code/iaas/model/src/main/java/io/cattle/platform/core/dao/impl/AccountDaoImpl.java",
+      "class": "io.cattle.platform.core.dao.impl.AccountDaoImpl",
+      "classification": "PUBLISHED_BASELINE_CARRY_PENDING_BYTE_COMPARISON"
+    },
+    {
+      "source": "code/iaas/model/src/main/java/io/cattle/platform/core/dao/impl/HostDaoImpl.java",
+      "class": "io.cattle.platform.core.dao.impl.HostDaoImpl",
+      "classification": "PUBLISHED_BASELINE_CARRY_PENDING_BYTE_COMPARISON"
+    },
+    {
+      "source": "code/iaas/model/src/main/java/io/cattle/platform/core/dao/impl/ServiceDaoImpl.java",
+      "class": "io.cattle.platform.core.dao.impl.ServiceDaoImpl",
+      "classification": "PUBLISHED_BASELINE_CARRY_PENDING_BYTE_COMPARISON"
+    },
+    {
+      "source": "code/iaas/model/src/main/java/io/cattle/platform/core/dao/impl/VolumeDaoImpl.java",
+      "class": "io.cattle.platform.core.dao.impl.VolumeDaoImpl",
+      "classification": "PUBLISHED_BASELINE_CARRY_PENDING_BYTE_COMPARISON"
+    },
+    {
+      "source": "code/iaas/service-discovery/api/src/main/java/io/cattle/platform/servicediscovery/api/action/SetServiceLinksActionHandler.java",
+      "class": "io.cattle.platform.servicediscovery.api.action.SetServiceLinksActionHandler",
+      "classification": "PUBLISHED_BASELINE_CARRY_PENDING_BYTE_COMPARISON"
+    },
+    {
+      "source": "code/iaas/service-discovery/api/src/main/java/io/cattle/platform/servicediscovery/api/dao/ServiceConsumeMapDao.java",
+      "class": "io.cattle.platform.servicediscovery.api.dao.ServiceConsumeMapDao",
+      "classification": "PUBLISHED_BASELINE_CARRY_PENDING_BYTE_COMPARISON"
+    },
+    {
+      "source": "code/iaas/service-discovery/api/src/main/java/io/cattle/platform/servicediscovery/api/filter/AiServiceUpgradePersistence.java",
+      "class": "io.cattle.platform.servicediscovery.api.filter.AiServiceUpgradePersistence",
+      "classification": "PUBLISHED_BASELINE_CARRY_PENDING_BYTE_COMPARISON"
+    },
+    {
+      "source": "code/iaas/service-discovery/api/src/main/java/io/cattle/platform/servicediscovery/api/filter/ServiceUpgradeValidationFilter.java",
+      "class": "io.cattle.platform.servicediscovery.api.filter.ServiceUpgradeValidationFilter",
+      "classification": "PUBLISHED_BASELINE_CARRY_PENDING_BYTE_COMPARISON"
+    },
+    {
+      "source": "code/iaas/service-discovery/api/src/main/java/io/cattle/platform/servicediscovery/api/filter/StackValidationFilter.java",
+      "class": "io.cattle.platform.servicediscovery.api.filter.StackValidationFilter",
+      "classification": "PUBLISHED_BASELINE_CARRY_PENDING_BYTE_COMPARISON"
+    },
+    {
+      "source": "code/iaas/service-discovery/api/src/main/java/io/cattle/platform/servicediscovery/api/lock/ServiceDiscoveryServiceSetLinksLock.java",
+      "class": "io.cattle.platform.servicediscovery.api.lock.ServiceDiscoveryServiceSetLinksLock",
+      "classification": "PUBLISHED_BASELINE_CARRY_PENDING_BYTE_COMPARISON"
+    },
+    {
+      "source": "code/iaas/service-discovery/api/src/main/java/io/cattle/platform/servicediscovery/api/service/ServiceDiscoveryApiService.java",
+      "class": "io.cattle.platform.servicediscovery.api.service.ServiceDiscoveryApiService",
+      "classification": "PUBLISHED_BASELINE_CARRY_PENDING_BYTE_COMPARISON"
+    },
+    {
+      "source": "code/iaas/service-discovery/api/src/main/java/io/cattle/platform/servicediscovery/api/service/ServiceUpgradeValidation.java",
+      "class": "io.cattle.platform.servicediscovery.api.service.ServiceUpgradeValidation",
+      "classification": "PUBLISHED_BASELINE_CARRY_PENDING_BYTE_COMPARISON"
+    },
+    {
+      "source": "code/iaas/service-discovery/api/src/main/java/io/cattle/platform/servicediscovery/api/service/impl/ServiceDiscoveryApiServiceImpl.java",
+      "class": "io.cattle.platform.servicediscovery.api.service.impl.ServiceDiscoveryApiServiceImpl",
+      "classification": "PUBLISHED_BASELINE_CARRY_PENDING_BYTE_COMPARISON"
+    },
+    {
+      "source": "code/iaas/service-discovery/server/src/main/java/io/cattle/platform/servicediscovery/dao/impl/ServiceConsumeMapDaoImpl.java",
+      "class": "io.cattle.platform.servicediscovery.dao.impl.ServiceConsumeMapDaoImpl",
+      "classification": "PUBLISHED_BASELINE_CARRY_PENDING_BYTE_COMPARISON"
+    },
+    {
+      "source": "code/iaas/service-discovery/server/src/main/java/io/cattle/platform/servicediscovery/process/LoadBalancerServiceCreatePostListener.java",
+      "class": "io.cattle.platform.servicediscovery.process.LoadBalancerServiceCreatePostListener",
+      "classification": "PUBLISHED_BASELINE_CARRY_PENDING_BYTE_COMPARISON"
+    },
+    {
+      "source": "code/implementation/docker/api/src/main/java/io/cattle/platform/docker/api/ContainerLogsActionHandler.java",
+      "class": "io.cattle.platform.docker.api.ContainerLogsActionHandler",
+      "classification": "PUBLISHED_BASELINE_CARRY_PENDING_BYTE_COMPARISON"
+    },
+    {
+      "source": "code/packaging/app-config/src/main/java/io/cattle/platform/app/IaasApiConfig.java",
+      "class": "io.cattle.platform.app.IaasApiConfig",
+      "classification": "PUBLISHED_BASELINE_CARRY_PENDING_BYTE_COMPARISON"
+    },
+    {
+      "source": "code/packaging/app-config/src/main/java/io/cattle/platform/app/SystemServicesConfig.java",
+      "class": "io.cattle.platform.app.SystemServicesConfig",
+      "classification": "PUBLISHED_BASELINE_CARRY_PENDING_BYTE_COMPARISON"
+    }
+  ],
+  "roleFieldDelta": [],
+  "typedBaseSchemaDelta": {},
+  "typedFieldDelta": [],
+  "dependencyDelta": [],
+  "retainedStartupMetadata": {
+    "sourceByteEquality": [
+      {
+        "path": "resources/content/schema/admin/admin-auth.json",
+        "published390GitLfSha256": "7d278db2177446b9b334a7c7dfa1b57c0f395a1a6b7fadd7b622df3f69daab5e",
+        "current391GitLfSha256": "7d278db2177446b9b334a7c7dfa1b57c0f395a1a6b7fadd7b622df3f69daab5e",
+        "byteExact": true
+      },
+      {
+        "path": "resources/content/schema/project/project-auth.json",
+        "published390GitLfSha256": "88d7af6fb4ed2bd547b353fd0b2739136db262c5168b2eb05a2a969aa062c30d",
+        "current391GitLfSha256": "88d7af6fb4ed2bd547b353fd0b2739136db262c5168b2eb05a2a969aa062c30d",
+        "byteExact": true
+      },
+      {
+        "path": "resources/content/schema/user/user-auth.json",
+        "published390GitLfSha256": "fdb278d2afac65c2d30ed07f588ccc0d9cf9e4ec7e653c0b7050d8445e0071c5",
+        "current391GitLfSha256": "fdb278d2afac65c2d30ed07f588ccc0d9cf9e4ec7e653c0b7050d8445e0071c5",
+        "byteExact": true
+      },
+      {
+        "path": "resources/content/schema/base/aiServiceUpgradePlan.json",
+        "published390GitLfSha256": "fe4b6a9a421fb60fea00d94861046524810c5ed4f0365b265f18fab81284a118",
+        "current391GitLfSha256": "fe4b6a9a421fb60fea00d94861046524810c5ed4f0365b265f18fab81284a118",
+        "byteExact": true
+      }
+    ],
+    "sixRoleInputs": [
+      {
+        "path": "resources/content/schema/admin/admin-auth.json",
+        "pointer": "/authorize/aiServiceUpgradePlan.command",
+        "before": null,
+        "after": "cr"
+      },
+      {
+        "path": "resources/content/schema/admin/admin-auth.json",
+        "pointer": "/authorize/aiServiceUpgradePlan.entryPoint",
+        "before": null,
+        "after": "cr"
+      },
+      {
+        "path": "resources/content/schema/project/project-auth.json",
+        "pointer": "/authorize/aiServiceUpgradePlan.command",
+        "before": null,
+        "after": "cr"
+      },
+      {
+        "path": "resources/content/schema/project/project-auth.json",
+        "pointer": "/authorize/aiServiceUpgradePlan.entryPoint",
+        "before": null,
+        "after": "cr"
+      },
+      {
+        "path": "resources/content/schema/user/user-auth.json",
+        "pointer": "/authorize/aiServiceUpgradePlan.command",
+        "before": null,
+        "after": "cr"
+      },
+      {
+        "path": "resources/content/schema/user/user-auth.json",
+        "pointer": "/authorize/aiServiceUpgradePlan.entryPoint",
+        "before": null,
+        "after": "cr"
+      }
+    ],
+    "twoBaseInputs": [
+      {
+        "path": "resources/content/schema/base/aiServiceUpgradePlan.json",
+        "pointer": "/resourceFields/command",
+        "before": null,
+        "after": {
+          "type": "array[string]",
+          "create": true,
+          "update": false,
+          "nullable": true
+        }
+      },
+      {
+        "path": "resources/content/schema/base/aiServiceUpgradePlan.json",
+        "pointer": "/resourceFields/entryPoint",
+        "before": null,
+        "after": {
+          "type": "array[string]",
+          "create": true,
+          "update": false,
+          "nullable": true
+        }
+      }
+    ],
+    "sixCompiledFieldsExpected": [
+      {
+        "role": "admin",
+        "type": "aiServiceUpgradePlan",
+        "field": "command",
+        "before": null,
+        "after": {
+          "type": "array[string]",
+          "description": null,
+          "create": true,
+          "update": false,
+          "nullable": true,
+          "readOnCreateOnly": false
+        }
+      },
+      {
+        "role": "admin",
+        "type": "aiServiceUpgradePlan",
+        "field": "entryPoint",
+        "before": null,
+        "after": {
+          "type": "array[string]",
+          "description": null,
+          "create": true,
+          "update": false,
+          "nullable": true,
+          "readOnCreateOnly": false
+        }
+      },
+      {
+        "role": "project",
+        "type": "aiServiceUpgradePlan",
+        "field": "command",
+        "before": null,
+        "after": {
+          "type": "array[string]",
+          "description": null,
+          "create": true,
+          "update": false,
+          "nullable": true,
+          "readOnCreateOnly": false
+        }
+      },
+      {
+        "role": "project",
+        "type": "aiServiceUpgradePlan",
+        "field": "entryPoint",
+        "before": null,
+        "after": {
+          "type": "array[string]",
+          "description": null,
+          "create": true,
+          "update": false,
+          "nullable": true,
+          "readOnCreateOnly": false
+        }
+      },
+      {
+        "role": "user",
+        "type": "aiServiceUpgradePlan",
+        "field": "command",
+        "before": null,
+        "after": {
+          "type": "array[string]",
+          "description": null,
+          "create": true,
+          "update": false,
+          "nullable": true,
+          "readOnCreateOnly": false
+        }
+      },
+      {
+        "role": "user",
+        "type": "aiServiceUpgradePlan",
+        "field": "entryPoint",
+        "before": null,
+        "after": {
+          "type": "array[string]",
+          "description": null,
+          "create": true,
+          "update": false,
+          "nullable": true,
+          "readOnCreateOnly": false
+        }
+      }
+    ],
+    "newCompiledProof": null,
+    "scope": "retained published390 semantics, not new391 deltas or compiled proof"
+  },
+  "frozenV1SourceSerFilesUnchanged": true,
+  "compiledRoleSchemaProof": "PENDING_NORMAL_CURRENT_CI",
+  "compiledClassHashes": null,
+  "artifactQualificationClaimed": false,
+  "runtimeAcceptanceClaimed": false,
+  "previousReviewManifest": "scripts/api-key-operation-review-0.183.391.json",
+  "previousReviewManifestSha256": "9b2909b9e089334f6b6dba580009d280de2a96c0481228e3203172505387b6a3",
+  "extractor": {
+    "basename": "refresh-integrated-operation-contract.py",
+    "sha256": "078ffe48881469fe5eb3cb43a15fa41b480fe70e11bd5f63102ded6b35a6d076",
+    "algorithm": "c03-source-inputs-v1"
+  }
+}
