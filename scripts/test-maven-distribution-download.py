@@ -33,7 +33,7 @@ def shell():
 
 def block(name):
     source = (REPO / name).read_text(encoding="utf-8")
-    match = re.search(r'(?ms)^    \(curl -fsSL .*?\n    echo "\$\{MAVEN_SHA512\}  /tmp/apache-maven.tar.gz" \| sha512sum -c - && \\\n', source)
+    match = re.search(r'(?m)^    \(curl -fsSL [^\n]* -o /tmp/apache-maven\.tar\.gz [^\n]*\n     curl [^\n]*\n    echo "\$\{MAVEN_SHA512\}  /tmp/apache-maven.tar.gz" \| sha512sum -c - && \\\n', source)
     if not match:
         raise AssertionError("Exact grouped download followed by checksum is required")
     return source, match[0].rsplit(" && \\", 1)[0]
@@ -81,6 +81,8 @@ sha512sum() {
                 source, command = block(name)
                 self.assertIn("ARG MAVEN_VERSION=" + VERSION + "\n", source)
                 self.assertIn("ARG MAVEN_SHA512=" + SHA512 + "\n", source)
+                self.assertNotIn("TEMURIN", command)
+                self.assertNotIn("jdk", command)
                 urls = re.findall(r'"(https://[^\"]+)"', command)
                 self.assertEqual([PRIMARY, ARCHIVE], [url.replace("${MAVEN_VERSION}", VERSION) for url in urls])
                 self.assertEqual(2, command.count("--retry 5 --retry-all-errors --retry-delay 2 --connect-timeout 10 --max-time 300"))
