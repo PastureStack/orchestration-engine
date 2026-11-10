@@ -2640,7 +2640,7 @@
     "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/apikey/ApiKeyTargetResolver.java"
   ],
   "currentRoots": 3,
-  "carriedSourceRoots": 91,
+  "carriedSourceRoots": 92,
   "packagedRootPlan": [
     {
       "source": "code/framework/api/src/main/java/io/cattle/platform/api/auth/ApiAuditPayload.java",
@@ -2831,6 +2831,11 @@
       "source": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/apikey/ApiKeyAiBridgeGuard.java",
       "class": "io.cattle.platform.iaas.api.auth.apikey.ApiKeyAiBridgeGuard",
       "classification": "PUBLISHED_BASELINE_CARRY_PENDING_BYTE_COMPARISON"
+    },
+    {
+      "source": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/apikey/ApiKeyPolicyEvaluator.java",
+      "class": "io.cattle.platform.iaas.api.auth.apikey.ApiKeyPolicyEvaluator",
+      "classification": "CURRENT"
     },
     {
       "source": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/apikey/ApiKeyProcessAuthorization.java",
