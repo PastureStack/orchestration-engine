@@ -27,7 +27,7 @@ ADD --checksum=sha256:0a7ea8a52834f9b3de0f11758924f80f7a6ebcbb4b02a55ba4f4575035
 ADD --checksum=sha256:780c308c47d8afcbb7d339f0023350e7cf60c1a37e9572a1f88774cc18f60526 https://security.ubuntu.com/ubuntu/pool/main/p/python3.14/python3.14_3.14.4-1ubuntu0.2_amd64.deb /tmp/python3.14.deb
 ADD --checksum=sha256:cad2456bf3cb57cb18d2c82b48b549e5b4ac6eee9b3e14e65334209387e3d0ae https://security.ubuntu.com/ubuntu/pool/universe/p/python3.14/python3.14-venv_3.14.4-1ubuntu0.2_amd64.deb /tmp/python3.14-venv.deb
 ADD --checksum=sha256:42d35340cc5b9ba78e818ddbff0c5b1c2b779de448a340fd1b989f5fa8670e1b https://files.pythonhosted.org/packages/c4/51/29046e48f693c54e5b7412216d447a1d8362c9653148d98c02cdf65fa733/certifi-2026.10.19-py3-none-any.whl /tmp/certifi-2026.10.19-py3-none-any.whl
-ADD --checksum=sha256:5b6326f1932cfd7be57130561dc78192f09ed9f58bfbe6606ed0c50510c3b6cd https://launchpadlibrarian.net/881832632/ca-certificates_20260816ubuntu0.26.04.1_all.deb /tmp/ca-certificates.deb
+ADD --checksum=sha256:a7e3bf769aec16ba21ca39cba180d6d311dafcbae68346a05f137c5cc26c9ca6 https://security.ubuntu.com/ubuntu/pool/main/c/ca-certificates/ca-certificates_20260816ubuntu0.26.04.2_all.deb /tmp/ca-certificates.deb
 ADD --checksum=sha256:2c418a61d7165d0cde01d9cb05ae025cc41fc75ef6d3f095996bd045ba0945dc https://security.ubuntu.com/ubuntu/pool/main/c/curl/curl_8.18.0-1ubuntu2.8_amd64.deb /tmp/curl.deb
 ADD --checksum=sha256:8db913e1fa5a694ca6ba7b828bd18c5204e6853ac07fe7ed9c6e1f94e3444d8e https://security.ubuntu.com/ubuntu/pool/main/c/curl/libcurl3t64-gnutls_8.18.0-1ubuntu2.8_amd64.deb /tmp/libcurl3t64-gnutls.deb
 ADD --checksum=sha256:7c0b37592f83a629cc22f0c98effa176da9edbd6d77b3f38184a9d0ddc5e0266 https://security.ubuntu.com/ubuntu/pool/main/c/curl/libcurl4t64_8.18.0-1ubuntu2.8_amd64.deb /tmp/libcurl4t64.deb
@@ -155,7 +155,7 @@ RUN set -eux; \
     done; \
     dpkg -i /tmp/curl.deb /tmp/libcurl3t64-gnutls.deb /tmp/libcurl4t64.deb; \
     dpkg -i /tmp/ca-certificates.deb; \
-    test "$(dpkg-query -W -f='${Version}' ca-certificates)" = 20260816ubuntu0.26.04.1; \
+    test "$(dpkg-query -W -f='${Version}' ca-certificates)" = 20260816ubuntu0.26.04.2; \
     bash /usr/local/bin/install-python-security-tools; \
     test "$(dpkg-query -W -f='${db:Status-Status}' libbrotli1)" = installed; \
     test "$(dpkg-deb -f /tmp/libbrotli1.deb Package)" = libbrotli1; \

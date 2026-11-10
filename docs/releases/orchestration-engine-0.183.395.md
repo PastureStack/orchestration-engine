@@ -13,9 +13,11 @@ Native actor, tenant, role and Key authorization are unchanged. Other resource
 name searches retain their database predicate; Registry address lookup is
 unchanged. There is no API/schema, dependency or persistence migration.
 
-The pinned CA package download uses its official Launchpad Librarian object.
-The package version and SHA256 remain unchanged; a mismatched response still
-fails the build. The original snapshot download returned invalid bytes.
+The builder uses the official ca-certificates 20260816ubuntu0.26.04.2 update
+(USN-9001-1), pinned to its official package SHA256. This fixes JKS keystore
+resynchronization; the superseded .1 archive could no longer be fetched
+reliably. TLS validation, package metadata checks and negative controls remain.
+See https://ubuntu.com/security/notices/USN-9001-1.
 
 ## Validation boundary
 
