@@ -1,30 +1,37 @@
 # Compatibility Contract
 
-## Engine 0.183.392 source candidate
+## Engine 0.183.392 published
 
-Typed Registry removal is an empty native DELETE of an inactive Registry after
-human review. Exact parent identity, the full non-sensitive credential set,
-current authorization and Key revision are fenced through native dispatch.
-Credential create/reparent and Registry removal share the parent native lock
-through transaction completion. Cookie completion requires this plan's durable
-native delete witness and complete captured-child removal; another process or
-parent state alone cannot prove completion. Existing Full/legacy writers and
-role/Key ceilings are preserved, with no new native grant or credential editor.
+Machine Driver lifecycle waits use the existing blocking executor by default;
+explicit deployment routing overrides remain supported. Human Cookie approval
+of a lifecycle plan uses the persisted plan's original Key/session snapshot.
+Cookie plans retain their witness. Live account/membership/Key checks, target
+CAS, human-only approval and at-most-once dispatch remain required.
 
-AI-purpose Bridge navigation may use the private `bridge_context` view when
-ordinary Project scope is denied. A fresh ordinary child read and exact parent
-ancestry are required; explicit parent denial wins. Only parent id, UUID, name
-and state are projected. This does not grant Project read or business access.
-The private view enum has three entries; the public MCP view enum remains two.
-The six startup role inputs, two base fields and six compiled semantics from
-published 390 remain required and introduce no new 391 role grant.
+Matching Web Console1.6.233 / Bridge0.2.35 remains published. All523 inherited
+required methods and five new tests passed. Original CI reports488 suites /
+4341 tests, zero failures/errors and one inherited skip. C03 retains1396 native
+operation tuples and introduces no role, schema or dependency grant.
+The actual JAR contains the exact new Driver routing default. Its standalone
+artifact scan has zero findings; the separate Dapper scan retains46 tracked
+unfixed Medium/Low occurrences after the official rust-coreutils update.
 
-The original 506 mandatory method identities are retained and seventeen new
-methods are registered (523 total: eleven Registry and six Bridge context).
-Normal C03 source extraction covers 506 inputs and preserves all 1,396 native
-HTTP tuples. This is source enumeration, not executed JUnit or compiled evidence. Matching Web Console 1.6.232 / Bridge 0.2.34, original CI,
-compiled/source qualification, component publication and native acceptance are
-pending. See the [candidate note](docs/releases/orchestration-engine-0.183.392.md).
+The immutable release passed anonymous SHA256 readback and native release
+attestation verification. Component qualification does not establish matching
+Server deployment, Registry cascade or Stack recovery acceptance. See the
+[release note](docs/releases/orchestration-engine-0.183.392.md) and
+[published metadata](https://github.com/PastureStack/orchestration-engine/releases/download/v0.183.392/engine392-release-metadata.json).
+
+## Engine 0.183.391 published
+
+Registry removal shares the existing native parent lock with credential
+create/reparent and requires its own durable delete witness and complete
+captured-child removal. Scoped Bridge navigation can resolve authorized parent
+identity without granting ordinary Project read or business access. Full/legacy
+writers and role/Key ceilings remain authoritative. These contracts are retained
+by392; the former source-only pending description no longer represents391's
+publication status. See the
+[immutable391 release](https://github.com/PastureStack/orchestration-engine/releases/tag/v0.183.391).
 
 ## Engine 0.183.390 published
 

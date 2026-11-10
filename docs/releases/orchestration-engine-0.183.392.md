@@ -10,8 +10,10 @@ overrides remain supported. Executor sizes, native process identities, resource
 authorization, and Stack/Service request payloads retain their existing behavior.
 
 Two deterministic tests exercise actual dispatch with barriers, including the
-explicit override. Required CI checks and native Server recovery acceptance must
-pass before this candidate is qualified for deployment.
+explicit override. Original CI passed488 suites /4341 tests with zero failures
+or errors and one inherited skip; all528 mandatory identities passed. The
+original packaged JAR contains this exact default. Matching Server recovery
+acceptance remains separate and pending.
 
 ## Human confirmation of API Key lifecycle plans
 
