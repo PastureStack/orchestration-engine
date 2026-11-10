@@ -13,6 +13,10 @@ Native actor, tenant, role and Key authorization are unchanged. Other resource
 name searches retain their database predicate; Registry address lookup is
 unchanged. There is no API/schema, dependency or persistence migration.
 
+The pinned CA package download uses its official Launchpad Librarian object.
+The package version and SHA256 remain unchanged; a mismatched response still
+fails the build. The original snapshot download returned invalid bytes.
+
 ## Validation boundary
 
 Four new regressions cover null/custom names, native hostname, bounded empty
