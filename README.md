@@ -1,5 +1,11 @@
 # PastureStack Orchestration Engine
 
+Development candidate `0.183.393` updates the maintained Hazelcast artifact to
+`5.7.7` with official org.json `20260719` for CVE-2026-59171. Cluster protocol
+metadata remains `5.7.3`; Engine authorization, session and lifecycle code is
+unchanged. Publication and downstream acceptance are pending. The current
+published release below remains immutable.
+
 Orchestration Engine implements the platform API, authorization, metadata,
 scheduling, storage, networking, and resource lifecycle.
 
