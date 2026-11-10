@@ -10,10 +10,8 @@ upstream history, authorship, licenses, and dependency notices.
 
 ## Current component
 
-Engine **0.183.392** is the next release candidate.
-The latest published baseline is
-[Engine 0.183.391](https://github.com/PastureStack/orchestration-engine/releases/tag/v0.183.391).
-The candidate targets Web Console **1.6.233** / Bridge **0.2.35**.
+[Engine **0.183.392**](https://github.com/PastureStack/orchestration-engine/releases/tag/v0.183.392)
+is published for matching Web Console **1.6.233** / Bridge **0.2.35**.
 Machine Driver lifecycle waits use the existing blocking executor so they do
 not occupy the control workers needed for recovery after a Server restart.
 Human confirmation retains the original Key/session binding of a lifecycle
