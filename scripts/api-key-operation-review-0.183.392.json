@@ -185,7 +185,7 @@
     "reviewed": {
       "algorithm": "c03-source-inputs-v1",
       "count": 506,
-      "sha256": "4f434e86895fd58619a04e0e99a08d52803d64de176186d64284b4d38df3ef37",
+      "sha256": "c7551e9d14693c2b7b8ddecc0599681232ace72d67b7f79ce5e0fef46a560e23",
       "anchors": [
         "AbstractObjectManager.java",
         "AbstractSchemaFactory.java",
@@ -359,7 +359,13 @@
     },
     "addedAnchors": []
   },
-  "delta": [],
+  "delta": [
+    {
+      "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiResourceChangePlanService.java",
+      "before": "f609aeaf8f714be0204e14e842a325704acb09f9aff104bba6fc63e6ba41db77",
+      "after": "487403775238c359795a56e67bc902586e586911c2098fb31202673e263003f6"
+    }
+  ],
   "inheritedRequiredMethods": [
     [
       "io.cattle.platform.api.schema.FileSchemaFactoryTest",
@@ -2462,18 +2468,55 @@
     [
       "io.cattle.platform.app.MachineDriverExecutorIsolationTest",
       "threeAwaitingDriversCannotStarveStackReplay"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiRegistryLifecycleChangeTest",
+      "cookiePlanKeepsItsWitnessAndNeverBorrowsAKeySnapshot"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiRegistryLifecycleChangeTest",
+      "humanKeyPlanConfirmationStillChecksLiveAuthorityAndSnapshot"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiRegistryLifecycleChangeTest",
+      "keyPlanHumanConfirmationKeepsItsOriginalSnapshotAcrossLifecycleTypes"
     ]
   ],
-  "requiredMethodCount": 525,
-  "newMethodCount": 2,
+  "requiredMethodCount": 528,
+  "newMethodCount": 5,
   "sourceMethodReplacements": [],
   "sourceMethodClassification": {
-    "trueNewTestMethods": 2,
+    "trueNewTestMethods": 5,
     "existingRenamedFirstMandatory": 0,
-    "newSourceNamesAndRequiredIdentities": 2,
-    "netDeclaredMethodDelta": 2
+    "newSourceNamesAndRequiredIdentities": 5,
+    "netDeclaredMethodDelta": 5
   },
-  "affectedExistingRequiredMethods": [],
+  "affectedExistingRequiredMethods": [
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiRegistryLifecycleChangeTest",
+      "actualRegistryIdentityAndFullConfigurationArePreservedAcrossStateChanges"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiRegistryLifecycleChangeTest",
+      "addressProjectionIsExplicitAndNeverInventsANameOrExposesCredentialText"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiRegistryLifecycleChangeTest",
+      "nativeGetAndTerminalReadReauthorizeTheExactRegistryIdUuidKindOwnerAndCurrentReadSchema"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiRegistryLifecycleChangeTest",
+      "onlyEmptyRegistryStartAndStopReachTheNativeActions"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiRegistryLifecycleChangeTest",
+      "registryConfirmationAndApplyCasRejectChangedUuidStateAndConfigurationBeforeDispatch"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.change.AiRegistryLifecycleChangeTest",
+      "registryConfirmationRemainsHumanOnlyBoundKeyIsFreshAndAcceptedOrUnknownApplyNeverReplays"
+    ]
+  ],
   "affectedExistingNonRequiredMethods": [],
   "requiredPackagedRootSources": [
     "code/framework/api/src/main/java/io/cattle/platform/api/auth/ApiAuditPayload.java",
@@ -2571,9 +2614,11 @@
     "code/packaging/app-config/src/main/java/io/cattle/platform/app/IaasApiConfig.java",
     "code/packaging/app-config/src/main/java/io/cattle/platform/app/SystemServicesConfig.java"
   ],
-  "currentSourceRoots": [],
-  "currentRoots": 0,
-  "carriedSourceRoots": 94,
+  "currentSourceRoots": [
+    "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiResourceChangePlanService.java"
+  ],
+  "currentRoots": 1,
+  "carriedSourceRoots": 93,
   "packagedRootPlan": [
     {
       "source": "code/framework/api/src/main/java/io/cattle/platform/api/auth/ApiAuditPayload.java",
@@ -2858,7 +2903,7 @@
     {
       "source": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiResourceChangePlanService.java",
       "class": "io.cattle.platform.iaas.api.auth.change.AiResourceChangePlanService",
-      "classification": "PUBLISHED_BASELINE_CARRY_PENDING_BYTE_COMPARISON"
+      "classification": "CURRENT"
     },
     {
       "source": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiResourceChangePlanStore.java",

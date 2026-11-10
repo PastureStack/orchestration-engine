@@ -478,6 +478,9 @@ jobs:
                   'updatingActiveProjectIsReadableWithoutAdmittingAnotherMetadataWriteOrPrematureReceipt',
               },
               'io.cattle.platform.iaas.api.auth.change.AiRegistryLifecycleChangeTest': {
+                  'keyPlanHumanConfirmationKeepsItsOriginalSnapshotAcrossLifecycleTypes',
+                  'cookiePlanKeepsItsWitnessAndNeverBorrowsAKeySnapshot',
+                  'humanKeyPlanConfirmationStillChecksLiveAuthorityAndSnapshot',
                   'actualRegistryIdentityAndFullConfigurationArePreservedAcrossStateChanges',
                   'addressProjectionIsExplicitAndNeverInventsANameOrExposesCredentialText',
                   'nativeGetAndTerminalReadReauthorizeTheExactRegistryIdUuidKindOwnerAndCurrentReadSchema',

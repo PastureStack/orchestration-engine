@@ -220,13 +220,13 @@
     "defaultProcesses": "ebf41ab873c349656c307511712674e0db434a9c4986e08d03ec35d92bdcd6a7"
   },
   "currentSourceReview": {
-    "version": "unreleased-392-machine-driver-executor-isolation",
+    "version": "unreleased-392-machine-recovery-and-plan-session-binding",
     "status": "SOURCE_ONLY_NOT_ARTIFACT_OR_RUNTIME_ACCEPTANCE",
     "producerCommit": null,
     "sourceInputs": {
       "algorithm": "c03-source-inputs-v1",
       "count": 506,
-      "sha256": "4f434e86895fd58619a04e0e99a08d52803d64de176186d64284b4d38df3ef37",
+      "sha256": "c7551e9d14693c2b7b8ddecc0599681232ace72d67b7f79ce5e0fef46a560e23",
       "anchors": [
         "AbstractObjectManager.java",
         "AbstractSchemaFactory.java",
@@ -398,19 +398,19 @@
         " collectionAction("
       ]
     },
-    "contractSha256": "35af5223f09f87aa03d608dde907fb898b3d621932e2c879a369ed500d4e6719",
+    "contractSha256": "47f23f258d08ed26e3a7263e44798f44fe597b21386d25af7e495e0aa5d64d45",
     "tupleCount": 1396,
     "reviewManifest": "scripts/api-key-operation-review-0.183.392.json",
-    "reviewManifestSha256": "3a12c90bfe7eafebfef6f4f24da7e243d4a7a8623512924b89865dc04a03feb4",
+    "reviewManifestSha256": "ae6e1e4f0cfa02389b52891c419532886ff61c0b2f88201b9f2427f08fb0a688",
     "roleFieldDelta": [],
     "typedFieldDelta": [],
     "typedBaseSchemaDelta": {},
     "dependencyDelta": [],
     "sourceMethodClassification": {
-      "trueNewTestMethods": 2,
+      "trueNewTestMethods": 5,
       "existingRenamedFirstMandatory": 0,
-      "newSourceNamesAndRequiredIdentities": 2,
-      "netDeclaredMethodDelta": 2
+      "newSourceNamesAndRequiredIdentities": 5,
+      "netDeclaredMethodDelta": 5
     },
     "previousReview": {
     "version": "unreleased-391-registry-removal-bridge-context",
