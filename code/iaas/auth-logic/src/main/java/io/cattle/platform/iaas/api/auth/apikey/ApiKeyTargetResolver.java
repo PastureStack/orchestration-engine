@@ -187,6 +187,12 @@ public class ApiKeyTargetResolver {
             String projectId = format("project", account.getId());
             return ApiKeyPolicyEvaluator.Target.projectResource("project", projectId, projectId);
         }
+        if (value instanceof StoragePool pool) {
+            // Registry and its parent route identify the same persisted object.
+            // Use its native kind for the authorization/audit decision too;
+            // a parent-schema spelling must not hide an explicit Registry deny.
+            type = StoragePoolConstants.KIND_REGISTRY.equalsIgnoreCase(pool.getKind()) ? "registry" : "storagePool";
+        }
         Object rawId = ObjectUtils.getPropertyIgnoreErrors(value, "id");
         String id = format(type, rawId);
         if (value instanceof Stack stack) return stack("stack", id, stack, owner);

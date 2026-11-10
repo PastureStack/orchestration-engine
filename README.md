@@ -8,7 +8,14 @@ Rancher 1.6 ecosystem. It is not affiliated with Rancher Labs or SUSE.
 This fork of [`rancher/cattle`](https://github.com/rancher/cattle) preserves
 upstream history, authorship, licenses, and dependency notices.
 
-## Current component
+## Candidate 0.183.394
+
+Fixes exact Registry API Key grants/denials in native StoragePool queries while
+preserving parent-rule denials on the same Registry. The 67 related database,
+authorization, view and lifecycle tests pass locally; immutable
+publication and Server acceptance remain pending. See the [candidate note](docs/releases/orchestration-engine-0.183.394.md).
+
+## Current published component
 
 [Engine **0.183.393**](https://github.com/PastureStack/orchestration-engine/releases/tag/v0.183.393)
 is published for matching Web Console **1.6.233** / Bridge **0.2.35**.

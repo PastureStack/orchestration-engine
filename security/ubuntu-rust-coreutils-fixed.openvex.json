@@ -1,0 +1,216 @@
+{
+  "@context": "https://openvex.dev/ns/v0.2.0",
+  "@id": "https://github.com/PastureStack/orchestration-engine/security/openvex/rust-coreutils-0.10.0-resolute",
+  "author": "PastureStack Security",
+  "timestamp": "2026-11-10T08:00:00Z",
+  "version": 1,
+  "statements": [
+    {
+      "vulnerability": {
+        "name": "CVE-2026-109518"
+      },
+      "products": [
+        {
+          "@id": "pkg:deb/ubuntu/apt@3.2.1ubuntu0.1?arch=amd64&distro=ubuntu-26.04"
+        },
+        {
+          "@id": "pkg:deb/ubuntu/libapt-pkg7.0@3.2.1ubuntu0.1?arch=amd64&distro=ubuntu-26.04"
+        }
+      ],
+      "status": "fixed",
+      "impact_statement": "Ubuntu USN-8996-1 (https://ubuntu.com/security/notices/USN-8996-1) fixes CVE-2026-109518 in Ubuntu 26.04 APT 3.2.1ubuntu0.1. The official amd64 apt archive SHA256 is 0de729b8fe0e1c67c04e8e8d5bd6e0420dbd47f75b93f0b71c8e740edc2d5ffc; libapt-pkg7.0 is 94e5d41303265b66af0f8c70ade18bfb77260ad286edee6c8045faddef82b94c. Both exact packages are installed before the first APT operation. CI binds the native installed pair, every package-owned ELF byte hash, raw scanner package identity and this exact PURL set to the same Dapper image. Other versions, architectures, distributions, packages and CVEs are not covered."
+    },
+    {
+      "vulnerability": {
+        "name": "CVE-2026-35341"
+      },
+      "products": [
+        {
+          "@id": "pkg:deb/ubuntu/rust-coreutils@0.10.0-1ubuntu2~26.04.1?arch=amd64&distro=ubuntu-26.04"
+        }
+      ],
+      "status": "fixed",
+      "impact_statement": "Canonical documents this backport as fixed in 0.10.0-1ubuntu2~26.04.1. https://discourse.ubuntu.com/t/rust-coreutils-0-10-now-available-for-ubuntu-26-04-lts/88120; https://ubuntu.com/security/cves/CVE-2026-35341.json explicitly confirms the updates-pocket fix for CVE-2026-35341 while the security-pocket status lags. Official amd64 archive SHA256 963dbc5efa92141e7056a9e9f3431ec7f352f2a7c762f2b3242443df39be9115; installed /usr/bin/coreutils ELF SHA256 f84e76ea4da1e0c4e92254bd0d7dccdabe2c8b3098e734f27997dae3ee5d8e02. CI must verify the same Dapper image, installed package and bytes before using native Trivy OpenVEX. No other version, architecture, distribution, package or CVE is covered."
+    },
+    {
+      "vulnerability": {
+        "name": "CVE-2026-35344"
+      },
+      "products": [
+        {
+          "@id": "pkg:deb/ubuntu/rust-coreutils@0.10.0-1ubuntu2~26.04.1?arch=amd64&distro=ubuntu-26.04"
+        }
+      ],
+      "status": "fixed",
+      "impact_statement": "Canonical documents this backport as fixed in 0.10.0-1ubuntu2~26.04.1. https://discourse.ubuntu.com/t/rust-coreutils-0-10-now-available-for-ubuntu-26-04-lts/88120; https://ubuntu.com/security/cves/CVE-2026-35341.json explicitly confirms the updates-pocket fix for CVE-2026-35341 while the security-pocket status lags. Official amd64 archive SHA256 963dbc5efa92141e7056a9e9f3431ec7f352f2a7c762f2b3242443df39be9115; installed /usr/bin/coreutils ELF SHA256 f84e76ea4da1e0c4e92254bd0d7dccdabe2c8b3098e734f27997dae3ee5d8e02. CI must verify the same Dapper image, installed package and bytes before using native Trivy OpenVEX. No other version, architecture, distribution, package or CVE is covered."
+    },
+    {
+      "vulnerability": {
+        "name": "CVE-2026-35345"
+      },
+      "products": [
+        {
+          "@id": "pkg:deb/ubuntu/rust-coreutils@0.10.0-1ubuntu2~26.04.1?arch=amd64&distro=ubuntu-26.04"
+        }
+      ],
+      "status": "fixed",
+      "impact_statement": "Canonical documents this backport as fixed in 0.10.0-1ubuntu2~26.04.1. https://discourse.ubuntu.com/t/rust-coreutils-0-10-now-available-for-ubuntu-26-04-lts/88120; https://ubuntu.com/security/cves/CVE-2026-35341.json explicitly confirms the updates-pocket fix for CVE-2026-35341 while the security-pocket status lags. Official amd64 archive SHA256 963dbc5efa92141e7056a9e9f3431ec7f352f2a7c762f2b3242443df39be9115; installed /usr/bin/coreutils ELF SHA256 f84e76ea4da1e0c4e92254bd0d7dccdabe2c8b3098e734f27997dae3ee5d8e02. CI must verify the same Dapper image, installed package and bytes before using native Trivy OpenVEX. No other version, architecture, distribution, package or CVE is covered."
+    },
+    {
+      "vulnerability": {
+        "name": "CVE-2026-35348"
+      },
+      "products": [
+        {
+          "@id": "pkg:deb/ubuntu/rust-coreutils@0.10.0-1ubuntu2~26.04.1?arch=amd64&distro=ubuntu-26.04"
+        }
+      ],
+      "status": "fixed",
+      "impact_statement": "Canonical documents this backport as fixed in 0.10.0-1ubuntu2~26.04.1. https://discourse.ubuntu.com/t/rust-coreutils-0-10-now-available-for-ubuntu-26-04-lts/88120; https://ubuntu.com/security/cves/CVE-2026-35341.json explicitly confirms the updates-pocket fix for CVE-2026-35341 while the security-pocket status lags. Official amd64 archive SHA256 963dbc5efa92141e7056a9e9f3431ec7f352f2a7c762f2b3242443df39be9115; installed /usr/bin/coreutils ELF SHA256 f84e76ea4da1e0c4e92254bd0d7dccdabe2c8b3098e734f27997dae3ee5d8e02. CI must verify the same Dapper image, installed package and bytes before using native Trivy OpenVEX. No other version, architecture, distribution, package or CVE is covered."
+    },
+    {
+      "vulnerability": {
+        "name": "CVE-2026-35350"
+      },
+      "products": [
+        {
+          "@id": "pkg:deb/ubuntu/rust-coreutils@0.10.0-1ubuntu2~26.04.1?arch=amd64&distro=ubuntu-26.04"
+        }
+      ],
+      "status": "fixed",
+      "impact_statement": "Canonical documents this backport as fixed in 0.10.0-1ubuntu2~26.04.1. https://discourse.ubuntu.com/t/rust-coreutils-0-10-now-available-for-ubuntu-26-04-lts/88120; https://ubuntu.com/security/cves/CVE-2026-35341.json explicitly confirms the updates-pocket fix for CVE-2026-35341 while the security-pocket status lags. Official amd64 archive SHA256 963dbc5efa92141e7056a9e9f3431ec7f352f2a7c762f2b3242443df39be9115; installed /usr/bin/coreutils ELF SHA256 f84e76ea4da1e0c4e92254bd0d7dccdabe2c8b3098e734f27997dae3ee5d8e02. CI must verify the same Dapper image, installed package and bytes before using native Trivy OpenVEX. No other version, architecture, distribution, package or CVE is covered."
+    },
+    {
+      "vulnerability": {
+        "name": "CVE-2026-35351"
+      },
+      "products": [
+        {
+          "@id": "pkg:deb/ubuntu/rust-coreutils@0.10.0-1ubuntu2~26.04.1?arch=amd64&distro=ubuntu-26.04"
+        }
+      ],
+      "status": "fixed",
+      "impact_statement": "Canonical documents this backport as fixed in 0.10.0-1ubuntu2~26.04.1. https://discourse.ubuntu.com/t/rust-coreutils-0-10-now-available-for-ubuntu-26-04-lts/88120; https://ubuntu.com/security/cves/CVE-2026-35341.json explicitly confirms the updates-pocket fix for CVE-2026-35341 while the security-pocket status lags. Official amd64 archive SHA256 963dbc5efa92141e7056a9e9f3431ec7f352f2a7c762f2b3242443df39be9115; installed /usr/bin/coreutils ELF SHA256 f84e76ea4da1e0c4e92254bd0d7dccdabe2c8b3098e734f27997dae3ee5d8e02. CI must verify the same Dapper image, installed package and bytes before using native Trivy OpenVEX. No other version, architecture, distribution, package or CVE is covered."
+    },
+    {
+      "vulnerability": {
+        "name": "CVE-2026-35357"
+      },
+      "products": [
+        {
+          "@id": "pkg:deb/ubuntu/rust-coreutils@0.10.0-1ubuntu2~26.04.1?arch=amd64&distro=ubuntu-26.04"
+        }
+      ],
+      "status": "fixed",
+      "impact_statement": "Canonical documents this backport as fixed in 0.10.0-1ubuntu2~26.04.1. https://discourse.ubuntu.com/t/rust-coreutils-0-10-now-available-for-ubuntu-26-04-lts/88120; https://ubuntu.com/security/cves/CVE-2026-35341.json explicitly confirms the updates-pocket fix for CVE-2026-35341 while the security-pocket status lags. Official amd64 archive SHA256 963dbc5efa92141e7056a9e9f3431ec7f352f2a7c762f2b3242443df39be9115; installed /usr/bin/coreutils ELF SHA256 f84e76ea4da1e0c4e92254bd0d7dccdabe2c8b3098e734f27997dae3ee5d8e02. CI must verify the same Dapper image, installed package and bytes before using native Trivy OpenVEX. No other version, architecture, distribution, package or CVE is covered."
+    },
+    {
+      "vulnerability": {
+        "name": "CVE-2026-35359"
+      },
+      "products": [
+        {
+          "@id": "pkg:deb/ubuntu/rust-coreutils@0.10.0-1ubuntu2~26.04.1?arch=amd64&distro=ubuntu-26.04"
+        }
+      ],
+      "status": "fixed",
+      "impact_statement": "Canonical documents this backport as fixed in 0.10.0-1ubuntu2~26.04.1. https://discourse.ubuntu.com/t/rust-coreutils-0-10-now-available-for-ubuntu-26-04-lts/88120; https://ubuntu.com/security/cves/CVE-2026-35341.json explicitly confirms the updates-pocket fix for CVE-2026-35341 while the security-pocket status lags. Official amd64 archive SHA256 963dbc5efa92141e7056a9e9f3431ec7f352f2a7c762f2b3242443df39be9115; installed /usr/bin/coreutils ELF SHA256 f84e76ea4da1e0c4e92254bd0d7dccdabe2c8b3098e734f27997dae3ee5d8e02. CI must verify the same Dapper image, installed package and bytes before using native Trivy OpenVEX. No other version, architecture, distribution, package or CVE is covered."
+    },
+    {
+      "vulnerability": {
+        "name": "CVE-2026-35360"
+      },
+      "products": [
+        {
+          "@id": "pkg:deb/ubuntu/rust-coreutils@0.10.0-1ubuntu2~26.04.1?arch=amd64&distro=ubuntu-26.04"
+        }
+      ],
+      "status": "fixed",
+      "impact_statement": "Canonical documents this backport as fixed in 0.10.0-1ubuntu2~26.04.1. https://discourse.ubuntu.com/t/rust-coreutils-0-10-now-available-for-ubuntu-26-04-lts/88120; https://ubuntu.com/security/cves/CVE-2026-35341.json explicitly confirms the updates-pocket fix for CVE-2026-35341 while the security-pocket status lags. Official amd64 archive SHA256 963dbc5efa92141e7056a9e9f3431ec7f352f2a7c762f2b3242443df39be9115; installed /usr/bin/coreutils ELF SHA256 f84e76ea4da1e0c4e92254bd0d7dccdabe2c8b3098e734f27997dae3ee5d8e02. CI must verify the same Dapper image, installed package and bytes before using native Trivy OpenVEX. No other version, architecture, distribution, package or CVE is covered."
+    },
+    {
+      "vulnerability": {
+        "name": "CVE-2026-35363"
+      },
+      "products": [
+        {
+          "@id": "pkg:deb/ubuntu/rust-coreutils@0.10.0-1ubuntu2~26.04.1?arch=amd64&distro=ubuntu-26.04"
+        }
+      ],
+      "status": "fixed",
+      "impact_statement": "Canonical documents this backport as fixed in 0.10.0-1ubuntu2~26.04.1. https://discourse.ubuntu.com/t/rust-coreutils-0-10-now-available-for-ubuntu-26-04-lts/88120; https://ubuntu.com/security/cves/CVE-2026-35341.json explicitly confirms the updates-pocket fix for CVE-2026-35341 while the security-pocket status lags. Official amd64 archive SHA256 963dbc5efa92141e7056a9e9f3431ec7f352f2a7c762f2b3242443df39be9115; installed /usr/bin/coreutils ELF SHA256 f84e76ea4da1e0c4e92254bd0d7dccdabe2c8b3098e734f27997dae3ee5d8e02. CI must verify the same Dapper image, installed package and bytes before using native Trivy OpenVEX. No other version, architecture, distribution, package or CVE is covered."
+    },
+    {
+      "vulnerability": {
+        "name": "CVE-2026-35364"
+      },
+      "products": [
+        {
+          "@id": "pkg:deb/ubuntu/rust-coreutils@0.10.0-1ubuntu2~26.04.1?arch=amd64&distro=ubuntu-26.04"
+        }
+      ],
+      "status": "fixed",
+      "impact_statement": "Canonical documents this backport as fixed in 0.10.0-1ubuntu2~26.04.1. https://discourse.ubuntu.com/t/rust-coreutils-0-10-now-available-for-ubuntu-26-04-lts/88120; https://ubuntu.com/security/cves/CVE-2026-35341.json explicitly confirms the updates-pocket fix for CVE-2026-35341 while the security-pocket status lags. Official amd64 archive SHA256 963dbc5efa92141e7056a9e9f3431ec7f352f2a7c762f2b3242443df39be9115; installed /usr/bin/coreutils ELF SHA256 f84e76ea4da1e0c4e92254bd0d7dccdabe2c8b3098e734f27997dae3ee5d8e02. CI must verify the same Dapper image, installed package and bytes before using native Trivy OpenVEX. No other version, architecture, distribution, package or CVE is covered."
+    },
+    {
+      "vulnerability": {
+        "name": "CVE-2026-35367"
+      },
+      "products": [
+        {
+          "@id": "pkg:deb/ubuntu/rust-coreutils@0.10.0-1ubuntu2~26.04.1?arch=amd64&distro=ubuntu-26.04"
+        }
+      ],
+      "status": "fixed",
+      "impact_statement": "Canonical documents this backport as fixed in 0.10.0-1ubuntu2~26.04.1. https://discourse.ubuntu.com/t/rust-coreutils-0-10-now-available-for-ubuntu-26-04-lts/88120; https://ubuntu.com/security/cves/CVE-2026-35341.json explicitly confirms the updates-pocket fix for CVE-2026-35341 while the security-pocket status lags. Official amd64 archive SHA256 963dbc5efa92141e7056a9e9f3431ec7f352f2a7c762f2b3242443df39be9115; installed /usr/bin/coreutils ELF SHA256 f84e76ea4da1e0c4e92254bd0d7dccdabe2c8b3098e734f27997dae3ee5d8e02. CI must verify the same Dapper image, installed package and bytes before using native Trivy OpenVEX. No other version, architecture, distribution, package or CVE is covered."
+    },
+    {
+      "vulnerability": {
+        "name": "CVE-2026-35368"
+      },
+      "products": [
+        {
+          "@id": "pkg:deb/ubuntu/rust-coreutils@0.10.0-1ubuntu2~26.04.1?arch=amd64&distro=ubuntu-26.04"
+        }
+      ],
+      "status": "fixed",
+      "impact_statement": "Canonical documents this backport as fixed in 0.10.0-1ubuntu2~26.04.1. https://discourse.ubuntu.com/t/rust-coreutils-0-10-now-available-for-ubuntu-26-04-lts/88120; https://ubuntu.com/security/cves/CVE-2026-35341.json explicitly confirms the updates-pocket fix for CVE-2026-35341 while the security-pocket status lags. Official amd64 archive SHA256 963dbc5efa92141e7056a9e9f3431ec7f352f2a7c762f2b3242443df39be9115; installed /usr/bin/coreutils ELF SHA256 f84e76ea4da1e0c4e92254bd0d7dccdabe2c8b3098e734f27997dae3ee5d8e02. CI must verify the same Dapper image, installed package and bytes before using native Trivy OpenVEX. No other version, architecture, distribution, package or CVE is covered."
+    },
+    {
+      "vulnerability": {
+        "name": "CVE-2026-35373"
+      },
+      "products": [
+        {
+          "@id": "pkg:deb/ubuntu/rust-coreutils@0.10.0-1ubuntu2~26.04.1?arch=amd64&distro=ubuntu-26.04"
+        }
+      ],
+      "status": "fixed",
+      "impact_statement": "Canonical documents this backport as fixed in 0.10.0-1ubuntu2~26.04.1. https://discourse.ubuntu.com/t/rust-coreutils-0-10-now-available-for-ubuntu-26-04-lts/88120; https://ubuntu.com/security/cves/CVE-2026-35341.json explicitly confirms the updates-pocket fix for CVE-2026-35341 while the security-pocket status lags. Official amd64 archive SHA256 963dbc5efa92141e7056a9e9f3431ec7f352f2a7c762f2b3242443df39be9115; installed /usr/bin/coreutils ELF SHA256 f84e76ea4da1e0c4e92254bd0d7dccdabe2c8b3098e734f27997dae3ee5d8e02. CI must verify the same Dapper image, installed package and bytes before using native Trivy OpenVEX. No other version, architecture, distribution, package or CVE is covered."
+    },
+    {
+      "vulnerability": {
+        "name": "CVE-2026-35374"
+      },
+      "products": [
+        {
+          "@id": "pkg:deb/ubuntu/rust-coreutils@0.10.0-1ubuntu2~26.04.1?arch=amd64&distro=ubuntu-26.04"
+        }
+      ],
+      "status": "fixed",
+      "impact_statement": "Canonical documents this backport as fixed in 0.10.0-1ubuntu2~26.04.1. https://discourse.ubuntu.com/t/rust-coreutils-0-10-now-available-for-ubuntu-26-04-lts/88120; https://ubuntu.com/security/cves/CVE-2026-35341.json explicitly confirms the updates-pocket fix for CVE-2026-35341 while the security-pocket status lags. Official amd64 archive SHA256 963dbc5efa92141e7056a9e9f3431ec7f352f2a7c762f2b3242443df39be9115; installed /usr/bin/coreutils ELF SHA256 f84e76ea4da1e0c4e92254bd0d7dccdabe2c8b3098e734f27997dae3ee5d8e02. CI must verify the same Dapper image, installed package and bytes before using native Trivy OpenVEX. No other version, architecture, distribution, package or CVE is covered."
+    },
+    {
+      "vulnerability": {
+        "name": "CVE-2026-35377"
+      },
+      "products": [
+        {
+          "@id": "pkg:deb/ubuntu/rust-coreutils@0.10.0-1ubuntu2~26.04.1?arch=amd64&distro=ubuntu-26.04"
+        }
+      ],
+      "status": "fixed",
+      "impact_statement": "Canonical documents this backport as fixed in 0.10.0-1ubuntu2~26.04.1. https://discourse.ubuntu.com/t/rust-coreutils-0-10-now-available-for-ubuntu-26-04-lts/88120; https://ubuntu.com/security/cves/CVE-2026-35341.json explicitly confirms the updates-pocket fix for CVE-2026-35341 while the security-pocket status lags. Official amd64 archive SHA256 963dbc5efa92141e7056a9e9f3431ec7f352f2a7c762f2b3242443df39be9115; installed /usr/bin/coreutils ELF SHA256 f84e76ea4da1e0c4e92254bd0d7dccdabe2c8b3098e734f27997dae3ee5d8e02. CI must verify the same Dapper image, installed package and bytes before using native Trivy OpenVEX. No other version, architecture, distribution, package or CVE is covered."
+    }
+  ]
+}

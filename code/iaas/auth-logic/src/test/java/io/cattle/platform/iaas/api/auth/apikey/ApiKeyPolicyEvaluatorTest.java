@@ -120,6 +120,28 @@ public class ApiKeyPolicyEvaluatorTest {
     }
 
     @Test
+    public void parentStoragePoolScopePreservesExactRegistryIdentityAndDenyPrecedence() {
+        var registry = Target.projectResource("registry", "1sp3", "1a5");
+        var other = Target.projectResource("registry", "1sp4", "1a5");
+        Rule parent = new Rule("parent", Effect.ALLOW, Scope.resource("storagePool", "1sp3"), Set.of("read"));
+        Rule child = new Rule("child", Effect.ALLOW, Scope.resource("registry", "1sp3"), Set.of("read"));
+        assertTrue(evaluate(policy(Mode.CUSTOM, Effect.DENY, parent), "read", registry).allowed());
+        assertFalse(evaluate(policy(Mode.CUSTOM, Effect.DENY, parent), "read", other).allowed());
+        assertFalse(evaluate(policy(Mode.CUSTOM, Effect.DENY, child), "read",
+                Target.projectResource("storagePool", "1sp3", "1a5")).allowed());
+        for (List<Rule> rules : List.of(
+                List.of(child, new Rule("parent-deny", Effect.DENY, parent.scope(), Set.of("read"))),
+                List.of(parent, new Rule("child-deny", Effect.DENY, child.scope(), Set.of("read"))))) {
+            var custom = new ApiKeyPolicy(Mode.CUSTOM, Effect.DENY, null, rules);
+            var denied = evaluate(custom, "read", registry);
+            assertEquals(Reason.POLICY_DENIED, denied.reason());
+            assertEquals(rules.stream().map(Rule::id).toList(), denied.matchedRuleIds());
+            assertEquals(Reason.OWNER_DENIED, evaluator.evaluate(custom,
+                    new Request(false, "read", true, List.of(registry)), NOW).reason());
+        }
+    }
+
+    @Test
     public void movingAcrossStacksNeedsEveryTargetAuthorized() {
         var custom = policy(Mode.CUSTOM, Effect.DENY,
                 new Rule("a", Effect.ALLOW, Scope.stack("1st1"), Set.of("update")));

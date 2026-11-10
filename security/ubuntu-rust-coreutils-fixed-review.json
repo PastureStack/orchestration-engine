@@ -1,0 +1,63 @@
+{
+  "package": "rust-coreutils",
+  "version": "0.10.0-1ubuntu2~26.04.1",
+  "distribution": "ubuntu-26.04",
+  "architecture": "amd64",
+  "officialArchiveSha256": "963dbc5efa92141e7056a9e9f3431ec7f352f2a7c762f2b3242443df39be9115",
+  "elf": {
+    "path": "/usr/bin/coreutils",
+    "sha256": "f84e76ea4da1e0c4e92254bd0d7dccdabe2c8b3098e734f27997dae3ee5d8e02"
+  },
+  "fixedCves": [
+    "CVE-2026-35341",
+    "CVE-2026-35344",
+    "CVE-2026-35345",
+    "CVE-2026-35348",
+    "CVE-2026-35350",
+    "CVE-2026-35351",
+    "CVE-2026-35357",
+    "CVE-2026-35359",
+    "CVE-2026-35360",
+    "CVE-2026-35363",
+    "CVE-2026-35364",
+    "CVE-2026-35367",
+    "CVE-2026-35368",
+    "CVE-2026-35373",
+    "CVE-2026-35374",
+    "CVE-2026-35377"
+  ],
+  "reviewedAt": "2026-11-10",
+  "sources": [
+    {
+      "url": "https://discourse.ubuntu.com/t/rust-coreutils-0-10-now-available-for-ubuntu-26-04-lts/88120",
+      "rawDocumentSha256": "9d70b21c9717095282ed554c192265c375c6df55218d6bcf7fbd881a7a7e4038",
+      "fixedCves": [
+        "CVE-2026-35344",
+        "CVE-2026-35345",
+        "CVE-2026-35348",
+        "CVE-2026-35350",
+        "CVE-2026-35351",
+        "CVE-2026-35357",
+        "CVE-2026-35359",
+        "CVE-2026-35360",
+        "CVE-2026-35363",
+        "CVE-2026-35364",
+        "CVE-2026-35367",
+        "CVE-2026-35368",
+        "CVE-2026-35373",
+        "CVE-2026-35374",
+        "CVE-2026-35377"
+      ]
+    },
+    {
+      "url": "https://ubuntu.com/security/cves/CVE-2026-35341.json",
+      "rawDocumentSha256": "54a8e225f4868f9c79db0a906e847f2dcbe438fd0d3ca613cc98698a1918466a",
+      "fixedCves": [
+        "CVE-2026-35341"
+      ],
+      "updatesPocketFixedVersion": "0.10.0-1ubuntu2~26.04.1",
+      "securityPocketTrackingStillNeeded": true
+    }
+  ],
+  "scope": "Exact Dapper builder package only; other CVEs and products retain their original findings."
+}
