@@ -1,3 +1,10 @@
+# Engine 0.183.393 candidate
+
+This source candidate requires immutable distributed-cache-runtime 5.7.7,
+including relocated org.json 20260719. It retains cluster protocol 5.7.3,
+Jackson 2.22.3/3.2.3, and all Engine392 role, session and process contracts.
+Required CI and Server native acceptance remain pending.
+
 # Compatibility Contract
 
 ## Engine 0.183.392 published
