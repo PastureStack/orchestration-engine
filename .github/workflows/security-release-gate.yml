@@ -60,6 +60,12 @@ jobs:
           import xml.etree.ElementTree as ET
 
           required = {
+              'io.cattle.platform.iaas.api.auth.ai.view.AiHostSearchTest': {
+                  'hostnameAndCustomNameAreSearchableWithoutRewritingTheName',
+                  'hostnameSearchKeepsBoundedNativePagesAndTheirContinuation',
+                  'duplicateHostnamesRemainCandidatesAndTheNativeOwnerAloneSuppliesRows',
+                  'hostSearchStillStopsAtNativeRoleAndKeyDenials',
+              },
               'io.cattle.platform.iaas.api.auth.apikey.ApiKeyPolicyEvaluatorTest': {
                   'parentStoragePoolScopePreservesExactRegistryIdentityAndDenyPrecedence',
               },
