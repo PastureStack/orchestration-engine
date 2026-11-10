@@ -84,10 +84,16 @@ class VexBoundary(unittest.TestCase):
         raw_filter = workflow.index("--output evidence/dapper-image-vulnerabilities.raw-pip-qualified.json")
         native_filter = workflow.index("--output evidence/dapper-image-vulnerabilities.apt-fixed-pip-qualified.json")
         comparison = workflow.index("--raw evidence/dapper-image-vulnerabilities.raw-pip-qualified.json")
-        final = workflow.index("cp evidence/dapper-image-vulnerabilities.apt-fixed-pip-qualified.json")
+        rust_inputs = workflow.index("python3 scripts/check-rust-coreutils-fixed-vex.py", comparison)
+        rust_filter = workflow.index("--output evidence/dapper-image-vulnerabilities.apt-rust-fixed-pip-qualified.json")
+        rust_comparison = workflow.index("--native evidence/dapper-image-vulnerabilities.apt-rust-fixed-pip-qualified.json")
+        final = workflow.index("cp evidence/dapper-image-vulnerabilities.apt-rust-fixed-pip-qualified.json")
         self.assertLess(raw_filter, native_filter)
         self.assertLess(native_filter, comparison)
-        self.assertLess(comparison, final)
+        self.assertLess(comparison, rust_inputs)
+        self.assertLess(rust_inputs, rust_filter)
+        self.assertLess(rust_filter, rust_comparison)
+        self.assertLess(rust_comparison, final)
 
     def test_invalid_proof_fails_closed(self):
         for key, value in [("verifiedWheelSha256", "0" * 64), ("urllib3", "2.7.0"),
