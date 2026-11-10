@@ -1,10 +1,26 @@
-## Candidate 0.183.394
+# Compatibility Contract
 
-Fixes exact Registry API Key grants/denials in native StoragePool queries.
-The six new database regressions and adjacent unit tests pass locally; immutable
-publication and Server acceptance remain pending. See the [candidate note](docs/releases/orchestration-engine-0.183.394.md).
+## Engine 0.183.394 published
 
-# Engine 0.183.393 published
+The immutable original archive SHA256 is
+`b3d66741ad45142971407f507157aad58f5ce21ee15362085e38ebb953272b1b`.
+Producer: `26f03d3c0af23dfdd362af226303d5380d2c75b7`; same-tree signed
+release commit: `8be0bfaca89da2821047bf4895d1c7bea1eb43fc`.
+
+Registry grants and denials use persisted kind and exact ID through both
+native schema aliases. Parent StoragePool rules retain their meaning for the
+same Registry; a Registry grant cannot authorize an ordinary pool. Owner/RBAC
+ceilings, Full/legacy behavior, human confirmation and retention are preserved.
+
+All 538 mandatory identities passed. Original CI has 490 suites / 4,351 tests,
+zero failures/errors and one inherited skip. Three current class families were
+verified; 92 published baseline families are byte-identical. The 1,396 API
+tuples and compiled role/schema fields remain unchanged. Web1.6.233 and
+Bridge0.2.35 are retained. All 12 anonymous assets and the immutable release
+attestation passed verification. Matching Server packaging and native Registry
+removal acceptance remain separate and pending.
+
+## Engine 0.183.393 published
 
 Consumes immutable distributed-cache-runtime 5.7.7 with relocated org.json
 20260719 for CVE-2026-59171. Cluster protocol 5.7.3, Jackson 2.22.3/3.2.3,
@@ -17,8 +33,6 @@ tracked findings without official fixes. Raw reports are preserved separately.
 Anonymous asset readback and immutable release attestation passed. Matching
 Server packaging, deployment and native workflow acceptance are separate.
 See the [release note](docs/releases/orchestration-engine-0.183.393.md).
-
-# Compatibility Contract
 
 ## Engine 0.183.392 published
 

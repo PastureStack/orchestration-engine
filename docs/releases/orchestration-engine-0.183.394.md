@@ -1,4 +1,4 @@
-# Orchestration Engine 0.183.394 candidate
+# Orchestration Engine 0.183.394
 
 Registry-specific API Key grants and denials must also constrain the native
 StoragePool table lookup. Previously an exact Registry grant could return an
@@ -20,8 +20,13 @@ The six SQL regressions reproduce three failures; three direct-authorization
 cases separately expose two parent-alias failures. An additional regression
 and the existing Registry process test reproduce the parent-rule mismatch.
 All 67 directly related query, evaluator, Registry view and lifecycle tests
-pass after the fix, including the unchanged parent-denial expectation. Component
-CI, immutable publication and Server/8080 integration are still pending.
+pass after the fix, including the unchanged parent-denial expectation.
+Original CI completed 490 suites / 4,351 tests with zero failures/errors and
+one inherited skip; all 538 required identities passed. The immutable release
+has 12 verified anonymous assets and a verified release attestation. The three
+changed class families are present; 92 baseline families are byte-identical,
+and all 1,396 API tuples and compiled role/schema fields are unchanged.
+Matching Server/8080 integration remains pending.
 
 The builder already installs Canonical's SHA256-pinned rust-coreutils0.10
 backport. Canonical documents sixteen matching CVEs as fixed in that exact
