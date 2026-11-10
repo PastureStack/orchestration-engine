@@ -5,6 +5,7 @@ import io.cattle.platform.core.model.tables.InstanceTable;
 import io.cattle.platform.core.model.tables.StackTable;
 import io.cattle.platform.core.model.tables.ServiceTable;
 import io.cattle.platform.core.model.tables.ServiceExposeMapTable;
+import io.cattle.platform.core.model.tables.StoragePoolTable;
 import java.util.Locale;
 import java.util.Set;
 import java.util.function.BiFunction;
@@ -52,8 +53,22 @@ public final class ApiKeyQueryScopes {
                 case GLOBAL -> DSL.trueCondition();
                 case PROJECT -> account == null ? DSL.falseCondition() : account.eq(idParser.apply("project", scope.resourceId()));
                 case STACK -> stack == null ? DSL.falseCondition() : stack.eq(idParser.apply("stack", scope.resourceId()));
-                case RESOURCE -> canonical(scope.resourceType()).equals(resourceType)
-                        ? id.eq(idParser.apply(scope.resourceType(), scope.resourceId())) : DSL.falseCondition();
+                case RESOURCE -> {
+                    String scopedType = canonical(scope.resourceType());
+                    // Registry is a native StoragePool subtype. ObjectManager
+                    // narrows this shared table using the core type, including
+                    // direct-ID reads. Apply both grants and denials before
+                    // LIMIT, but only to persisted registry rows, never to an
+                    // unrelated pool or a caller-supplied schema alias.
+                    if ("registry".equals(scopedType) && "storagePool".equals(resourceType)
+                            && table instanceof StoragePoolTable) {
+                        Field<String> kind = table.field("kind", String.class);
+                        yield kind == null ? DSL.falseCondition()
+                                : kind.eq("registry").and(id.eq(idParser.apply(scope.resourceType(), scope.resourceId())));
+                    }
+                    yield scopedType.equals(resourceType)
+                            ? id.eq(idParser.apply(scope.resourceType(), scope.resourceId())) : DSL.falseCondition();
+                }
             };
             // A nullable parent is an unmatched scope, not SQL UNKNOWN. Without
             // this, NOT(deny-on-stack) incorrectly hides standalone resources

@@ -1,3 +1,9 @@
+## Candidate 0.183.394
+
+Fixes exact Registry API Key grants/denials in native StoragePool queries.
+The six new database regressions and adjacent unit tests pass locally; immutable
+publication and Server acceptance remain pending. See the [candidate note](docs/releases/orchestration-engine-0.183.394.md).
+
 # Engine 0.183.393 published
 
 Consumes immutable distributed-cache-runtime 5.7.7 with relocated org.json
