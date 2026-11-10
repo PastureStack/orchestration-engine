@@ -59,6 +59,11 @@ jobs:
           import xml.etree.ElementTree as ET
 
           required = {
+              'io.cattle.platform.iaas.api.auth.apikey.ApiKeyRegistryTargetScopeTest': {
+                  'exactRegistryGrantUsesPersistedKindThroughBothNativeSchemaNames',
+                  'parentAliasCannotHideRegistryPolicyDeniedFromAuthorizationOrAudit',
+                  'anOrdinaryPoolAndOwnerDenialCannotBorrowRegistryAuthority',
+              },
               'io.cattle.platform.iaas.api.auth.apikey.ApiKeyRegistryQueryScopeTest': {
                   'exactRegistryGrantSurvivesItsNativeParentTableLookup',
                   'registryDenyCannotBeBypassedThroughTheStoragePoolParentQuery',

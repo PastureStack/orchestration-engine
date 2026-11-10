@@ -185,7 +185,7 @@
     "reviewed": {
       "algorithm": "c03-source-inputs-v1",
       "count": 506,
-      "sha256": "ec1baeb75a7f6bb79e3084b9cee1e74d77ca3b0478d4d0b8f4039e3a2f1c6898",
+      "sha256": "d34db47a1f6c0f17eb16200c3bc4e5ab662f831494e004631a8887b4b1e05682",
       "anchors": [
         "AbstractObjectManager.java",
         "AbstractSchemaFactory.java",
@@ -364,6 +364,11 @@
       "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/apikey/ApiKeyQueryScopes.java",
       "before": "dc19c77dfc3b37fe9b88467d6aa76ef401d1cd4d33b65282d8549557e1c038b5",
       "after": "687e29cb1b50c5c315c506f10c4f96d63ce69284fb28a2dc83edb50390e9560f"
+    },
+    {
+      "path": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/apikey/ApiKeyTargetResolver.java",
+      "before": "5aa4ab54b3c8f41f3d8fef297fbeef67067b64d9be13d44e1398bb1ff3458cd2",
+      "after": "6cdd346bb437bcf0976945a34c401b30805b2d27ab10ea1a937d7b10984cabc8"
     }
   ],
   "inheritedRequiredMethods": [
@@ -2504,16 +2509,28 @@
     [
       "io.cattle.platform.iaas.api.auth.apikey.ApiKeyRegistryQueryScopeTest",
       "registryDenyCannotBeBypassedThroughTheStoragePoolParentQuery"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.apikey.ApiKeyRegistryTargetScopeTest",
+      "anOrdinaryPoolAndOwnerDenialCannotBorrowRegistryAuthority"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.apikey.ApiKeyRegistryTargetScopeTest",
+      "exactRegistryGrantUsesPersistedKindThroughBothNativeSchemaNames"
+    ],
+    [
+      "io.cattle.platform.iaas.api.auth.apikey.ApiKeyRegistryTargetScopeTest",
+      "parentAliasCannotHideRegistryPolicyDeniedFromAuthorizationOrAudit"
     ]
   ],
-  "requiredMethodCount": 534,
-  "newMethodCount": 6,
+  "requiredMethodCount": 537,
+  "newMethodCount": 9,
   "sourceMethodReplacements": [],
   "sourceMethodClassification": {
-    "trueNewTestMethods": 6,
+    "trueNewTestMethods": 9,
     "existingRenamedFirstMandatory": 0,
-    "newSourceNamesAndRequiredIdentities": 6,
-    "netDeclaredMethodDelta": 6
+    "newSourceNamesAndRequiredIdentities": 9,
+    "netDeclaredMethodDelta": 9
   },
   "affectedExistingRequiredMethods": [],
   "affectedExistingNonRequiredMethods": [],
@@ -2614,10 +2631,11 @@
     "code/packaging/app-config/src/main/java/io/cattle/platform/app/SystemServicesConfig.java"
   ],
   "currentSourceRoots": [
-    "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/apikey/ApiKeyQueryScopes.java"
+    "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/apikey/ApiKeyQueryScopes.java",
+    "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/apikey/ApiKeyTargetResolver.java"
   ],
-  "currentRoots": 1,
-  "carriedSourceRoots": 93,
+  "currentRoots": 2,
+  "carriedSourceRoots": 92,
   "packagedRootPlan": [
     {
       "source": "code/framework/api/src/main/java/io/cattle/platform/api/auth/ApiAuditPayload.java",
@@ -2822,7 +2840,7 @@
     {
       "source": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/apikey/ApiKeyTargetResolver.java",
       "class": "io.cattle.platform.iaas.api.auth.apikey.ApiKeyTargetResolver",
-      "classification": "PUBLISHED_BASELINE_CARRY_PENDING_BYTE_COMPARISON"
+      "classification": "CURRENT"
     },
     {
       "source": "code/iaas/auth-logic/src/main/java/io/cattle/platform/iaas/api/auth/change/AiAliasServiceChange.java",

@@ -226,7 +226,7 @@
     "sourceInputs": {
       "algorithm": "c03-source-inputs-v1",
       "count": 506,
-      "sha256": "ec1baeb75a7f6bb79e3084b9cee1e74d77ca3b0478d4d0b8f4039e3a2f1c6898",
+      "sha256": "d34db47a1f6c0f17eb16200c3bc4e5ab662f831494e004631a8887b4b1e05682",
       "anchors": [
         "AbstractObjectManager.java",
         "AbstractSchemaFactory.java",
@@ -398,19 +398,19 @@
         " collectionAction("
       ]
     },
-    "contractSha256": "ea59a8a9dafe0094f4e1c635d96601a50093a01a427754a847863a835383e45a",
+    "contractSha256": "7676878c9b00156d0f39e208a66a94683e9f09d19cda3072f48d378b20818952",
     "tupleCount": 1396,
     "reviewManifest": "scripts/api-key-operation-review-0.183.394.json",
-    "reviewManifestSha256": "e4f443163b9df0847720fe666fe7d043e462428737fe6649f81f98322a103734",
+    "reviewManifestSha256": "7322f06ba8cf320a4f9a7a35e58c5178b30d7ff38058e06ec66e4af41d6029e4",
     "roleFieldDelta": [],
     "typedFieldDelta": [],
     "typedBaseSchemaDelta": {},
     "dependencyDelta": [],
     "sourceMethodClassification": {
-      "trueNewTestMethods": 6,
+      "trueNewTestMethods": 9,
       "existingRenamedFirstMandatory": 0,
-      "newSourceNamesAndRequiredIdentities": 6,
-      "netDeclaredMethodDelta": 6
+      "newSourceNamesAndRequiredIdentities": 9,
+      "netDeclaredMethodDelta": 9
     },
     "previousReview": {
     "version": "unreleased-393-official-shaded-json-security",
