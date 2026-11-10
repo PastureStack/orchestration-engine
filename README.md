@@ -8,43 +8,30 @@ Rancher 1.6 ecosystem. It is not affiliated with Rancher Labs or SUSE.
 This fork of [`rancher/cattle`](https://github.com/rancher/cattle) preserves
 upstream history, authorship, licenses, and dependency notices.
 
-## Candidate 0.183.394
-
-Fixes exact Registry API Key grants/denials in native StoragePool queries while
-preserving parent-rule denials on the same Registry. The 67 related database,
-authorization, view and lifecycle tests pass locally; immutable
-publication and Server acceptance remain pending. See the [candidate note](docs/releases/orchestration-engine-0.183.394.md).
-
 ## Current published component
 
-[Engine **0.183.393**](https://github.com/PastureStack/orchestration-engine/releases/tag/v0.183.393)
+[Engine **0.183.394**](https://github.com/PastureStack/orchestration-engine/releases/tag/v0.183.394)
 is published for matching Web Console **1.6.233** / Bridge **0.2.35**.
-The maintained Hazelcast **5.7.7** artifact includes official org.json
-**20260719** for CVE-2026-59171. Its cluster protocol remains **5.7.3**;
-Engine authorization, session and lifecycle implementation is retained.
-Machine Driver lifecycle waits use the existing blocking executor so they do
-not occupy the control workers needed for recovery after a Server restart.
-Human confirmation retains the original Key/session binding of a lifecycle
-plan. A Cookie used to approve an API Key plan no longer makes an unchanged
-target appear stale. Native authorization, current Key scope, target-state
-checks and at-most-once dispatch remain required.
+Registry API Key rules constrain both native StoragePool queries and direct
+reads. Existing parent rules apply to the same persisted Registry ID; explicit
+denials and live owner ceilings remain required. Full/legacy access and
+ordinary StoragePool isolation retain their established behavior.
 
-The build environment uses the official SHA256-pinned Ubuntu26.04
-rust-coreutils backport. Findings without an official fix remain explicitly
-tracked; the release gate still rejects fixable findings and HIGH/CRITICAL
-findings. Component CI and package qualification do not establish deployed
-Server acceptance.
+The immutable component passed its required CI and packaged class/schema
+verification. See the [release note](docs/releases/orchestration-engine-0.183.394.md)
+for the original test and publication evidence. Component publication does not
+establish a deployed Server or complete AI business-workflow acceptance.
 
-Current role/Key ceilings, Full/legacy native behavior, configuration CAS and
-human confirmation remain required. Reviewed Service upgrades retain distinct
-omitted, `null` and `[]` startup arguments. See the
-[release note](docs/releases/orchestration-engine-0.183.393.md) for verified
-component evidence and the remaining native-acceptance boundary.
+The maintained cache runtime is **5.7.7**, with official org.json **20260719**
+security fixes and cluster protocol **5.7.3**. The build image verifies the
+SHA256-pinned Ubuntu rust-coreutils backport against its installed ELF bytes
+and native Trivy fixed-CVE evidence. Unfixed findings remain explicitly tracked;
+HIGH/CRITICAL, fixable and unregistered findings still block publication.
 
 Install a qualified matching assembly through the
 [Server installation guide](https://github.com/PastureStack/server#quick-start).
-Component publication does not update a running Server. Supported AI workflows
-remain partial; deployment and runtime status are tracked in the Server documentation.
+Supported AI workflows remain partial; runtime status belongs to the Server's
+matching deployment evidence.
 
 ## Optional AI resource workflows
 
