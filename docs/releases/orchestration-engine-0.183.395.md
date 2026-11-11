@@ -1,4 +1,4 @@
-# Orchestration Engine 0.183.395 candidate
+# Orchestration Engine 0.183.395
 
 ## Scope
 
@@ -19,10 +19,22 @@ resynchronization; the superseded .1 archive could no longer be fetched
 reliably. TLS validation, package metadata checks and negative controls remain.
 See https://ubuntu.com/security/notices/USN-9001-1.
 
-## Validation boundary
+## Validation and publication
 
-Four new regressions cover null/custom names, native hostname, bounded empty
-pages with a later match, duplicate candidates and role/Key denial. Together
-with the adjacent metadata, name search and Registry view tests, 24 focused
-JDK 25 tests pass. Component CI, immutable publication and matching Server
-Host scheduling acceptance remain pending.
+[Engine PR #210](https://github.com/PastureStack/orchestration-engine/pull/210)
+merged with all seven required checks passing. The original CI produced 4,355
+tests in 491 suites with zero failures, zero errors and one inherited skip.
+It verified 542 mandatory identities and 95 packaged class families. The
+1,396 API tuples and existing grants were preserved.
+
+The five Ubuntu snapshot index downloads succeeded with APT signature
+validation. Four Ubuntu 26.04 CVEs account for eleven newly tracked Dapper
+package occurrences. Canonical lists each as awaiting a fix. These exact
+builder entries are due for review on 2026-11-18. Product artifact, fixable
+and high severity checks remain enforced.
+
+The [immutable component release](https://github.com/PastureStack/orchestration-engine/releases/tag/v0.183.395) publishes the original CI JAR
+with SHA256 `0c446a67b9a11fb9018045be0b114b328365e4c3da314d1db6e4e4421d07fcfa`. Its original build
+producer is `9611a0abde9b8e13a21182b544b98cdac92b7c6a`. The signed release commit is
+`b1c38752634a81c0f82461a4cf1c3d737655d99d`. Matching Server deployment and Host scheduling
+acceptance are tracked in the Server release evidence.

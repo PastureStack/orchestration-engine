@@ -1,10 +1,14 @@
 # Compatibility Contract
 
-## Candidate 0.183.395
+## Engine 0.183.395 published
 
-Find Hosts by native hostname even when no custom name is set. Custom names,
-bounded cursors and native permissions are retained. Component publication and
-matching Server acceptance are pending. See the [candidate note](docs/releases/orchestration-engine-0.183.395.md).
+The immutable JAR SHA256 is `0c446a67b9a11fb9018045be0b114b328365e4c3da314d1db6e4e4421d07fcfa`.
+Producer `9611a0abde9b8e13a21182b544b98cdac92b7c6a` and signed release commit
+`b1c38752634a81c0f82461a4cf1c3d737655d99d` have the same tested tree.
+
+The 1,396 API tuples, serialized and compiled role schemas and native grants
+are unchanged. CI passed all 542 mandatory identities across 4,355 test cases
+with zero failures or errors and one inherited skip. See the [release note](docs/releases/orchestration-engine-0.183.395.md).
 
 ## Engine 0.183.394 published
 

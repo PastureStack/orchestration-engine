@@ -8,36 +8,16 @@ Rancher 1.6 ecosystem. It is not affiliated with Rancher Labs or SUSE.
 This fork of [`rancher/cattle`](https://github.com/rancher/cattle) preserves
 upstream history, authorship, licenses, and dependency notices.
 
-## Candidate 0.183.395
-
-Find Hosts by native hostname even when no custom name is set. Custom names,
-bounded cursors and native permissions are retained. Component publication and
-matching Server acceptance are pending. See the [candidate note](docs/releases/orchestration-engine-0.183.395.md).
-
 ## Current published component
 
-[Engine **0.183.394**](https://github.com/PastureStack/orchestration-engine/releases/tag/v0.183.394)
-is published for matching Web Console **1.6.233** / Bridge **0.2.35**.
-Registry API Key rules constrain both native StoragePool queries and direct
-reads. Existing parent rules apply to the same persisted Registry ID; explicit
-denials and live owner ceilings remain required. Full/legacy access and
-ordinary StoragePool isolation retain their established behavior.
+[Engine 0.183.395](https://github.com/PastureStack/orchestration-engine/releases/tag/v0.183.395) finds Hosts by native hostname and optional
+custom name. Search preserves bounded pagination and the caller's role and API
+Key permissions. Web Console 1.6.235 and optional Bridge 0.2.37 can consume
+the existing wire contract.
 
-The immutable component passed its required CI and packaged class/schema
-verification. See the [release note](docs/releases/orchestration-engine-0.183.394.md)
-for the original test and publication evidence. Component publication does not
-establish a deployed Server or complete AI business-workflow acceptance.
-
-The maintained cache runtime is **5.7.7**, with official org.json **20260719**
-security fixes and cluster protocol **5.7.3**. The build image verifies the
-SHA256-pinned Ubuntu rust-coreutils backport against its installed ELF bytes
-and native Trivy fixed-CVE evidence. Unfixed findings remain explicitly tracked;
-HIGH/CRITICAL, fixable and unregistered findings still block publication.
-
-Install a qualified matching assembly through the
-[Server installation guide](https://github.com/PastureStack/server#quick-start).
-Supported AI workflows remain partial; runtime status belongs to the Server's
-matching deployment evidence.
+Use the matching [Server installation guide](https://github.com/PastureStack/server#quick-start).
+The [component release note](docs/releases/orchestration-engine-0.183.395.md) records the original CI and publication
+evidence. Matching Server deployment and Host acceptance are tracked separately.
 
 ## Optional AI resource workflows
 
