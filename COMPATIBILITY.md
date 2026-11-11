@@ -1,5 +1,11 @@
 # Compatibility Contract
 
+## Candidate 0.183.395
+
+Find Hosts by native hostname even when no custom name is set. Custom names,
+bounded cursors and native permissions are retained. Component publication and
+matching Server acceptance are pending. See the [candidate note](docs/releases/orchestration-engine-0.183.395.md).
+
 ## Engine 0.183.394 published
 
 The immutable original archive SHA256 is

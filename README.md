@@ -8,6 +8,12 @@ Rancher 1.6 ecosystem. It is not affiliated with Rancher Labs or SUSE.
 This fork of [`rancher/cattle`](https://github.com/rancher/cattle) preserves
 upstream history, authorship, licenses, and dependency notices.
 
+## Candidate 0.183.395
+
+Find Hosts by native hostname even when no custom name is set. Custom names,
+bounded cursors and native permissions are retained. Component publication and
+matching Server acceptance are pending. See the [candidate note](docs/releases/orchestration-engine-0.183.395.md).
+
 ## Current published component
 
 [Engine **0.183.394**](https://github.com/PastureStack/orchestration-engine/releases/tag/v0.183.394)

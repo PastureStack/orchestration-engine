@@ -130,7 +130,7 @@ printf 'INSTALL_REACHED\n' >> calls
         for field, version in {"PYTHON3_14": "3.14.4-1ubuntu0.2",
                                "CURL_BOOTSTRAP": "8.18.0-1ubuntu2.8",
                                "CURL": "8.18.0-1ubuntu2.8",
-                               "CA_CERTIFICATES": "20260816ubuntu0.26.04.1"}.items():
+                               "CA_CERTIFICATES": "20260816ubuntu0.26.04.2"}.items():
             self.assertIn("UBUNTU_APT_" + field + "_VERSION='" + version + "'", lock)
         gate = (REPO / "scripts/check-pasturestack-source").read_text(encoding="utf-8")
         for field, version in {"PYTHON3_14": "3.14.4-1ubuntu0.2",
@@ -152,9 +152,9 @@ printf 'INSTALL_REACHED\n' >> calls
                     self.assertEqual(2, phase.count("for package in " + packages + "; do"))
                     for package in packages.split():
                         if package == "ca-certificates":
-                            self.assertIn("ADD --checksum=sha256:5b6326f1932cfd7be57130561dc78192f09ed9f58bfbe6606ed0c50510c3b6cd "
-                                          "https://snapshot.ubuntu.com/ubuntu/20261104T000000Z/pool/main/c/ca-certificates/"
-                                          "ca-certificates_20260816ubuntu0.26.04.1_all.deb /tmp/ca-certificates.deb\n", text)
+                            self.assertIn("ADD --checksum=sha256:a7e3bf769aec16ba21ca39cba180d6d311dafcbae68346a05f137c5cc26c9ca6 "
+                                          "https://security.ubuntu.com/ubuntu/pool/main/c/ca-certificates/"
+                                          "ca-certificates_20260816ubuntu0.26.04.2_all.deb /tmp/ca-certificates.deb\n", text)
                         else:
                             self.assertRegex(text, r"ADD --checksum=sha256:[0-9a-f]{64} https://(?:security|archive)\.ubuntu\.com/[^\n]+ /tmp/" + re.escape(package) + r"\.deb\n")
                     install = phase.index('install-snapshot-packages install -y --no-install-recommends "$@";')
@@ -172,9 +172,10 @@ printf 'INSTALL_REACHED\n' >> calls
                     self.assertNotIn("--force", phase)
                     self.assertNotIn("--allow-downgrades", text)
                 verify(source)
-                for old, changed in (("https://snapshot.ubuntu.com/", "https://untrusted.invalid/"),
-                                     ("20261104T000000Z/pool/main/c/ca-certificates/", "pool/main/c/ca-certificates/"),
-                                     ("5b6326f1932cfd7be57130561dc78192f09ed9f58bfbe6606ed0c50510c3b6cd", "0" * 64)):
+                for old, changed in (("https://security.ubuntu.com/ubuntu/pool/main/c/ca-certificates/", "https://untrusted.invalid/"),
+                                     ("ca-certificates_20260816ubuntu0.26.04.2_all.deb", "ca-certificates_20260816ubuntu0.26.04.1_all.deb"),
+                                     ("a7e3bf769aec16ba21ca39cba180d6d311dafcbae68346a05f137c5cc26c9ca6", "0" * 64)):
+                    self.assertIn(old, source)
                     with self.assertRaises(AssertionError):
                         verify(source.replace(old, changed, 1))
                 with self.assertRaises(AssertionError):

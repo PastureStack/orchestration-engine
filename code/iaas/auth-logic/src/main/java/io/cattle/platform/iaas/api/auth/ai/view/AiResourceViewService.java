@@ -180,11 +180,15 @@ public class AiResourceViewService {
         ResourceManager manager = managers.getResourceManagerByType(type);
         if (manager == null) throw error(404, "NotFound");
         String query = ((String) input.getOrDefault("query", "")).toLowerCase(Locale.ROOT);
-        if (domain.getId() == null && !query.isEmpty() && DATABASE_NAME_COLLECTIONS.contains(type) && !"registry".equals(type)) {
+        if (domain.getId() == null && !query.isEmpty() && DATABASE_NAME_COLLECTIONS.contains(type)
+                && !Set.of("registry", "host").contains(type)) {
             // Retain native tenant/Key restrictions and bounded pagination. A
             // name search must not page through unrelated rows before filtering.
             domain.getConditions().put("name", List.of(new Condition(ConditionType.LIKE, namePattern(query))));
         }
+        // Hosts may only have a native hostname. Keep both Host and Registry
+        // alternate-name searches on the ordinary authorized, bounded page;
+        // its continuation must survive even when no row on this page matches.
         if (domain.getId() == null && !query.isEmpty() && "processInstance".equals(type))
             domain.getConditions().put("processName", List.of(new Condition(ConditionType.LIKE, namePattern(query))));
         String parent = (String) input.get("parentId");
@@ -260,6 +264,8 @@ public class AiResourceViewService {
 
     private static boolean matchesQuery(String type, Map<String, Object> row, String query) {
         if (query.isEmpty() || Objects.toString(row.get("name"), "").toLowerCase(Locale.ROOT).contains(query)) return true;
+        if ("host".equals(type) && row.get("hostname") instanceof String hostname
+                && hostname.toLowerCase(Locale.ROOT).contains(query)) return true;
         return "registry".equals(type) && row.get("serverAddress") instanceof String address
                 && address.toLowerCase(Locale.ROOT).contains(query);
     }
